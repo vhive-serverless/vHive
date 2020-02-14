@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.orchestrator";
+option java_outer_classname = "OrchestratorProto";
+
+package orchestrator;
+
+service Orchestrator {
+    rpc StartVM (StartVMReq) returns (Status) {}
+    rpc StopVMs (StopVMsReq) returns (Status) {}
+}
+
+// The request message containing the user's name.
+message StartVMReq {
+    string image = 1;
+    string id = 2;
+}
+
+// The request message containing the user's name.
+message StopVMsReq {
+    bool all_vms = 1;
+}
+
+// The response message containing the greetings
+message Status {
+    string message = 1;
+}
