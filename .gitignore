@@ -17,3 +17,6 @@
 # Vim
 *.swo
 *.swp
+
+# Binaries
+fccd-orchestrator
