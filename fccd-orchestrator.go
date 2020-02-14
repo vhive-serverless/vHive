@@ -22,6 +22,8 @@ import (
 	"net"
 	"syscall"
 	_ "time"
+        "math/rand"
+        "strconv"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -65,6 +67,7 @@ var g_err error
 var mu = &sync.Mutex{}
 
 func main() {
+    rand.Seed(42)
     snapshotter = flag.String("ss", "devmapper", "snapshotter")
 
     log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
@@ -112,6 +115,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
     }
 
     vmID := in.GetId()
+    netID := rand.Intn(2) + 1
     createVMRequest := &proto.CreateVMRequest{
         VMID: vmID,
         MachineCfg: &proto.FirecrackerMachineConfiguration{
@@ -120,7 +124,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         },
         NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
             CNIConfig: &proto.CNIConfiguration{
-                NetworkName: "fcnet",
+                NetworkName: "fcnet"+strconv.Itoa(netID),
                 InterfaceName: "veth0",
             },
         }},
@@ -128,6 +132,8 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
 
     _, err = fcClient.CreateVM(ctx, createVMRequest)
     if err != nil {
+        _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
+        if err1 != nil { log.Printf("Attempt to clean up failed...") }
         return &pb.Status{Message: "Failed to start VM"}, errors.Wrap(err, "failed to create the VM")
     }
     container, err := client.NewContainer(
