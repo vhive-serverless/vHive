@@ -40,6 +40,8 @@ import (
 	"os"
         "os/signal"
         "sync"
+        "google.golang.org/grpc/codes"
+        "google.golang.org/grpc/status"
 )
 
 const (
@@ -132,8 +134,11 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
 
     _, err = fcClient.CreateVM(ctx, createVMRequest)
     if err != nil {
-        _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
-        if err1 != nil { log.Printf("Attempt to clean up failed...") }
+        errStatus, _ := status.FromError(err)
+        if errStatus.Code() != codes.AlreadyExists {
+            _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
+            if err1 != nil { log.Printf("Attempt to clean up failed...") }
+        }
         return &pb.Status{Message: "Failed to start VM"}, errors.Wrap(err, "failed to create the VM")
     }
     container, err := client.NewContainer(
