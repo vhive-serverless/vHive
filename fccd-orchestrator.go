@@ -14,58 +14,58 @@
 package main
 
 import (
-	"context"
-	"flag"
-	_ "fmt"
-	_ "io/ioutil"
-	"log"
-	"net"
-	"syscall"
-	_ "time"
-        "math/rand"
-        "strconv"
+    "context"
+    "flag"
+    _ "fmt"
+    _ "io/ioutil"
+    "log"
+    "net"
+    "syscall"
+    _ "time"
+    "math/rand"
+    "strconv"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/oci"
-	"github.com/pkg/errors"
+    "github.com/containerd/containerd"
+    "github.com/containerd/containerd/cio"
+    "github.com/containerd/containerd/namespaces"
+    "github.com/containerd/containerd/oci"
+    "github.com/pkg/errors"
 
-	fcclient "github.com/firecracker-microvm/firecracker-containerd/firecracker-control/client"
-	"github.com/firecracker-microvm/firecracker-containerd/proto"
-	"github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
+    fcclient "github.com/firecracker-microvm/firecracker-containerd/firecracker-control/client"
+    "github.com/firecracker-microvm/firecracker-containerd/proto"
+    "github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
 
-        "google.golang.org/grpc"
-	pb "github.com/ustiugov/fccd-orchestrator/proto"
-	"os"
-        "os/signal"
-        "sync"
-        "google.golang.org/grpc/codes"
-        "google.golang.org/grpc/status"
+    "google.golang.org/grpc"
+    pb "github.com/ustiugov/fccd-orchestrator/proto"
+    "os"
+    "os/signal"
+    "sync"
+    "google.golang.org/grpc/codes"
+    "google.golang.org/grpc/status"
+
+//    "github.com/ustiugov/skv"
 )
 
 const (
-	containerdAddress      = "/run/firecracker-containerd/containerd.sock"
-	containerdTTRPCAddress = containerdAddress + ".ttrpc"
-	namespaceName          = "firecracker-containerd"
+    containerdAddress      = "/run/firecracker-containerd/containerd.sock"
+    containerdTTRPCAddress = containerdAddress + ".ttrpc"
+    namespaceName          = "firecracker-containerd"
 
-        port = ":3333"
+    port = ":3333"
 )
 
 type VM struct {
-    Ctx context.Context
     Image containerd.Image
     Container containerd.Container
     Task containerd.Task
-    VMID string
 }
 
-var active_vms []VM
+//var store *skv.KVStore //TODO: stop individual VMs
+var active_vms map[string]VM
 var snapshotter *string
 var client *containerd.Client
 var fcClient *fcclient.Client
 var ctx context.Context
-var g_err error
 var mu = &sync.Mutex{}
 
 func main() {
@@ -76,18 +76,25 @@ func main() {
     flag.Parse()
 
     setupCloseHandler()
+
+    var err error
+//    store, err = skv.Open("/var/lib/fccd-orchestrator/vms.db")
+//    if err != nil { log.Fatalf("Failed to open db file", err) }
+
+    active_vms = make(map[string]VM)
+
     log.Println("Creating containerd client")
-    client, g_err = containerd.New(containerdAddress)
-    if g_err != nil {
-        log.Fatalf("Failed to start containerd client", g_err)
+    client, err = containerd.New(containerdAddress)
+    if err != nil {
+        log.Fatalf("Failed to start containerd client", err)
     }
     log.Println("Created containerd client")
 
     ctx = namespaces.WithNamespace(context.Background(), namespaceName)
 
-    fcClient, g_err = fcclient.New(containerdTTRPCAddress)
-    if g_err != nil {
-        log.Fatalf("Failed to start firecracker client", g_err)
+    fcClient, err = fcclient.New(containerdTTRPCAddress)
+    if err != nil {
+        log.Fatalf("Failed to start firecracker client", err)
     }
 
     lis, err := net.Listen("tcp", port)
@@ -103,11 +110,23 @@ func main() {
 }
 
 type server struct {
-	pb.UnimplementedOrchestratorServer
+    pb.UnimplementedOrchestratorServer
 }
 
 func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, error) {
-    log.Printf("Received: %v", in.GetImage())
+    vmID := in.GetId()
+    log.Printf("Received: %v %v", vmID, in.GetImage())
+    if _, is_present := active_vms[vmID]; is_present {
+        return &pb.Status{Message: "VM " + vmID + " already active"}, nil //err
+    }
+/*    var VM_ VM
+    if err := store.Get(vmID, &VM_); err == nil {
+        return &pb.Status{Message: "VM " + vmID + " already exists in db"}, nil //err
+    } else if err != skv.ErrNotFound {
+        log.Printf("Get VM from db returned error: %v\n", err)
+        return &pb.Status{Message: "Get VM " + vmID + " from db failed"}, err
+    }
+*/
     image, err := client.Pull(ctx, "docker.io/" + in.GetImage(),
                               containerd.WithPullUnpack,
                               containerd.WithPullSnapshotter(*snapshotter),
@@ -116,7 +135,6 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         return &pb.Status{Message: "Pulling a VM image failed"}, errors.Wrapf(err, "creating container")
     }
 
-    vmID := in.GetId()
     netID := rand.Intn(2) + 1
     createVMRequest := &proto.CreateVMRequest{
         VMID: vmID,
@@ -143,9 +161,9 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
     }
     container, err := client.NewContainer(
                                           ctx,
-                                          in.GetId(),
+                                          vmID,
                                           containerd.WithSnapshotter(*snapshotter),
-                                          containerd.WithNewSnapshot(in.GetId(), image),
+                                          containerd.WithNewSnapshot(vmID, image),
                                           containerd.WithNewSpec(
                                                                  oci.WithImageConfig(image),
                                                                  firecrackeroci.WithVMID(vmID),
@@ -154,7 +172,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
                                           containerd.WithRuntime("aws.firecracker", nil),
                                          )
     if err != nil {
-        return &pb.Status{Message: "Failed to start container for the VM" + in.GetId() }, err
+        return &pb.Status{Message: "Failed to start container for the VM" + vmID }, err
     }
     task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
     if err != nil {
@@ -162,7 +180,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         if err1 != nil { log.Printf("Attempt to clean up failed...") }
         _, err1 = fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
         if err1 != nil { log.Printf("Attempt to clean up failed...") }
-        return &pb.Status{Message: "Failed to create the task for the VM" + in.GetId() }, err
+        return &pb.Status{Message: "Failed to create the task for the VM" + vmID }, err
 
     }
 
@@ -175,7 +193,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         if err1 != nil { log.Printf("Attempt to clean up failed...") }
         _, err1 = fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
         if err1 != nil { log.Printf("Attempt to clean up failed...") }
-        return &pb.Status{Message: "Failed to wait for the task for the VM" + in.GetId() }, err
+        return &pb.Status{Message: "Failed to wait for the task for the VM" + vmID }, err
 
     }
 
@@ -187,18 +205,68 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         if err1 != nil { log.Printf("Attempt to clean up failed...") }
         _, err1 = fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
         if err1 != nil { log.Printf("Attempt to clean up failed...") }
-        return &pb.Status{Message: "Failed to start the task for the VM" + in.GetId() }, err
+        return &pb.Status{Message: "Failed to start the task for the VM" + vmID }, err
 
     }
 
     log.Println("Successfully started the container task")
 
     mu.Lock()
-    active_vms = append(active_vms, VM{Ctx: ctx, Image: image, Container: container, Task: task, VMID: vmID})
+    active_vms[vmID] = VM{Image: image, Container: container, Task: task}
     mu.Unlock()
+/*
+    if err := store.Put(vmID, vmID); err != nil {
+        log.Printf("Failed to save VM attributes, err:%v\n", err)
+    }
+*/
     //TODO: set up port forwarding to a private IP
 
-    return &pb.Status{Message: "started VM " + in.GetId() }, nil
+    return &pb.Status{Message: "started VM " + vmID }, nil
+}
+
+func (s *server) StopSingleVM(ctx_ context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
+    vmID := in.GetId()
+    log.Printf("Received stop single VM request for VM %v", vmID)
+    if vm, is_present := active_vms[vmID]; is_present {
+        if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
+            log.Printf("Failed to kill the task, err: %v\n", err)
+            return &pb.Status{Message: "Killinh task of VM " + vmID + " failed"}, err
+        }
+        if _, err := vm.Task.Delete(ctx); err != nil {
+            log.Printf("failed to delete the task of the VM, err: %v\n", err)
+            return &pb.Status{Message: "Deleting task of VM " + vmID + " failed"}, err
+        }
+        if err := vm.Container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+            log.Printf("failed to delete the container of the VM, err: %v\n", err)
+            return &pb.Status{Message: "Deleting container of VM " + vmID + " failed"}, err
+        }
+
+        mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
+        log.Println("Stopping the VM" + vmID)
+        if _, err := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+            log.Printf("failed to stop the VM, err: %v\n", err)
+            return &pb.Status{Message: "Stopping VM " + vmID + " failed"}, err
+        }
+        delete(active_vms, vmID)
+        mu.Unlock()
+/*        if err := store.Delete(vmID); err != skv.ErrNotFound {
+            return &pb.Status{Message: "Removed VM " + vmID + " from the db"}, nil //err
+        } else if err != nil {
+            log.Printf("Get VM from db returned error: %v\n", err)
+            return &pb.Status{Message: "Get VM " + vmID + " from db failed"}, err
+        }
+*/
+    } else {
+        log.Printf("VM %v is not recorded as an active VM, attempting a force stop.", vmID)
+        mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
+        log.Println("Stopping the VM" + vmID)
+        if _, err := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+            log.Printf("failed to stop the VM, err: %v\n", err)
+            return &pb.Status{Message: "Stopping VM " + vmID + " failed"}, err
+        }
+        mu.Unlock()
+    }
+    return &pb.Status{Message: "Stopped VM"}, nil
 }
 
 func (s *server) StopVMs(ctx_ context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
@@ -212,45 +280,41 @@ func (s *server) StopVMs(ctx_ context.Context, in *pb.StopVMsReq) (*pb.Status, e
     return &pb.Status{Message: "Stopped VMs"}, nil
 }
 
-func stopActiveVMs() error {
-    var mux sync.Mutex
+func stopActiveVMs() error { // (*pb.Status, error) {
     var vmGroup sync.WaitGroup
-    for _, vm := range active_vms {
+    for vmID, vm := range active_vms {
         vmGroup.Add(1)
-        go func(vm VM) {
+        go func(vmID string, vm VM) {
             defer vmGroup.Done()
-            log.Println("Waiting for the killed task for the VM" + vm.VMID)
-            var err error
-
-            if err != nil {
-                //return errors.Wrapf(err, "Waiting for the killed task")
+            if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
+                log.Printf("Failed to kill the task, err: %v\n", err)
+                //return &pb.Status{Message: "Killinh task of VM " + vmID + " failed"}, err
             }
-            log.Println("Killing the task for the VM" + vm.VMID)
-            if err = vm.Task.Kill(vm.Ctx, syscall.SIGKILL); err != nil {
-                //return errors.Wrapf(err, "killing task")
-            }
-            log.Println("Deleting the task for the VM" + vm.VMID)
-            _, err = vm.Task.Delete(vm.Ctx)
-            if err != nil {
+            if _, err := vm.Task.Delete(ctx); err != nil {
                 log.Printf("failed to delete the task of the VM, err: %v\n", err)
-                //return err
+                //return &pb.Status{Message: "Deleting task of VM " + vmID + " failed"}, err
             }
-            err = vm.Container.Delete(vm.Ctx, containerd.WithSnapshotCleanup)
-            if err != nil {
+            if err := vm.Container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
                 log.Printf("failed to delete the container of the VM, err: %v\n", err)
-                //return err
+                //return &pb.Status{Message: "Deleting container of VM " + vmID + " failed"}, err
             }
 
-            mux.Lock()
-            log.Println("Stopping the VM" + vm.VMID)
-            _, err = fcClient.StopVM(vm.Ctx, &proto.StopVMRequest{VMID: vm.VMID})
-            if err != nil {
+            mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
+            log.Println("Stopping the VM" + vmID)
+            if _, err := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
                 log.Printf("failed to stop the VM, err: %v\n", err)
-                //return err
+                //return &pb.Status{Message: "Stopping VM " + vmID + " failed"}, err
             }
-            mux.Unlock()
-            log.Println("unlocked mutex the VM")
-        }(vm)
+            mu.Unlock()
+/*            if err := store.Delete(vmID); err != skv.ErrNotFound {
+                delete(active_vms, vmID)
+                //return &pb.Status{Message: "Removed VM " + vmID + " from the db"}, nil //err
+            } else if err != nil {
+                log.Printf("Get VM from db returned error: %v\n", err)
+                //return &pb.Status{Message: "Get VM " + vmID + " from db failed"}, err
+            }
+*/
+        }(vmID, vm)
     }
     log.Println("waiting for goroutines")
     vmGroup.Wait()
@@ -260,7 +324,8 @@ func stopActiveVMs() error {
     fcClient.Close()
     log.Println("Closing containerd client")
     client.Close()
-    return nil
+//    store.Close()
+    return nil //&pb.Status{Message: "Stopped active VMs"}, nil
 }
 
 func setupCloseHandler() {
