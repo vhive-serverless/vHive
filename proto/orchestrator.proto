@@ -9,6 +9,7 @@ package proto;
 service Orchestrator {
     rpc StartVM (StartVMReq) returns (Status) {}
     rpc StopVMs (StopVMsReq) returns (Status) {}
+    rpc StopSingleVM (StopSingleVMReq) returns (Status) {}
 }
 
 // The request message containing the user's name.
@@ -20,6 +21,10 @@ message StartVMReq {
 // The request message containing the user's name.
 message StopVMsReq {
     bool all_vms = 1;
+}
+
+message StopSingleVMReq {
+    string id = 1;
 }
 
 // The response message containing the greetings
