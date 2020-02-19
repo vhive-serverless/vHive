@@ -166,7 +166,12 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         return &pb.Status{Message: "Pulling a VM image failed"}, errors.Wrapf(err, "creating container")
     }
 
-    netID := rand.Intn(2) + 1
+    netID, err := strconv.Atoi(vmID)
+    if err != nil {
+        log.Println("vmID must be be numeric", err)
+        return &pb.Status{Message: "vmID must be numeric"}, err
+    } else { netID = netID % 2 + 1 }
+
     createVMRequest := &proto.CreateVMRequest{
         VMID: vmID,
         MachineCfg: &proto.FirecrackerMachineConfiguration{
