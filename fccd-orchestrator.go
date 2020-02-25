@@ -22,7 +22,7 @@ import (
     "log"
     "net"
     "syscall"
-    _ "time"
+    "time"
     "math/rand"
     "strconv"
 
@@ -41,7 +41,6 @@ import (
     "os"
     "os/signal"
     "sync"
-    "time"
     "google.golang.org/grpc/codes"
     "google.golang.org/grpc/status"
 
@@ -143,33 +142,38 @@ type server struct {
     pb.UnimplementedOrchestratorServer
 }
 
-func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, error) {
+func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMResp, error) {
+    var t_profile string
+
     vmID := in.GetId()
     log.Printf("Received: %v %v", vmID, in.GetImage())
     if _, is_present := active_vms[vmID]; is_present {
         log.Printf("VM %v is among active VMs", vmID)
-        return &pb.Status{Message: "VM " + vmID + " already active"}, nil //err
+        return &pb.StartVMResp{Message: "VM " + vmID + " already active"}, nil //err
     }
 /*    var VM_ VM
     if err := store.Get(vmID, &VM_); err == nil {
-        return &pb.Status{Message: "VM " + vmID + " already exists in db"}, nil //err
+        return &pb.StartVMResp{Message: "VM " + vmID + " already exists in db"}, nil //err
     } else if err != skv.ErrNotFound {
         log.Printf("Get VM from db returned error: %v\n", err)
-        return &pb.Status{Message: "Get VM " + vmID + " from db failed"}, err
+        return &pb.StartVMResp{Message: "Get VM " + vmID + " from db failed"}, err
     }
 */
+    t_start := time.Now()
     image, err := client.Pull(ctx, "docker.io/" + in.GetImage(),
                               containerd.WithPullUnpack,
                               containerd.WithPullSnapshotter(*snapshotter),
                              )
+    t_elapsed := time.Now()
+    t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
     if err != nil {
-        return &pb.Status{Message: "Pulling a VM image failed"}, errors.Wrapf(err, "creating container")
+        return &pb.StartVMResp{Message: "Pulling a VM image failed"}, errors.Wrapf(err, "creating container")
     }
 
     netID, err := strconv.Atoi(vmID)
     if err != nil {
         log.Println("vmID must be be numeric", err)
-        return &pb.Status{Message: "vmID must be numeric"}, err
+        return &pb.StartVMResp{Message: "vmID must be numeric"}, err
     } else { netID = netID % 2 + 1 }
 
     createVMRequest := &proto.CreateVMRequest{
@@ -186,7 +190,10 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         }},
     }
 
+    t_start = time.Now()
     _, err = fcClient.CreateVM(ctx, createVMRequest)
+    t_elapsed = time.Now()
+    t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
     if err != nil {
         errStatus, _ := status.FromError(err)
         log.Printf("fcClient failed to create a VM", err)
@@ -194,8 +201,9 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
             _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
             if err1 != nil { log.Printf("Attempt to clean up failed after creating a VM failed.", err1) }
         }
-        return &pb.Status{Message: "Failed to start VM"}, errors.Wrap(err, "failed to create the VM")
+        return &pb.StartVMResp{Message: "Failed to start VM"}, errors.Wrap(err, "failed to create the VM")
     }
+    t_start = time.Now()
     container, err := client.NewContainer(
                                           ctx,
                                           vmID,
@@ -208,14 +216,19 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
                                                                 ),
                                           containerd.WithRuntime("aws.firecracker", nil),
                                          )
+    t_elapsed = time.Now()
+    t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
     if err != nil {
         log.Printf("Failed to create a container", err)
         if _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after creating container had failed.", err1)
         }
-        return &pb.Status{Message: "Failed to start container for the VM" + vmID }, err
+        return &pb.StartVMResp{Message: "Failed to start container for the VM" + vmID }, err
     }
+    t_start = time.Now()
     task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
+    t_elapsed = time.Now()
+    t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
     if err != nil {
         log.Printf("Failed to create a task", err)
         if err1 := container.Delete(ctx, containerd.WithSnapshotCleanup); err1 != nil {
@@ -224,12 +237,15 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         if _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after creating the task had failed.", err1)
         }
-        return &pb.Status{Message: "Failed to create the task for the VM" + vmID }, err
+        return &pb.StartVMResp{Message: "Failed to create the task for the VM" + vmID }, err
 
     }
 
     log.Printf("Successfully created task: %s for the container\n", task.ID())
+    t_start = time.Now()
     _, err = task.Wait(ctx)
+    t_elapsed = time.Now()
+    t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
     if err != nil {
         if _, err1 := task.Delete(ctx); err1 != nil {
             log.Printf("Attempt to delete the task failed after waiting for the task had failed.")
@@ -240,10 +256,11 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         if _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after waiting for the task had failed.", err1)
         }
-        return &pb.Status{Message: "Failed to wait for the task for the VM" + vmID }, err
+        return &pb.StartVMResp{Message: "Failed to wait for the task for the VM" + vmID }, err
 
     }
 
+    t_start = time.Now()
     if err := task.Start(ctx); err != nil {
         if _, err1 := task.Delete(ctx); err1 != nil {
             log.Printf("Attempt to delete the task failed after starting the task had failed.")
@@ -254,9 +271,11 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
         if _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after starting the task had failed.", err1)
         }
-        return &pb.Status{Message: "Failed to start the task for the VM" + vmID }, err
+        return &pb.StartVMResp{Message: "Failed to start the task for the VM" + vmID }, err
 
     }
+    t_elapsed = time.Now()
+    t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
 
     log.Println("Successfully started the container task for the VM", vmID)
 
@@ -270,7 +289,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.Status, e
 */
     //TODO: set up port forwarding to a private IP, get IP
 
-    return &pb.Status{Message: "started VM " + vmID }, nil
+    return &pb.StartVMResp{Message: "started VM " + vmID, Profile: t_profile }, nil
 }
 
 func (s *server) StopSingleVM(ctx_ context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
@@ -279,7 +298,11 @@ func (s *server) StopSingleVM(ctx_ context.Context, in *pb.StopSingleVMReq) (*pb
     if vm, is_present := active_vms[vmID]; is_present {
         if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
             log.Printf("Failed to kill the task, err: %v\n", err)
-            return &pb.Status{Message: "Killinh task of VM " + vmID + " failed"}, err
+            return &pb.Status{Message: "Killing task of VM " + vmID + " failed"}, err
+        }
+        if _, err := vm.Task.Wait(ctx); err != nil {
+            log.Printf("Failed to wait for the task to be killed, err: %v\n", err)
+            return &pb.Status{Message: "Killing (waiting) task of VM " + vmID + " failed"}, err
         }
         if _, err := vm.Task.Delete(ctx); err != nil {
             log.Printf("failed to delete the task of the VM, err: %v\n", err)
