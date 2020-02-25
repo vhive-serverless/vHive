@@ -12,13 +12,11 @@ service Orchestrator {
     rpc StopSingleVM (StopSingleVMReq) returns (Status) {}
 }
 
-// The request message containing the user's name.
 message StartVMReq {
     string image = 1;
     string id = 2;
 }
 
-// The request message containing the user's name.
 message StopVMsReq {
     bool all_vms = 1;
 }
@@ -27,7 +25,11 @@ message StopSingleVMReq {
     string id = 1;
 }
 
-// The response message containing the greetings
 message Status {
     string message = 1;
+}
+
+message StartVMResp {
+    string message = 1;
+    string profile = 2;
 }
