@@ -7,7 +7,7 @@ option java_outer_classname = "OrchestratorProto";
 package proto;
 
 service Orchestrator {
-    rpc StartVM (StartVMReq) returns (Status) {}
+    rpc StartVM (StartVMReq) returns (StartVMResp) {}
     rpc StopVMs (StopVMsReq) returns (Status) {}
     rpc StopSingleVM (StopSingleVMReq) returns (Status) {}
 }
