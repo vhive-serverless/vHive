@@ -67,7 +67,6 @@ var active_vms map[string]VM
 var snapshotter *string
 var client *containerd.Client
 var fcClient *fcclient.Client
-var ctx context.Context
 var mu = &sync.Mutex{}
 
 type myWriter struct {
@@ -118,8 +117,6 @@ func main() {
     }
     log.Println("Created containerd client")
 
-    ctx = namespaces.WithNamespace(context.Background(), namespaceName)
-
     fcClient, err = fcclient.New(containerdTTRPCAddress)
     if err != nil {
         log.Fatalf("Failed to start firecracker client", err)
@@ -159,6 +156,8 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
         return &pb.StartVMResp{Message: "Get VM " + vmID + " from db failed"}, err
     }
 */
+    ctx := namespaces.WithNamespace(context.Background(), namespaceName)
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
     t_start := time.Now()
     image, err := client.Pull(ctx, "docker.io/" + in.GetImage(),
                               containerd.WithPullUnpack,
@@ -176,8 +175,10 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
         return &pb.StartVMResp{Message: "vmID must be numeric"}, err
     } else { netID = netID % 2 + 1 }
 
+    kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
     createVMRequest := &proto.CreateVMRequest{
         VMID: vmID,
+        KernelArgs: kernelArgs,
         MachineCfg: &proto.FirecrackerMachineConfiguration{
             VcpuCount:  1,
             MemSizeMib: 512,
@@ -190,6 +191,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
         }},
     }
 
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
     t_start = time.Now()
     _, err = fcClient.CreateVM(ctx, createVMRequest)
     t_elapsed = time.Now()
@@ -203,6 +205,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
         }
         return &pb.StartVMResp{Message: "Failed to start VM"}, errors.Wrap(err, "failed to create the VM")
     }
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(5) * time.Second))
     t_start = time.Now()
     container, err := client.NewContainer(
                                           ctx,
@@ -225,6 +228,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
         }
         return &pb.StartVMResp{Message: "Failed to start container for the VM" + vmID }, err
     }
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(5) * time.Second))
     t_start = time.Now()
     task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
     t_elapsed = time.Now()
@@ -260,6 +264,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
 
     }
 
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(5) * time.Second))
     t_start = time.Now()
     if err := task.Start(ctx); err != nil {
         if _, err1 := task.Delete(ctx); err1 != nil {
@@ -295,7 +300,9 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
 func (s *server) StopSingleVM(ctx_ context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
     vmID := in.GetId()
     log.Printf("Received stop single VM request for VM %v", vmID)
+    ctx := namespaces.WithNamespace(context.Background(), namespaceName)
     if vm, is_present := active_vms[vmID]; is_present {
+        ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
         if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
             log.Printf("Failed to kill the task, err: %v\n", err)
             return &pb.Status{Message: "Killing task of VM " + vmID + " failed"}, err
@@ -332,6 +339,7 @@ func (s *server) StopSingleVM(ctx_ context.Context, in *pb.StopSingleVMReq) (*pb
         log.Printf("VM %v is not recorded as an active VM, attempting a force stop.", vmID)
         mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
         log.Println("Stopping the VM" + vmID)
+        ctx := namespaces.WithNamespace(context.Background(), namespaceName)
         if _, err := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
             log.Printf("failed to stop the VM, err: %v\n", err)
             return &pb.Status{Message: "Stopping VM " + vmID + " failed"}, err
@@ -358,6 +366,8 @@ func stopActiveVMs() error { // (*pb.Status, error) {
         vmGroup.Add(1)
         go func(vmID string, vm VM) {
             defer vmGroup.Done()
+            ctx := namespaces.WithNamespace(context.Background(), namespaceName)
+            ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(300) * time.Second))
             if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
                 log.Printf("Failed to kill the task, err: %v\n", err)
                 //return &pb.Status{Message: "Killinh task of VM " + vmID + " failed"}, err
