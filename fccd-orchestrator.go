@@ -191,7 +191,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
         }},
     }
 
-    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(120) * time.Second))
     t_start = time.Now()
     _, err = fcClient.CreateVM(ctx, createVMRequest)
     t_elapsed = time.Now()
@@ -245,7 +245,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
 
     }
 
-    log.Printf("Successfully created task: %s for the container\n", task.ID())
+    //log.Printf("Successfully created task: %s for the container\n", task.ID())
     t_start = time.Now()
     _, err = task.Wait(ctx)
     t_elapsed = time.Now()
@@ -282,7 +282,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
     t_elapsed = time.Now()
     t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
 
-    log.Println("Successfully started the container task for the VM", vmID)
+    //log.Println("Successfully started the container task for the VM", vmID)
 
     mu.Lock()
     active_vms[vmID] = VM{Image: image, Container: container, Task: task}
