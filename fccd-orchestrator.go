@@ -16,7 +16,7 @@ package main
 import (
     "context"
     "flag"
-    _ "fmt"
+    "fmt"
     _ "io/ioutil"
     "io"
     "log"
@@ -55,10 +55,18 @@ const (
     port = ":3333"
 )
 
+type NetworkInterface struct {
+    MacAddress string
+    HostDevName string
+    PrimaryAddress string
+    GatewayAddress string
+}
+
 type VM struct {
     Image containerd.Image
     Container containerd.Container
     Task containerd.Task
+    Ni NetworkInterface
 }
 
 var flog *os.File
@@ -68,6 +76,22 @@ var snapshotter *string
 var client *containerd.Client
 var fcClient *fcclient.Client
 var mu = &sync.Mutex{}
+var niList []NetworkInterface
+
+func generateNetworkInterfaceNames(num int) {
+    for i := 0; i < num; i++ {
+        ni := NetworkInterface{
+            MacAddress: fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),
+            HostDevName: fmt.Sprintf("fc-%d-tap0", i),
+            PrimaryAddress: fmt.Sprintf("19%d.128.%d.%d/10", i%2+6, (i+2)/256, (i+2)%256),
+            GatewayAddress: fmt.Sprintf("19%d.128.0.1", i%2+6),
+        }
+        //fmt.Println(ni)
+        niList = append(niList, ni)
+    }
+    //os.Exit(0)
+    return
+}
 
 type myWriter struct {
     io.Writer
@@ -91,7 +115,8 @@ func main() {
     var err error
 
     rand.Seed(42)
-    snapshotter = flag.String("ss", "devmapper", "snapshotter")
+    snapshotter = flag.String("ss", "devmapper", "snapshotter name")
+    niNum := flag.Int("ni", 1500, "Number of interfaces allocated")
 
     if flog, err = os.Create("/tmp/fccd.log"); err != nil {
         panic(err)
@@ -102,6 +127,7 @@ func main() {
     log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
     flag.Parse()
 
+    generateNetworkInterfaceNames(*niNum)
     setupCloseHandler()
     setupHeartbeat()
 
@@ -168,12 +194,18 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
     if err != nil {
         return &pb.StartVMResp{Message: "Pulling a VM image failed"}, errors.Wrapf(err, "creating container")
     }
-
+/*
     netID, err := strconv.Atoi(vmID)
     if err != nil {
         log.Println("vmID must be be numeric", err)
         return &pb.StartVMResp{Message: "vmID must be numeric"}, err
     } else { netID = netID % 2 + 1 }
+*/
+
+    mu.Lock()
+    var ni NetworkInterface
+    ni, niList = niList[len(niList)-1], niList[:len(niList)-1] // pop
+    mu.Unlock()
 
     kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
     createVMRequest := &proto.CreateVMRequest{
@@ -183,10 +215,22 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
             VcpuCount:  1,
             MemSizeMib: 512,
         },
+/* FIXME: CNI config assigns IPs dynamizally and fcclient does not return them
         NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
             CNIConfig: &proto.CNIConfiguration{
                 NetworkName: "fcnet"+strconv.Itoa(netID),
                 InterfaceName: "veth0",
+            },
+        }},
+*/
+        NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
+            StaticConfig: &proto.StaticNetworkConfiguration{
+                MacAddress:  ni.MacAddress,
+                HostDevName: ni.HostDevName,
+                IPConfig: &proto.IPConfiguration{
+                    PrimaryAddr: ni.PrimaryAddress,
+                    GatewayAddr: ni.GatewayAddress,
+                },
             },
         }},
     }
@@ -285,7 +329,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
     //log.Println("Successfully started the container task for the VM", vmID)
 
     mu.Lock()
-    active_vms[vmID] = VM{Image: image, Container: container, Task: task}
+    active_vms[vmID] = VM{Image: image, Container: container, Task: task, Ni: ni}
     mu.Unlock()
 /*
     if err := store.Put(vmID, vmID); err != nil {
@@ -344,6 +388,8 @@ func (s *server) StopSingleVM(ctx_ context.Context, in *pb.StopSingleVMReq) (*pb
             log.Printf("failed to stop the VM, err: %v\n", err)
             return &pb.Status{Message: "Stopping VM " + vmID + " failed"}, err
         }
+
+        niList = append(niList, vm.Ni)
         mu.Unlock()
     }
     return &pb.Status{Message: "Stopped VM"}, nil
