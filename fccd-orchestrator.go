@@ -1,15 +1,24 @@
-// Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// MIT License
 //
-// Licensed under the Apache License, Version 2.0 (the "License"). You may
-// not use this file except in compliance with the License. A copy of the
-// License is located at
+// Copyright (c) 2020 Dmitrii Ustiugov
 //
-//	http://aws.amazon.com/apache2.0/
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 //
-// or in the "license" file accompanying this file. This file is distributed
-// on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
-// express or implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 package main
 
@@ -38,6 +47,8 @@ import (
 
     "google.golang.org/grpc"
     pb "github.com/ustiugov/fccd-orchestrator/proto"
+    "github.com/ustiugov/fccd-orchestrator/misc"
+
     "os"
     "os/signal"
     "sync"
@@ -55,20 +66,6 @@ const (
     port = ":3333"
 )
 
-type NetworkInterface struct {
-    MacAddress string
-    HostDevName string
-    PrimaryAddress string
-    GatewayAddress string
-}
-
-type VM struct {
-    Image containerd.Image
-    Container containerd.Container
-    Task containerd.Task
-    Ni NetworkInterface
-}
-
 var flog *os.File
 //var store *skv.KVStore //TODO: stop individual VMs
 var active_vms map[string]VM
@@ -76,11 +73,11 @@ var snapshotter *string
 var client *containerd.Client
 var fcClient *fcclient.Client
 var mu = &sync.Mutex{}
-var niList []NetworkInterface
+var niList []misc.NetworkInterface
 
 func generateNetworkInterfaceNames(num int) {
     for i := 0; i < num; i++ {
-        ni := NetworkInterface{
+        ni := misc.NetworkInterface{
             MacAddress: fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),
             HostDevName: fmt.Sprintf("fc-%d-tap0", i),
             PrimaryAddress: fmt.Sprintf("19%d.128.%d.%d/10", i%2+6, (i+2)/256, (i+2)%256),
@@ -203,7 +200,7 @@ func (s *server) StartVM(ctx_ context.Context, in *pb.StartVMReq) (*pb.StartVMRe
 */
 
     mu.Lock()
-    var ni NetworkInterface
+    var ni misc.NetworkInterface
     ni, niList = niList[len(niList)-1], niList[:len(niList)-1] // pop
     mu.Unlock()
 
