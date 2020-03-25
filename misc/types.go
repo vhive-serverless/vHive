@@ -22,6 +22,10 @@
 
 package misc
 
+import (
+    "github.com/containerd/containerd"
+)
+
 type NetworkInterface struct {
     MacAddress string
     HostDevName string
