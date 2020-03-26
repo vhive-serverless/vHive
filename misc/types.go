@@ -31,6 +31,7 @@ type NetworkInterface struct {
     MacAddress string
     HostDevName string
     PrimaryAddress string
+    Subnet string
     GatewayAddress string
 }
 
