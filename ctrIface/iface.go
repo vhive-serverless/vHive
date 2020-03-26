@@ -365,6 +365,7 @@ func (o *Orchestrator) StopActiveVMs() error {
             }
 */
             ch <- "Stopped VM " + vmID
+            close(ch)
         }(vmID, vm, ch)
     }
 
