@@ -120,7 +120,6 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
     vmID := in.GetId()
     log.Printf("Received stop single VM request for VM %v", vmID)
-    //ctx := namespaces.WithNamespace(context.Background(), namespaceName)
     if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
         return &pb.Status{Message: message }, err
     }

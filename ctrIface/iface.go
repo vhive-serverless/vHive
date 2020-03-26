@@ -285,7 +285,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
         log.Printf("VM %v is not recorded as an active VM, attempting a force stop.", vmID)
         o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
         log.Println("Stopping the VM" + vmID)
-        //ctx := namespaces.WithNamespace(context.Background(), namespaceName)
+        ctx := namespaces.WithNamespace(ctx, namespaceName)
         if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
             log.Printf("failed to stop the VM, err: %v\n", err)
             return "Stopping VM " + vmID + " failed", err
