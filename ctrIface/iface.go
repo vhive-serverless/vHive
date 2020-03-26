@@ -60,11 +60,11 @@ const (
 type Orchestrator struct {
     active_vms map[string]misc.VM
     cachedImages map[string]bool
+    niList []misc.NetworkInterface
     snapshotter string
     client *containerd.Client
     fcClient *fcclient.Client
     mu *sync.Mutex
-    niList []misc.NetworkInterface
 // store *skv.KVStore
 }
 
@@ -72,13 +72,13 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
     var err error
 
     o := new(Orchestrator)
+    o.active_vms = make(map[string]misc.VM)
+    o.cachedImages= make(map[string]bool)
+    o.generateNetworkInterfaceNames(niNum)
     o.snapshotter = snapshotter
 
-    o.generateNetworkInterfaceNames(niNum)
     o.setupCloseHandler()
     o.setupHeartbeat()
-
-    o.active_vms = make(map[string]misc.VM)
 
     log.Println("Creating containerd client")
     o.client, err = containerd.New(containerdAddress)
