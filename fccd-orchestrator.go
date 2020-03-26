@@ -31,15 +31,13 @@ import (
     "log"
     "net"
     "math/rand"
+    "os"
+    "time"
 
     "google.golang.org/grpc"
     pb "github.com/ustiugov/fccd-orchestrator/proto"
-    _ "github.com/ustiugov/fccd-orchestrator/misc"
+    hpb "google.golang.org/grpc/examples/helloworld/helloworld"
     "github.com/ustiugov/fccd-orchestrator/ctrIface"
-
-    "os"
-    _ "google.golang.org/grpc/codes"
-    _ "google.golang.org/grpc/status"
 )
 
 const (
@@ -84,9 +82,6 @@ func main() {
     flag.Parse()
 
     orch = ctrIface.NewOrchestrator(*snapshotter, *niNum)
-
-//    store, err = skv.Open("/var/lib/fccd-orchestrator/vms.db")
-//    if err != nil { log.Fatalf("Failed to open db file", err) }
 
     lis, err := net.Listen("tcp", port)
     if err != nil {
@@ -136,5 +131,38 @@ func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, er
     }
     os.Exit(0)
     return &pb.Status{Message: "Stopped VMs"}, nil
+}
+
+func (s *server) FwdHello(ctx context.Context, in *pb.FwdHelloReq) (*pb.FwdHelloResp, error) {
+    vmID := in.GetId()
+    image := in.GetImage()
+    payload := in.GetPayload()
+
+    isColdStart := false
+
+    if !orch.IsVMActive(vmID) {
+        isColdStart = true
+        message, _, err := orch.StartVM(ctx, vmID, image) // message, t_profile
+        if err != nil {
+            log.Println("FWD: " + message)
+            // TBD: retry if failed (workaround)
+        }
+    }
+
+    funcClient, err := orch.GetFuncClientByID(vmID)
+    if err != nil {
+        return &pb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+    }
+
+    ctx, cancel := context.WithTimeout(context.Background(), time.Second * 10)
+    defer cancel()
+    resp, err := funcClient.SayHello(ctx, &hpb.HelloRequest{Name: payload})
+    if err != nil {
+        return &pb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
+    }
+
+    // TBD: inject cold starts here
+
+    return &pb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
 }
 
