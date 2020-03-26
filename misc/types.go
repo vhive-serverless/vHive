@@ -39,5 +39,5 @@ type VM struct {
     Container containerd.Container
     Task containerd.Task
     Ni NetworkInterface
-    Conn grpc.ClientConn
+    Conn *grpc.ClientConn
 }
