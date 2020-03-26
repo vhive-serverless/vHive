@@ -335,42 +335,42 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 }
 
 func (o *Orchestrator) StopActiveVMs() error {
-    ch := make(chan string, len(o.active_vms))
+    if len(o.active_vms) > 0 {
+        ch := make(chan string, len(o.active_vms))
 
-    for vmID, vm := range o.active_vms {
-        go func(vmID string, vm misc.VM, ch chan string) {
-            ctx := namespaces.WithNamespace(context.Background(), namespaceName)
-            ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(300) * time.Second))
-            if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
-                log.Printf("Failed to kill the task, err: %v\n", err)
-            }
-            if _, err := vm.Task.Delete(ctx); err != nil {
-                log.Printf("failed to delete the task of the VM, err: %v\n", err)
-            }
-            if err := vm.Container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-                log.Printf("failed to delete the container of the VM, err: %v\n", err)
-            }
+        for vmID, vm := range o.active_vms {
+            go func(vmID string, vm misc.VM, ch chan string) {
+                ctx := namespaces.WithNamespace(context.Background(), namespaceName)
+                ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(300) * time.Second))
+                if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
+                    log.Printf("Failed to kill the task, err: %v\n", err)
+                }
+                if _, err := vm.Task.Delete(ctx); err != nil {
+                    log.Printf("failed to delete the task of the VM, err: %v\n", err)
+                }
+                if err := vm.Container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+                    log.Printf("failed to delete the container of the VM, err: %v\n", err)
+                }
 
-            o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
-            if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
-                log.Printf("failed to stop the VM, err: %v\n", err)
-            }
-            o.niList = append(o.niList, vm.Ni)
-            delete(o.active_vms, vmID)
-            o.mu.Unlock()
-/*            if err := store.Delete(vmID); err != skv.ErrNotFound {
-                delete(active_vms, vmID)
-            } else if err != nil {
-                log.Printf("Get VM from db returned error: %v\n", err)
-            }
-*/
-            ch <- "Stopped VM " + vmID
-            close(ch)
-        }(vmID, vm, ch)
-    }
+                o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
+                if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+                    log.Printf("failed to stop the VM, err: %v\n", err)
+                }
+                o.niList = append(o.niList, vm.Ni)
+                delete(o.active_vms, vmID)
+                o.mu.Unlock()
+                /*            if err := store.Delete(vmID); err != skv.ErrNotFound {
+                    delete(active_vms, vmID)
+                } else if err != nil {
+                    log.Printf("Get VM from db returned error: %v\n", err)
+                }
+                */
+                ch <- "Stopped VM " + vmID
+                close(ch)
+            }(vmID, vm, ch)
+        }
 
-    for s := range ch {
-        log.Println(s)
+        for s := range ch { log.Println(s) }
     }
 
     log.Println("Closing fcClient")
