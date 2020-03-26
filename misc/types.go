@@ -24,6 +24,7 @@ package misc
 
 import (
     "github.com/containerd/containerd"
+    "google.golang.org/grpc"
 )
 
 type NetworkInterface struct {
@@ -38,4 +39,5 @@ type VM struct {
     Container containerd.Container
     Task containerd.Task
     Ni NetworkInterface
+    Conn grpc.ClientConn
 }
