@@ -28,6 +28,10 @@ import (
     "time"
     "strconv"
     "sync"
+    "fmt"
+    "os"
+    "os/signal"
+    "syscall"
 
     "github.com/containerd/containerd"
     "github.com/containerd/containerd/cio"
@@ -39,7 +43,12 @@ import (
     "github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
     "github.com/pkg/errors"
 
+    "google.golang.org/grpc/codes"
+    "google.golang.org/grpc/status"
+
     "github.com/ustiugov/fccd-orchestrator/misc"
+
+//    "github.com/ustiugov/skv"
 )
 
 const (
@@ -50,11 +59,13 @@ const (
 
 type Orchestrator struct {
     active_vms map[string]misc.VM
+    cachedImages map[string]bool
     snapshotter string
     client *containerd.Client
     fcClient *fcclient.Client
     mu *sync.Mutex
     niList []misc.NetworkInterface
+// store *skv.KVStore
 }
 
 func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
@@ -86,8 +97,12 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
     return o
 }
 
-func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (message, t_profile string, err error) {
-    log.Printf("Received: %v %v", vmID, image)
+func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
+    var t_profile string
+    var err error
+    var image containerd.Image
+    var t_start, t_elapsed time.Time
+    log.Printf("Received: %v %v", vmID, imageName)
 
     if _, is_present := o.active_vms[vmID]; is_present {
         log.Printf("VM %v is among active VMs", vmID)
@@ -104,16 +119,19 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (mes
 */
     ctx = namespaces.WithNamespace(ctx, namespaceName)
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
-    t_start := time.Now()
-    image, err := client.Pull(ctx, "docker.io/" + imageName,
-                              containerd.WithPullUnpack,
-                              containerd.WithPullSnapshotter(o.snapshotter),
-                             )
-    t_elapsed := time.Now()
-    t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
-    if err != nil {
-        return "Pulling a VM image failed", t_profile, errors.Wrapf(err, "creating container")
+    t_start = time.Now()
+    if _, found := o.cachedImages[imageName]; found == false {
+        image, err = o.client.Pull(ctx, "docker.io/" + imageName,
+            containerd.WithPullUnpack,
+            containerd.WithPullSnapshotter(o.snapshotter),
+        )
+        if err != nil {
+            return "Pulling a VM image failed", t_profile, errors.Wrapf(err, "creating container")
+        }
     }
+    t_elapsed = time.Now()
+    t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
+    o.cachedImages[imageName] = true
 /*
     netID, err := strconv.Atoi(vmID)
     if err != nil {
@@ -122,10 +140,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (mes
     } else { netID = netID % 2 + 1 }
 */
 
-    mu.Lock()
+    o.mu.Lock()
     var ni misc.NetworkInterface
-    ni, niList = niList[len(niList)-1], niList[:len(niList)-1] // pop
-    mu.Unlock()
+    ni, o.niList = o.niList[len(o.niList)-1], o.niList[:len(o.niList)-1] // pop
+    o.mu.Unlock()
 
     kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
     createVMRequest := &proto.CreateVMRequest{
@@ -157,24 +175,24 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (mes
 
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(120) * time.Second))
     t_start = time.Now()
-    _, err = fcClient.CreateVM(ctx, createVMRequest)
+    _, err = o.fcClient.CreateVM(ctx, createVMRequest)
     t_elapsed = time.Now()
     t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
     if err != nil {
         errStatus, _ := status.FromError(err)
         log.Printf("fcClient failed to create a VM", err)
         if errStatus.Code() != codes.AlreadyExists {
-            _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
+            _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
             if err1 != nil { log.Printf("Attempt to clean up failed after creating a VM failed.", err1) }
         }
-        return &pb.StartVMResp{Message: "Failed to start VM"}, errors.Wrap(err, "failed to create the VM")
+        return "Failed to start VM", t_profile, errors.Wrap(err, "failed to create the VM")
     }
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(5) * time.Second))
     t_start = time.Now()
-    container, err := client.NewContainer(
+    container, err := o.client.NewContainer(
                                           ctx,
                                           vmID,
-                                          containerd.WithSnapshotter(*snapshotter),
+                                          containerd.WithSnapshotter(o.snapshotter),
                                           containerd.WithNewSnapshot(vmID, image),
                                           containerd.WithNewSpec(
                                                                  oci.WithImageConfig(image),
@@ -187,10 +205,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (mes
     t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
     if err != nil {
         log.Printf("Failed to create a container", err)
-        if _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
+        if _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after creating container had failed.", err1)
         }
-        return &pb.StartVMResp{Message: "Failed to start container for the VM" + vmID }, err
+        return "Failed to start container for the VM" + vmID, t_profile, err
     }
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(5) * time.Second))
     t_start = time.Now()
@@ -202,10 +220,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (mes
         if err1 := container.Delete(ctx, containerd.WithSnapshotCleanup); err1 != nil {
             log.Printf("Attempt to delete the container failed after creating the task had failed.")
         }
-        if _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
+        if _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after creating the task had failed.", err1)
         }
-        return &pb.StartVMResp{Message: "Failed to create the task for the VM" + vmID }, err
+        return "Failed to create the task for the VM" + vmID, t_profile, err
 
     }
 
@@ -221,10 +239,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (mes
         if err1 := container.Delete(ctx, containerd.WithSnapshotCleanup); err1 != nil {
             log.Printf("Attempt to delete the container failed after waiting for the task had failed.")
         }
-        if _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
+        if _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after waiting for the task had failed.", err1)
         }
-        return &pb.StartVMResp{Message: "Failed to wait for the task for the VM" + vmID }, err
+        return "Failed to wait for the task for the VM" + vmID, t_profile, err
 
     }
 
@@ -237,10 +255,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (mes
         if err1 := container.Delete(ctx, containerd.WithSnapshotCleanup); err1 != nil {
             log.Printf("Attempt to delete the container failed after starting the task had failed.")
         }
-        if _, err1 := fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
+        if _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after starting the task had failed.", err1)
         }
-        return &pb.StartVMResp{Message: "Failed to start the task for the VM" + vmID }, err
+        return "Failed to start the task for the VM" + vmID, t_profile, err
 
     }
     t_elapsed = time.Now()
@@ -248,15 +266,117 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (mes
 
     //log.Println("Successfully started the container task for the VM", vmID)
 
-    mu.Lock()
-    active_vms[vmID] = misc.VM{Image: image, Container: container, Task: task, Ni: ni}
-    mu.Unlock()
+    o.mu.Lock()
+    o.active_vms[vmID] = misc.VM{Image: image, Container: container, Task: task, Ni: ni}
+    o.mu.Unlock()
 /*
     if err := store.Put(vmID, vmID); err != nil {
         log.Printf("Failed to save VM attributes, err:%v\n", err)
     }
 */
+    return "VM, container, and task started successfully", t_profile, nil
+}
 
+func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
+    vm, is_present := o.active_vms[vmID]
+
+    if !is_present {
+        log.Printf("VM %v is not recorded as an active VM, attempting a force stop.", vmID)
+        o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
+        log.Println("Stopping the VM" + vmID)
+        //ctx := namespaces.WithNamespace(context.Background(), namespaceName)
+        if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+            log.Printf("failed to stop the VM, err: %v\n", err)
+            return "Stopping VM " + vmID + " failed", err
+        }
+
+        o.niList = append(o.niList, vm.Ni)
+        o.mu.Unlock()
+        return "VM " + vmID + " stopped forcefully but successfully", nil
+    }
+
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
+    if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
+        log.Printf("Failed to kill the task, err: %v\n", err)
+        return "Killing task of VM " + vmID + " failed", err
+    }
+    if _, err := vm.Task.Wait(ctx); err != nil {
+        log.Printf("Failed to wait for the task to be killed, err: %v\n", err)
+        return "Killing (waiting) task of VM " + vmID + " failed", err
+    }
+    if _, err := vm.Task.Delete(ctx); err != nil {
+        log.Printf("failed to delete the task of the VM, err: %v\n", err)
+        return "Deleting task of VM " + vmID + " failed", err
+    }
+    if err := vm.Container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+        log.Printf("failed to delete the container of the VM, err: %v\n", err)
+        return "Deleting container of VM " + vmID + " failed", err
+    }
+
+    o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
+    log.Println("Stopping the VM" + vmID)
+    if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+        log.Printf("failed to stop the VM, err: %v\n", err)
+        return "Stopping VM " + vmID + " failed", err
+    }
+    o.niList = append(o.niList, vm.Ni)
+    delete(o.active_vms, vmID)
+    o.mu.Unlock()
+    /*        if err := store.Delete(vmID); err != skv.ErrNotFound {
+        return &pb.Status{Message: "Removed VM " + vmID + " from the db"}, nil //err
+    } else if err != nil {
+        log.Printf("Get VM from db returned error: %v\n", err)
+        return &pb.Status{Message: "Get VM " + vmID + " from db failed"}, err
+    }
+    */
+
+    return "VM " + vmID + " stopped successfully", nil
+}
+
+func (o *Orchestrator) stopActiveVMs() error {
+    var vmGroup sync.WaitGroup
+    for vmID, vm := range o.active_vms {
+        vmGroup.Add(1)
+        go func(vmID string, vm misc.VM) {
+            defer vmGroup.Done()
+            ctx := namespaces.WithNamespace(context.Background(), namespaceName)
+            ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(300) * time.Second))
+            if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
+                log.Printf("Failed to kill the task, err: %v\n", err)
+            }
+            if _, err := vm.Task.Delete(ctx); err != nil {
+                log.Printf("failed to delete the task of the VM, err: %v\n", err)
+            }
+            if err := vm.Container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+                log.Printf("failed to delete the container of the VM, err: %v\n", err)
+            }
+
+            o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
+            log.Println("Stopping the VM" + vmID)
+            if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+                log.Printf("failed to stop the VM, err: %v\n", err)
+            }
+            o.niList = append(o.niList, vm.Ni)
+            delete(o.active_vms, vmID)
+            o.mu.Unlock()
+/*            if err := store.Delete(vmID); err != skv.ErrNotFound {
+                delete(active_vms, vmID)
+            } else if err != nil {
+                log.Printf("Get VM from db returned error: %v\n", err)
+            }
+*/
+        }(vmID, vm)
+    }
+    log.Println("waiting for goroutines")
+    vmGroup.Wait()
+    log.Println("waiting done")
+
+    log.Println("Closing fcClient")
+    o.fcClient.Close()
+    log.Println("Closing containerd client")
+    o.client.Close()
+//    store.Close()
+    return nil
 }
 
 func (o *Orchestrator) generateNetworkInterfaceNames(num int) {
@@ -268,7 +388,7 @@ func (o *Orchestrator) generateNetworkInterfaceNames(num int) {
             GatewayAddress: fmt.Sprintf("19%d.128.0.1", i%2+6),
         }
         //fmt.Println(ni)
-        o.niList = append(niList, ni)
+        o.niList = append(o.niList, ni)
     }
     //os.Exit(0)
     return
@@ -293,7 +413,7 @@ func (o *Orchestrator) setupCloseHandler() {
     go func() {
         <-c
         log.Println("\r- Ctrl+C pressed in Terminal")
-        stopActiveVMs()
+        o.stopActiveVMs()
         os.Exit(0)
     }()
 }
