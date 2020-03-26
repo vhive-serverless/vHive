@@ -279,13 +279,13 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 }
 
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
-    vm, is_present := o.active_vms[vmID]
+    ctx = namespaces.WithNamespace(ctx, namespaceName)
 
+    vm, is_present := o.active_vms[vmID]
     if !is_present {
         log.Printf("VM %v is not recorded as an active VM, attempting a force stop.", vmID)
         o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
         log.Println("Stopping the VM" + vmID)
-        ctx := namespaces.WithNamespace(ctx, namespaceName)
         if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
             log.Printf("failed to stop the VM, err: %v\n", err)
             return "Stopping VM " + vmID + " failed", err
