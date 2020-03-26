@@ -34,12 +34,12 @@ import (
 
     "google.golang.org/grpc"
     pb "github.com/ustiugov/fccd-orchestrator/proto"
-    "github.com/ustiugov/fccd-orchestrator/misc"
+    _ "github.com/ustiugov/fccd-orchestrator/misc"
     "github.com/ustiugov/fccd-orchestrator/ctrIface"
 
     "os"
-    "google.golang.org/grpc/codes"
-    "google.golang.org/grpc/status"
+    _ "google.golang.org/grpc/codes"
+    _ "google.golang.org/grpc/status"
 )
 
 const (
@@ -47,6 +47,7 @@ const (
 )
 
 var flog *os.File
+var orch *ctrIface.Orchestrator
 
 type myWriter struct {
     io.Writer
@@ -70,7 +71,7 @@ func main() {
     var err error
 
     rand.Seed(42)
-    snapshotter = flag.String("ss", "devmapper", "snapshotter name")
+    snapshotter := flag.String("ss", "devmapper", "snapshotter name")
     niNum := flag.Int("ni", 1500, "Number of interfaces allocated")
 
     if flog, err = os.Create("/tmp/fccd.log"); err != nil {
@@ -82,7 +83,7 @@ func main() {
     log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
     flag.Parse()
 
-    o := NewOrchestrator(*snapshotter, niNum)
+    orch = ctrIface.NewOrchestrator(*snapshotter, *niNum)
 
 //    store, err = skv.Open("/var/lib/fccd-orchestrator/vms.db")
 //    if err != nil { log.Fatalf("Failed to open db file", err) }
@@ -108,7 +109,7 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
     vmID := in.GetId()
     image := in.GetImage()
 
-    message, t_profile, err := ctrIface.StartVM(ctx, vmID, image, ni)
+    message, t_profile, err := orch.StartVM(ctx, vmID, image)
     if err != nil {
         return &pb.StartVMResp{Message: message, Profile: t_profile }, err
     }
@@ -120,8 +121,8 @@ func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.
     vmID := in.GetId()
     log.Printf("Received stop single VM request for VM %v", vmID)
     //ctx := namespaces.WithNamespace(context.Background(), namespaceName)
-    if message, err := o.StopSingleVM(ctx, vmID); err != nil {
-        return &pb.StartVMResp{Message: message }, err
+    if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
+        return &pb.Status{Message: message }, err
     }
 
     return &pb.Status{Message: "Stopped VM"}, nil
@@ -129,7 +130,7 @@ func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.
 
 func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
     log.Printf("Received StopVMs request")
-    err := stopActiveVMs()
+    err := orch.StopActiveVMs()
     if err != nil {
         log.Printf("Failed to stop VMs, err: %v\n", err)
         return &pb.Status{Message: "Failed to stop VMs"}, err

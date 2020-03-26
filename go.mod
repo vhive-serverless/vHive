@@ -7,7 +7,7 @@ require (
 	github.com/containerd/containerd v1.3.3
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200324214552-7383119704ec
 	github.com/pkg/errors v0.9.1
-	github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326134550-a6cdc5209805 // indirect
+	github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326141843-3de3308c7588
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326134110-2df17c91a06d
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200225165909-e8cb22075cec
 	github.com/ustiugov/skv v0.0.0-20180909015525-9def2caac4cc

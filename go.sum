@@ -68,6 +68,7 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200213214445-017fe9003d3f h1:HLCfszYO/lZ4wfS+3p1f2SwaYD65emdxdS8AgyHVBh0=
 github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200213214445-017fe9003d3f/go.mod h1:pHaBTA2zKsUPZJZbub3LTH9Mm27RnmkoyF63QaC8gTo=
+github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200324214552-7383119704ec h1:tjG0LFq22MnVjPFYcn/OjPUSjdckz0mI2E02Zh9z1AI=
 github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200324214552-7383119704ec/go.mod h1:pHaBTA2zKsUPZJZbub3LTH9Mm27RnmkoyF63QaC8gTo=
 github.com/firecracker-microvm/firecracker-go-sdk v0.20.1-0.20200204230548-c56932849923/go.mod h1:kW0gxvPpPvMukUxxTO9DrpSlScrtrTDGY3VgjAj/Qwc=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
@@ -185,10 +186,19 @@ github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2/go.mod h1:hkRG
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326134550-a6cdc5209805 h1:Gqux+VOUOV+WBgJRXvOe9HTSiT4wtcTXY4QYB67KeCE=
 github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326134550-a6cdc5209805/go.mod h1:B7yaqwiD+DRZG2fLNKmohFJ8O0ZDlEyEoc138xjUn/c=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326134641-1b6fe9adf59b h1:OpnK11oQ2cwYGUUl3YTIMNzoQf0bullMzPCYDyAen74=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326134641-1b6fe9adf59b/go.mod h1:B7yaqwiD+DRZG2fLNKmohFJ8O0ZDlEyEoc138xjUn/c=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326135909-a572910bb3fc h1:xwk+04nrT+uWHptCmJ5jQy7ChgapaI02IQWGxDjA4MI=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326135909-a572910bb3fc/go.mod h1:B7yaqwiD+DRZG2fLNKmohFJ8O0ZDlEyEoc138xjUn/c=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326141112-cbf9bafdb2b2 h1:ZZa/mtv/KvKDv8h+sOZiXMhSxDxf+j80Vx5ej3JOPUM=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326141112-cbf9bafdb2b2/go.mod h1:B7yaqwiD+DRZG2fLNKmohFJ8O0ZDlEyEoc138xjUn/c=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326141843-3de3308c7588 h1:E2uFGMAxEPYGdxKZTCWatEMe0Wh/X0gcPc39FgYv0nk=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200326141843-3de3308c7588/go.mod h1:B7yaqwiD+DRZG2fLNKmohFJ8O0ZDlEyEoc138xjUn/c=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325204940-c13b3ada6b2e h1:EawbS1IF/1NBezfT75mU1xQMo2IVHNFruWRCGdMp25Q=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325204940-c13b3ada6b2e/go.mod h1:CLfsuq4fCpqRVtrDi4VyBmYCB4qhXQBJo338I6Jzza4=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325205406-9d4c3c735efc h1:ufjYBIr0eoVyy4jMPVSvjsql6XD2urUZ7vWGTvTEtAo=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325205406-9d4c3c735efc/go.mod h1:bKvRfxatcOGaBiPyUP++xW9XV4H05MjdfcvzzcRsGaU=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326134110-2df17c91a06d h1:DC4ikVuJPscCWxjJHujEvE2BfZ82FCIijKtIPobYOpw=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326134110-2df17c91a06d/go.mod h1:bKvRfxatcOGaBiPyUP++xW9XV4H05MjdfcvzzcRsGaU=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200214170051-82e85ed41d8e h1:ylnYobjjBcB49hDPEO0e5w4t7qwy2uL8n1IKRyraUoQ=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200214170051-82e85ed41d8e/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
