@@ -178,6 +178,8 @@ github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326174235-3ac24582733c h1
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326174235-3ac24582733c/go.mod h1:bKvRfxatcOGaBiPyUP++xW9XV4H05MjdfcvzzcRsGaU=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326174416-30196f352596 h1:iVUTMfKL9vMZLOmqaT0oGbTDM3K8vxGlM1H9UqTz/uw=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326174416-30196f352596/go.mod h1:m4jcQmnLJfhPqDpLX8MZ1W2oit3Cc0mfaxcbWHCS79A=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326181323-d17a7b5a778b h1:xPJ4GsA3FyZz2Yk3EVTFHQzJA9dGkxXbw1OygKTy1cE=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200326181323-d17a7b5a778b/go.mod h1:m4jcQmnLJfhPqDpLX8MZ1W2oit3Cc0mfaxcbWHCS79A=
 github.com/vishvananda/netlink v0.0.0-20181108222139-023a6dafdcdf/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netns v0.0.0-20180720170159-13995c7128cc/go.mod h1:ZjcWmFBXmLKZu9Nxj3WKYEafiSqer2rnvPr0en9UNpI=
 go.etcd.io/bbolt v1.3.1-etcd.8/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
