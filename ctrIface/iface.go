@@ -333,7 +333,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
     return "VM " + vmID + " stopped successfully", nil
 }
 
-func (o *Orchestrator) stopActiveVMs() error {
+func (o *Orchestrator) StopActiveVMs() error {
     var vmGroup sync.WaitGroup
     for vmID, vm := range o.active_vms {
         vmGroup.Add(1)
@@ -413,7 +413,7 @@ func (o *Orchestrator) setupCloseHandler() {
     go func() {
         <-c
         log.Println("\r- Ctrl+C pressed in Terminal")
-        o.stopActiveVMs()
+        o.StopActiveVMs()
         os.Exit(0)
     }()
 }
