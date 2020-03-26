@@ -43,6 +43,7 @@ import (
     "github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
     "github.com/pkg/errors"
 
+    "google.golang.org/grpc"
     "google.golang.org/grpc/codes"
     "google.golang.org/grpc/status"
 
@@ -93,6 +94,9 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
     }
 
     o.mu = &sync.Mutex{}
+
+//    store, err = skv.Open("/var/lib/fccd-orchestrator/vms.db")
+//    if err != nil { log.Fatalf("Failed to open db file", err) }
 
     return o
 }
@@ -228,7 +232,6 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
     }
 
-    //log.Printf("Successfully created task: %s for the container\n", task.ID())
     t_start = time.Now()
     _, err = task.Wait(ctx)
     t_elapsed = time.Now()
@@ -265,16 +268,20 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     t_elapsed = time.Now()
     t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
 
-    //log.Println("Successfully started the container task for the VM", vmID)
+    conn, err := grpc.Dial(ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
+    if err != nil {
+        return "Unabled to connect to the function in VM " + vmID, t_profile, err
+    }
 
     o.mu.Lock()
-    o.active_vms[vmID] = misc.VM{Image: image, Container: container, Task: task, Ni: ni}
+    o.active_vms[vmID] = misc.VM{Image: image, Container: container, Task: task, Ni: ni, Conn: conn}
     o.mu.Unlock()
 /*
     if err := store.Put(vmID, vmID); err != nil {
         log.Printf("Failed to save VM attributes, err:%v\n", err)
     }
 */
+
     return "VM, container, and task started successfully", t_profile, nil
 }
 
@@ -297,27 +304,32 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
     }
 
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
+    //defer conn.Close()
+    if err := vm.Conn.Close(); err != nil {
+        log.Println("Failed to close the connection to function: ", err)
+        return "Closing connection to function in VM " + vmID + " failed", err
+    }
     if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
-        log.Printf("Failed to kill the task, err: %v\n", err)
+        log.Println("Failed to kill the task: ", err)
         return "Killing task of VM " + vmID + " failed", err
     }
     if _, err := vm.Task.Wait(ctx); err != nil {
-        log.Printf("Failed to wait for the task to be killed, err: %v\n", err)
+        log.Println("Failed to wait for the task to be killed: ", err)
         return "Killing (waiting) task of VM " + vmID + " failed", err
     }
     if _, err := vm.Task.Delete(ctx); err != nil {
-        log.Printf("failed to delete the task of the VM, err: %v\n", err)
+        log.Println("failed to delete the task of the VM: ", err)
         return "Deleting task of VM " + vmID + " failed", err
     }
     if err := vm.Container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-        log.Printf("failed to delete the container of the VM, err: %v\n", err)
+        log.Println("failed to delete the container of the VM: ", err)
         return "Deleting container of VM " + vmID + " failed", err
     }
 
     o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
     log.Println("Stopping the VM" + vmID)
     if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
-        log.Printf("failed to stop the VM, err: %v\n", err)
+        log.Println("failed to stop the VM: ", err)
         return "Stopping VM " + vmID + " failed", err
     }
     o.niList = append(o.niList, vm.Ni)
@@ -366,7 +378,6 @@ func (o *Orchestrator) StopActiveVMs() error {
                 }
                 */
                 ch <- "Stopped VM " + vmID
-                close(ch)
             }(vmID, vm, ch)
         }
 
