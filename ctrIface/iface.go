@@ -59,7 +59,7 @@ const (
 
 type Orchestrator struct {
     active_vms map[string]misc.VM
-    cachedImages map[string]bool
+    cachedImages map[string]containerd.Image
     niList []misc.NetworkInterface
     snapshotter string
     client *containerd.Client
@@ -73,7 +73,7 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 
     o := new(Orchestrator)
     o.active_vms = make(map[string]misc.VM)
-    o.cachedImages= make(map[string]bool)
+    o.cachedImages= make(map[string]containerd.Image)
     o.generateNetworkInterfaceNames(niNum)
     o.snapshotter = snapshotter
 
@@ -120,7 +120,8 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     ctx = namespaces.WithNamespace(ctx, namespaceName)
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
     t_start = time.Now()
-    if _, found := o.cachedImages[imageName]; found == false {
+    image, found := o.cachedImages[imageName]
+    if !found {
         image, err = o.client.Pull(ctx, "docker.io/" + imageName,
             containerd.WithPullUnpack,
             containerd.WithPullSnapshotter(o.snapshotter),
@@ -128,10 +129,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
         if err != nil {
             return "Pulling a VM image failed", t_profile, errors.Wrapf(err, "creating container")
         }
+        o.cachedImages[imageName] = image
     }
     t_elapsed = time.Now()
     t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
-    o.cachedImages[imageName] = true
 /*
     netID, err := strconv.Atoi(vmID)
     if err != nil {
