@@ -335,11 +335,10 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 }
 
 func (o *Orchestrator) StopActiveVMs() error {
-    var vmGroup sync.WaitGroup
+    ch := make(chan string, len(o.active_vms))
+
     for vmID, vm := range o.active_vms {
-        vmGroup.Add(1)
-        go func(vmID string, vm misc.VM) {
-            defer vmGroup.Done()
+        go func(vmID string, vm misc.VM, ch chan string) {
             ctx := namespaces.WithNamespace(context.Background(), namespaceName)
             ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(300) * time.Second))
             if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
@@ -353,7 +352,6 @@ func (o *Orchestrator) StopActiveVMs() error {
             }
 
             o.mu.Lock() // CreateVM may fail when invoked by multiple threads/goroutines
-            log.Println("Stopping the VM" + vmID)
             if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
                 log.Printf("failed to stop the VM, err: %v\n", err)
             }
@@ -366,11 +364,13 @@ func (o *Orchestrator) StopActiveVMs() error {
                 log.Printf("Get VM from db returned error: %v\n", err)
             }
 */
-        }(vmID, vm)
+            ch <- "Stopped VM " + vmID
+        }(vmID, vm, ch)
     }
-    log.Println("waiting for goroutines")
-    vmGroup.Wait()
-    log.Println("waiting done")
+
+    for s := range ch {
+        log.Println(s)
+    }
 
     log.Println("Closing fcClient")
     o.fcClient.Close()
