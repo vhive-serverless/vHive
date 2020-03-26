@@ -48,6 +48,7 @@ import (
     "google.golang.org/grpc/status"
 
     "github.com/ustiugov/fccd-orchestrator/misc"
+    hpb "google.golang.org/grpc/examples/helloworld/helloworld"
 
 //    "github.com/ustiugov/skv"
 )
@@ -273,10 +274,18 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     if err != nil {
         return "Unabled to connect to the function in VM " + vmID, t_profile, err
     }
+    funcClient := hpb.NewGreeterClient(conn)
     log.Println("Connected to the function in VM "+vmID)
 
     o.mu.Lock()
-    o.active_vms[vmID] = misc.VM{Image: image, Container: container, Task: task, Ni: ni, Conn: conn}
+    o.active_vms[vmID] = misc.VM{
+        Image: image,
+        Container: container,
+        Task: task,
+        Ni: ni,
+        Conn: conn,
+        FuncClient: funcClient,
+    }
     o.mu.Unlock()
 /*
     if err := store.Put(vmID, vmID); err != nil {
@@ -285,6 +294,24 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 */
 
     return "VM, container, and task started successfully", t_profile, nil
+}
+
+type NonExistErr string
+
+func (e NonExistErr) Error() string {
+    return fmt.Sprintf("%s does not exist", e)
+}
+
+func (o *Orchestrator) GetFuncClientByID(vmID string) (hpb.GreeterClient, error) {
+    vm, is_present := o.active_vms[vmID]
+    if !is_present { return nil, NonExistErr("FuncClient") }
+
+    return vm.FuncClient, nil
+}
+
+func (o *Orchestrator) IsVMActive(vmID string) (bool) {
+    _, is_active := o.active_vms[vmID]
+    return is_active
 }
 
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
@@ -306,7 +333,6 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
     }
 
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(60) * time.Second))
-    //defer conn.Close()
     if err := vm.Conn.Close(); err != nil {
         log.Println("Failed to close the connection to function: ", err)
         return "Closing connection to function in VM " + vmID + " failed", err
@@ -356,6 +382,9 @@ func (o *Orchestrator) StopActiveVMs() error {
             defer vmGroup.Done()
             ctx := namespaces.WithNamespace(context.Background(), namespaceName)
             ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(300) * time.Second))
+	    if err := vm.Conn.Close(); err != nil {
+		log.Println("Failed to close the connection to function: ", err)
+	    }
             if err := vm.Task.Kill(ctx, syscall.SIGKILL); err != nil {
                 log.Printf("Failed to kill the task, err: %v\n", err)
             }
