@@ -268,10 +268,12 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     t_elapsed = time.Now()
     t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
 
+    log.Println("Connecting to the function in VM "+vmID)
     conn, err := grpc.Dial(ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
     if err != nil {
         return "Unabled to connect to the function in VM " + vmID, t_profile, err
     }
+    log.Println("Connected to the function in VM "+vmID)
 
     o.mu.Lock()
     o.active_vms[vmID] = misc.VM{Image: image, Container: container, Task: task, Ni: ni, Conn: conn}
