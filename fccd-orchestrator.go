@@ -35,6 +35,7 @@ import (
     "google.golang.org/grpc"
     pb "github.com/ustiugov/fccd-orchestrator/proto"
     "github.com/ustiugov/fccd-orchestrator/misc"
+    "github.com/ustiugov/fccd-orchestrator/ctrIface"
 
     "os"
     "google.golang.org/grpc/codes"
