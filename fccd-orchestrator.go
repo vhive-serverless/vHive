@@ -159,11 +159,11 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
     image := in.GetImage()
     payload := in.GetPayload()
 
-    log.Println("Received FwdHello for VM %v, image %v, payload %v", vmID, image, payload)
+    //log.Println("Received FwdHello for VM %v, image %v, payload %v", vmID, image, payload)
 
     isColdStart := false
 
-    if !orch.IsVMActive(vmID) {
+    if orch.IsVMActive(vmID) == false {
         isColdStart = true
         message, _, err := orch.StartVM(ctx, vmID, image) // message, t_profile
         if err != nil {

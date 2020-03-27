@@ -35,7 +35,7 @@ $ECHO sudo ip link add br7 type bridge
 
 
 upperlim=$NI_NUM
-parallel=10
+parallel=8
 
 for ((i=0; i<parallel; i++)); do
   s=$((i * upperlim / parallel))

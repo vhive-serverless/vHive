@@ -107,7 +107,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     var err error
     var image containerd.Image
     var t_start, t_elapsed time.Time
-    log.Printf("Received: %v %v", vmID, imageName)
+    //log.Printf("Received: %v %v", vmID, imageName)
 
     if _, is_present := o.active_vms[vmID]; is_present {
         log.Printf("VM %v is among active VMs", vmID)
