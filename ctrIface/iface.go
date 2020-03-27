@@ -48,7 +48,7 @@ import (
     "google.golang.org/grpc/status"
 
     "github.com/ustiugov/fccd-orchestrator/misc"
-    hpb "google.golang.org/grpc/examples/helloworld/helloworld"
+    hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 
 //    "github.com/ustiugov/skv"
 )
