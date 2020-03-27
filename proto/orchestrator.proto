@@ -10,7 +10,9 @@ service Orchestrator {
     rpc StartVM (StartVMReq) returns (StartVMResp) {}
     rpc StopVMs (StopVMsReq) returns (Status) {}
     rpc StopSingleVM (StopSingleVMReq) returns (Status) {}
+}
 
+service FwdGreeter {
     rpc FwdHello (FwdHelloReq) returns (FwdHelloResp) {}
 }
 

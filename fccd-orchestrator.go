@@ -123,7 +123,7 @@ func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.
 }
 
 func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
-    log.Printf("Received StopVMs request")
+    log.Println("Received StopVMs request")
     err := orch.StopActiveVMs()
     if err != nil {
         log.Printf("Failed to stop VMs, err: %v\n", err)
@@ -137,6 +137,8 @@ func (s *server) FwdHello(ctx context.Context, in *pb.FwdHelloReq) (*pb.FwdHello
     vmID := in.GetId()
     image := in.GetImage()
     payload := in.GetPayload()
+
+    log.Println("Received FwdHello for VM %v, image %v, payload %v", vmID, image, payload)
 
     isColdStart := false
 
