@@ -36,12 +36,13 @@ import (
 
     "google.golang.org/grpc"
     pb "github.com/ustiugov/fccd-orchestrator/proto"
-    hpb "google.golang.org/grpc/examples/helloworld/helloworld"
+    hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
     "github.com/ustiugov/fccd-orchestrator/ctrIface"
 )
 
 const (
     port = ":3333"
+    fwdPort = ":3334"
 )
 
 var flog *os.File
@@ -83,6 +84,8 @@ func main() {
 
     orch = ctrIface.NewOrchestrator(*snapshotter, *niNum)
 
+    go fwdServe()
+
     lis, err := net.Listen("tcp", port)
     if err != nil {
         log.Fatalf("failed to listen: %v", err)
@@ -98,6 +101,24 @@ func main() {
 
 type server struct {
     pb.UnimplementedOrchestratorServer
+}
+
+type fwdServer struct {
+    hpb.UnimplementedFwdGreeterServer
+}
+
+func fwdServe() {
+    lis, err := net.Listen("tcp", fwdPort)
+    if err != nil {
+        log.Fatalf("failed to listen: %v", err)
+    }
+    s := grpc.NewServer()
+    hpb.RegisterFwdGreeterServer(s, &fwdServer{})
+
+    log.Println("Listening on port" + fwdPort)
+    if err := s.Serve(lis); err != nil {
+        log.Fatalf("failed to serve: %v", err)
+    }
 }
 
 func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMResp, error) {
@@ -133,7 +154,7 @@ func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, er
     return &pb.Status{Message: "Stopped VMs"}, nil
 }
 
-func (s *server) FwdHello(ctx context.Context, in *pb.FwdHelloReq) (*pb.FwdHelloResp, error) {
+func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.FwdHelloResp, error) {
     vmID := in.GetId()
     image := in.GetImage()
     payload := in.GetPayload()
@@ -153,18 +174,18 @@ func (s *server) FwdHello(ctx context.Context, in *pb.FwdHelloReq) (*pb.FwdHello
 
     funcClient, err := orch.GetFuncClientByID(vmID)
     if err != nil {
-        return &pb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+        return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
     }
 
     ctx, cancel := context.WithTimeout(context.Background(), time.Second * 10)
     defer cancel()
     resp, err := funcClient.SayHello(ctx, &hpb.HelloRequest{Name: payload})
     if err != nil {
-        return &pb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
+        return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
     }
 
     // TBD: inject cold starts here
 
-    return &pb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
+    return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
 }
 

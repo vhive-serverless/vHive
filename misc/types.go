@@ -25,7 +25,7 @@ package misc
 import (
     "github.com/containerd/containerd"
     "google.golang.org/grpc"
-    hpb "google.golang.org/grpc/examples/helloworld/helloworld"
+    hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 )
 
 type NetworkInterface struct {
