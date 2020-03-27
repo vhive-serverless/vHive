@@ -6,8 +6,9 @@ require (
 	github.com/containerd/containerd v1.3.3
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200324214552-7383119704ec
 	github.com/pkg/errors v0.9.1
-	github.com/ustiugov/fccd-orchestrator v0.0.0-20200327124438-4eff319a0940
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200327125240-3eb283763555
+	github.com/ustiugov/fccd-orchestrator v0.0.0-20200327173131-84041f0798f2
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200327173131-84041f0798f2
+	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200327173131-84041f0798f2 // indirect
 	google.golang.org/grpc v1.28.0
 )
 
