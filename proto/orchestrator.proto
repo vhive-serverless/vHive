@@ -12,10 +12,6 @@ service Orchestrator {
     rpc StopSingleVM (StopSingleVMReq) returns (Status) {}
 }
 
-service FwdGreeter {
-    rpc FwdHello (FwdHelloReq) returns (FwdHelloResp) {}
-}
-
 message StartVMReq {
     string image = 1;
     string id = 2;
@@ -36,15 +32,4 @@ message Status {
 message StartVMResp {
     string message = 1;
     string profile = 2;
-}
-
-message FwdHelloReq {
-    string id = 1;
-    string image = 2;
-    string payload = 3;
-}
-
-message FwdHelloResp {
-    bool isColdStart = 1;
-    string payload = 2;
 }
