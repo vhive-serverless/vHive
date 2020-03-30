@@ -290,14 +290,14 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     t_elapsed = time.Now()
     t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
 
-    log.Println("Connecting to the function in VM "+vmID+" ip:"+ni.PrimaryAddress)
+    //log.Println("Connecting to the function in VM "+vmID+" ip:"+ni.PrimaryAddress)
     conn, err := grpc.Dial(ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
     if err != nil {
         o.niFree(ni)
         return "Unabled to connect to the function in VM " + vmID, t_profile, err
     }
     funcClient := hpb.NewGreeterClient(conn)
-    log.Println("Connected to the function in VM "+vmID)
+    //log.Println("Connected to the function in VM "+vmID)
 
     o.mu.Lock()
     o.active_vms[vmID] = misc.VM{

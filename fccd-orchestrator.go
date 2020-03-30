@@ -160,13 +160,13 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
     imageName := in.GetImage()
     payload := in.GetPayload()
 
-    log.Printf("Received FwdHello for VM %v, image %v, payload %v", vmID, imageName, payload)
+    //log.Printf("Received FwdHello for VM %v, image %v, payload %v", vmID, imageName, payload)
 
     isColdStart := false
 
     if orch.IsVMActive(vmID) == false {
         isColdStart = true
-        log.Printf("Image does not exist for FwdHello for VM %v, image %v, payload %v; requesting StartVM", vmID, imageName, payload)
+        log.Printf("VM does not exist for FwdHello: VM %v, image %v, payload %v; requesting StartVM", vmID, imageName, payload)
         message, _, err := orch.StartVM(ctx, vmID, imageName) // message, t_profile
         if err != nil {
             log.Println("FWD: " + message)
