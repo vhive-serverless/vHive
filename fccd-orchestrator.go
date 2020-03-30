@@ -123,9 +123,10 @@ func fwdServe() {
 
 func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMResp, error) {
     vmID := in.GetId()
-    image := in.GetImage()
+    imageName := in.GetImage()
+    log.Printf("Received StartVM for VM %v, image %v", vmID, imageName)
 
-    message, t_profile, err := orch.StartVM(ctx, vmID, image)
+    message, t_profile, err := orch.StartVM(ctx, vmID, imageName)
     if err != nil {
         return &pb.StartVMResp{Message: message, Profile: t_profile }, err
     }
@@ -156,18 +157,20 @@ func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, er
 
 func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.FwdHelloResp, error) {
     vmID := in.GetId()
-    image := in.GetImage()
+    imageName := in.GetImage()
     payload := in.GetPayload()
 
-    //log.Println("Received FwdHello for VM %v, image %v, payload %v", vmID, image, payload)
+    log.Printf("Received FwdHello for VM %v, image %v, payload %v", vmID, imageName, payload)
 
     isColdStart := false
 
     if orch.IsVMActive(vmID) == false {
         isColdStart = true
-        message, _, err := orch.StartVM(ctx, vmID, image) // message, t_profile
+        log.Printf("Image does not exist for FwdHello for VM %v, image %v, payload %v; requesting StartVM", vmID, imageName, payload)
+        message, _, err := orch.StartVM(ctx, vmID, imageName) // message, t_profile
         if err != nil {
             log.Println("FWD: " + message)
+            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
             // TBD: retry if failed (workaround)
         }
     }
@@ -185,7 +188,14 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
     }
 
     // TBD: inject cold starts here
-
+/*
+    if rand.Intn(2) > 0 {
+        log.Printf("Want to stop VM %v", vmID)
+        if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
+            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: message}, err
+        }
+    }
+*/
     return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
 }
 
