@@ -148,6 +148,9 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
     o.mu.Lock()
     var ni misc.NetworkInterface
+    if len(o.niList) == 0 {
+        return "No free NI available", t_profile, errors.Wrapf(err, "no free ni")
+    }
     ni, o.niList = o.niList[len(o.niList)-1], o.niList[:len(o.niList)-1] // pop
     o.mu.Unlock()
 
@@ -193,7 +196,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
         }
         return "Failed to start VM", t_profile, errors.Wrap(err, "failed to create the VM")
     }
-    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(5) * time.Second))
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(50) * time.Second))
     t_start = time.Now()
     container, err := o.client.NewContainer(
                                           ctx,
@@ -216,7 +219,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
         }
         return "Failed to start container for the VM" + vmID, t_profile, err
     }
-    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(5) * time.Second))
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(50) * time.Second))
     t_start = time.Now()
     task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
     t_elapsed = time.Now()
@@ -251,7 +254,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
     }
 
-    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(5) * time.Second))
+    ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(50) * time.Second))
     t_start = time.Now()
     if err := task.Start(ctx); err != nil {
         if _, err1 := task.Delete(ctx); err1 != nil {
