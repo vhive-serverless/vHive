@@ -102,11 +102,27 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
     return o
 }
 
+func (o *Orchestrator) niAlloc() (ni misc.NetworkInterface) {
+    o.mu.Lock()
+    defer o.mu.Unlock()
+    if len(o.niList) == 0 {
+        return nil
+    }
+    ni, o.niList = o.niList[len(o.niList)-1], o.niList[:len(o.niList)-1] // pop
+}
+
+func (o *Orchestrator) niFree(ni misc.NetworkInterface) {
+    o.mu.Lock()
+    defer o.mu.Unlock()
+    o.niList = append(o.niList, ni)
+}
+
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
     var t_profile string
     var err error
     var image containerd.Image
     var t_start, t_elapsed time.Time
+    var ni misc.NetworkInterface
     //log.Printf("Received: %v %v", vmID, imageName)
 
     if _, is_present := o.active_vms[vmID]; is_present {
@@ -146,13 +162,9 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     } else { netID = netID % 2 + 1 }
 */
 
-    o.mu.Lock()
-    var ni misc.NetworkInterface
-    if len(o.niList) == 0 {
+    if ni = o.niAlloc(); ni == nil {
         return "No free NI available", t_profile, errors.Wrapf(err, "no free ni")
     }
-    ni, o.niList = o.niList[len(o.niList)-1], o.niList[:len(o.niList)-1] // pop
-    o.mu.Unlock()
 
     kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
     createVMRequest := &proto.CreateVMRequest{
@@ -194,6 +206,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
             _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
             if err1 != nil { log.Printf("Attempt to clean up failed after creating a VM failed.", err1) }
         }
+        o.niFree(ni)
         return "Failed to start VM", t_profile, errors.Wrap(err, "failed to create the VM")
     }
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(50) * time.Second))
@@ -217,6 +230,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
         if _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after creating container had failed.", err1)
         }
+        o.niFree(ni)
         return "Failed to start container for the VM" + vmID, t_profile, err
     }
     ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(50) * time.Second))
@@ -232,6 +246,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
         if _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after creating the task had failed.", err1)
         }
+        o.niFree(ni)
         return "Failed to create the task for the VM" + vmID, t_profile, err
 
     }
@@ -250,6 +265,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
         if _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after waiting for the task had failed.", err1)
         }
+        o.niFree(ni)
         return "Failed to wait for the task for the VM" + vmID, t_profile, err
 
     }
@@ -266,6 +282,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
         if _, err1 := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err1 != nil {
             log.Printf("Attempt to stop the VM failed after starting the task had failed.", err1)
         }
+        o.niFree(ni)
         return "Failed to start the task for the VM" + vmID, t_profile, err
 
     }
@@ -275,6 +292,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     log.Println("Connecting to the function in VM "+vmID+" ip:"+ni.PrimaryAddress)
     conn, err := grpc.Dial(ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
     if err != nil {
+        o.niFree(ni)
         return "Unabled to connect to the function in VM " + vmID, t_profile, err
     }
     funcClient := hpb.NewGreeterClient(conn)
