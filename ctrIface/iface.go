@@ -102,13 +102,14 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
     return o
 }
 
-func (o *Orchestrator) niAlloc() (ni misc.NetworkInterface) {
+func (o *Orchestrator) niAlloc() (ni misc.NetworkInterface, err error) {
     o.mu.Lock()
     defer o.mu.Unlock()
     if len(o.niList) == 0 {
-        return nil
+        return ni, errors.New("No NI available")
     }
     ni, o.niList = o.niList[len(o.niList)-1], o.niList[:len(o.niList)-1] // pop
+    return ni, nil
 }
 
 func (o *Orchestrator) niFree(ni misc.NetworkInterface) {
@@ -162,8 +163,8 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     } else { netID = netID % 2 + 1 }
 */
 
-    if ni = o.niAlloc(); ni == nil {
-        return "No free NI available", t_profile, errors.Wrapf(err, "no free ni")
+    if ni, err = o.niAlloc();  err != nil {
+        return "No free NI available", t_profile, err
     }
 
     kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
