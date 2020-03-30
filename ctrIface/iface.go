@@ -128,7 +128,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
     if _, is_present := o.active_vms[vmID]; is_present {
         log.Printf("VM %v is among active VMs", vmID)
-        return "VM " + vmID + " already active", t_profile, nil
+        return "VM " + vmID + " already active", t_profile, errors.New("VM exists")
     }
 
 /*    var VM_ VM
