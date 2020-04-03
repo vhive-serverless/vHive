@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330172127-0d359e57cf32
+	github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330213144-565142c21c6d
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200330172127-0d359e57cf32
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200330172127-0d359e57cf32
 	github.com/ustiugov/skv v0.0.0-20180909015525-9def2caac4cc

@@ -291,6 +291,10 @@ github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330171545-85d39863293
 github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330171545-85d398632930/go.mod h1:iiQPbsfOWk+A4KEN05gDTRXafDKMxXKloI/hTTlxMQM=
 github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330172127-0d359e57cf32 h1:XbDvqvSiCchGjcxUTf41IM9IqGwNrSdqHJb5xrH8b1c=
 github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330172127-0d359e57cf32/go.mod h1:iiQPbsfOWk+A4KEN05gDTRXafDKMxXKloI/hTTlxMQM=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330175424-9f8229495c9b h1:xBCwlNL0RIY6KFx9lZLmNoDXPzQv+bAFpXpt10CZbi0=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330175424-9f8229495c9b/go.mod h1:iiQPbsfOWk+A4KEN05gDTRXafDKMxXKloI/hTTlxMQM=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330213144-565142c21c6d h1:AoJX1A2StFe5EM427XZ3FoIuWVwEAqcmnOLopMONStg=
+github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330213144-565142c21c6d/go.mod h1:iiQPbsfOWk+A4KEN05gDTRXafDKMxXKloI/hTTlxMQM=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325204940-c13b3ada6b2e h1:EawbS1IF/1NBezfT75mU1xQMo2IVHNFruWRCGdMp25Q=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325204940-c13b3ada6b2e/go.mod h1:CLfsuq4fCpqRVtrDi4VyBmYCB4qhXQBJo338I6Jzza4=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325205406-9d4c3c735efc h1:ufjYBIr0eoVyy4jMPVSvjsql6XD2urUZ7vWGTvTEtAo=

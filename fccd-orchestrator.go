@@ -34,6 +34,8 @@ import (
     "os"
     "time"
 
+    _ "github.com/pkg/errors"
+
     "google.golang.org/grpc"
     pb "github.com/ustiugov/fccd-orchestrator/proto"
     hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
@@ -157,45 +159,53 @@ func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, er
 
 func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.FwdHelloResp, error) {
     vmID := in.GetId()
-    imageName := in.GetImage()
+    //imageName := in.GetImage()
     payload := in.GetPayload()
 
     //log.Printf("Received FwdHello for VM %v, image %v, payload %v", vmID, imageName, payload)
 
     isColdStart := false
-
-    if orch.IsVMActive(vmID) == false {
-        isColdStart = true
-        log.Printf("VM does not exist for FwdHello: VM %v, image %v, payload %v; requesting StartVM", vmID, imageName, payload)
-        message, _, err := orch.StartVM(ctx, vmID, imageName) // message, t_profile
-        if err != nil {
-            log.Println("FWD: " + message)
-            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
-            // TBD: retry if failed (workaround)
-        }
-    }
+    // FIXME: DEADLINES ARE TOTALMESS BELOW
+//    if orch.IsVMActive(vmID) == false {
+//        // FIXME: remove the return below, handle restart
+//        isColdStart = true
+//        log.Printf("VM does not exist for FwdHello: VM %v, image %v, payload %v; requesting StartVM", vmID, imageName, payload)
+//        ctx_start, _ := context.WithDeadline(context.Background(), time.Now().Add(time.Duration(60) * time.Second))
+//        _, _, err := orch.StartVM(ctx_start, vmID, imageName) // message, t_profile
+//        if ctx.Err() == context.Canceled { // Original RPC cancelled or timed out
+//            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.New("Cancelled after cold start")
+//        } else if err != nil {
+//            //log.Printf("FWD service is attempting a restart upon failure: %v %v", message, err)
+//            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, "StartVM failed")
+//            if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
+//                return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, message+" Restart: Stop failure")
+//            }
+//            if message, _, err := orch.StartVM(ctx, vmID, imageName); err != nil {
+//                return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, message+" Restart failed")
+//            }
+//        }
+//    }
 
     funcClient, err := orch.GetFuncClientByID(vmID)
     if err != nil {
         return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
     }
 
-    ctx, cancel := context.WithTimeout(context.Background(), time.Second * 10)
-    defer cancel()
-    resp, err := funcClient.SayHello(ctx, &hpb.HelloRequest{Name: payload})
+    ctx_fwd, _ := context.WithTimeout(context.Background(), time.Millisecond * 100)
+//    defer cancel() here  _
+    resp, err := funcClient.SayHello(ctx_fwd, &hpb.HelloRequest{Name: payload})
     if err != nil {
-        return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
+        //log.Printf("Function returned error: vmID=%, err=%v", vmID, err)
+        return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
     }
-
     // TBD: inject cold starts here
-/*
-    if rand.Intn(2) > 0 {
-        log.Printf("Want to stop VM %v", vmID)
-        if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
-            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: message}, err
-        }
-    }
-*/
+//    if rand.Intn(2) > 0 {
+//        log.Printf("Want to stop VM %v", vmID)
+//        if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
+//            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: message}, err
+//        }
+//        time.Sleep(5 * time.Second)
+//    }
     return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
 }
 
