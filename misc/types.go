@@ -37,10 +37,11 @@ type NetworkInterface struct {
 }
 
 type VM struct {
-    Image containerd.Image
-    Container containerd.Container
-    Task containerd.Task
-    Ni NetworkInterface
+    Image *containerd.Image
+    Container *containerd.Container
+    Task *containerd.Task
+    TaskCh <-chan containerd.ExitStatus
+    Ni *NetworkInterface
     Conn *grpc.ClientConn
-    FuncClient hpb.GreeterClient
+    FuncClient *hpb.GreeterClient
 }
