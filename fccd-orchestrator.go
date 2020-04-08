@@ -139,13 +139,20 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
     vmID := in.GetId()
     log.Printf("Received stop single VM request for VM %v", vmID)
-    if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
+    message, err := orch.StopSingleVM(ctx, vmID)
+
+    if err == misc.AlreadyDeactivatingErr {
+        return &pb.Status{Message: message }, nil
+    } else if err == misc.DeactivatingErr {
         return &pb.Status{Message: message }, err
+    } else if err != nil {
+        panic("Unknown error while stopping a VM")
     }
 
     return &pb.Status{Message: "Stopped VM"}, nil
 }
 
+// Note: this function is to be used only before tearing down the whole orchestrator
 func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
     log.Println("Received StopVMs request")
     err := orch.StopActiveVMs()

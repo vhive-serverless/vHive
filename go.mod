@@ -13,7 +13,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330213144-565142c21c6d
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200330172127-0d359e57cf32
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200407181659-9e8b79c5a100
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200330172127-0d359e57cf32
 	github.com/ustiugov/skv v0.0.0-20180909015525-9def2caac4cc
 	go.opencensus.io v0.22.3 // indirect

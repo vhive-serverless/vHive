@@ -60,13 +60,12 @@ const (
 )
 
 type Orchestrator struct {
-    active_vms map[string]misc.VM
+    vmPool misc.VmPool
+    niPool misc.NiPool
     cachedImages map[string]containerd.Image
-    niList []misc.NetworkInterface
     snapshotter string
     client *containerd.Client
     fcClient *fcclient.Client
-    mu *sync.Mutex
 // store *skv.KVStore
 }
 
@@ -74,9 +73,11 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
     var err error
 
     o := new(Orchestrator)
-    o.active_vms = make(map[string]misc.VM)
+    o.vmPool = misc.NewVmPool()
+    o.niPool = misc.NewNiPool(niNum*2) // overprovision NIs
+//    o.active_vms = make(map[string]misc.VM)
     o.cachedImages= make(map[string]containerd.Image)
-    o.generateNetworkInterfaceNames(niNum)
+//    o.generateNetworkInterfaceNames(niNum)
     o.snapshotter = snapshotter
 
     o.setupCloseHandler()
@@ -94,10 +95,7 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
         log.Fatalf("Failed to start firecracker client", err)
     }
 
-    o.mu = &sync.Mutex{}
-
-//    store, err = skv.Open("/var/lib/fccd-orchestrator/vms.db")
-//    if err != nil { log.Fatalf("Failed to open db file", err) }
+//    o.mu = &sync.Mutex{}
 
     return o
 }
@@ -109,7 +107,7 @@ func (o *Orchestrator) niAlloc() (*misc.NetworkInterface, error) {
     if len(o.niList) == 0 {
         return nil, errors.New("No NI available")
     }
-    ni, o.niList = o.niList[len(o.niList)-1], o.niList[:len(o.niList)-1] // pop
+    ni, o.niList = o.niList[0], o.niList[1:]
 
     return &ni, nil
 }
@@ -141,7 +139,7 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVm, isCont, i
         }
     }
 
-    o.niFree(*vm.Ni)
+    o.deallocateVM(vmID)
 
     return nil
 }
@@ -186,41 +184,45 @@ func (o *Orchestrator) getVmConfig(vmID string, ni misc.NetworkInterface) (*prot
     }
 }
 
-func (o *Orchestrator) activateVM(vmID string, vm misc.VM) {
-    o.active_vms[vmID] = vm // TBD
-}
-/*
-func (o *Orchestrator) activateVM(
-    vmID string,
-    image *containerd.Image,
-    container *containerd.Container,
-    task *containerd.Task,
-    exitStatusCh <-chan containerd.ExitStatus,
-    ni *misc.NetworkInterface,
-    conn *grpc.ClientConn,
-    funcClient *hpb.GreeterClient) {
+func (o *Orchestrator) allocateVM(vmID) (*misc.VM, error) {
     o.mu.Lock()
-    o.active_vms[vmID] = misc.VM{
-        Image: image,
-        Container: container,
-        Task: task,
-        Ni: ni,
-        Conn: conn,
-        FuncClient: funcClient,
-    }
-    o.mu.Unlock()
-}
-*/
+    defer o.mu.Unlock()
 
-func (o *Orchestrator) deactivateVM(vmID string) {
+    if vm_, is_present := o.active_vms[vmID]; is_present && vm_.isStarting == true {
+        log.Printf("VM %v is among active VMs", vmID)
+        return nil, misc.AlreadyStartingErr("VM")
+    }
+
+    vm := misc.NewVM(vmID)
+    o.active_vms[vmID] = *vm
+
+    return vm, nil
+}
+
+func (o *Orchestrator) deallocateVM(vmID string) {
     o.mu.Lock()
-    vm, _ := o.active_vms[vmID]
+    defer o.mu.Unlock()
+
+    vmPtr, _ := o.active_vms[vmID];
+    if o.IsActiveVM() == false && vmPtr.isDeactivating == true {
+        log.Printf("VM %v is among active VMs but already being deactivated", vmID)
+        return nil, misc.AlreadyDeactivatingErr("VM " + vmID)
+    } else if o.IsActiveVM(vmID) == false {
+        log.Printf("WARNING: VM %v is inactive when trying to deallocate, do nothing", vmID)
+        return nil, misc.DeactivatingErr("VM " + vmID)
+    }
+
+    vm, _ := *o.active_vms[vmID]
+    vm.SetStateDeactivating()
     o.niList = append(o.niList, *vm.Ni) // TODO: make FIFO
     delete(o.active_vms, vmID)
-    o.mu.Unlock()
+
+    return vm, nil
 }
 // FIXME: concurrent StartVM and StopVM with the same vmID would not work corrently.
 // TODO: add state machine to VM struct
+
+// accounted for races: start->start; need stop->start, start->stop, stop->stop
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
     var t_profile string
     var err error
@@ -228,9 +230,9 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     var vm misc.VM
     //log.Printf("Received: %v %v", vmID, imageName)
 
-    if _, is_present := o.active_vms[vmID]; is_present {
-        log.Printf("VM %v is among active VMs", vmID)
-        return "VM " + vmID + " already active", t_profile, errors.New("VM exists")
+    vm, err := o.allocateVM(vmID)
+    if err != nil && err == misc.AlreadyStartingErr {
+        return "VM " + vmID + " is already starting", t_profile, err
     }
 
     ctx = namespaces.WithNamespace(ctx, namespaceName)
@@ -326,44 +328,31 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     vm.FuncClient = &funcClient
     //log.Println("Connected to the function in VM "+vmID)
 
-    o.activateVM(vmID, vm)
+    vm.SetStateActive()
 
     return "VM, container, and task started successfully", t_profile, nil
 }
 
-type NonExistErr string
-
-func (e NonExistErr) Error() string {
-    return fmt.Sprintf("%s does not exist", e)
-}
-
 func (o *Orchestrator) GetFuncClientByID(vmID string) (*hpb.GreeterClient, error) {
-    vm, is_present := o.active_vms[vmID]
-    if !is_present { return nil, NonExistErr("FuncClient") }
+    if !vm.IsVMActive() { return nil, misc.NonExistErr("FuncClient") }
+    vm, _ := o.active_vms[vmID]
 
     return vm.FuncClient, nil
 }
 
 func (o *Orchestrator) IsVMActive(vmID string) (bool) {
-    _, is_active := o.active_vms[vmID]
-    return is_active
+    vm, is_present := o.active_vms[vmID]
+    return is_present && vm.isActive
 }
 
+// Note: VMs are not quisced before being stopped
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
     ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-    vm, is_present := o.active_vms[vmID]
-    if !is_present {
-        log.Printf("VM %v is not recorded as an active VM, attempting a force stop.", vmID)
-        log.Println("Stopping the VM" + vmID)
-        if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
-            log.Printf("failed to stop the VM, err: %v\n", err)
-            return "Stopping VM " + vmID + " failed", err
-        }
+    vm, err := o.deallocateVM(vmID)
 
-        o.niFree(*vm.Ni)
-
-        return "VM " + vmID + " stopped forcefully but successfully", nil
+    if err != nil { // && err == misc.AlreadyDeactivatingErr { // Note: do not distinguish errors, just do nothing
+        return "VM " + vmID + " is already being deactivated", err
     }
 
     if err := vm.Conn.Close(); err != nil {
@@ -393,8 +382,6 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
         log.Println("failed to stop the VM: ", err)
         return "Stopping VM " + vmID + " failed", err
     }
-
-    o.deactivateVM(vmID)
 
     return "VM " + vmID + " stopped successfully", nil
 }
@@ -444,22 +431,6 @@ func (o *Orchestrator) StopActiveVMs() error {
     o.client.Close()
 //    store.Close()
     return nil
-}
-
-func (o *Orchestrator) generateNetworkInterfaceNames(num int) {
-    for i := 0; i < num; i++ {
-        ni := misc.NetworkInterface{
-            MacAddress: fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),
-            HostDevName: fmt.Sprintf("fc-%d-tap0", i),
-            PrimaryAddress: fmt.Sprintf("19%d.128.%d.%d", i%2+6, (i+2)/256, (i+2)%256),
-            Subnet: "/10",
-            GatewayAddress: fmt.Sprintf("19%d.128.0.1", i%2+6),
-        }
-        //fmt.Println(ni)
-        o.niList = append(o.niList, ni)
-    }
-    //os.Exit(0)
-    return
 }
 
 func (o *Orchestrator) setupHeartbeat() {
