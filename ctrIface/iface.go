@@ -28,7 +28,7 @@ import (
     "time"
     "strconv"
     "sync"
-    "fmt"
+    _ "fmt"
     "os"
     "os/signal"
     "syscall"
@@ -60,8 +60,8 @@ const (
 )
 
 type Orchestrator struct {
-    vmPool misc.VmPool
-    niPool misc.NiPool
+    vmPool *misc.VmPool
+    niPool *misc.NiPool
     cachedImages map[string]containerd.Image
     snapshotter string
     client *containerd.Client
@@ -75,9 +75,7 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
     o := new(Orchestrator)
     o.vmPool = misc.NewVmPool()
     o.niPool = misc.NewNiPool(niNum*2) // overprovision NIs
-//    o.active_vms = make(map[string]misc.VM)
     o.cachedImages= make(map[string]containerd.Image)
-//    o.generateNetworkInterfaceNames(niNum)
     o.snapshotter = snapshotter
 
     o.setupCloseHandler()
@@ -95,53 +93,7 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
         log.Fatalf("Failed to start firecracker client", err)
     }
 
-//    o.mu = &sync.Mutex{}
-
     return o
-}
-
-func (o *Orchestrator) niAlloc() (*misc.NetworkInterface, error) {
-    var ni misc.NetworkInterface
-    o.mu.Lock()
-    defer o.mu.Unlock()
-    if len(o.niList) == 0 {
-        return nil, errors.New("No NI available")
-    }
-    ni, o.niList = o.niList[0], o.niList[1:]
-
-    return &ni, nil
-}
-
-func (o *Orchestrator) niFree(ni misc.NetworkInterface) {
-    o.mu.Lock()
-    defer o.mu.Unlock()
-    o.niList = append(o.niList, ni)
-}
-
-func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVm, isCont, isTask bool) (error) {
-    vm, _ := o.active_vms[vmID]
-    if isTask == true {
-        task := *vm.Task
-        if _, err := task.Delete(ctx); err != nil {
-            return errors.Wrapf(err, "Attempt to delete the task failed.")
-        }
-    }
-    if isCont == true {
-        cont := *vm.Container
-        if err := cont.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-            return errors.Wrapf(err, "Attempt to delete the container failed.")
-        }
-    }
-
-    if isVm == true {
-        if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
-            return errors.Wrapf(err, "Attempt to stop the VM failed.")
-        }
-    }
-
-    o.deallocateVM(vmID)
-
-    return nil
 }
 
 func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*containerd.Image, error) {
@@ -184,55 +136,30 @@ func (o *Orchestrator) getVmConfig(vmID string, ni misc.NetworkInterface) (*prot
     }
 }
 
-func (o *Orchestrator) allocateVM(vmID) (*misc.VM, error) {
-    o.mu.Lock()
-    defer o.mu.Unlock()
-
-    if vm_, is_present := o.active_vms[vmID]; is_present && vm_.isStarting == true {
-        log.Printf("VM %v is among active VMs", vmID)
-        return nil, misc.AlreadyStartingErr("VM")
-    }
-
-    vm := misc.NewVM(vmID)
-    o.active_vms[vmID] = *vm
-
-    return vm, nil
+func (o *Orchestrator) ActiveVmExists(vmID string) (bool) {
+    return o.vmPool.IsVmActive(vmID)
 }
 
-func (o *Orchestrator) deallocateVM(vmID string) {
-    o.mu.Lock()
-    defer o.mu.Unlock()
-
-    vmPtr, _ := o.active_vms[vmID];
-    if o.IsActiveVM() == false && vmPtr.isDeactivating == true {
-        log.Printf("VM %v is among active VMs but already being deactivated", vmID)
-        return nil, misc.AlreadyDeactivatingErr("VM " + vmID)
-    } else if o.IsActiveVM(vmID) == false {
-        log.Printf("WARNING: VM %v is inactive when trying to deallocate, do nothing", vmID)
-        return nil, misc.DeactivatingErr("VM " + vmID)
-    }
-
-    vm, _ := *o.active_vms[vmID]
-    vm.SetStateDeactivating()
-    o.niList = append(o.niList, *vm.Ni) // TODO: make FIFO
-    delete(o.active_vms, vmID)
-
-    return vm, nil
-}
 // FIXME: concurrent StartVM and StopVM with the same vmID would not work corrently.
 // TODO: add state machine to VM struct
 
 // accounted for races: start->start; need stop->start, start->stop, stop->stop
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
     var t_profile string
-    var err error
     var t_start, t_elapsed time.Time
-    var vm misc.VM
     //log.Printf("Received: %v %v", vmID, imageName)
 
-    vm, err := o.allocateVM(vmID)
-    if err != nil && err == misc.AlreadyStartingErr {
-        return "VM " + vmID + " is already starting", t_profile, err
+    vm, err := o.vmPool.Allocate(vmID)
+    if err != nil {
+        if _, ok := err.(*misc.AlreadyStartingErr); ok {
+            return "VM " + vmID + " is already starting", t_profile, err
+        }
+    }
+
+    vm.SetStateStarting()
+
+    if vm.Ni, err = o.niPool.Allocate();  err != nil {
+        return "No free NI available", t_profile, err
     }
 
     ctx = namespaces.WithNamespace(ctx, namespaceName)
@@ -242,10 +169,6 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     }
     t_elapsed = time.Now()
     t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
-
-    if vm.Ni, err = o.niAlloc();  err != nil {
-        return "No free NI available", t_profile, err
-    }
 
     t_start = time.Now()
     _, err = o.fcClient.CreateVM(ctx, o.getVmConfig(vmID, *vm.Ni))
@@ -333,26 +256,59 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     return "VM, container, and task started successfully", t_profile, nil
 }
 
-func (o *Orchestrator) GetFuncClientByID(vmID string) (*hpb.GreeterClient, error) {
-    if !vm.IsVMActive() { return nil, misc.NonExistErr("FuncClient") }
-    vm, _ := o.active_vms[vmID]
-
-    return vm.FuncClient, nil
+func (o *Orchestrator) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
+    return o.vmPool.GetFuncClient(vmID)
 }
 
-func (o *Orchestrator) IsVMActive(vmID string) (bool) {
-    vm, is_present := o.active_vms[vmID]
-    return is_present && vm.isActive
+func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVm, isCont, isTask bool) (error) {
+    vm, err := o.vmPool.Free(vmID)
+    if err != nil {
+        if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
+            return nil // not an error
+        } else if _, ok := err.(*misc.DeactivatingErr); ok {
+            return err
+        } else {
+            panic("Deallocation failed for an unknown reason")
+        }
+    }
+
+    if isTask == true {
+        task := *vm.Task
+        if _, err := task.Delete(ctx); err != nil {
+            return errors.Wrapf(err, "Attempt to delete the task failed.")
+        }
+    }
+    if isCont == true {
+        cont := *vm.Container
+        if err := cont.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+            return errors.Wrapf(err, "Attempt to delete the container failed.")
+        }
+    }
+
+    if isVm == true {
+        if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+            return errors.Wrapf(err, "Attempt to stop the VM failed.")
+        }
+    }
+
+    o.niPool.Free(vm.Ni)
+
+    return nil
 }
 
 // Note: VMs are not quisced before being stopped
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
     ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-    vm, err := o.deallocateVM(vmID)
-
-    if err != nil { // && err == misc.AlreadyDeactivatingErr { // Note: do not distinguish errors, just do nothing
-        return "VM " + vmID + " is already being deactivated", err
+    vm, err := o.vmPool.Free(vmID)
+    if err != nil {
+        if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
+            return "VM " + vmID + " is already being deactivated", nil // not an error
+        } else if _, ok := err.(*misc.DeactivatingErr); ok {
+            return "Error while deallocating VM", err
+        } else {
+            panic("Deallocation failed for an unknown reason")
+        }
     }
 
     if err := vm.Conn.Close(); err != nil {
@@ -383,41 +339,22 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
         return "Stopping VM " + vmID + " failed", err
     }
 
+    o.niPool.Free(vm.Ni)
+
     return "VM " + vmID + " stopped successfully", nil
 }
 
-func (o *Orchestrator) StopActiveVMs() error {
+func (o *Orchestrator) StopActiveVMs() (error) {
     var vmGroup sync.WaitGroup
-    for vmID, vm := range o.active_vms {
+    for vmID, vm := range o.vmPool.GetVmMap() {
         vmGroup.Add(1)
         go func(vmID string, vm misc.VM) {
             defer vmGroup.Done()
-            ctx := namespaces.WithNamespace(context.Background(), namespaceName)
-            ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Duration(300) * time.Second))
-	    if err := vm.Conn.Close(); err != nil {
-		log.Println("Failed to close the connection to function: ", err)
-	    }
-            task := *vm.Task
-            if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
-                log.Printf("Failed to kill the task, err: %v\n", err)
+            message, err := o.StopSingleVM(context.Background(), vmID)
+            if err != nil {
+                log.Printf(message, err)
             }
-            status := <-vm.TaskCh
-            if _, _, err := status.Result(); err != nil {
-                log.Printf("Waiting for task termination failed of the VM " + vmID, err)
-            }
-            if _, err := task.Delete(ctx); err != nil {
-                log.Printf("failed to delete the task of the VM, err: %v\n", err)
-            }
-            container := *vm.Container
-            if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-                log.Printf("failed to delete the container of the VM, err: %v\n", err)
-            }
-
-            if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
-                log.Printf("failed to stop the VM, err: %v\n", err)
-            }
-            o.deactivateVM(vmID)
-            log.Println("Stopping the VM" + vmID)
+            log.Println(message)
         }(vmID, vm)
     }
 
@@ -429,7 +366,7 @@ func (o *Orchestrator) StopActiveVMs() error {
     o.fcClient.Close()
     log.Println("Closing containerd client")
     o.client.Close()
-//    store.Close()
+
     return nil
 }
 
@@ -440,7 +377,7 @@ func (o *Orchestrator) setupHeartbeat() {
         for {
             select {
             case <-heartbeat.C:
-                log.Printf("HEARTBEAT: %v VMs are active\n", len(o.active_vms))
+                log.Printf("HEARTBEAT: %v VMs are active\n", len(o.vmPool.GetVmMap()))
             } // select
         } // for
     }() // go func
