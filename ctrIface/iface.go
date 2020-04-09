@@ -252,6 +252,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     //log.Println("Connected to the function in VM "+vmID)
 
     vm.SetStateActive()
+    log.Printf(vm)
 
     return "VM, container, and task started successfully", t_profile, nil
 }
