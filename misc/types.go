@@ -24,9 +24,12 @@ package misc
 
 import (
     "fmt"
+    "log"
+    "sync"
 
     "github.com/containerd/containerd"
     "google.golang.org/grpc"
+    "github.com/pkg/errors"
 
     hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 )
@@ -61,7 +64,7 @@ type VM struct {
 }
 
 func NewVM(vmID string) (*VM) {
-    vm := new(misc.VM)
+    vm := new(VM)
     vm.vmID = vmID
 
     return vm
@@ -78,57 +81,31 @@ State-machine transitioing functions:
  */
 
 func (vm *VM) SetStateStarting() {
-    if isActive == true || vm.Deactivating == true || vm.Starting == true {
-        panic("")
+    if vm.isActive == true || vm.isDeactivating == true || vm.isStarting == true {
+        panic("SetStateStarting")
     }
 
-    vm.Starting = true
-}
-
-func (vm *VM) SetStateDeactivating() {
-    if isActive == false || vm.Deactivating == true || vm.Starting == true {
-        panic("")
-    }
-
-    vm.isActive == false
-    vm.Deactivating = true
+    vm.isStarting = true
 }
 
 //TODO: setStateOflloading
 
 func (vm *VM) SetStateActive() {
-    if isActive == true || vm.Deactivating == true || vm.Starting == false {
-        panic("")
+    if vm.isActive == true || vm.isDeactivating == true || vm.isStarting == false {
+        panic("SetStateActive")
     }
 
-    if vm.Starting == true {
-        vm.Starting = false
-    }
-
+    vm.isStarting = false
     vm.isActive = true
 }
 
 func (vm *VM) SetStateDeactivating() {
-    if isActive == true || vm.Deactivating == true || vm.Starting == true {
-        panic("")
+    if vm.isActive == false || vm.isDeactivating == true || vm.isStarting == true {
+        panic("SetStateDeactivating")
     }
 
-    vm.Active = false
-    vm.Deactivating = true
-}
-
-// TODO: move VM and ni allocation here
-type VmPool struct {
-    mu *sync.Mutex
-    vmMap map[string]VM
-}
-
-func NewVmPool() (*VmPool) {
-    p := new(VmPool)
-    p.mu = &sync.Mutex{}
-    p.vmMap = make(map[string]VM)
-
-    return p
+    vm.isActive = false
+    vm.isDeactivating = true
 }
 
 type NiPool struct {
@@ -152,6 +129,100 @@ func NewNiPool(niNum int) (*NiPool) {
     }
 
     return p
+}
+
+func (p *NiPool) Allocate() (*NetworkInterface, error) {
+    var ni NetworkInterface
+    p.mu.Lock()
+    defer p.mu.Unlock()
+    if len(p.niList) == 0 {
+        return nil, errors.New("No NI available")
+    }
+    ni, p.niList = p.niList[0], p.niList[1:]
+
+    return &ni, nil
+}
+
+func (p *NiPool) Free(ni NetworkInterface) {
+    p.mu.Lock()
+    defer p.mu.Unlock()
+    p.niList = append(p.niList, ni)
+}
+
+type VmPool struct {
+    mu *sync.Mutex
+    vmMap map[string]VM
+}
+
+func NewVmPool() (*VmPool) {
+    p := new(VmPool)
+    p.mu = &sync.Mutex{}
+    p.vmMap = make(map[string]VM)
+
+    return p
+}
+
+func (p *VmPool) Allocate(vmID string) (*VM, error) {
+    p.mu.Lock()
+    defer p.mu.Unlock()
+
+    vm_, isPresent := p.vmMap[vmID]
+    if isPresent && vm_.isStarting == true {
+        log.Printf("VM %v is among active VMs", vmID)
+        return nil, AlreadyStartingErr("VM")
+    } else if isPresent {
+        panic("allocate VM")
+    }
+
+    vm := NewVM(vmID)
+    p.vmMap[vmID] = *vm
+
+    return vm, nil
+}
+
+func (p *VmPool) Free(vmID string) (VM, error) {
+    p.mu.Lock()
+    defer p.mu.Unlock()
+
+    vm, isPresent := p.vmMap[vmID]
+    if !isPresent {
+        return vm, AlreadyDeactivatingErr("VM " + vmID)
+    }
+
+    if p.IsVmActive(vmID) == false && vm.isDeactivating == true {
+        log.Printf("VM %v is among active VMs but already being deactivated", vmID)
+        return vm, AlreadyDeactivatingErr("VM " + vmID)
+    } else if p.IsVmActive(vmID) == false {
+        log.Printf("WARNING: VM %v is inactive when trying to deallocate, do nothing", vmID)
+        return vm, DeactivatingErr("VM " + vmID)
+    }
+
+    vm.SetStateDeactivating()
+    delete(p.vmMap, vmID)
+
+    return vm, nil
+}
+
+func (p *VmPool) GetVmMap() (map[string]VM) {
+    return p.vmMap
+}
+
+func (p *VmPool) IsVmActive(vmID string) (bool) {
+    vm, isPresent := p.vmMap[vmID]
+    return isPresent && vm.isActive
+}
+
+func (p *VmPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
+    p.mu.Lock() // can be replaced by a per-VM lock?
+    defer p.mu.Unlock()
+
+    if !p.IsVmActive(vmID) {
+        return nil, NonExistErr("FuncClient")
+    }
+
+    vm, _ := p.vmMap[vmID]
+
+    return vm.FuncClient, nil
 }
 
 /*

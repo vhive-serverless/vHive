@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/containerd/containerd v1.3.3
+	github.com/pkg/errors v0.9.1
 	github.com/ustiugov/fccd-orchestrator v0.0.0-20200327124438-4eff319a0940
 	google.golang.org/grpc v1.28.0
 )
