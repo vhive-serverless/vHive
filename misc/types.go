@@ -143,10 +143,10 @@ func (p *NiPool) Allocate() (*NetworkInterface, error) {
     return &ni, nil
 }
 
-func (p *NiPool) Free(ni NetworkInterface) {
+func (p *NiPool) Free(ni *NetworkInterface) {
     p.mu.Lock()
     defer p.mu.Unlock()
-    p.niList = append(p.niList, ni)
+    p.niList = append(p.niList, *ni)
 }
 
 type VmPool struct {
