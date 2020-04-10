@@ -39,7 +39,7 @@ import (
     "github.com/containerd/containerd/oci"
 
     fcclient "github.com/ustiugov/firecracker-containerd/firecracker-control/client"
-    "github.com/firecracker-microvm/firecracker-containerd/proto"
+    "github.com/firecracker-microvm/firecracker-containerd/proto" // note: from the original repo
     "github.com/ustiugov/firecracker-containerd/runtime/firecrackeroci"
     "github.com/pkg/errors"
 
@@ -50,7 +50,7 @@ import (
     "github.com/ustiugov/fccd-orchestrator/misc"
     hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 
-    "github.com/davecgh/go-spew/spew"
+    _ "github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -252,7 +252,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     //log.Println("Connected to the function in VM "+vmID)
 
     vm.SetStateActive()
-    log.Printf(spew.Sdump(vm))
+    log.Printf(vm.Sprintf())
 
     return "VM, container, and task started successfully", t_profile, nil
 }
