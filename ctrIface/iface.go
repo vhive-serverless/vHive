@@ -50,7 +50,7 @@ import (
     "github.com/ustiugov/fccd-orchestrator/misc"
     hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 
-//    "github.com/ustiugov/skv"
+    "github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -252,7 +252,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
     //log.Println("Connected to the function in VM "+vmID)
 
     vm.SetStateActive()
-    log.Printf(vm)
+    log.Printf(spew.Sdump(vm))
 
     return "VM, container, and task started successfully", t_profile, nil
 }

@@ -45,6 +45,7 @@ github.com/d2g/dhcp4client v1.0.0/go.mod h1:j0hNfjhrt2SxUOw55nL0ATM/z4Yt3t2Kd1mW
 github.com/d2g/dhcp4server v0.0.0-20181031114812-7d4a0a7f59a5/go.mod h1:Eo87+Kg/IX2hfWJfwxMzLyuSZyxSoAug2nGa1G2QAi8=
 github.com/d2g/hardwareaddr v0.0.0-20190221164911-e7d9fbe030e4/go.mod h1:bMl4RjIciD2oAxI7DmWRx6gbeqrkoLqv3MV0vzNad+I=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible h1:dvc1KSkIYTVjZgHf/CTC2diTYC8PzhaA5sFISRfNVrE=
 github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
@@ -202,6 +203,8 @@ github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200409155937-59eb97c98bfa h1
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200409155937-59eb97c98bfa/go.mod h1:9d8Rcg4IR+vV4dOWkbX9g7sMrbB3ap7eNfgtKE8Jw8E=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200409162955-8ac3de9eaa67 h1:H8YjxCFJpCjrLYDbKTCc5+4iOtqZwlFSDm3mDJ6U3eg=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200409162955-8ac3de9eaa67/go.mod h1:9d8Rcg4IR+vV4dOWkbX9g7sMrbB3ap7eNfgtKE8Jw8E=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200410111525-19cc7325fa09 h1:P6V7fqKoDFtSylw570fD3Xh68mOynDSTHFpkHpiv8q8=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200410111525-19cc7325fa09/go.mod h1:9d8Rcg4IR+vV4dOWkbX9g7sMrbB3ap7eNfgtKE8Jw8E=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200327123523-81f221ba929a/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200327173131-84041f0798f2 h1:RZww6oj0eXOA9lWgZ71RWZITaEgCxsYTaqh7c1mCwdI=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200327173131-84041f0798f2/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
