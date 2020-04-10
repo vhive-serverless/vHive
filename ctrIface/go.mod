@@ -5,11 +5,12 @@ go 1.13
 require (
 	github.com/containerd/containerd v1.3.3
 	github.com/davecgh/go-spew v1.1.1
-	github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200324214552-7383119704ec
+	github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200331220105-afedbc74f5ee
 	github.com/pkg/errors v0.9.1
-	github.com/ustiugov/fccd-orchestrator v0.0.0-20200327173131-84041f0798f2
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200410124504-1de34861cad7
-	google.golang.org/grpc v1.28.0
+	github.com/ustiugov/fccd-orchestrator v0.0.0-20200410134410-587637823777
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200410134410-587637823777
+	github.com/ustiugov/firecracker-containerd v0.0.0-20200410140658-7fe54d05c3fc
+	google.golang.org/grpc v1.28.1
 )
 
 // Workaround for github.com/containerd/containerd issue #3031
