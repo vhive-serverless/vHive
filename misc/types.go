@@ -23,6 +23,7 @@
 package misc
 
 import (
+    "fmt"
     "sync"
 
     "github.com/containerd/containerd"
@@ -60,6 +61,17 @@ type VM struct {
     isDeactivating bool
 }
 
+type NiPool struct {
+    mu *sync.Mutex
+    niList []NetworkInterface
+}
+
+type VmPool struct {
+    mu *sync.Mutex
+    vmMap map[string]VM
+}
+
+
 func NewVM(vmID string) (*VM) {
     vm := new(VM)
     vm.vmID = vmID
@@ -67,6 +79,10 @@ func NewVM(vmID string) (*VM) {
     return vm
 }
 
+func (vm *VM) Sprintf() string {
+    return fmt.Sprintf("%s/%s: state:S=%t|A=%t|D=%t", vm.vmID, vm.vmID, vm.isStarting, // TODO: vmID ->fID
+                       vm.isActive, vm.isDeactivating)
+}
 /*
 State-machine transitioning functions:
 
@@ -104,15 +120,4 @@ func (vm *VM) SetStateDeactivating() {
     vm.isActive = false
     vm.isDeactivating = true
 }
-
-type NiPool struct {
-    mu *sync.Mutex
-    niList []NetworkInterface
-}
-
-type VmPool struct {
-    mu *sync.Mutex
-    vmMap map[string]VM
-}
-
 
