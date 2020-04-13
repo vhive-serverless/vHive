@@ -254,6 +254,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
 	vm.SetStateActive()
 	log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()}).Debug("Successfully started a VM")
+	log.Debug(o.vmPool.SprintVMMap())
 
 	return "VM, container, and task started successfully", tProfile, nil
 }
