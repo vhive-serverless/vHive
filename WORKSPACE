@@ -98,6 +98,13 @@ go_repository(
 )
 
 go_repository(
+  name = "com_github_containerd_typeurl",
+  importpath = "github.com/containerd/typeurl",
+#  sum = "h1:LoIzb5y9x5l8VKAlyrbusNPXqBY0+kviRloxFUMFwKc=",
+#  version = "v1.3.3",
+)
+
+go_repository(
   name = "com_github_opencontainers_runtime_spec",
   importpath = "github.com/opencontainers/runtime-spec",
 #  sum = "h1:LoIzb5y9x5l8VKAlyrbusNPXqBY0+kviRloxFUMFwKc=",
@@ -133,10 +140,17 @@ go_repository(
 )
 
 go_repository(
-  name = "com_github_firecracker_microvm_firecracker_containerd",
-  importpath = "github.com/firecracker-microvm/firecracker-containerd",
+  name = "com_github_sirupsen_logrus",
+  importpath = "github.com/sirupsen/logrus",
+#  sum = "h1:LoIzb5y9x5l8VKAlyrbusNPXqBY0+kviRloxFUMFwKc=",
+#  version = "v1.3.3",
+)
+
+go_repository(
+  name = "com_github_ustiugov_firecracker_containerd",
+  importpath = "github.com/ustiugov/firecracker-containerd",
   sum = "h1:tjG0LFq22MnVjPFYcn/OjPUSjdckz0mI2E02Zh9z1AI=",
-  version = "v0.0.0-20200324214552-7383119704ec",
+  commit = "3061cf0108ba066ccb664d23e553f9186a95ae8c",
 )
 
 go_repository(

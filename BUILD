@@ -3,6 +3,7 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/ustiugov/fccd-orchestrator
 # gazelle:proto package
+# gazelle:proto_group go_package
 gazelle(name = "gazelle")
 
 go_library(
