@@ -26,7 +26,6 @@ import (
 	"context"
 	"flag"
 	_ "fmt"
-	"io"
 	_ "io/ioutil"
 	"math/rand"
 	"net"
@@ -52,6 +51,7 @@ const (
 var flog *os.File
 var orch *ctriface.Orchestrator
 
+/*
 type myWriter struct {
 	io.Writer
 }
@@ -69,6 +69,7 @@ func (m *myWriter) Write(p []byte) (n int, err error) {
 	}
 	return
 }
+*/
 
 func main() {
 	var err error
@@ -89,14 +90,26 @@ func main() {
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
+	log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
 	log.SetOutput(os.Stdout)
 	flag.Parse()
 
 	orch = ctriface.NewOrchestrator(*snapshotter, *niNum)
 
-	go fwdServe()
+	go orchServe()
+	fwdServe()
+}
 
+type server struct {
+	pb.UnimplementedOrchestratorServer
+}
+
+type fwdServer struct {
+	hpb.UnimplementedFwdGreeterServer
+}
+
+func orchServe() {
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -108,14 +121,6 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-}
-
-type server struct {
-	pb.UnimplementedOrchestratorServer
-}
-
-type fwdServer struct {
-	hpb.UnimplementedFwdGreeterServer
 }
 
 func fwdServe() {

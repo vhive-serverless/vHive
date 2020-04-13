@@ -265,6 +265,7 @@ func (o *Orchestrator) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 }
 
 func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, isTask bool) error {
+	// TODO: deactivate the VM by ID here (same in StopSingleVM
 	vm, err := o.vmPool.Free(vmID)
 	if err != nil {
 		if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
@@ -297,6 +298,7 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, i
 		}
 	}
 
+	// TODO: free vm here by calling into the pool
 	o.niPool.Free(vm.Ni)
 
 	return nil
