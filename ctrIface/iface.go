@@ -20,11 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ctrIface
+package ctriface
 
 import (
 	"context"
-	_ "fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -45,13 +44,13 @@ import (
 	"github.com/ustiugov/firecracker-containerd/runtime/firecrackeroci"
 
 	"google.golang.org/grpc"
-	_ "google.golang.org/grpc/codes"
-	_ "google.golang.org/grpc/status"
+	_ "google.golang.org/grpc/codes"  //tmp
+	_ "google.golang.org/grpc/status" //tmp
 
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	"github.com/ustiugov/fccd-orchestrator/misc"
 
-	_ "github.com/davecgh/go-spew/spew"
+	_ "github.com/davecgh/go-spew/spew" //tmp
 )
 
 const (
@@ -60,6 +59,7 @@ const (
 	namespaceName          = "firecracker-containerd"
 )
 
+// Orchestrator Drives all VMs
 type Orchestrator struct {
 	vmPool       *misc.VMPool
 	niPool       *misc.NiPool
@@ -70,6 +70,7 @@ type Orchestrator struct {
 	// store *skv.KVStore
 }
 
+// NewOrchestrator Initializes a new orchestrator
 func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 	var err error
 
@@ -85,13 +86,13 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 	log.Println("Creating containerd client")
 	o.client, err = containerd.New(containerdAddress)
 	if err != nil {
-		log.Fatalf("Failed to start containerd client", err)
+		log.Fatal("Failed to start containerd client", err)
 	}
 	log.Println("Created containerd client")
 
 	o.fcClient, err = fcclient.New(containerdTTRPCAddress)
 	if err != nil {
-		log.Fatalf("Failed to start firecracker client", err)
+		log.Fatal("Failed to start firecracker client", err)
 	}
 
 	return o
@@ -114,7 +115,7 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	return &image, nil
 }
 
-func (o *Orchestrator) getVmConfig(vmID string, ni misc.NetworkInterface) *proto.CreateVMRequest {
+func (o *Orchestrator) getVMConfig(vmID string, ni misc.NetworkInterface) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
 	return &proto.CreateVMRequest{
@@ -137,52 +138,54 @@ func (o *Orchestrator) getVmConfig(vmID string, ni misc.NetworkInterface) *proto
 	}
 }
 
-func (o *Orchestrator) ActiveVmExists(vmID string) bool {
+// ActiveVMExists Returns if the VM exists by ID
+func (o *Orchestrator) ActiveVMExists(vmID string) bool {
 	return o.vmPool.IsVMActive(vmID)
 }
 
 // FIXME: concurrent StartVM and StopVM with the same vmID would not work corrently.
 // TODO: add state machine to VM struct
 
+// StartVM Boots a VM if it does not exist
 // accounted for races: start->start; need stop->start, start->stop, stop->stop
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
-	var t_profile string
-	var t_start, t_elapsed time.Time
+	var tProfile string
+	var tStart, tElapsed time.Time
 	//log.Printf("Received: %v %v", vmID, imageName)
 
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
 		if _, ok := err.(*misc.AlreadyStartingErr); ok {
-			return "VM " + vmID + " is already starting", t_profile, err
+			return "VM " + vmID + " is already starting", tProfile, err
 		}
 	}
 
 	vm.SetStateStarting()
 
 	if vm.Ni, err = o.niPool.Allocate(); err != nil {
-		return "No free NI available", t_profile, err
+		return "No free NI available", tProfile, err
 	}
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
-	t_start = time.Now()
+	tStart = time.Now()
 	if vm.Image, err = o.getImage(ctx, imageName); err != nil {
-		return "Failed to start VM", t_profile, errors.Wrapf(err, "Failed to get/pull image")
+		return "Failed to start VM", tProfile, errors.Wrapf(err, "Failed to get/pull image")
 	}
-	t_elapsed = time.Now()
-	t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
+	tElapsed = time.Now()
+	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 
-	t_start = time.Now()
-	_, err = o.fcClient.CreateVM(ctx, o.getVmConfig(vmID, *vm.Ni))
-	t_elapsed = time.Now()
-	t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
+	tStart = time.Now()
+	_, err = o.fcClient.CreateVM(ctx, o.getVMConfig(vmID, *vm.Ni))
+	tElapsed = time.Now()
+	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, false, false, false); errCleanup != nil {
-			log.Printf("Cleanup failed: ", errCleanup)
+			log.Print("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", t_profile, errors.Wrap(err, "failed to create the VM")
+		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create the VM")
 	}
 
-	t_start = time.Now()
+	tStart = time.Now()
 	container, err := o.client.NewContainer(
 		ctx,
 		vmID,
@@ -196,57 +199,57 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		containerd.WithRuntime("aws.firecracker", nil),
 	)
 	vm.Container = &container
-	t_elapsed = time.Now()
-	t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
+	tElapsed = time.Now()
+	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, false, false); errCleanup != nil {
-			log.Printf("Cleanup failed: ", errCleanup)
+			log.Println("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", t_profile, errors.Wrap(err, "failed to create a container")
+		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a container")
 	}
 
-	t_start = time.Now()
+	tStart = time.Now()
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
 	vm.Task = &task
-	t_elapsed = time.Now()
-	t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
+	tElapsed = time.Now()
+	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, true, false); errCleanup != nil {
-			log.Printf("Cleanup failed: ", errCleanup)
+			log.Println("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", t_profile, errors.Wrap(err, "failed to create a task")
+		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a task")
 	}
 
-	t_start = time.Now()
+	tStart = time.Now()
 	ch, err := task.Wait(ctx)
 	vm.TaskCh = ch
-	t_elapsed = time.Now()
-	t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
+	tElapsed = time.Now()
+	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
-			log.Printf("Cleanup failed: ", errCleanup)
+			log.Println("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", t_profile, errors.Wrap(err, "failed to wait for a task")
+		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to wait for a task")
 	}
 
-	t_start = time.Now()
+	tStart = time.Now()
 	if err := task.Start(ctx); err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
-			log.Printf("Cleanup failed: ", errCleanup)
+			log.Println("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", t_profile, errors.Wrap(err, "failed to start a task")
+		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to start a task")
 	}
-	t_elapsed = time.Now()
-	t_profile += strconv.FormatInt(t_elapsed.Sub(t_start).Microseconds(), 10) + ";"
+	tElapsed = time.Now()
+	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 
 	//log.Println("Connecting to the function in VM "+vmID+" ip:"+ni.PrimaryAddress)
 	conn, err := grpc.Dial(vm.Ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
 	vm.Conn = conn
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
-			log.Printf("Cleanup failed: ", errCleanup)
+			log.Println("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", t_profile, errors.Wrap(err, "Failed to connect to a function")
+		return "Failed to start VM", tProfile, errors.Wrap(err, "Failed to connect to a function")
 	}
 	funcClient := hpb.NewGreeterClient(conn)
 	vm.FuncClient = &funcClient
@@ -255,14 +258,15 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	vm.SetStateActive()
 	log.Printf(vm.Sprintf())
 
-	return "VM, container, and task started successfully", t_profile, nil
+	return "VM, container, and task started successfully", tProfile, nil
 }
 
+// GetFuncClient Returns the client for the function
 func (o *Orchestrator) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 	return o.vmPool.GetFuncClient(vmID)
 }
 
-func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVm, isCont, isTask bool) error {
+func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, isTask bool) error {
 	vm, err := o.vmPool.Free(vmID)
 	if err != nil {
 		if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
@@ -287,7 +291,7 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVm, isCont, i
 		}
 	}
 
-	if isVm == true {
+	if isVM == true {
 		if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
 			return errors.Wrapf(err, "Attempt to stop the VM failed.")
 		}
@@ -298,6 +302,7 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVm, isCont, i
 	return nil
 }
 
+// StopSingleVM Shuts down a VM
 // Note: VMs are not quisced before being stopped
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
@@ -346,6 +351,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 	return "VM " + vmID + " stopped successfully", nil
 }
 
+// StopActiveVMs Shuts down all active VMs
 func (o *Orchestrator) StopActiveVMs() error {
 	var vmGroup sync.WaitGroup
 	for vmID, vm := range o.vmPool.GetVMMap() {
