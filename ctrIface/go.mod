@@ -7,8 +7,9 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200331220105-afedbc74f5ee
 	github.com/pkg/errors v0.9.1
+	github.com/sirupsen/logrus v1.5.0
 	github.com/ustiugov/fccd-orchestrator v0.0.0-20200410134410-587637823777
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200410134410-587637823777
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200413121011-22ae4b0fc691
 	github.com/ustiugov/firecracker-containerd v0.0.0-20200410140658-7fe54d05c3fc
 	google.golang.org/grpc v1.28.1
 )
