@@ -23,101 +23,109 @@
 package misc
 
 import (
-    "fmt"
-    "sync"
+	"fmt"
+	"sync"
 
-    "github.com/containerd/containerd"
-    "google.golang.org/grpc"
+	"github.com/containerd/containerd"
+	"google.golang.org/grpc"
 
-    hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
+	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 )
 
+// NetworkInterface Network interface type, NI names are generated based on expected tap names
 type NetworkInterface struct {
-    MacAddress string
-    HostDevName string
-    PrimaryAddress string
-    Subnet string
-    GatewayAddress string
+	MacAddress     string
+	HostDevName    string
+	PrimaryAddress string
+	Subnet         string
+	GatewayAddress string
 }
 
+// VM type
 type VM struct {
-    vmID string
-    functionID string // unused
+	vmID string
+	//	functionID string // unused
 
-    Image *containerd.Image
-    Container *containerd.Container
-    Task *containerd.Task
-    TaskCh <-chan containerd.ExitStatus
-    Ni *NetworkInterface
-    Conn *grpc.ClientConn
-    FuncClient *hpb.GreeterClient
+	Image      *containerd.Image
+	Container  *containerd.Container
+	Task       *containerd.Task
+	TaskCh     <-chan containerd.ExitStatus
+	Ni         *NetworkInterface
+	Conn       *grpc.ClientConn
+	FuncClient *hpb.GreeterClient
 
-    isOffloaded bool // reserved
-    isPrewarming bool // reserved
-    isActive bool
+	//	isOffloaded  bool // reserved
+	//	isPrewarming bool // reserved
+	isActive bool
 
-    // Transient states
-    isStarting bool
-    isDeactivating bool
+	// Transient states
+	isStarting     bool
+	isDeactivating bool
 }
 
+// NiPool Pool of NIs
 type NiPool struct {
-    mu *sync.Mutex
-    niList []NetworkInterface
+	mu     *sync.Mutex
+	niList []NetworkInterface
 }
 
-type VmPool struct {
-    mu *sync.Mutex
-    vmMap map[string]VM
+// VMPool Pool of active VMs (can be in several states though)
+type VMPool struct {
+	mu    *sync.Mutex
+	vmMap map[string]VM
 }
 
+// NewVM Initialize a VM
+func NewVM(vmID string) *VM {
+	vm := new(VM)
+	vm.vmID = vmID
 
-func NewVM(vmID string) (*VM) {
-    vm := new(VM)
-    vm.vmID = vmID
-
-    return vm
+	return vm
 }
 
+// Sprintf Returns VM state description
 func (vm *VM) Sprintf() string {
-    return fmt.Sprintf("%s/%s: state:S=%t|A=%t|D=%t", vm.vmID, vm.vmID, vm.isStarting, // TODO: vmID ->fID
-                       vm.isActive, vm.isDeactivating)
+	return fmt.Sprintf("%s/%s: state:S=%t|A=%t|D=%t", vm.vmID, vm.vmID, vm.isStarting, // TODO: vmID ->fID
+		vm.isActive, vm.isDeactivating)
 }
+
 /*
 State-machine transitioning functions:
 
- x -> Starting or Prewarming (tranient) -> Active -> 
+ x -> Starting or Prewarming (tranient) -> Active ->
  -> Deactivating or Offloading (transient) -> x or Offloaded
 
  Note: concurrent mix of prewarming and starting is not supported
 
- */
+*/
 
+// SetStateStarting From x to Starting
 func (vm *VM) SetStateStarting() {
-    if vm.isActive == true || vm.isDeactivating == true || vm.isStarting == true {
-        panic("SetStateStarting")
-    }
+	if vm.isActive || vm.isDeactivating || vm.isStarting {
+		panic("SetStateStarting")
+	}
 
-    vm.isStarting = true
+	vm.isStarting = true
 }
 
 //TODO: setStateOflloading
 
+// SetStateActive From Starting to Active
 func (vm *VM) SetStateActive() {
-    if vm.isActive == true || vm.isDeactivating == true || vm.isStarting == false {
-        panic("SetStateActive")
-    }
+	if vm.isActive || vm.isDeactivating || !vm.isStarting {
+		panic("SetStateActive")
+	}
 
-    vm.isStarting = false
-    vm.isActive = true
+	vm.isStarting = false
+	vm.isActive = true
 }
 
+// SetStateDeactivating From Active to Deactivating
 func (vm *VM) SetStateDeactivating() {
-    if vm.isActive == false || vm.isDeactivating == true || vm.isStarting == true {
-        panic("SetStateDeactivating")
-    }
+	if !vm.isActive || vm.isDeactivating || vm.isStarting {
+		panic("SetStateDeactivating")
+	}
 
-    vm.isActive = false
-    vm.isDeactivating = true
+	vm.isActive = false
+	vm.isDeactivating = true
 }
-

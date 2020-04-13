@@ -23,45 +23,47 @@
 package misc
 
 import (
-    "fmt"
-    "sync"
+	"fmt"
+	"sync"
 
-    "github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
-func NewNiPool(niNum int) (*NiPool) {
-    p := new(NiPool)
-    p.mu = &sync.Mutex{}
+// NewNiPool Initializes a new NI pool
+func NewNiPool(niNum int) *NiPool {
+	p := new(NiPool)
+	p.mu = &sync.Mutex{}
 
-    for i := 0; i < niNum; i++ {
-        ni := NetworkInterface{
-            MacAddress: fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),
-            HostDevName: fmt.Sprintf("fc-%d-tap0", i),
-            PrimaryAddress: fmt.Sprintf("19%d.128.%d.%d", i%2+6, (i+2)/256, (i+2)%256),
-            Subnet: "/10",
-            GatewayAddress: fmt.Sprintf("19%d.128.0.1", i%2+6),
-        }
-        p.niList = append(p.niList, ni)
-    }
+	for i := 0; i < niNum; i++ {
+		ni := NetworkInterface{
+			MacAddress:     fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),
+			HostDevName:    fmt.Sprintf("fc-%d-tap0", i),
+			PrimaryAddress: fmt.Sprintf("19%d.128.%d.%d", i%2+6, (i+2)/256, (i+2)%256),
+			Subnet:         "/10",
+			GatewayAddress: fmt.Sprintf("19%d.128.0.1", i%2+6),
+		}
+		p.niList = append(p.niList, ni)
+	}
 
-    return p
+	return p
 }
 
+// Allocate Returns a pointer to a pre-initialized NI
 func (p *NiPool) Allocate() (*NetworkInterface, error) {
-    var ni NetworkInterface
-    p.mu.Lock()
-    defer p.mu.Unlock()
-    if len(p.niList) == 0 {
-        return nil, errors.New("No NI available")
-    }
-    ni, p.niList = p.niList[0], p.niList[1:]
+	var ni NetworkInterface
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.niList) == 0 {
+		return nil, errors.New("No NI available")
+	}
+	ni, p.niList = p.niList[0], p.niList[1:]
 
-    return &ni, nil
+	return &ni, nil
 }
 
+// Free Returns NI to the list of NIs in the pool
 func (p *NiPool) Free(ni *NetworkInterface) {
-    p.mu.Lock()
-    defer p.mu.Unlock()
-    p.niList = append(p.niList, *ni)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.niList = append(p.niList, *ni)
 }
-

@@ -23,79 +23,86 @@
 package misc
 
 import (
-    "sync"
-    "log"
+	"sync"
 
-    hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
+	log "github.com/sirupsen/logrus"
+
+	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 )
 
-func NewVmPool() (*VmPool) {
-    p := new(VmPool)
-    p.mu = &sync.Mutex{}
-    p.vmMap = make(map[string]VM)
+// NewVMPool Initializes a pool of VMs
+func NewVMPool() *VMPool {
+	p := new(VMPool)
+	p.mu = &sync.Mutex{}
+	p.vmMap = make(map[string]VM)
 
-    return p
+	return p
 }
 
-func (p *VmPool) Allocate(vmID string) (*VM, error) {
-    p.mu.Lock()
-    defer p.mu.Unlock()
+// Allocate Initializes a VM and adds it to the pool
+func (p *VMPool) Allocate(vmID string) (*VM, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-    vm_, isPresent := p.vmMap[vmID]
-    if isPresent && vm_.isStarting == true {
-        log.Printf("VM %v is among active VMs", vmID)
-        return nil, AlreadyStartingErr("VM")
-    } else if isPresent {
-        panic("allocate VM")
-    }
+	vmTmp, isPresent := p.vmMap[vmID]
+	if isPresent && vmTmp.isStarting {
+		log.Printf("VM %v is among active VMs", vmID)
+		return nil, AlreadyStartingErr("VM")
+	} else if isPresent {
+		panic("allocate VM")
+	}
 
-    vm := NewVM(vmID)
-    p.vmMap[vmID] = *vm
+	vm := NewVM(vmID)
+	p.vmMap[vmID] = *vm
 
-    return vm, nil
+	return vm, nil
 }
 
-func (p *VmPool) Free(vmID string) (VM, error) {
-    p.mu.Lock()
-    defer p.mu.Unlock()
+// Free Removes a VM from the pool and transitions it to Deactivating
+func (p *VMPool) Free(vmID string) (VM, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-    vm, isPresent := p.vmMap[vmID]
-    if !isPresent {
-        return vm, AlreadyDeactivatingErr("VM " + vmID)
-    }
+	vm, isPresent := p.vmMap[vmID]
+	if !isPresent {
+		return vm, AlreadyDeactivatingErr("VM " + vmID)
+	}
 
-    if p.IsVmActive(vmID) == false && vm.isDeactivating == true {
-        log.Printf("VM %v is among active VMs but already being deactivated", vmID)
-        return vm, AlreadyDeactivatingErr("VM " + vmID)
-    } else if p.IsVmActive(vmID) == false {
-        log.Printf("WARNING: VM %v is inactive when trying to deallocate, do nothing", vmID)
-        return vm, DeactivatingErr("VM " + vmID)
-    }
+	if !p.IsVMActive(vmID) && vm.isDeactivating {
+		log.Printf("VM %v is among active VMs but already being deactivated", vmID)
+		return vm, AlreadyDeactivatingErr("VM " + vmID)
+	} else if !p.IsVMActive(vmID) {
+		log.Printf("WARNING: VM %v is inactive when trying to deallocate, do nothing", vmID)
+		return vm, DeactivatingErr("VM " + vmID)
+	}
 
-    vm.SetStateDeactivating()
-    delete(p.vmMap, vmID)
+	vm.SetStateDeactivating()
+	delete(p.vmMap, vmID)
 
-    return vm, nil
+	return vm, nil
 }
 
-func (p *VmPool) GetVmMap() (map[string]VM) {
-    return p.vmMap
+// GetVMMap Returns the map of VMs
+func (p *VMPool) GetVMMap() map[string]VM {
+	return p.vmMap
 }
 
-func (p *VmPool) IsVmActive(vmID string) (bool) {
-    vm, isPresent := p.vmMap[vmID]
-    return isPresent && vm.isActive
+// IsVMActive Returns if the VM is active (in the active state and in the map)
+func (p *VMPool) IsVMActive(vmID string) bool {
+	vm, isPresent := p.vmMap[vmID]
+	return isPresent && vm.isActive
 }
 
-func (p *VmPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
-    p.mu.Lock() // can be replaced by a per-VM lock?
-    defer p.mu.Unlock()
+// GetFuncClient Returns the client to the function
+func (p *VMPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
+	p.mu.Lock() // can be replaced by a per-VM lock?
+	defer p.mu.Unlock()
 
-    if !p.IsVmActive(vmID) {
-        return nil, NonExistErr("FuncClient")
-    }
+	if !p.IsVMActive(vmID) {
+		return nil, NonExistErr("FuncClient")
+	}
 
-    vm, _ := p.vmMap[vmID]
+	vm := p.vmMap[vmID]
 
-    return vm.FuncClient, nil
+	return vm.FuncClient, nil
 }
