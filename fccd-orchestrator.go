@@ -23,196 +23,186 @@
 package main
 
 import (
-    "context"
-    "flag"
-    _ "fmt"
-    _ "io/ioutil"
-    "io"
-    "log"
-    "net"
-    "math/rand"
-    "os"
-    "time"
+	"context"
+	"flag"
+	_ "fmt"
+	"io"
+	_ "io/ioutil"
+	"math/rand"
+	"net"
+	"os"
+	"time"
 
-    _ "github.com/pkg/errors"
+	ctrdlog "github.com/containerd/containerd/log"
+	log "github.com/sirupsen/logrus"
 
-    "google.golang.org/grpc"
-    pb "github.com/ustiugov/fccd-orchestrator/proto"
-    hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
-    "github.com/ustiugov/fccd-orchestrator/ctrIface"
+	"github.com/pkg/errors"
+
+	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
+	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
+	pb "github.com/ustiugov/fccd-orchestrator/proto"
+	"google.golang.org/grpc"
 )
 
 const (
-    port = ":3333"
-    fwdPort = ":3334"
+	port    = ":3333"
+	fwdPort = ":3334"
 )
 
 var flog *os.File
-var orch *ctrIface.Orchestrator
+var orch *ctriface.Orchestrator
 
 type myWriter struct {
-    io.Writer
+	io.Writer
 }
 
 func (m *myWriter) Write(p []byte) (n int, err error) {
-    n, err = m.Writer.Write(p)
+	n, err = m.Writer.Write(p)
 
-    if flusher, ok := m.Writer.(interface{ Flush() }); ok {
-        flusher.Flush()
-    } else if syncer := m.Writer.(interface{ Sync() error }); ok {
-        // Preserve original error
-        if err2 := syncer.Sync(); err2 != nil && err == nil {
-            err = err2
-        }
-    }
-    return
+	if flusher, ok := m.Writer.(interface{ Flush() }); ok {
+		flusher.Flush()
+	} else if syncer := m.Writer.(interface{ Sync() error }); ok {
+		// Preserve original error
+		if err2 := syncer.Sync(); err2 != nil && err == nil {
+			err = err2
+		}
+	}
+	return
 }
 
 func main() {
-    var err error
+	var err error
 
-    rand.Seed(42)
-    snapshotter := flag.String("ss", "devmapper", "snapshotter name")
-    niNum := flag.Int("ni", 1500, "Number of interfaces allocated")
+	rand.Seed(42)
+	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
+	niNum := flag.Int("ni", 1500, "Number of interfaces allocated")
 
-    if flog, err = os.Create("/tmp/fccd.log"); err != nil {
-        panic(err)
-    }
-    defer flog.Close()
+	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
+		panic(err)
+	}
+	defer flog.Close()
 
-    //log.SetOutput(&myWriter{Writer: flog})
-    log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
-    flag.Parse()
+	//log.SetOutput(&myWriter{Writer: flog})
+	//	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+	log.SetLevel(log.DebugLevel)
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
 
-    orch = ctrIface.NewOrchestrator(*snapshotter, *niNum)
+	log.SetOutput(os.Stdout)
+	flag.Parse()
 
-    go fwdServe()
+	orch = ctriface.NewOrchestrator(*snapshotter, *niNum)
 
-    lis, err := net.Listen("tcp", port)
-    if err != nil {
-        log.Fatalf("failed to listen: %v", err)
-    }
-    s := grpc.NewServer()
-    pb.RegisterOrchestratorServer(s, &server{})
+	go fwdServe()
 
-    log.Println("Listening on port" + port)
-    if err := s.Serve(lis); err != nil {
-        log.Fatalf("failed to serve: %v", err)
-    }
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterOrchestratorServer(s, &server{})
+
+	log.Println("Listening on port" + port)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
 
 type server struct {
-    pb.UnimplementedOrchestratorServer
+	pb.UnimplementedOrchestratorServer
 }
 
 type fwdServer struct {
-    hpb.UnimplementedFwdGreeterServer
+	hpb.UnimplementedFwdGreeterServer
 }
 
 func fwdServe() {
-    lis, err := net.Listen("tcp", fwdPort)
-    if err != nil {
-        log.Fatalf("failed to listen: %v", err)
-    }
-    s := grpc.NewServer()
-    hpb.RegisterFwdGreeterServer(s, &fwdServer{})
+	lis, err := net.Listen("tcp", fwdPort)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	hpb.RegisterFwdGreeterServer(s, &fwdServer{})
 
-    log.Println("Listening on port" + fwdPort)
-    if err := s.Serve(lis); err != nil {
-        log.Fatalf("failed to serve: %v", err)
-    }
+	log.Println("Listening on port" + fwdPort)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
 
 func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMResp, error) {
-    vmID := in.GetId()
-    imageName := in.GetImage()
-    log.Printf("Received StartVM for VM %v, image %v", vmID, imageName)
+	vmID := in.GetId()
+	imageName := in.GetImage()
+	log.WithFields(log.Fields{"vmID": vmID, "image": imageName}).Info("Received StartVM")
 
-    message, t_profile, err := orch.StartVM(ctx, vmID, imageName)
-    if err != nil {
-        return &pb.StartVMResp{Message: message, Profile: t_profile }, err
-    }
+	message, tProfile, err := orch.StartVM(ctx, vmID, imageName)
+	if err != nil {
+		return &pb.StartVMResp{Message: message, Profile: tProfile}, err
+	}
 
-    return &pb.StartVMResp{Message: "started VM " + vmID, Profile: t_profile }, nil
+	return &pb.StartVMResp{Message: "started VM " + vmID, Profile: tProfile}, nil
 }
 
 func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
-    vmID := in.GetId()
-    log.Printf("Received stop single VM request for VM %v", vmID)
-    message, err := orch.StopSingleVM(ctx, vmID)
+	vmID := in.GetId()
+	log.WithFields(log.Fields{"vmID": vmID}).Info("Received StopVM")
+	message, err := orch.StopSingleVM(ctx, vmID)
 
-    if err == misc.AlreadyDeactivatingErr {
-        return &pb.Status{Message: message }, nil
-    } else if err == misc.DeactivatingErr {
-        return &pb.Status{Message: message }, err
-    } else if err != nil {
-        panic("Unknown error while stopping a VM")
-    }
-
-    return &pb.Status{Message: "Stopped VM"}, nil
+	return &pb.Status{Message: message}, err
 }
 
 // Note: this function is to be used only before tearing down the whole orchestrator
 func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
-    log.Println("Received StopVMs request")
-    err := orch.StopActiveVMs()
-    if err != nil {
-        log.Printf("Failed to stop VMs, err: %v\n", err)
-        return &pb.Status{Message: "Failed to stop VMs"}, err
-    }
-    os.Exit(0)
-    return &pb.Status{Message: "Stopped VMs"}, nil
+	log.Info("Received StopVMs")
+	err := orch.StopActiveVMs()
+	if err != nil {
+		log.Printf("Failed to stop VMs, err: %v\n", err)
+		return &pb.Status{Message: "Failed to stop VMs"}, err
+	}
+	os.Exit(0)
+	return &pb.Status{Message: "Stopped VMs"}, nil
 }
 
 func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.FwdHelloResp, error) {
-    vmID := in.GetId()
-    //imageName := in.GetImage()
-    payload := in.GetPayload()
+	vmID := in.GetId()
+	imageName := in.GetImage()
+	payload := in.GetPayload()
 
-    //log.Printf("Received FwdHello for VM %v, image %v, payload %v", vmID, imageName, payload)
+	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName, "payload": payload})
+	logger.Debug("Received FwdHelloVM")
 
-    isColdStart := false
-    // FIXME: DEADLINES ARE TOTALMESS BELOW
-//    if orch.IsVMActive(vmID) == false {
-//        // FIXME: remove the return below, handle restart
-//        isColdStart = true
-//        log.Printf("VM does not exist for FwdHello: VM %v, image %v, payload %v; requesting StartVM", vmID, imageName, payload)
-//        ctx_start, _ := context.WithDeadline(context.Background(), time.Now().Add(time.Duration(60) * time.Second))
-//        _, _, err := orch.StartVM(ctx_start, vmID, imageName) // message, t_profile
-//        if ctx.Err() == context.Canceled { // Original RPC cancelled or timed out
-//            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.New("Cancelled after cold start")
-//        } else if err != nil {
-//            //log.Printf("FWD service is attempting a restart upon failure: %v %v", message, err)
-//            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, "StartVM failed")
-//            if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
-//                return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, message+" Restart: Stop failure")
-//            }
-//            if message, _, err := orch.StartVM(ctx, vmID, imageName); err != nil {
-//                return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, message+" Restart failed")
-//            }
-//        }
-//    }
+	isColdStart := false
+	if !orch.ActiveVMExists(vmID) {
+		isColdStart = true
+		// TODO: call into goroutines to trigger startVM / prefetch
+		logger.Debug("VM does not exist for FwdHello")
+		message, _, err := orch.StartVM(context.Background(), vmID, imageName)
+		if err != nil {
+			return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, message+" StartVM failure upon request")
+		}
+	}
 
-    funcClient, err := orch.GetFuncClientByID(vmID)
-    if err != nil {
-        return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
-    }
+	funcClientPtr, err := orch.GetFuncClient(vmID)
+	if err != nil {
+		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+	}
 
-    ctx_fwd, _ := context.WithTimeout(context.Background(), time.Millisecond * 100)
-//    defer cancel() here  _
-    resp, err := funcClient.SayHello(ctx_fwd, &hpb.HelloRequest{Name: payload})
-    if err != nil {
-        //log.Printf("Function returned error: vmID=%, err=%v", vmID, err)
-        return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
-    }
-    // TBD: inject cold starts here
-//    if rand.Intn(2) > 0 {
-//        log.Printf("Want to stop VM %v", vmID)
-//        if message, err := orch.StopSingleVM(ctx, vmID); err != nil {
-//            return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: message}, err
-//        }
-//        time.Sleep(5 * time.Second)
-//    }
-    return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
+	funcClient := *funcClientPtr
+
+	ctxFwd, cancelFwd := context.WithTimeout(context.Background(), time.Millisecond*100)
+	defer cancelFwd()
+
+	resp, err := funcClient.SayHello(ctxFwd, &hpb.HelloRequest{Name: payload})
+	if err != nil {
+		logger.Warn("Function returned error: ", err)
+		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+	}
+	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
 }
 
+/* TODO
+func handleColdStart(vmID string, chan ch) (error) {
+}
+*/
