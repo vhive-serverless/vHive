@@ -23,6 +23,7 @@
 package misc
 
 import (
+	"fmt"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -96,6 +97,18 @@ func (p *VMPool) GetVMMap() map[string]VM {
 func (p *VMPool) IsVMActive(vmID string) bool {
 	vm, isPresent := p.vmMap[vmID]
 	return isPresent && vm.isActive
+}
+
+// SprintVMMap Returns a string with VMs' ID and state list
+func (p *VMPool) SprintVMMap() (s string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for vmID, vm := range p.vmMap {
+		s += fmt.Sprintf("vmID=%v, state=%v\n", vmID, vm.GetVMStateString())
+	}
+
+	return s
 }
 
 // GetFuncClient Returns the client to the function
