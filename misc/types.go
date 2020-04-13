@@ -72,7 +72,7 @@ type NiPool struct {
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
 	mu    *sync.Mutex
-	vmMap map[string]VM
+	vmMap map[string]*VM
 }
 
 // NewVM Initialize a VM

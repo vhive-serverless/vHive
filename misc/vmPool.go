@@ -35,7 +35,7 @@ import (
 func NewVMPool() *VMPool {
 	p := new(VMPool)
 	p.mu = &sync.Mutex{}
-	p.vmMap = make(map[string]VM)
+	p.vmMap = make(map[string]*VM)
 
 	return p
 }
@@ -56,14 +56,13 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 		panic("allocate VM")
 	}
 
-	vm := NewVM(vmID)
-	p.vmMap[vmID] = *vm
+	p.vmMap[vmID] = NewVM(vmID)
 
-	return vm, nil
+	return p.vmMap[vmID], nil
 }
 
 // Free Removes a VM from the pool and transitions it to Deactivating
-func (p *VMPool) Free(vmID string) (VM, error) {
+func (p *VMPool) Free(vmID string) (*VM, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -82,14 +81,14 @@ func (p *VMPool) Free(vmID string) (VM, error) {
 		return vm, DeactivatingErr("VM " + vmID)
 	}
 
-	vm.SetStateDeactivating()
+	vm.SetStateDeactivating() // FIXME: deactivate in the beginning but delete in the end
 	delete(p.vmMap, vmID)
 
 	return vm, nil
 }
 
 // GetVMMap Returns the map of VMs
-func (p *VMPool) GetVMMap() map[string]VM {
+func (p *VMPool) GetVMMap() map[string]*VM {
 	return p.vmMap
 }
 
