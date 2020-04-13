@@ -1,4 +1,4 @@
-module github.com/ustiugov/fccd-orchestrator/ctrIface
+module github.com/ustiugov/fccd-orchestrator/ctriface
 
 go 1.13
 
