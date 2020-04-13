@@ -45,8 +45,11 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	defer p.mu.Unlock()
 
 	vmTmp, isPresent := p.vmMap[vmID]
+
+	logger := log.WithFields(log.Fields{"vmID": vmID, "state": vmTmp.GetVMStateString()})
+
 	if isPresent && vmTmp.isStarting {
-		log.Printf("VM %v is among active VMs", vmID)
+		logger.Warn("VM is among active VMs")
 		return nil, AlreadyStartingErr("VM")
 	} else if isPresent {
 		panic("allocate VM")
@@ -68,11 +71,13 @@ func (p *VMPool) Free(vmID string) (VM, error) {
 		return vm, AlreadyDeactivatingErr("VM " + vmID)
 	}
 
+	logger := log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()})
+
 	if !p.IsVMActive(vmID) && vm.isDeactivating {
-		log.Printf("VM %v is among active VMs but already being deactivated", vmID)
+		logger.Warn("VM is among active VMs but already being deactivated")
 		return vm, AlreadyDeactivatingErr("VM " + vmID)
 	} else if !p.IsVMActive(vmID) {
-		log.Printf("WARNING: VM %v is inactive when trying to deallocate, do nothing", vmID)
+		logger.Warn("VM is inactive when trying to deallocate, do nothing")
 		return vm, DeactivatingErr("VM " + vmID)
 	}
 
