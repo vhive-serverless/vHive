@@ -83,10 +83,9 @@ func NewVM(vmID string) *VM {
 	return vm
 }
 
-// Sprintf Returns VM state description
-func (vm *VM) Sprintf() string {
-	return fmt.Sprintf("%s/%s: state:S=%t|A=%t|D=%t", vm.vmID, vm.vmID, vm.isStarting, // TODO: vmID ->fID
-		vm.isActive, vm.isDeactivating)
+// GetVMStateString Returns VM state description
+func (vm *VM) GetVMStateString() string {
+	return fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating) // TODO: vmID ->fID
 }
 
 /*
