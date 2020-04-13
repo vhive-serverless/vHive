@@ -83,12 +83,12 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 	o.setupCloseHandler()
 	o.setupHeartbeat()
 
-	log.Println("Creating containerd client")
+	log.Info("Creating containerd client")
 	o.client, err = containerd.New(containerdAddress)
 	if err != nil {
 		log.Fatal("Failed to start containerd client", err)
 	}
-	log.Println("Created containerd client")
+	log.Info("Created containerd client")
 
 	o.fcClient, err = fcclient.New(containerdTTRPCAddress)
 	if err != nil {
@@ -151,13 +151,12 @@ func (o *Orchestrator) ActiveVMExists(vmID string) bool {
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
 	var tProfile string
 	var tStart, tElapsed time.Time
-	//log.Printf("Received: %v %v", vmID, imageName)
+	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
+	logger.Debug("Orchestrator received StartVM")
 
 	vm, err := o.vmPool.Allocate(vmID)
-	if err != nil {
-		if _, ok := err.(*misc.AlreadyStartingErr); ok {
-			return "VM " + vmID + " is already starting", tProfile, err
-		}
+	if _, ok := err.(*misc.AlreadyStartingErr); ok {
+		return "VM " + vmID + " is already starting", tProfile, err
 	}
 
 	vm.SetStateStarting()
@@ -180,7 +179,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, false, false, false); errCleanup != nil {
-			log.Print("Cleanup failed: ", errCleanup)
+			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create the VM")
 	}
@@ -203,7 +202,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, false, false); errCleanup != nil {
-			log.Println("Cleanup failed: ", errCleanup)
+			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a container")
 	}
@@ -215,7 +214,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, true, false); errCleanup != nil {
-			log.Println("Cleanup failed: ", errCleanup)
+			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a task")
 	}
@@ -227,7 +226,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
-			log.Println("Cleanup failed: ", errCleanup)
+			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to wait for a task")
 	}
@@ -235,28 +234,26 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tStart = time.Now()
 	if err := task.Start(ctx); err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
-			log.Println("Cleanup failed: ", errCleanup)
+			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to start a task")
 	}
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 
-	//log.Println("Connecting to the function in VM "+vmID+" ip:"+ni.PrimaryAddress)
 	conn, err := grpc.Dial(vm.Ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
 	vm.Conn = conn
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
-			log.Println("Cleanup failed: ", errCleanup)
+			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "Failed to connect to a function")
 	}
 	funcClient := hpb.NewGreeterClient(conn)
 	vm.FuncClient = &funcClient
-	//log.Println("Connected to the function in VM "+vmID)
 
 	vm.SetStateActive()
-	log.Printf(vm.Sprintf())
+	log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()}).Debug("Successfully started a VM")
 
 	return "VM, container, and task started successfully", tProfile, nil
 }
@@ -278,20 +275,22 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, i
 		}
 	}
 
-	if isTask == true {
+	log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()}).Debug("trying to clean up after failure")
+
+	if isTask {
 		task := *vm.Task
 		if _, err := task.Delete(ctx); err != nil {
 			return errors.Wrapf(err, "Attempt to delete the task failed.")
 		}
 	}
-	if isCont == true {
+	if isCont {
 		cont := *vm.Container
 		if err := cont.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
 			return errors.Wrapf(err, "Attempt to delete the container failed.")
 		}
 	}
 
-	if isVM == true {
+	if isVM {
 		if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
 			return errors.Wrapf(err, "Attempt to stop the VM failed.")
 		}
@@ -318,13 +317,16 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 		}
 	}
 
+	logger := log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()})
+	logger.Debug("Orchestrator received StopVM")
+
 	if err := vm.Conn.Close(); err != nil {
-		log.Println("Failed to close the connection to function: ", err)
+		logger.Warn("Failed to close the connection to function: ", err)
 		return "Closing connection to function in VM " + vmID + " failed", err
 	}
 	task := *vm.Task
 	if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
-		log.Println("Failed to kill the task: ", err)
+		logger.Warn("Failed to kill the task: ", err)
 		return "Killing task of VM " + vmID + " failed", err
 	}
 	status := <-vm.TaskCh
@@ -332,21 +334,22 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 		return "Waiting for task termination failed of the VM " + vmID, err
 	}
 	if _, err := task.Delete(ctx); err != nil {
-		log.Println("failed to delete the task of the VM: ", err)
+		logger.Warn("failed to delete the task of the VM: ", err)
 		return "Deleting task of VM " + vmID + " failed", err
 	}
 	container := *vm.Container
 	if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-		log.Println("failed to delete the container of the VM: ", err)
+		logger.Warn("failed to delete the container of the VM: ", err)
 		return "Deleting container of VM " + vmID + " failed", err
 	}
-	log.Println("Stopping the VM" + vmID)
 	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
-		log.Println("failed to stop the VM: ", err)
+		logger.Warn("failed to stop the VM: ", err)
 		return "Stopping VM " + vmID + " failed", err
 	}
 
 	o.niPool.Free(vm.Ni)
+
+	logger.Debug("Stopped VM successfully")
 
 	return "VM " + vmID + " stopped successfully", nil
 }
@@ -356,37 +359,36 @@ func (o *Orchestrator) StopActiveVMs() error {
 	var vmGroup sync.WaitGroup
 	for vmID, vm := range o.vmPool.GetVMMap() {
 		vmGroup.Add(1)
+		logger := log.WithFields(log.Fields{"vmID": vmID})
 		go func(vmID string, vm misc.VM) {
 			defer vmGroup.Done()
 			message, err := o.StopSingleVM(context.Background(), vmID)
 			if err != nil {
-				log.Printf(message, err)
+				logger.Warn(message, err)
 			}
-			log.Println(message)
+			logger.Info(message)
 		}(vmID, vm)
 	}
 
-	log.Println("waiting for goroutines")
+	log.Info("waiting for goroutines")
 	vmGroup.Wait()
-	log.Println("waiting done")
+	log.Info("waiting done")
 
-	log.Println("Closing fcClient")
+	log.Info("Closing fcClient")
 	o.fcClient.Close()
-	log.Println("Closing containerd client")
+	log.Info("Closing containerd client")
 	o.client.Close()
 
 	return nil
 }
 
 func (o *Orchestrator) setupHeartbeat() {
-	var heartbeat *time.Ticker
-	heartbeat = time.NewTicker(60 * time.Second)
+	heartbeat := time.NewTicker(60 * time.Second)
+
 	go func() {
 		for {
-			select {
-			case <-heartbeat.C:
-				log.Printf("HEARTBEAT: %v VMs are active\n", len(o.vmPool.GetVMMap()))
-			} // select
+			<-heartbeat.C
+			log.Info("HEARTBEAT: number of active VMs: ", len(o.vmPool.GetVMMap()))
 		} // for
 	}() // go func
 }
@@ -396,8 +398,8 @@ func (o *Orchestrator) setupCloseHandler() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		log.Println("\r- Ctrl+C pressed in Terminal")
-		o.StopActiveVMs()
+		log.Info("\r- Ctrl+C pressed in Terminal")
+		_ = o.StopActiveVMs()
 		os.Exit(0)
 	}()
 }
