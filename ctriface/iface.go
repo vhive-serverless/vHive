@@ -138,16 +138,27 @@ func (o *Orchestrator) getVMConfig(vmID string, ni misc.NetworkInterface) *proto
 	}
 }
 
-// ActiveVMExists Returns if the VM exists by ID
-func (o *Orchestrator) ActiveVMExists(vmID string) bool {
-	return o.vmPool.IsVMActive(vmID)
+// IsVMOff Returns if the VM is off
+func (o *Orchestrator) IsVMOff(vmID string) bool {
+	return o.vmPool.IsVMOff(vmID)
 }
 
-// FIXME: concurrent StartVM and StopVM with the same vmID would not work corrently.
-// TODO: add state machine to VM struct
+// IsVMStateStarting Returns if the corresponding state is true
+func (o *Orchestrator) IsVMStateStarting(vmID string) bool {
+	return o.vmPool.IsVMStateStarting(vmID)
+}
+
+// IsVMStateActive Returns if the corresponding state is true
+func (o *Orchestrator) IsVMStateActive(vmID string) bool {
+	return o.vmPool.IsVMStateActive(vmID)
+}
+
+// IsVMStateDeactivating Returns if the corresponding state is true
+func (o *Orchestrator) IsVMStateDeactivating(vmID string) bool {
+	return o.vmPool.IsVMStateDeactivating(vmID)
+}
 
 // StartVM Boots a VM if it does not exist
-// accounted for races: start->start; need stop->start, start->stop, stop->stop
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
 	var tProfile string
 	var tStart, tElapsed time.Time
@@ -265,19 +276,19 @@ func (o *Orchestrator) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 }
 
 func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, isTask bool) error {
-	// TODO: deactivate the VM by ID here (same in StopSingleVM
-	vm, err := o.vmPool.Free(vmID)
+	vm, err := o.vmPool.GetVM(vmID)
 	if err != nil {
-		if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
-			return nil // not an error
-		} else if _, ok := err.(*misc.DeactivatingErr); ok {
-			return err
-		} else {
-			panic("Deallocation failed for an unknown reason")
-		}
+		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to clean but VM does not exist")
+		return nil
 	}
 
-	log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()}).Debug("trying to clean up after failure")
+	if !o.vmPool.IsVMStateActive(vmID) {
+		return nil // already deactivated
+	}
+
+	vm.SetStateDeactivating()
+
+	log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()}).Debug("Cleaning up after a failure")
 
 	if isTask {
 		task := *vm.Task
@@ -298,8 +309,12 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, i
 		}
 	}
 
-	// TODO: free vm here by calling into the pool
 	o.niPool.Free(vm.Ni)
+	if err := o.vmPool.Free(vmID); err != nil {
+		return err
+	}
+
+	log.WithFields(log.Fields{"vmID": vmID}).Debug("Cleaned up successfully")
 
 	return nil
 }
@@ -307,10 +322,25 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, i
 // StopSingleVM Shuts down a VM
 // Note: VMs are not quisced before being stopped
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to clean but VM does not exist")
+		return "Tried to clean but VM does not exist", err
+	}
+
+	if o.vmPool.IsVMStateStarting(vmID) {
+		return "VM is starting", nil // do not stop a VM that is about to start
+	}
+
+	if !o.vmPool.IsVMStateActive(vmID) {
+		return "VM is already deactivated", nil // already deactivated
+	}
+
+	vm.SetStateDeactivating()
+
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-	vm, err := o.vmPool.Free(vmID)
-	if err != nil {
+	if err = o.vmPool.Free(vmID); err != nil {
 		if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
 			return "VM " + vmID + " is already being deactivated", nil // not an error
 		} else if _, ok := err.(*misc.DeactivatingErr); ok {
@@ -351,6 +381,9 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 	}
 
 	o.niPool.Free(vm.Ni)
+	if err := o.vmPool.Free(vmID); err != nil {
+		return "Free", err
+	}
 
 	logger.Debug("Stopped VM successfully")
 
@@ -363,7 +396,7 @@ func (o *Orchestrator) StopActiveVMs() error {
 	for vmID, vm := range o.vmPool.GetVMMap() {
 		vmGroup.Add(1)
 		logger := log.WithFields(log.Fields{"vmID": vmID})
-		go func(vmID string, vm misc.VM) {
+		go func(vmID string, vm *misc.VM) {
 			defer vmGroup.Done()
 			message, err := o.StopSingleVM(context.Background(), vmID)
 			if err != nil {
