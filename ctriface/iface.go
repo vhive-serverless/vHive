@@ -283,6 +283,7 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, i
 	}
 
 	if !o.vmPool.IsVMStateActive(vmID) {
+		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to clean but VM is already deactivated")
 		return nil // already deactivated
 	}
 
@@ -324,15 +325,17 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, i
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
 	vm, err := o.vmPool.GetVM(vmID)
 	if err != nil {
-		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to clean but VM does not exist")
+		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to stop the VM but it does not exist in the VM map")
 		return "Tried to clean but VM does not exist", err
 	}
 
 	if o.vmPool.IsVMStateStarting(vmID) {
+		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to stop the VM but it is starting, do nothing")
 		return "VM is starting", nil // do not stop a VM that is about to start
 	}
 
 	if !o.vmPool.IsVMStateActive(vmID) {
+		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to stop the VM but it is not active")
 		return "VM is already deactivated", nil // already deactivated
 	}
 
