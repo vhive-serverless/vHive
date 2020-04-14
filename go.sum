@@ -399,6 +399,8 @@ github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200413164142-b04439c4d30
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200413164142-b04439c4d302/go.mod h1:bhTLAr1xBO1+t6Vq6cN5V0e8D0yh8muKcYzQnWudxLE=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200414183629-b58923f11e33 h1:ICmWydSVPgnR0VPXYD5iezr022LhDqbNghSCsSba3tc=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200414183629-b58923f11e33/go.mod h1:gEOlXy18usGmfJmQ0hx15fT21SVBS9/6JeUo4u6UJ1o=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200414195918-0dd99bd7b46d h1:k0Tg4kvQ0Hi/eSjS0lu1cfVYsFrAu9KSBH8a87KWGf4=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200414195918-0dd99bd7b46d/go.mod h1:gEOlXy18usGmfJmQ0hx15fT21SVBS9/6JeUo4u6UJ1o=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325204940-c13b3ada6b2e h1:EawbS1IF/1NBezfT75mU1xQMo2IVHNFruWRCGdMp25Q=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325204940-c13b3ada6b2e/go.mod h1:CLfsuq4fCpqRVtrDi4VyBmYCB4qhXQBJo338I6Jzza4=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200325205406-9d4c3c735efc h1:ufjYBIr0eoVyy4jMPVSvjsql6XD2urUZ7vWGTvTEtAo=
@@ -452,6 +454,8 @@ github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200413164142-b04439c4d302/go
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200414150254-d4c6c2f6c314/go.mod h1:pdFaBbWgDU3nfmgCg7Ak6sKdAfmV68G8SUfBbMWy9HE=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200414183629-b58923f11e33 h1:CIFAp77ahi5HHL45m+9zM0tybpjJpDoEF86EKvUOubw=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200414183629-b58923f11e33/go.mod h1:pdFaBbWgDU3nfmgCg7Ak6sKdAfmV68G8SUfBbMWy9HE=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200414195918-0dd99bd7b46d h1:umNdw9hSb8zzcdAv1HSmXrxjOONdtGsKsTfOywsb6Mo=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200414195918-0dd99bd7b46d/go.mod h1:pdFaBbWgDU3nfmgCg7Ak6sKdAfmV68G8SUfBbMWy9HE=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200214170051-82e85ed41d8e h1:ylnYobjjBcB49hDPEO0e5w4t7qwy2uL8n1IKRyraUoQ=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200214170051-82e85ed41d8e/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200216190957-50b07037dc47 h1:P0qqpTsPQV/Tuaxrh9cUp9RFLTt+dwUBqw/aP0xhDaA=

@@ -88,11 +88,6 @@ func main() {
 
 	//log.SetOutput(&myWriter{Writer: flog})
 	//	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
-	if *debug == true {
-		log.SetLevel(log.DebugLevel)
-	} else {
-		log.SetLevel(log.WarnLevel)
-	}
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -101,6 +96,13 @@ func main() {
 
 	log.SetOutput(os.Stdout)
 	flag.Parse()
+
+	if *debug == true {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Debug logging is enabled")
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
 
 	orch = ctriface.NewOrchestrator(*snapshotter, *niNum)
 
