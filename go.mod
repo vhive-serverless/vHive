@@ -9,8 +9,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.5.0
 	github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200413123238-4ab57613a093
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200413164142-b04439c4d302
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200413164142-b04439c4d302
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200414183629-b58923f11e33
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200414183629-b58923f11e33
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200330172127-0d359e57cf32
 	github.com/ustiugov/skv v0.0.0-20180909015525-9def2caac4cc
 	google.golang.org/grpc v1.28.1

@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	_ "fmt"
 	_ "io/ioutil"
 	"math/rand"
@@ -44,8 +45,9 @@ import (
 )
 
 const (
-	port    = ":3333"
-	fwdPort = ":3334"
+	port         = ":3333"
+	fwdPort      = ":3334"
+	backoffDelay = 10 * time.Millisecond
 )
 
 var flog *os.File
@@ -77,6 +79,7 @@ func main() {
 	rand.Seed(42)
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
 	niNum := flag.Int("ni", 1500, "Number of interfaces allocated")
+	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
@@ -85,12 +88,16 @@ func main() {
 
 	//log.SetOutput(&myWriter{Writer: flog})
 	//	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
-	log.SetLevel(log.DebugLevel)
+	if *debug == true {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.WarnLevel)
+	}
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
-	log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
 	log.SetOutput(os.Stdout)
 	flag.Parse()
@@ -179,12 +186,9 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	logger.Debug("Received FwdHelloVM")
 
 	isColdStart := false
-	if !orch.ActiveVMExists(vmID) {
+	if !orch.IsVMStateActive(vmID) {
 		isColdStart = true
-		// TODO: call into goroutines to trigger startVM / prefetch
-		logger.Debug("VM does not exist for FwdHello")
-		message, _, err := orch.StartVM(context.Background(), vmID, imageName)
-		if err != nil {
+		if message, err := handleColdStart(vmID, imageName); err != nil {
 			return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, message+" StartVM failure upon request")
 		}
 	}
@@ -207,7 +211,35 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
 }
 
-/* TODO
-func handleColdStart(vmID string, chan ch) (error) {
+func handleColdStart(vmID string, imageName string) (message string, err error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	if orch.IsVMStateStarting(vmID) {
+		for i := 0; i < 1000; i++ {
+			time.Sleep(backoffDelay)
+			if orch.IsVMStateActive(vmID) {
+				logger.Debug(fmt.Sprintf("Waiting for the VM to start (%d)...", i))
+				break
+			} else if i == 999 {
+				logger.Warn("Failed to wait for the VM to start")
+				message = "Failed to wait for the VM to start"
+				err = errors.New("Failed to wait for the VM to start")
+			}
+		}
+	} else if orch.IsVMStateDeactivating(vmID) || orch.IsVMOff(vmID) {
+		for !orch.IsVMOff(vmID) {
+			logger.Debug("Waiting for the VM to shut down...")
+			time.Sleep(backoffDelay)
+		}
+		// TODO: call into goroutines to trigger startVM / prefetch
+		logger.Debug("VM does not exist for FwdHello")
+		message, _, err = orch.StartVM(context.Background(), vmID, imageName)
+		if err != nil {
+			logger.Debug(message, err)
+		}
+		return message, err
+	} else {
+		logger.Panic("Cold start handling failed.")
+	}
+	return message, err
 }
-*/
