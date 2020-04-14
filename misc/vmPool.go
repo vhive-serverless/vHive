@@ -62,40 +62,31 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 }
 
 // Free Removes a VM from the pool and transitions it to Deactivating
-func (p *VMPool) Free(vmID string) (*VM, error) {
+func (p *VMPool) Free(vmID string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	vm, isPresent := p.vmMap[vmID]
 	if !isPresent {
-		return vm, AlreadyDeactivatingErr("VM " + vmID)
+		log.WithFields(log.Fields{"vmID": vmID}).Warn("VM does not exist in the VM map")
+		return DeactivatingErr("VM " + vmID)
 	}
 
 	logger := log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()})
 
-	if !p.IsVMActive(vmID) && vm.isDeactivating {
-		logger.Warn("VM is among active VMs but already being deactivated")
-		return vm, AlreadyDeactivatingErr("VM " + vmID)
-	} else if !p.IsVMActive(vmID) {
-		logger.Warn("VM is inactive when trying to deallocate, do nothing")
-		return vm, DeactivatingErr("VM " + vmID)
+	if !vm.isDeactivating {
+		logger.Warn("VM must be in the Deactivating state")
+		return DeactivatingErr("VM " + vmID)
 	}
 
-	vm.SetStateDeactivating() // FIXME: deactivate in the beginning but delete in the end
 	delete(p.vmMap, vmID)
 
-	return vm, nil
+	return nil
 }
 
 // GetVMMap Returns the map of VMs
 func (p *VMPool) GetVMMap() map[string]*VM {
 	return p.vmMap
-}
-
-// IsVMActive Returns if the VM is active (in the active state and in the map)
-func (p *VMPool) IsVMActive(vmID string) bool {
-	vm, isPresent := p.vmMap[vmID]
-	return isPresent && vm.isActive
 }
 
 // SprintVMMap Returns a string with VMs' ID and state list
@@ -110,12 +101,26 @@ func (p *VMPool) SprintVMMap() (s string) {
 	return s
 }
 
+// GetVM Returns a pointer to the VM
+func (p *VMPool) GetVM(vmID string) (*VM, error) {
+	p.mu.Lock() // can be replaced by a per-VM lock?
+	defer p.mu.Unlock()
+
+	if !p.IsVMStateActive(vmID) {
+		return nil, NonExistErr("VM")
+	}
+
+	vm := p.vmMap[vmID]
+
+	return vm, nil
+}
+
 // GetFuncClient Returns the client to the function
 func (p *VMPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 	p.mu.Lock() // can be replaced by a per-VM lock?
 	defer p.mu.Unlock()
 
-	if !p.IsVMActive(vmID) {
+	if !p.IsVMStateActive(vmID) {
 		return nil, NonExistErr("FuncClient")
 	}
 
@@ -123,3 +128,86 @@ func (p *VMPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 
 	return vm.FuncClient, nil
 }
+
+// IsVMOff Returns if the VM is shut down
+func (p *VMPool) IsVMOff(vmID string) bool {
+	_, found := p.vmMap[vmID]
+	return !found
+}
+
+// IsVMStateStarting Returns if the corresponding state is true
+func (p *VMPool) IsVMStateStarting(vmID string) bool {
+	p.mu.Lock() // can be replaced by a per-VM lock?
+	defer p.mu.Unlock()
+
+	vm, found := p.vmMap[vmID]
+
+	return found && vm.isStarting
+}
+
+// IsVMStateActive Returns if the corresponding state is true
+func (p *VMPool) IsVMStateActive(vmID string) bool {
+	p.mu.Lock() // can be replaced by a per-VM lock?
+	defer p.mu.Unlock()
+
+	vm, found := p.vmMap[vmID]
+
+	return found && vm.isActive
+}
+
+// IsVMStateDeactivating Returns if the corresponding state is true
+func (p *VMPool) IsVMStateDeactivating(vmID string) bool {
+	p.mu.Lock() // can be replaced by a per-VM lock?
+	defer p.mu.Unlock()
+
+	vm, found := p.vmMap[vmID]
+
+	return found && vm.isDeactivating
+}
+
+/*
+// SetStateStarting Transitions a VM into the corresponding state
+func (p *VMPool) SetStateStarting(vmID string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	vm, isPresent := p.vmMap[vmID]
+	if !isPresent {
+		return NonExistErr("VM")
+	}
+
+	vm.SetStateStarting()
+
+	return nil
+}
+
+// SetStateActive Transitions a VM into the corresponding state
+func (p *VMPool) SetStateActive(vmID string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	vm, isPresent := p.vmMap[vmID]
+	if !isPresent {
+		return NonExistErr("VM")
+	}
+
+	vm.SetStateStarting()
+
+	return nil
+}
+
+// SetStateDeactivating Transitions a VM into the corresponding state
+func (p *VMPool) SetStateDeactivating(vmID string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	vm, isPresent := p.vmMap[vmID]
+	if !isPresent {
+		return NonExistErr("VM")
+	}
+
+	vm.SetStateDeactivating()
+
+	return nil
+}
+*/
