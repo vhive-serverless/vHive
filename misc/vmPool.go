@@ -47,10 +47,8 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 
 	vmTmp, isPresent := p.vmMap[vmID]
 
-	logger := log.WithFields(log.Fields{"vmID": vmID, "state": vmTmp.GetVMStateString()})
-
 	if isPresent && vmTmp.isStarting {
-		logger.Warn("VM is among active VMs")
+		log.WithFields(log.Fields{"vmID": vmID, "state": vmTmp.GetVMStateString()}).Warn("VM is among active VMs")
 		return nil, AlreadyStartingErr("VM")
 	} else if isPresent {
 		panic("allocate VM")
