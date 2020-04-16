@@ -1,6 +1,5 @@
 package ctriface
 
-/*
 import (
 	"context"
 	"testing"
@@ -36,4 +35,3 @@ func TestStartStopSerial(t *testing.T) {
 	message, err = orch.StopSingleVM(ctx, "test_vmID")
 	require.NoError(t, err, "Failed to stop VM, "+message)
 }
-*/

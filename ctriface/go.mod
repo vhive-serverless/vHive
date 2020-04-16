@@ -3,8 +3,15 @@ module github.com/ustiugov/fccd-orchestrator/ctriface
 go 1.14
 
 require (
-	github.com/ustiugov/fccd-orchestrator v0.0.0-20200416161510-f6f32fa5d52b // indirect
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b // indirect
+	github.com/containerd/containerd v1.3.4
+	github.com/davecgh/go-spew v1.1.1
+	github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200331220105-afedbc74f5ee
+	github.com/pkg/errors v0.9.1
+	github.com/sirupsen/logrus v1.5.0
+	github.com/stretchr/testify v1.5.1
+	github.com/ustiugov/fccd-orchestrator v0.0.0-20200416162058-c84de7c55996
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b
+	google.golang.org/grpc v1.28.1
 )
 
 // Workaround for github.com/containerd/containerd issue #3031
