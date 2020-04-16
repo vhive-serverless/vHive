@@ -101,8 +101,12 @@ func (p *VMPool) SprintVMMap() (s string) {
 
 // GetVM Returns a pointer to the VM
 func (p *VMPool) GetVM(vmID string) (*VM, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Acquiring the lock")
 	p.mu.Lock() // can be replaced by a per-VM lock?
 	defer p.mu.Unlock()
+	logger.Debug("Acquired the lock")
 
 	if !p.IsVMStateActive(vmID) {
 		return nil, NonExistErr("VM")
