@@ -80,7 +80,7 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 
-	o.setupCloseHandler()
+	//o.setupCloseHandler()
 	o.setupHeartbeat()
 
 	log.Info("Creating containerd client")
@@ -169,8 +169,6 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	if _, ok := err.(*misc.AlreadyStartingErr); ok {
 		return "VM " + vmID + " is already starting", tProfile, err
 	}
-
-	vm.SetStateStarting()
 
 	if vm.Ni, err = o.niPool.Allocate(); err != nil {
 		return "No free NI available", tProfile, err
@@ -263,8 +261,8 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	funcClient := hpb.NewGreeterClient(conn)
 	vm.FuncClient = &funcClient
 
-	vm.SetStateActive()
-	log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()}).Debug("Successfully started a VM")
+	o.vmPool.SetVMStateActive(vmID)
+	log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)}).Debug("Successfully started a VM")
 	log.Debug(o.vmPool.SprintVMMap())
 
 	return "VM, container, and task started successfully", tProfile, nil
@@ -275,21 +273,21 @@ func (o *Orchestrator) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 	return o.vmPool.GetFuncClient(vmID)
 }
 
+// TODO: VM must be in Starting state only, we deallocate it
 func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, isTask bool) error {
-	vm, err := o.vmPool.GetVM(vmID)
+	vm, err := o.vmPool.GetAndDeactivateVM(vmID)
 	if err != nil {
 		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to clean but VM does not exist")
 		return nil
 	}
 
+	//TODO: these checks should be in the pool
 	if !o.vmPool.IsVMStateActive(vmID) {
 		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to clean but VM is already deactivated")
 		return nil // already deactivated
 	}
 
-	vm.SetStateDeactivating()
-
-	log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()}).Debug("Cleaning up after a failure")
+	log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)}).Debug("Cleaning up after a failure")
 
 	if isTask {
 		task := *vm.Task
@@ -321,25 +319,28 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, i
 }
 
 // StopSingleVM Shuts down a VM
+// VM can be starting or deactivating (do nothing), active (shut down)
 // Note: VMs are not quisced before being stopped
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
-	vm, err := o.vmPool.GetVM(vmID)
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received StopVM")
+
+	vm, err := o.vmPool.GetAndDeactivateVM(vmID)
 	if err != nil {
-		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to stop the VM but it does not exist in the VM map")
+		logger.Warn("Tried to stop the VM but it does not exist in the VM map")
 		return "Tried to clean but VM does not exist", err
 	}
 
+	//TODO: these checks should be in the pool
 	if o.vmPool.IsVMStateStarting(vmID) {
-		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to stop the VM but it is starting, do nothing")
+		logger.Warn("Tried to stop the VM but it is starting, do nothing")
 		return "VM is starting", nil // do not stop a VM that is about to start
 	}
 
 	if !o.vmPool.IsVMStateActive(vmID) {
-		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to stop the VM but it is not active")
+		logger.Warn("Tried to stop the VM but it is not active")
 		return "VM is already deactivated", nil // already deactivated
 	}
-
-	vm.SetStateDeactivating()
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
@@ -353,8 +354,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 		}
 	}
 
-	logger := log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()})
-	logger.Debug("Orchestrator received StopVM")
+	logger = log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)})
 
 	if err := vm.Conn.Close(); err != nil {
 		logger.Warn("Failed to close the connection to function: ", err)

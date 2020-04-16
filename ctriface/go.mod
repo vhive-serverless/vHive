@@ -9,8 +9,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.5.0
 	github.com/stretchr/testify v1.5.1
-	github.com/ustiugov/fccd-orchestrator v0.0.0-20200416162058-c84de7c55996
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b
+	github.com/ustiugov/fccd-orchestrator v0.0.0-20200416171230-6533745bd3b1
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416202514-36e8c48eb599
 	google.golang.org/grpc v1.28.1
 )
 
