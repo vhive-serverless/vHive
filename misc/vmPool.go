@@ -113,14 +113,12 @@ func (p *VMPool) GetAndDeactivateVM(vmID string) (*VM, error) {
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
-	// TODO: VM can be starting
-	if !p.IsVMStateActive(vmID) {
+	// TODO: VM can be starting and we don't deallocate the VM then
+	vm, found := p.vmMap[vmID]
+	if !(found && vm.isActive) {
 		logger.Warn("VM is not active")
-		return nil, NonExistErr("VM")
+		return nil, NonExistErr("GetAndDeactivateVM")
 	}
-	logger.Debug("Deleting from the VM map")
-
-	vm := p.vmMap[vmID]
 
 	vm.setStateDeactivating()
 
