@@ -23,7 +23,6 @@
 package misc
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/containerd/containerd"
@@ -83,11 +82,6 @@ func NewVM(vmID string) *VM {
 	return vm
 }
 
-// GetVMStateString Returns VM state description
-func (vm *VM) GetVMStateString() string {
-	return fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating) // TODO: vmID ->fID
-}
-
 /*
 State-machine transitioning functions:
 
@@ -99,7 +93,7 @@ State-machine transitioning functions:
 */
 
 // SetStateStarting From x to Starting
-func (vm *VM) SetStateStarting() {
+func (vm *VM) setStateStarting() {
 	if vm.isActive || vm.isDeactivating || vm.isStarting {
 		panic("SetStateStarting")
 	}
@@ -110,7 +104,7 @@ func (vm *VM) SetStateStarting() {
 //TODO: setStateOflloading
 
 // SetStateActive From Starting to Active
-func (vm *VM) SetStateActive() {
+func (vm *VM) setStateActive() {
 	if vm.isActive || vm.isDeactivating || !vm.isStarting {
 		panic("SetStateActive")
 	}
@@ -120,7 +114,7 @@ func (vm *VM) SetStateActive() {
 }
 
 // SetStateDeactivating From Active to Deactivating
-func (vm *VM) SetStateDeactivating() {
+func (vm *VM) setStateDeactivating() {
 	if !vm.isActive || vm.isDeactivating || vm.isStarting {
 		panic("SetStateDeactivating")
 	}

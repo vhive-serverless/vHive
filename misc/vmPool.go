@@ -40,21 +40,24 @@ func NewVMPool() *VMPool {
 	return p
 }
 
-// Allocate Initializes a VM and adds it to the pool
+// Allocate Initializes a VM, activates it and then adds it to VM map
 func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	vmTmp, isPresent := p.vmMap[vmID]
+	vm, isPresent := p.vmMap[vmID]
 
-	if isPresent && vmTmp.isStarting {
-		log.WithFields(log.Fields{"vmID": vmID, "state": vmTmp.GetVMStateString()}).Warn("VM is among active VMs")
+	if isPresent && vm.isStarting {
+		sState := fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating)
+		log.WithFields(log.Fields{"vmID": vmID, "state": sState}).Warn("VM is among active VMs")
 		return nil, AlreadyStartingErr("VM")
 	} else if isPresent {
 		panic("allocate VM")
 	}
 
 	p.vmMap[vmID] = NewVM(vmID)
+
+	p.vmMap[vmID].setStateStarting()
 
 	return p.vmMap[vmID], nil
 }
@@ -70,12 +73,15 @@ func (p *VMPool) Free(vmID string) error {
 		return DeactivatingErr("VM " + vmID)
 	}
 
-	logger := log.WithFields(log.Fields{"vmID": vmID, "state": vm.GetVMStateString()})
+	sState := fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating)
+	logger := log.WithFields(log.Fields{"vmID": vmID, "state": sState})
 
 	if !vm.isDeactivating {
 		logger.Warn("VM must be in the Deactivating state")
 		return DeactivatingErr("VM " + vmID)
 	}
+
+	vm.isDeactivating = false // finish lifecycle
 
 	delete(p.vmMap, vmID)
 
@@ -93,53 +99,59 @@ func (p *VMPool) SprintVMMap() (s string) {
 	defer p.mu.Unlock()
 
 	for vmID, vm := range p.vmMap {
-		s += fmt.Sprintf("vmID=%v, state=%v\n", vmID, vm.GetVMStateString())
+		sState := fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating)
+		s += fmt.Sprintf("vmID=%v, state=%v\n", vmID, sState)
 	}
 
 	return s
 }
 
-// GetVM Returns a pointer to the VM
-func (p *VMPool) GetVM(vmID string) (*VM, error) {
+// GetAndDeactivateVM Returns a pointer to the VM
+func (p *VMPool) GetAndDeactivateVM(vmID string) (*VM, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
-	logger.Debug("Acquiring the lock")
-	p.mu.Lock() // can be replaced by a per-VM lock?
-	defer p.mu.Unlock()
-	logger.Debug("Acquired the lock")
-
+	// TODO: VM can be starting
 	if !p.IsVMStateActive(vmID) {
+		logger.Warn("VM is not active")
 		return nil, NonExistErr("VM")
 	}
+	logger.Debug("Deleting from the VM map")
 
 	vm := p.vmMap[vmID]
+
+	vm.setStateDeactivating()
 
 	return vm, nil
 }
 
 // GetFuncClient Returns the client to the function
 func (p *VMPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
-	p.mu.Lock() // can be replaced by a per-VM lock?
+	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if !p.IsVMStateActive(vmID) {
+	vm, found := p.vmMap[vmID]
+	if !(found && vm.isActive) {
 		return nil, NonExistErr("FuncClient")
 	}
-
-	vm := p.vmMap[vmID]
 
 	return vm.FuncClient, nil
 }
 
 // IsVMOff Returns if the VM is shut down
 func (p *VMPool) IsVMOff(vmID string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	_, found := p.vmMap[vmID]
 	return !found
 }
 
 // IsVMStateStarting Returns if the corresponding state is true
 func (p *VMPool) IsVMStateStarting(vmID string) bool {
-	p.mu.Lock() // can be replaced by a per-VM lock?
+	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	vm, found := p.vmMap[vmID]
@@ -149,7 +161,7 @@ func (p *VMPool) IsVMStateStarting(vmID string) bool {
 
 // IsVMStateActive Returns if the corresponding state is true
 func (p *VMPool) IsVMStateActive(vmID string) bool {
-	p.mu.Lock() // can be replaced by a per-VM lock?
+	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	vm, found := p.vmMap[vmID]
@@ -159,7 +171,7 @@ func (p *VMPool) IsVMStateActive(vmID string) bool {
 
 // IsVMStateDeactivating Returns if the corresponding state is true
 func (p *VMPool) IsVMStateDeactivating(vmID string) bool {
-	p.mu.Lock() // can be replaced by a per-VM lock?
+	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	vm, found := p.vmMap[vmID]
@@ -167,9 +179,22 @@ func (p *VMPool) IsVMStateDeactivating(vmID string) bool {
 	return found && vm.isDeactivating
 }
 
+// GetVMStateString Returns VM state description.
+func (p *VMPool) GetVMStateString(vmID string) string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	vm, isPresent := p.vmMap[vmID]
+	if !isPresent {
+		return "NaN"
+	}
+
+	return fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating) // TODO: vmID ->fID
+}
+
 /*
-// SetStateStarting Transitions a VM into the corresponding state
-func (p *VMPool) SetStateStarting(vmID string) error {
+// SetVMStateStarting Transitions a VM into the corresponding state
+func (p *VMPool) SetVMStateStarting(vmID string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -178,13 +203,30 @@ func (p *VMPool) SetStateStarting(vmID string) error {
 		return NonExistErr("VM")
 	}
 
-	vm.SetStateStarting()
+	vm.setStateStarting()
+
+	return nil
+}
+*/
+
+// SetVMStateActive Transitions a VM into the corresponding state
+func (p *VMPool) SetVMStateActive(vmID string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	vm, isPresent := p.vmMap[vmID]
+	if !isPresent {
+		return NonExistErr("VM")
+	}
+
+	vm.setStateActive()
 
 	return nil
 }
 
-// SetStateActive Transitions a VM into the corresponding state
-func (p *VMPool) SetStateActive(vmID string) error {
+/*
+// SetVMStateDeactivating Transitions a VM into the corresponding state
+func (p *VMPool) SetVMStateDeactivating(vmID string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -193,22 +235,7 @@ func (p *VMPool) SetStateActive(vmID string) error {
 		return NonExistErr("VM")
 	}
 
-	vm.SetStateStarting()
-
-	return nil
-}
-
-// SetStateDeactivating Transitions a VM into the corresponding state
-func (p *VMPool) SetStateDeactivating(vmID string) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	vm, isPresent := p.vmMap[vmID]
-	if !isPresent {
-		return NonExistErr("VM")
-	}
-
-	vm.SetStateDeactivating()
+	vm.setStateDeactivating()
 
 	return nil
 }
