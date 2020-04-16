@@ -12,7 +12,7 @@ go_library(
     importpath = "github.com/ustiugov/fccd-orchestrator",
     visibility = ["//visibility:private"],
     deps = [
-        "//ctrIface:go_default_library",
+        "//ctriface:go_default_library",
         "//helloworld:go_default_library",
         "//proto:proto_go_proto",
         "@com_github_pkg_errors//:go_default_library",

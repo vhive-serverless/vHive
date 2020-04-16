@@ -38,10 +38,10 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 
+	fcclient "github.com/firecracker-containerd/firecracker-containerd/firecracker-control/client"
+	"github.com/firecracker-containerd/firecracker-containerd/runtime/firecrackeroci"
 	"github.com/firecracker-microvm/firecracker-containerd/proto" // note: from the original repo
 	"github.com/pkg/errors"
-	fcclient "github.com/ustiugov/firecracker-containerd/firecracker-control/client"
-	"github.com/ustiugov/firecracker-containerd/runtime/firecrackeroci"
 
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/codes"  //tmp

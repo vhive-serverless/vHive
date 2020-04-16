@@ -8,7 +8,9 @@ require (
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200331220105-afedbc74f5ee
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.5.0
+	github.com/stretchr/testify v1.5.1
 	github.com/ustiugov/fccd-orchestrator v0.0.0-20200410134410-587637823777
+	github.com/ustiugov/fccd-orchestrator/ctrIface v0.0.0-20200330213144-565142c21c6d
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200414195918-0dd99bd7b46d
 	github.com/ustiugov/firecracker-containerd v0.0.0-20200410140658-7fe54d05c3fc
 	google.golang.org/grpc v1.28.1
