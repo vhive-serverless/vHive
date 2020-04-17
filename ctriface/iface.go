@@ -62,7 +62,6 @@ const (
 // Orchestrator Drives all VMs
 type Orchestrator struct {
 	vmPool       *misc.VMPool
-	niPool       *misc.NiPool
 	cachedImages map[string]containerd.Image
 	snapshotter  string
 	client       *containerd.Client
@@ -75,8 +74,7 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 	var err error
 
 	o := new(Orchestrator)
-	o.vmPool = misc.NewVMPool()
-	o.niPool = misc.NewNiPool(niNum * 2) // overprovision NIs
+	o.vmPool = misc.NewVMPool(niNum)
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 
@@ -165,13 +163,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("Orchestrator received StartVM")
 
+	// FIXME: does not account for Deactivating
 	vm, err := o.vmPool.Allocate(vmID)
 	if _, ok := err.(*misc.AlreadyStartingErr); ok {
 		return "VM " + vmID + " is already starting", tProfile, err
-	}
-
-	if vm.Ni, err = o.niPool.Allocate(); err != nil {
-		return "No free NI available", tProfile, err
 	}
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
@@ -187,7 +182,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
-		if errCleanup := o.cleanup(ctx, vmID, false, false, false); errCleanup != nil {
+		if errCleanup := o.cleanup(ctx, vm, false, false, false); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create the VM")
@@ -210,7 +205,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
-		if errCleanup := o.cleanup(ctx, vmID, true, false, false); errCleanup != nil {
+		if errCleanup := o.cleanup(ctx, vm, true, false, false); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a container")
@@ -222,7 +217,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
-		if errCleanup := o.cleanup(ctx, vmID, true, true, false); errCleanup != nil {
+		if errCleanup := o.cleanup(ctx, vm, true, true, false); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a task")
@@ -234,7 +229,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
-		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
+		if errCleanup := o.cleanup(ctx, vm, true, true, true); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to wait for a task")
@@ -242,7 +237,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
 	tStart = time.Now()
 	if err := task.Start(ctx); err != nil {
-		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
+		if errCleanup := o.cleanup(ctx, vm, true, true, true); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to start a task")
@@ -253,7 +248,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	conn, err := grpc.Dial(vm.Ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
 	vm.Conn = conn
 	if err != nil {
-		if errCleanup := o.cleanup(ctx, vmID, true, true, true); errCleanup != nil {
+		if errCleanup := o.cleanup(ctx, vm, true, true, true); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "Failed to connect to a function")
@@ -261,7 +256,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	funcClient := hpb.NewGreeterClient(conn)
 	vm.FuncClient = &funcClient
 
-	o.vmPool.SetVMStateActive(vmID)
+	if err := o.vmPool.SetVMStateActive(vmID); err != nil {
+		log.Panic("StartVM: Failed to set VM state to active")
+	}
+
 	log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)}).Debug("Successfully started a VM")
 	log.Debug(o.vmPool.SprintVMMap())
 
@@ -273,18 +271,12 @@ func (o *Orchestrator) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 	return o.vmPool.GetFuncClient(vmID)
 }
 
-// TODO: VM must be in Starting state only, we deallocate it
-func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, isTask bool) error {
-	vm, err := o.vmPool.GetAndDeactivateVM(vmID)
-	if err != nil {
-		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to clean but VM does not exist")
-		return nil
-	}
+func (o *Orchestrator) cleanup(ctx context.Context, vm *misc.VM, isVM, isCont, isTask bool) error {
+	vmID := vm.ID
 
-	//TODO: these checks should be in the pool
-	if !o.vmPool.IsVMStateActive(vmID) {
-		log.WithFields(log.Fields{"vmID": vmID}).Warn("Tried to clean but VM is already deactivated")
-		return nil // already deactivated
+	if !o.vmPool.IsVMStateStarting(vmID) {
+		log.WithFields(log.Fields{"vmID": vmID}).Panic("Tried to clean but VM is not Starting")
+		return errors.New("Starting")
 	}
 
 	log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)}).Debug("Cleaning up after a failure")
@@ -308,7 +300,6 @@ func (o *Orchestrator) cleanup(ctx context.Context, vmID string, isVM, isCont, i
 		}
 	}
 
-	o.niPool.Free(vm.Ni)
 	if err := o.vmPool.Free(vmID); err != nil {
 		return err
 	}
@@ -327,32 +318,16 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 
 	vm, err := o.vmPool.GetAndDeactivateVM(vmID)
 	if err != nil {
-		logger.Warn("Tried to stop the VM but it does not exist in the VM map")
-		return "Tried to clean but VM does not exist", err
-	}
-
-	//TODO: these checks should be in the pool
-	if o.vmPool.IsVMStateStarting(vmID) {
-		logger.Warn("Tried to stop the VM but it is starting, do nothing")
-		return "VM is starting", nil // do not stop a VM that is about to start
-	}
-
-	if !o.vmPool.IsVMStateActive(vmID) {
-		logger.Warn("Tried to stop the VM but it is not active")
-		return "VM is already deactivated", nil // already deactivated
+		if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
+			return "VM is already being deactivated", nil // not an error
+		} else if _, ok := err.(*misc.NonExistErr); ok {
+			return "VM does not exist", nil
+		} else {
+			panic("StopVM failed for an unknown reason")
+		}
 	}
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
-
-	if err = o.vmPool.Free(vmID); err != nil {
-		if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
-			return "VM " + vmID + " is already being deactivated", nil // not an error
-		} else if _, ok := err.(*misc.DeactivatingErr); ok {
-			return "Error while deallocating VM", err
-		} else {
-			panic("Deallocation failed for an unknown reason")
-		}
-	}
 
 	logger = log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)})
 
@@ -373,17 +348,18 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 		logger.Warn("failed to delete the task of the VM: ", err)
 		return "Deleting task of VM " + vmID + " failed", err
 	}
+
 	container := *vm.Container
 	if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
 		logger.Warn("failed to delete the container of the VM: ", err)
 		return "Deleting container of VM " + vmID + " failed", err
 	}
+
 	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
 		logger.Warn("failed to stop the VM: ", err)
 		return "Stopping VM " + vmID + " failed", err
 	}
 
-	o.niPool.Free(vm.Ni)
 	if err := o.vmPool.Free(vmID); err != nil {
 		return "Free", err
 	}

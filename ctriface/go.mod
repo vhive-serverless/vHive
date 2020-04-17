@@ -10,7 +10,7 @@ require (
 	github.com/sirupsen/logrus v1.5.0
 	github.com/stretchr/testify v1.5.1
 	github.com/ustiugov/fccd-orchestrator v0.0.0-20200416171230-6533745bd3b1
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416202514-36e8c48eb599
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200417111927-c9f33db90a77
 	google.golang.org/grpc v1.28.1
 )
 
