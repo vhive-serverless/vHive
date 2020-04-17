@@ -33,10 +33,11 @@ import (
 )
 
 // NewVMPool Initializes a pool of VMs
-func NewVMPool() *VMPool {
+func NewVMPool(niNum int) *VMPool {
 	p := new(VMPool)
 	p.mu = &sync.Mutex{}
 	p.vmMap = make(map[string]*VM)
+	p.niPool = NewNiPool(niNum)
 
 	return p
 }

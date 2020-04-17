@@ -71,7 +71,7 @@ type NiPool struct {
 type VMPool struct {
 	mu     *sync.Mutex
 	vmMap  map[string]*VM
-	niPool NiPool
+	niPool *NiPool
 }
 
 // NewVM Initialize a VM
