@@ -42,7 +42,7 @@ type NetworkInterface struct {
 
 // VM type
 type VM struct {
-	vmID string
+	ID string
 	//	functionID string // unused
 
 	Image      *containerd.Image
@@ -64,20 +64,20 @@ type VM struct {
 
 // NiPool Pool of NIs
 type NiPool struct {
-	mu     *sync.Mutex
 	niList []NetworkInterface
 }
 
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
-	mu    *sync.Mutex
-	vmMap map[string]*VM
+	mu     *sync.Mutex
+	vmMap  map[string]*VM
+	niPool NiPool
 }
 
 // NewVM Initialize a VM
 func NewVM(vmID string) *VM {
 	vm := new(VM)
-	vm.vmID = vmID
+	vm.ID = vmID
 
 	return vm
 }

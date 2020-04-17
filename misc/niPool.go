@@ -24,15 +24,14 @@ package misc
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // NewNiPool Initializes a new NI pool
 func NewNiPool(niNum int) *NiPool {
 	p := new(NiPool)
-	p.mu = &sync.Mutex{}
 
 	for i := 0; i < niNum; i++ {
 		ni := NetworkInterface{
@@ -51,19 +50,18 @@ func NewNiPool(niNum int) *NiPool {
 // Allocate Returns a pointer to a pre-initialized NI
 func (p *NiPool) Allocate() (*NetworkInterface, error) {
 	var ni NetworkInterface
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	if len(p.niList) == 0 {
 		return nil, errors.New("No NI available")
 	}
 	ni, p.niList = p.niList[0], p.niList[1:]
+
+	log.Debug("Allocate (NI): allocated ni with IP=" + ni.PrimaryAddress)
 
 	return &ni, nil
 }
 
 // Free Returns NI to the list of NIs in the pool
 func (p *NiPool) Free(ni *NetworkInterface) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	p.niList = append(p.niList, *ni)
+	log.Debug("Free (NI): freed ni with IP=" + ni.PrimaryAddress)
 }

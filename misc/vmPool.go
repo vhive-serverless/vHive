@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
@@ -47,16 +48,26 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 
 	vm, isPresent := p.vmMap[vmID]
 
-	if isPresent && vm.isStarting {
+	if isPresent {
 		sState := fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating)
-		log.WithFields(log.Fields{"vmID": vmID, "state": sState}).Warn("VM is among active VMs")
-		return nil, AlreadyStartingErr("VM")
-	} else if isPresent {
-		panic("allocate VM")
+		logger := log.WithFields(log.Fields{"vmID": vmID, "state": sState})
+		if vm.isStarting {
+			logger.Debug("Allocate (VM): VM is starting, do nothing")
+			return nil, AlreadyStartingErr("VM")
+		} else {
+			logger.Panic("Allocate (VM): VM exists in the map")
+		}
 	}
 
 	p.vmMap[vmID] = NewVM(vmID)
 
+	var err error
+	p.vmMap[vmID].Ni, err = p.niPool.Allocate()
+	if err != nil {
+		log.WithFields(log.Fields{"vmID": vmID}).Warn("Ni allocation failed, freeing VM from the pool")
+		delete(p.vmMap, vmID)
+		return nil, err
+	}
 	p.vmMap[vmID].setStateStarting()
 
 	return p.vmMap[vmID], nil
@@ -69,19 +80,22 @@ func (p *VMPool) Free(vmID string) error {
 
 	vm, isPresent := p.vmMap[vmID]
 	if !isPresent {
-		log.WithFields(log.Fields{"vmID": vmID}).Warn("VM does not exist in the VM map")
-		return DeactivatingErr("VM " + vmID)
+		log.WithFields(log.Fields{"vmID": vmID}).Panic("Free (VM): VM does not exist in the map")
+		return errors.New("VM does not exist when freeing a VM from the pool")
+	} else if isPresent && !(vm.isDeactivating || vm.isStarting) {
+		sState := fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating)
+		logger := log.WithFields(log.Fields{"vmID": vmID, "state": sState})
+		logger.Panic("Free (VM): VM is not in the Deactivating or Starting states")
+		return errors.New("VM in the wrong state when freeing a VM from the pool")
 	}
 
 	sState := fmt.Sprintf("|S=%t|A=%t|D=%t|", vm.isStarting, vm.isActive, vm.isDeactivating)
 	logger := log.WithFields(log.Fields{"vmID": vmID, "state": sState})
 
-	if !vm.isDeactivating {
-		logger.Warn("VM must be in the Deactivating state")
-		return DeactivatingErr("VM " + vmID)
-	}
+	logger.Debug("Free (VM): Freeing VM from the pool")
 
 	vm.isDeactivating = false // finish lifecycle
+	p.niPool.Free(vm.Ni)
 
 	delete(p.vmMap, vmID)
 
@@ -115,9 +129,17 @@ func (p *VMPool) GetAndDeactivateVM(vmID string) (*VM, error) {
 
 	// TODO: VM can be starting and we don't deallocate the VM then
 	vm, found := p.vmMap[vmID]
-	if !(found && vm.isActive) {
-		logger.Warn("VM is not active")
+	if !found {
+		logger.Debug("VM is not in the VM map, do nothing")
+		return nil, NonExistErr("GetAndDeactivate: VM is not in the VM map, do nothing")
+	} else if found && vm.isStarting {
+		logger.Debug("GetAndDeactivate: VM is starting, do nothing")
 		return nil, NonExistErr("GetAndDeactivateVM")
+	} else if found && vm.isDeactivating {
+		logger.Debug("GetAndDeactivate: VM is deactivating, do nothing")
+		return nil, AlreadyDeactivatingErr("GetAndDeactivateVM: VM is already deactivating, do nothing")
+	} else if found && !vm.isActive {
+		logger.Panic("GetAndDeactivateVM: unknown error")
 	}
 
 	vm.setStateDeactivating()
