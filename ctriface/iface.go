@@ -335,14 +335,11 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 		logger.Warn("Failed to close the connection to function: ", err)
 		return "Closing connection to function in VM " + vmID + " failed", err
 	}
+
 	task := *vm.Task
 	if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
 		logger.Warn("Failed to kill the task: ", err)
 		return "Killing task of VM " + vmID + " failed", err
-	}
-	status := <-vm.TaskCh
-	if _, _, err := status.Result(); err != nil {
-		return "Waiting for task termination failed of the VM " + vmID, err
 	}
 	if _, err := task.Delete(ctx); err != nil {
 		logger.Warn("failed to delete the task of the VM: ", err)
