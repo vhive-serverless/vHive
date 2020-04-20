@@ -25,7 +25,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	_ "fmt"
 	_ "io/ioutil"
 	"math/rand"
@@ -35,8 +34,6 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/pkg/errors"
 
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
@@ -52,6 +49,7 @@ const (
 
 var flog *os.File
 var orch *ctriface.Orchestrator
+var funcPool *FuncPool
 
 /*
 type myWriter struct {
@@ -105,6 +103,8 @@ func main() {
 	}
 
 	orch = ctriface.NewOrchestrator(*snapshotter, *niNum)
+
+	funcPool = NewFuncPool()
 
 	go orchServe()
 	fwdServe()
@@ -163,6 +163,9 @@ func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.
 	vmID := in.GetId()
 	log.WithFields(log.Fields{"vmID": vmID}).Info("Received StopVM")
 	message, err := orch.StopSingleVM(ctx, vmID)
+	if err != nil {
+		log.Warn(message, err)
+	}
 
 	return &pb.Status{Message: message}, err
 }
@@ -180,39 +183,34 @@ func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, er
 }
 
 func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.FwdHelloResp, error) {
-	vmID := in.GetId()
+	fID := in.GetId()
 	imageName := in.GetImage()
 	payload := in.GetPayload()
 
-	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName, "payload": payload})
+	logger := log.WithFields(log.Fields{"vmID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
 	isColdStart := false
-	if !orch.IsVMStateActive(vmID) {
-		isColdStart = true
-		if message, err := handleColdStart(vmID, imageName); err != nil {
-			return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, errors.Wrapf(err, message+" StartVM failure upon request")
-		}
+
+	fun := funcPool.GetFunction(fID, imageName)
+
+	if !fun.IsActive() {
+		ctxAddInst, cancelAddInst := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancelAddInst()
+
+		fun.AddInstance(ctxAddInst)
 	}
 
-	funcClientPtr, err := orch.GetFuncClient(vmID)
-	if err != nil {
-		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
-	}
-
-	funcClient := *funcClientPtr
-
-	ctxFwd, cancelFwd := context.WithTimeout(context.Background(), time.Millisecond*100)
-	defer cancelFwd()
-
-	resp, err := funcClient.SayHello(ctxFwd, &hpb.HelloRequest{Name: payload})
+	resp, err := fun.FwdRPC(ctx, payload)
 	if err != nil {
 		logger.Warn("Function returned error: ", err)
 		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
 	}
+
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
 }
 
+/*
 func handleColdStart(vmID string, imageName string) (message string, err error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -245,3 +243,4 @@ func handleColdStart(vmID string, imageName string) (message string, err error) 
 	}
 	return message, err
 }
+*/

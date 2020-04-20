@@ -10,7 +10,9 @@ require (
 	github.com/golang/protobuf v1.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.5.0
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200416161917-c9cd3cf6dbcf
+	github.com/stretchr/testify v1.5.1
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200417191122-72eef2f2433e
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200417191122-72eef2f2433e
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200416161917-c9cd3cf6dbcf
 	google.golang.org/grpc v1.28.1
 )
