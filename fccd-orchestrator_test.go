@@ -48,6 +48,45 @@ func TestSendToFunction(t *testing.T) {
 	orch = ctriface.NewOrchestrator("devmapper", 1)
 	funcPool = NewFuncPool()
 
+	fID := "0"
+	imageName := "ustiugov/helloworld:runner_workload"
+
+	for i := 0; i < 2; i++ {
+		fun := funcPool.GetFunction(fID, imageName)
+
+		if !fun.IsActive() {
+			onceBody := func() {
+				fun.AddInstance()
+			}
+			fun.Once.Do(onceBody)
+		}
+
+		resp, err := fun.FwdRPC(context.Background(), "hello")
+		require.NoError(t, err, "Function returned error")
+
+		log.Info(fmt.Sprintf("Sent to the function (%d), response=%s", i, resp.Message))
+	}
+
+	fun := funcPool.GetFunction(fID, imageName)
+	message, err := fun.RemoveInstance()
+	require.NoError(t, err, "Function returned error, "+message)
+}
+
+/*
+func TestSendToFunctionParallel(t *testing.T) {
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
+	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+
+	log.SetOutput(os.Stdout)
+
+	log.SetLevel(log.DebugLevel)
+
+	orch = ctriface.NewOrchestrator("devmapper", 1)
+	funcPool = NewFuncPool()
+
 	for i := 0; i < 2; i++ {
 		fID := "0"
 		imageName := "ustiugov/helloworld:runner_workload"
@@ -55,7 +94,7 @@ func TestSendToFunction(t *testing.T) {
 		fun := funcPool.GetFunction(fID, imageName)
 
 		if !fun.IsActive() {
-			fun.AddInstance(context.Background())
+			fun.AddInstance()
 		}
 
 		log.Info(fmt.Sprintf("Sending to the function (%d)", i))
@@ -64,3 +103,4 @@ func TestSendToFunction(t *testing.T) {
 		require.NoError(t, err, "Function returned error")
 	}
 }
+*/

@@ -195,10 +195,10 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	fun := funcPool.GetFunction(fID, imageName)
 
 	if !fun.IsActive() {
-		ctxAddInst, cancelAddInst := context.WithTimeout(context.Background(), time.Second*30)
-		defer cancelAddInst()
-
-		fun.AddInstance(ctxAddInst)
+		onceBody := func() {
+			fun.AddInstance()
+		}
+		fun.Once.Do(onceBody)
 	}
 
 	resp, err := fun.FwdRPC(ctx, payload)

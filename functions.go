@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
@@ -52,6 +53,7 @@ func NewFuncPool() *FuncPool {
 func (p *FuncPool) GetFunction(fID, imageName string) *Function {
 	p.Lock()
 	defer p.Unlock()
+
 	_, found := p.funcMap[fID]
 	if !found {
 		p.funcMap[fID] = NewFunction(fID, imageName)
@@ -65,6 +67,7 @@ func (p *FuncPool) GetFunction(fID, imageName string) *Function {
 // Function type
 type Function struct {
 	sync.RWMutex
+	Once           *sync.Once
 	fID            string
 	imageName      string
 	vmIDList       []string // FIXME: only a single VM per function is supported
@@ -77,6 +80,7 @@ func NewFunction(fID, imageName string) *Function {
 	f := new(Function)
 	f.fID = fID
 	f.imageName = imageName
+	f.Once = new(sync.Once)
 
 	return f
 }
@@ -108,15 +112,15 @@ func (f *Function) FwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 }
 
 // AddInstance Starts a VM, waits till it is ready.
-func (f *Function) AddInstance(ctx context.Context) {
+func (f *Function) AddInstance() {
 	f.Lock()
 	defer f.Unlock()
 
-	if f.isActive {
-		return
-	}
-
 	vmID := fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	message, _, err := orch.StartVM(ctx, vmID, f.imageName)
 	if err != nil {
 		log.Panic(message, err)
@@ -141,6 +145,8 @@ func (f *Function) RemoveInstance() (string, error) {
 	} else {
 		panic("List of function's instance is not empty after stopping an instance!")
 	}
+
+	f.Once = new(sync.Once)
 	f.Unlock()
 
 	message, err := orch.StopSingleVM(context.Background(), vmID)
