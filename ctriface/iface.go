@@ -263,7 +263,6 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		vm.Ni.PrimaryAddress+":50051",
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
-		grpc.FailOnNonTempDialError(true),
 		grpc.WithConnectParams(connParams),
 	)
 	vm.Conn = conn
