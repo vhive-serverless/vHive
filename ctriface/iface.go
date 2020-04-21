@@ -44,6 +44,7 @@ import (
 	"github.com/pkg/errors"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
@@ -252,7 +253,19 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 
 	logger.Debug("StartVM: Calling function's gRPC server")
-	conn, err := grpc.Dial(vm.Ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
+
+	backoffConfig := backoff.DefaultConfig
+	backoffConfig.MaxDelay = 1 * time.Second
+	connParams := grpc.ConnectParams{
+		Backoff: backoffConfig,
+	}
+	conn, err := grpc.Dial(
+		vm.Ni.PrimaryAddress+":50051",
+		grpc.WithInsecure(),
+		grpc.WithBlock(),
+		grpc.FailOnNonTempDialError(true),
+		grpc.WithConnectParams(connParams),
+	)
 	vm.Conn = conn
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vm, true, true, true); errCleanup != nil {
