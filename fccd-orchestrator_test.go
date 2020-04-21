@@ -43,7 +43,7 @@ func TestSendToFunction(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	orch = ctriface.NewOrchestrator("devmapper", 1)
 	funcPool = NewFuncPool()
