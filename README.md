@@ -1,7 +1,7 @@
 # fccd-orchestrator
 VM orchestrator for Firecracker-Containerd
 
-# Goland specifics
+# Golang specifics
 Need to clone the firecracker-containerd dependency (that might be a fork) under 
 `src/github/firecracker-microvm/firecracker-containerd` because this repo depends on
 repos from the origin. This Golang/fork workaround is taken from [here](http://code.openark.org/blog/development/forking-golang-repositories-on-github-and-managing-the-import-path).
