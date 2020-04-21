@@ -165,6 +165,7 @@ github.com/golang/protobuf v1.3.0/go.mod h1:Qd/q+1AKNOZr9uGQzbzCmRO6sUih6GTPZv6a
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.3.3 h1:gyjaxf+svBWX08ZjK86iN9geUJF0H6gp2IRKX6Nf6/I=
 github.com/golang/protobuf v1.3.3/go.mod h1:vzj43D7+SQXF/4pzW/hwtAqwc6iTitCiVSaWz5lYuqw=
 github.com/golang/protobuf v1.4.0-rc.1/go.mod h1:ceaxUfeHdC40wWswd/P6IGgMaK3YpKi5j83Wpe3EHw8=
 github.com/golang/protobuf v1.4.0-rc.1.0.20200221234624-67d41d38c208/go.mod h1:xKAWHe0F5eneWXFV3EuXVDTCmh+JuBKY0li0aMyXATA=
@@ -283,6 +284,8 @@ github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200420204514-a5fcc6bd6e6
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200420204514-a5fcc6bd6e6f/go.mod h1:ZaiJwDgrPAOSG1E9etn/+KhpfMlb5kEPvbkTL/IFvWM=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200420212607-717bf8a7d038 h1:JcxighvZEqQAJr0I5AuEsdR/OMjnRjuzWD8G7j1ntY0=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200420212607-717bf8a7d038/go.mod h1:ZaiJwDgrPAOSG1E9etn/+KhpfMlb5kEPvbkTL/IFvWM=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200421101715-3d8808b0d980 h1:UpTCUpY1E/2Z01O2PqGmwkrsWKSiFmdn8uTikjKdrLQ=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200421101715-3d8808b0d980/go.mod h1:mDK7wXqP5tUuREIOdIaYpyuNoHumX5SA9aGQkM3deec=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b h1:HAh2FBZ0QkBGxU/llIVVOhfnqCPEkE353FpZg7Y6sh0=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b/go.mod h1:tPZXBU39WgZYegI7Cxm6k2434V9WR/4xyuTBK0MrlBw=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200417111927-c9f33db90a77/go.mod h1:WlEt9PMeV51HejLsw+9EIbgmGMRKyl937AROL/oAOCo=
@@ -290,9 +293,13 @@ github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200417191122-72eef2f2433e h1
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200417191122-72eef2f2433e/go.mod h1:WlEt9PMeV51HejLsw+9EIbgmGMRKyl937AROL/oAOCo=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200420212607-717bf8a7d038 h1:YlMC5N/G6u0FgzeaUdLvt9JsS4N05KqEvTIOL/cqADw=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200420212607-717bf8a7d038/go.mod h1:LZZQWLKOCyDwkgQVTV2sWa4zBO5cbGMOv/SiV2ZsUx4=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200421101715-3d8808b0d980 h1:qne/0aa4Z40YKHWNv8vVO4iHAfSgV2CXgFPivcgQ8ls=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200421101715-3d8808b0d980/go.mod h1:YjIYSOHwzfckb5CsVOOCvIBUyUh7b376kVdcH+NJwpI=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200416160505-409015e84eac/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200416161917-c9cd3cf6dbcf h1:6qCMMnBiqy02ujCmoeuMN7Di/9NJ08sGWvOg7VX/AA8=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200416161917-c9cd3cf6dbcf/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
+github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200421101715-3d8808b0d980 h1:5aODwsQUaVEdhQOtQHWkFdJpW0AvGjxNrozcD/v4XZY=
+github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200421101715-3d8808b0d980/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
 github.com/vektah/gqlparser v1.1.2/go.mod h1:1ycwN7Ij5njmMkPPAOaRFY4rET2Enx7IkVv3vaXspKw=
 github.com/vishvananda/netlink v0.0.0-20181108222139-023a6dafdcdf/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYppBueQtXaqoE=
@@ -404,8 +411,10 @@ google.golang.org/grpc v1.25.1/go.mod h1:c3i+UQWmh7LiEpx4sFZnkU36qjEYZ0imhYfXVyQ
 google.golang.org/grpc v1.26.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
 google.golang.org/grpc v1.27.0-pre/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
 google.golang.org/grpc v1.27.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
+google.golang.org/grpc v1.27.1 h1:zvIju4sqAGvwKspUQOhwnpcqSbzi7/H6QomNNjTL4sk=
 google.golang.org/grpc v1.27.1/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
 google.golang.org/grpc v1.28.0-pre/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
+google.golang.org/grpc v1.28.0 h1:bO/TA4OxCOummhSf10siHuG7vJOiwh7SpRpFZDkOgl4=
 google.golang.org/grpc v1.28.0/go.mod h1:rpkK4SK4GF4Ach/+MFLZUBavHOvF2JJB5uozKKal+60=
 google.golang.org/grpc v1.28.1 h1:C1QC6KzgSiLyBabDi87BbjaGreoRgGUF5nOyvfrAZ1k=
 google.golang.org/grpc v1.28.1/go.mod h1:rpkK4SK4GF4Ach/+MFLZUBavHOvF2JJB5uozKKal+60=

@@ -154,7 +154,9 @@ github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfb
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.3.3 h1:gyjaxf+svBWX08ZjK86iN9geUJF0H6gp2IRKX6Nf6/I=
 github.com/golang/protobuf v1.3.3/go.mod h1:vzj43D7+SQXF/4pzW/hwtAqwc6iTitCiVSaWz5lYuqw=
 github.com/golang/protobuf v1.4.0-rc.1/go.mod h1:ceaxUfeHdC40wWswd/P6IGgMaK3YpKi5j83Wpe3EHw8=
 github.com/golang/protobuf v1.4.0-rc.1.0.20200221234624-67d41d38c208/go.mod h1:xKAWHe0F5eneWXFV3EuXVDTCmh+JuBKY0li0aMyXATA=
@@ -263,6 +265,8 @@ github.com/ustiugov/fccd-orchestrator v0.0.0-20200416171230-6533745bd3b1 h1:9dpG
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200416171230-6533745bd3b1/go.mod h1:1QV7J7KkhH6d5fcF5ueg7IymQSpM/mspoVpYIr+tdCw=
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200420212607-717bf8a7d038 h1:9axKggHpIRARuiSCvkU0YNlGvx2D5UeMfCaXNunZF5s=
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200420212607-717bf8a7d038/go.mod h1:ZQV5nQBWL8SmHYNaXFXP9WnXIFbsaPrwOmLd57F4D+k=
+github.com/ustiugov/fccd-orchestrator v0.0.0-20200421101715-3d8808b0d980 h1:PZvabppAqR0U/YcHD6uoCrCRRv/7qmNzvVlqRvV7WOE=
+github.com/ustiugov/fccd-orchestrator v0.0.0-20200421101715-3d8808b0d980/go.mod h1:KxjWdnprMYPUKq6lO/VXN+9lyaP4NeJMLtmdyKd8Jb0=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200416161917-c9cd3cf6dbcf/go.mod h1:2x1L5ydHhOsleqG/GQ9MLWgjF1YQF91u5pe0TvKEjhI=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200420204514-a5fcc6bd6e6f/go.mod h1:ZaiJwDgrPAOSG1E9etn/+KhpfMlb5kEPvbkTL/IFvWM=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b/go.mod h1:tPZXBU39WgZYegI7Cxm6k2434V9WR/4xyuTBK0MrlBw=
@@ -372,6 +376,8 @@ google.golang.org/grpc v1.23.0/go.mod h1:Y5yQAOtifL1yxbo5wqy6BxZv8vAUGQwXBOALyac
 google.golang.org/grpc v1.25.1/go.mod h1:c3i+UQWmh7LiEpx4sFZnkU36qjEYZ0imhYfXVyQciAY=
 google.golang.org/grpc v1.27.1 h1:zvIju4sqAGvwKspUQOhwnpcqSbzi7/H6QomNNjTL4sk=
 google.golang.org/grpc v1.27.1/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
+google.golang.org/grpc v1.28.0 h1:bO/TA4OxCOummhSf10siHuG7vJOiwh7SpRpFZDkOgl4=
+google.golang.org/grpc v1.28.0/go.mod h1:rpkK4SK4GF4Ach/+MFLZUBavHOvF2JJB5uozKKal+60=
 google.golang.org/grpc v1.28.1 h1:C1QC6KzgSiLyBabDi87BbjaGreoRgGUF5nOyvfrAZ1k=
 google.golang.org/grpc v1.28.1/go.mod h1:rpkK4SK4GF4Ach/+MFLZUBavHOvF2JJB5uozKKal+60=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=

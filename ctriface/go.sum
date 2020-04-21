@@ -306,6 +306,8 @@ github.com/ustiugov/fccd-orchestrator v0.0.0-20200416162058-c84de7c55996 h1:g0iH
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200416162058-c84de7c55996/go.mod h1:1QV7J7KkhH6d5fcF5ueg7IymQSpM/mspoVpYIr+tdCw=
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200416171230-6533745bd3b1 h1:9dpGd+5fETXSWQm8vqBQmP8Ws8WTbclMsD+ZT00q2R0=
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200416171230-6533745bd3b1/go.mod h1:1QV7J7KkhH6d5fcF5ueg7IymQSpM/mspoVpYIr+tdCw=
+github.com/ustiugov/fccd-orchestrator v0.0.0-20200421101715-3d8808b0d980 h1:PZvabppAqR0U/YcHD6uoCrCRRv/7qmNzvVlqRvV7WOE=
+github.com/ustiugov/fccd-orchestrator v0.0.0-20200421101715-3d8808b0d980/go.mod h1:KxjWdnprMYPUKq6lO/VXN+9lyaP4NeJMLtmdyKd8Jb0=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200416161917-c9cd3cf6dbcf/go.mod h1:2x1L5ydHhOsleqG/GQ9MLWgjF1YQF91u5pe0TvKEjhI=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b h1:HAh2FBZ0QkBGxU/llIVVOhfnqCPEkE353FpZg7Y6sh0=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b/go.mod h1:tPZXBU39WgZYegI7Cxm6k2434V9WR/4xyuTBK0MrlBw=
@@ -325,6 +327,8 @@ github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200417191122-72eef2f2433e h1
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200417191122-72eef2f2433e/go.mod h1:WlEt9PMeV51HejLsw+9EIbgmGMRKyl937AROL/oAOCo=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200420212607-717bf8a7d038 h1:YlMC5N/G6u0FgzeaUdLvt9JsS4N05KqEvTIOL/cqADw=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200420212607-717bf8a7d038/go.mod h1:LZZQWLKOCyDwkgQVTV2sWa4zBO5cbGMOv/SiV2ZsUx4=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200421101715-3d8808b0d980 h1:qne/0aa4Z40YKHWNv8vVO4iHAfSgV2CXgFPivcgQ8ls=
+github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200421101715-3d8808b0d980/go.mod h1:YjIYSOHwzfckb5CsVOOCvIBUyUh7b376kVdcH+NJwpI=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200416160505-409015e84eac/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200416161917-c9cd3cf6dbcf h1:6qCMMnBiqy02ujCmoeuMN7Di/9NJ08sGWvOg7VX/AA8=
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200416161917-c9cd3cf6dbcf/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
@@ -421,6 +425,7 @@ google.golang.org/appengine v1.1.0/go.mod h1:EbEs0AVv82hx2wNQdGPgUI5lhzA/G0D9Ywl
 google.golang.org/appengine v1.4.0/go.mod h1:xpcJRLb0r/rnEns0DIKYYv+WjYCduHsrkT7/EB5XEv4=
 google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8/go.mod h1:JiN7NxoALGmiZfu7CAH4rXhgtRTLTxftemlI0sWmxmc=
 google.golang.org/genproto v0.0.0-20181109154231-b5d43981345b/go.mod h1:7Ep/1NZk928CDR8SjdVbjWNpdIf6nzjE3BTgJDr2Atg=
+google.golang.org/genproto v0.0.0-20190425155659-357c62f0e4bb h1:i1Ppqkc3WQXikh8bXiwHqAN5Rv3/qDCcRk0/Otx73BY=
 google.golang.org/genproto v0.0.0-20190425155659-357c62f0e4bb/go.mod h1:VzzqZJRnGkLBvHegQrXjBqPurQTc5/KpmUdxsrq26oE=
 google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 h1:gSJIx1SDwno+2ElGhA4+qG2zF97qiUzTM+rQ0klBOcE=
 google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55/go.mod h1:DMBHOl98Agz4BDEuKkezgsaosCRResVns1a3J2ZsMNc=
@@ -433,6 +438,8 @@ google.golang.org/grpc v1.21.0/go.mod h1:oYelfM1adQP15Ek0mdvEgi9Df8B9CZIaU1084ij
 google.golang.org/grpc v1.23.0/go.mod h1:Y5yQAOtifL1yxbo5wqy6BxZv8vAUGQwXBOALyacEbxg=
 google.golang.org/grpc v1.25.1/go.mod h1:c3i+UQWmh7LiEpx4sFZnkU36qjEYZ0imhYfXVyQciAY=
 google.golang.org/grpc v1.27.1/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
+google.golang.org/grpc v1.28.0 h1:bO/TA4OxCOummhSf10siHuG7vJOiwh7SpRpFZDkOgl4=
+google.golang.org/grpc v1.28.0/go.mod h1:rpkK4SK4GF4Ach/+MFLZUBavHOvF2JJB5uozKKal+60=
 google.golang.org/grpc v1.28.1 h1:C1QC6KzgSiLyBabDi87BbjaGreoRgGUF5nOyvfrAZ1k=
 google.golang.org/grpc v1.28.1/go.mod h1:rpkK4SK4GF4Ach/+MFLZUBavHOvF2JJB5uozKKal+60=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
