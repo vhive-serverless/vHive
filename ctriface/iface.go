@@ -100,6 +100,7 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	image, found := o.cachedImages[imageName]
 	if !found {
 		var err error
+		log.Debug("Orchestrator received StartVM")
 		image, err = o.client.Pull(ctx, "docker.io/"+imageName,
 			containerd.WithPullUnpack,
 			containerd.WithPullSnapshotter(o.snapshotter),
@@ -161,7 +162,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	var tProfile string
 	var tStart, tElapsed time.Time
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
-	logger.Debug("Orchestrator received StartVM")
+	logger.Debug("StartVM: Received StartVM")
 
 	// FIXME: does not account for Deactivating
 	vm, err := o.vmPool.Allocate(vmID)
@@ -177,6 +178,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 
+	logger.Debug("StartVM: Creating a new VM")
 	tStart = time.Now()
 	_, err = o.fcClient.CreateVM(ctx, o.getVMConfig(vmID, *vm.Ni))
 	tElapsed = time.Now()
@@ -188,6 +190,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create the VM")
 	}
 
+	logger.Debug("StartVM: Creating a new container")
 	tStart = time.Now()
 	container, err := o.client.NewContainer(
 		ctx,
@@ -211,6 +214,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a container")
 	}
 
+	logger.Debug("StartVM: Creating a new task")
 	tStart = time.Now()
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
 	vm.Task = &task
@@ -223,6 +227,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a task")
 	}
 
+	logger.Debug("StartVM: Waiting for the task to get ready")
 	tStart = time.Now()
 	ch, err := task.Wait(ctx)
 	vm.TaskCh = ch
@@ -235,6 +240,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to wait for a task")
 	}
 
+	logger.Debug("StartVM: Starting the task")
 	tStart = time.Now()
 	if err := task.Start(ctx); err != nil {
 		if errCleanup := o.cleanup(ctx, vm, true, true, true); errCleanup != nil {
@@ -245,6 +251,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 
+	logger.Debug("StartVM: Calling function's gRPC server")
 	conn, err := grpc.Dial(vm.Ni.PrimaryAddress+":50051", grpc.WithInsecure(), grpc.WithBlock())
 	vm.Conn = conn
 	if err != nil {
@@ -253,6 +260,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		}
 		return "Failed to start VM", tProfile, errors.Wrap(err, "Failed to connect to a function")
 	}
+	logger.Debug("StartVM: Creating a new gRPC client")
 	funcClient := hpb.NewGreeterClient(conn)
 	vm.FuncClient = &funcClient
 
