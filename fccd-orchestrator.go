@@ -30,7 +30,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -42,9 +41,8 @@ import (
 )
 
 const (
-	port         = ":3333"
-	fwdPort      = ":3334"
-	backoffDelay = 10 * time.Millisecond
+	port    = ":3333"
+	fwdPort = ":3334"
 )
 
 var flog *os.File
@@ -195,6 +193,7 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	fun := funcPool.GetFunction(fID, imageName)
 
 	if !fun.IsActive() {
+		isColdStart = true
 		onceBody := func() {
 			fun.AddInstance()
 		}
@@ -209,38 +208,3 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
 }
-
-/*
-func handleColdStart(vmID string, imageName string) (message string, err error) {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-
-	if orch.IsVMStateStarting(vmID) {
-		for i := 0; i < 1000; i++ {
-			time.Sleep(backoffDelay)
-			if orch.IsVMStateActive(vmID) {
-				logger.Debug(fmt.Sprintf("Waiting for the VM to start (%d)...", i))
-				break
-			} else if i == 999 {
-				logger.Warn("Failed to wait for the VM to start")
-				message = "Failed to wait for the VM to start"
-				err = errors.New("Failed to wait for the VM to start")
-			}
-		}
-	} else if orch.IsVMStateDeactivating(vmID) || orch.IsVMOff(vmID) {
-		for !orch.IsVMOff(vmID) {
-			logger.Debug("Waiting for the VM to shut down...")
-			time.Sleep(backoffDelay)
-		}
-		// TODO: call into goroutines to trigger startVM / prefetch
-		logger.Debug("VM does not exist for FwdHello")
-		message, _, err = orch.StartVM(context.Background(), vmID, imageName)
-		if err != nil {
-			logger.Debug(message, err)
-		}
-		return message, err
-	} else {
-		logger.Panic("Cold start handling failed.")
-	}
-	return message, err
-}
-*/

@@ -130,8 +130,6 @@ func (f *Function) AddInstance() {
 	f.lastInstanceID++
 
 	f.isActive = true
-
-	return
 }
 
 // RemoveInstance Stops an instance (VM) of the function.
@@ -142,11 +140,11 @@ func (f *Function) RemoveInstance() (string, error) {
 
 	if len(f.vmIDList) == 0 {
 		f.isActive = false
+		f.Once = new(sync.Once)
 	} else {
 		panic("List of function's instance is not empty after stopping an instance!")
 	}
 
-	f.Once = new(sync.Once)
 	f.Unlock()
 
 	message, err := orch.StopSingleVM(context.Background(), vmID)
