@@ -11,7 +11,7 @@ require (
 	github.com/sirupsen/logrus v1.5.0
 	github.com/stretchr/testify v1.5.1
 	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200421101715-3d8808b0d980
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200421101715-3d8808b0d980 // indirect
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200421104059-a5163ac30478 // indirect
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200421101715-3d8808b0d980
 	google.golang.org/grpc v1.28.0
 )
