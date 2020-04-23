@@ -93,7 +93,7 @@ func TestSendToFunctionParallel(t *testing.T) {
 	fID := "1"
 	imageName := "ustiugov/helloworld:runner_workload"
 
-	log.Info("TestSendToFunction: Send 100 RPCs to the same function (in parallel)")
+	log.Info("TestSendToFunctionParallel: Send 100 RPCs to the same function (in parallel)")
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < 100; i++ {

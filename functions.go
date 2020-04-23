@@ -99,6 +99,8 @@ func (f *Function) FwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 	f.RLock()
 	defer f.RUnlock()
 
+	logger := log.WithFields(log.Fields{"fID": f.fID})
+
 	funcClientPtr, err := orch.GetFuncClient(f.getInstanceVMID())
 	if err != nil {
 		return &hpb.HelloReply{Message: "Failed to get function client"}, err
@@ -106,7 +108,9 @@ func (f *Function) FwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 
 	funcClient := *funcClientPtr
 
+	logger.Debug("FwdRPC: Forwarding RPC to function instance")
 	resp, err := funcClient.SayHello(ctx, &hpb.HelloRequest{Name: reqPayload})
+	logger.Debug("FwdRPC: Received a response from the  function instance")
 
 	return resp, err
 }
