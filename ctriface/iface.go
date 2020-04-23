@@ -138,26 +138,6 @@ func (o *Orchestrator) getVMConfig(vmID string, ni misc.NetworkInterface) *proto
 	}
 }
 
-// IsVMOff Returns if the VM is off
-func (o *Orchestrator) IsVMOff(vmID string) bool {
-	return o.vmPool.IsVMOff(vmID)
-}
-
-// IsVMStateStarting Returns if the corresponding state is true
-func (o *Orchestrator) IsVMStateStarting(vmID string) bool {
-	return o.vmPool.IsVMStateStarting(vmID)
-}
-
-// IsVMStateActive Returns if the corresponding state is true
-func (o *Orchestrator) IsVMStateActive(vmID string) bool {
-	return o.vmPool.IsVMStateActive(vmID)
-}
-
-// IsVMStateDeactivating Returns if the corresponding state is true
-func (o *Orchestrator) IsVMStateDeactivating(vmID string) bool {
-	return o.vmPool.IsVMStateDeactivating(vmID)
-}
-
 // StartVM Boots a VM if it does not exist
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
 	var tProfile string
@@ -167,8 +147,9 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
 	// FIXME: does not account for Deactivating
 	vm, err := o.vmPool.Allocate(vmID)
-	if _, ok := err.(*misc.AlreadyStartingErr); ok {
-		return "VM " + vmID + " is already starting", tProfile, err
+	if err != nil {
+		logger.Panic("StartVM: Unknown error")
+		return "StartVM: Unknown error", tProfile, err
 	}
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
@@ -281,12 +262,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	funcClient := hpb.NewGreeterClient(conn)
 	vm.FuncClient = &funcClient
 
-	if err := o.vmPool.SetVMStateActive(vmID); err != nil {
-		log.Panic("StartVM: Failed to set VM state to active")
-	}
-
-	log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)}).Debug("Successfully started a VM")
-	log.Debug(o.vmPool.SprintVMMap())
+	logger.Debug("Successfully started a VM")
 
 	return "VM, container, and task started successfully", tProfile, nil
 }
@@ -299,12 +275,7 @@ func (o *Orchestrator) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 func (o *Orchestrator) cleanup(ctx context.Context, vm *misc.VM, isVM, isCont, isTask bool) error {
 	vmID := vm.ID
 
-	if !o.vmPool.IsVMStateStarting(vmID) {
-		log.WithFields(log.Fields{"vmID": vmID}).Panic("Tried to clean but VM is not Starting")
-		return errors.New("Starting")
-	}
-
-	log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)}).Debug("Cleaning up after a failure")
+	log.WithFields(log.Fields{"vmID": vmID}).Debug("Cleaning up after a failure")
 
 	if isTask {
 		task := *vm.Task
@@ -341,20 +312,18 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received StopVM")
 
-	vm, err := o.vmPool.GetAndDeactivateVM(vmID)
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	vm, err := o.vmPool.GetVM(vmID)
 	if err != nil {
-		if _, ok := err.(*misc.AlreadyDeactivatingErr); ok {
-			return "VM is already being deactivated", nil // not an error
-		} else if _, ok := err.(*misc.NonExistErr); ok {
+		if _, ok := err.(*misc.NonExistErr); ok {
+			logger.Warn("StopVM: VM does not exist")
 			return "VM does not exist", nil
-		} else {
-			panic("StopVM failed for an unknown reason")
 		}
+		logger.Panic("StopVM: GetVM() failed for an unknown reason")
+
 	}
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
-
-	logger = log.WithFields(log.Fields{"vmID": vmID, "state": o.vmPool.GetVMStateString(vmID)})
+	logger = log.WithFields(log.Fields{"vmID": vmID})
 
 	if err := vm.Conn.Close(); err != nil {
 		logger.Warn("Failed to close the connection to function: ", err)

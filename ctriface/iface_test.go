@@ -2,7 +2,9 @@ package ctriface
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,7 +23,7 @@ func TestStartStopSerial(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
@@ -36,8 +38,7 @@ func TestStartStopSerial(t *testing.T) {
 	require.NoError(t, err, "Failed to stop VM, "+message)
 }
 
-/*
-func TestStartStopRepeatedSerial(t *testing.T) {
+func TestStartStopParallel(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -46,20 +47,40 @@ func TestStartStopRepeatedSerial(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1)
+	vmNum := 10
+	orch := NewOrchestrator("devmapper", vmNum)
 
-	for i := 0; i < 2; i++ {
-		message, _, err := orch.StartVM(ctx, "test_vmID", "ustiugov/helloworld:runner_workload")
-		require.NoError(t, err, "Failed to start VM, "+message)
+	{
+		var vmGroup sync.WaitGroup
+		for i := 0; i < vmNum; i++ {
+			vmGroup.Add(1)
+			go func(i int) {
+				defer vmGroup.Done()
+				vmID := fmt.Sprintf("test_%d", i)
+				message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+				require.NoError(t, err, "Failed to start VM, "+message)
+			}(i)
+		}
+		vmGroup.Wait()
+	}
 
-		message, err = orch.StopSingleVM(ctx, "test_vmID")
-		require.NoError(t, err, "Failed to stop VM, "+message)
+	{
+		var vmGroup sync.WaitGroup
+		for i := 0; i < vmNum; i++ {
+			vmGroup.Add(1)
+			go func(i int) {
+				defer vmGroup.Done()
+				vmID := fmt.Sprintf("test_%d", i)
+				message, err := orch.StopSingleVM(ctx, vmID)
+				require.NoError(t, err, "Failed to stop VM, "+message)
+			}(i)
+		}
+		vmGroup.Wait()
 	}
 }
-*/
