@@ -23,30 +23,12 @@
 package misc
 
 import (
-    "fmt"
+	"fmt"
 )
 
+// NonExistErr VM, funcClient, etc does not exist.
 type NonExistErr string
 
 func (e NonExistErr) Error() string {
-    return fmt.Sprintf("%s does not exist", e)
+	return fmt.Sprintf("%s does not exist", e)
 }
-
-type AlreadyStartingErr string
-
-func (e AlreadyStartingErr) Error() string {
-    return fmt.Sprintf("%s already exists", e)
-}
-
-type DeactivatingErr string
-
-func (e DeactivatingErr) Error() string {
-    return fmt.Sprintf("%s error while being deactivated", e)
-}
-
-type AlreadyDeactivatingErr string
-
-func (e AlreadyDeactivatingErr) Error() string {
-    return fmt.Sprintf("%s is already being deactivated", e)
-}
-

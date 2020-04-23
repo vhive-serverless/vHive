@@ -52,14 +52,6 @@ type VM struct {
 	Ni         *NetworkInterface
 	Conn       *grpc.ClientConn
 	FuncClient *hpb.GreeterClient
-
-	//	isOffloaded  bool // reserved
-	//	isPrewarming bool // reserved
-	isActive bool
-
-	// Transient states
-	isStarting     bool
-	isDeactivating bool
 }
 
 // NiPool Pool of NIs
@@ -69,7 +61,7 @@ type NiPool struct {
 
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
-	mu     *sync.Mutex
+	sync.Mutex
 	vmMap  map[string]*VM
 	niPool *NiPool
 }
@@ -80,45 +72,4 @@ func NewVM(vmID string) *VM {
 	vm.ID = vmID
 
 	return vm
-}
-
-/*
-State-machine transitioning functions:
-
- x -> Starting or Prewarming (tranient) -> Active ->
- -> Deactivating or Offloading (transient) -> x or Offloaded
-
- Note: concurrent mix of prewarming and starting is not supported
-
-*/
-
-// SetStateStarting From x to Starting
-func (vm *VM) setStateStarting() {
-	if vm.isActive || vm.isDeactivating || vm.isStarting {
-		panic("SetStateStarting")
-	}
-
-	vm.isStarting = true
-}
-
-//TODO: setStateOflloading
-
-// SetStateActive From Starting to Active
-func (vm *VM) setStateActive() {
-	if vm.isActive || vm.isDeactivating || !vm.isStarting {
-		panic("SetStateActive")
-	}
-
-	vm.isStarting = false
-	vm.isActive = true
-}
-
-// SetStateDeactivating From Active to Deactivating
-func (vm *VM) setStateDeactivating() {
-	if !vm.isActive || vm.isDeactivating || vm.isStarting {
-		panic("SetStateDeactivating")
-	}
-
-	vm.isActive = false
-	vm.isDeactivating = true
 }
