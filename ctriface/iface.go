@@ -255,16 +255,21 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	logger.Debug("StartVM: Calling function's gRPC server")
 
 	backoffConfig := backoff.DefaultConfig
-	backoffConfig.MaxDelay = 1 * time.Second
+	backoffConfig.MaxDelay = 3 * time.Second
 	connParams := grpc.ConnectParams{
 		Backoff: backoffConfig,
 	}
-	conn, err := grpc.Dial(
-		vm.Ni.PrimaryAddress+":50051",
-		grpc.WithInsecure(),
+
+	gopts := []grpc.DialOption{
 		grpc.WithBlock(),
+		grpc.WithInsecure(),
+		grpc.FailOnNonTempDialError(true),
 		grpc.WithConnectParams(connParams),
-	)
+		grpc.WithContextDialer(contextDialer),
+	}
+	ctxx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctxx, vm.Ni.PrimaryAddress+":50051", gopts...)
 	vm.Conn = conn
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vm, true, true, true); errCleanup != nil {
