@@ -12,7 +12,7 @@ env:
 #  - make deps
 
 script:
-  - go test -v ./...
+  - go test -v github.com/ustiugov/fccd-orchestrator/misc
 #  # "make" must be happening before "make lint" to download dependencies
 #  - make
 #  - make lint
