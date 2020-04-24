@@ -14,8 +14,8 @@ before_script:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $GOPATH/bin v1.23.1
 
 script:
-  - golangci-lint run ./...
   - go build ./... 
+  - golangci-lint run ./...
   - go test -v github.com/ustiugov/fccd-orchestrator/misc
 #  # "make" must be happening before "make lint" to download dependencies
 #  - make
