@@ -24,7 +24,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -35,7 +34,9 @@ import (
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 )
 
-func TestSendToFunction(t *testing.T) {
+func TestMain(m *testing.M) {
+	// call flag.Parse() here if TestMain uses flags
+
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -46,16 +47,18 @@ func TestSendToFunction(t *testing.T) {
 
 	log.SetLevel(log.InfoLevel)
 
-	orch = ctriface.NewOrchestrator("devmapper", 1)
+	orch = ctriface.NewOrchestrator("devmapper", 10)
 	funcPool = NewFuncPool()
 
+	os.Exit(m.Run())
+}
+
+func TestSendToFunctionSerial(t *testing.T) {
 	fID := "0"
 	imageName := "ustiugov/helloworld:runner_workload"
 
-	log.Info("TestSendToFunction: Send 2 RPCs to the same function (serially)")
-
 	for i := 0; i < 2; i++ {
-		fun := funcPool.GetFunction(fID, imageName)
+		fun := funcPool.GetFunction(fID, imageName, false)
 
 		resp, err := fun.Serve(context.Background(), imageName, "world")
 		require.NoError(t, err, "Function returned error")
@@ -63,32 +66,17 @@ func TestSendToFunction(t *testing.T) {
 			require.Equal(t, resp.IsColdStart, true)
 		}
 
-		log.Info(fmt.Sprintf("Sent to the function (%d), response=%s", i, resp.Payload))
+		require.Equal(t, resp.Payload, "Hello, world!")
 	}
 
-	fun := funcPool.GetFunction(fID, imageName)
+	fun := funcPool.GetFunction(fID, imageName, false)
 	message, err := fun.RemoveInstance()
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestSendToFunctionParallel(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
-	orch = ctriface.NewOrchestrator("devmapper", 1)
-	funcPool = NewFuncPool()
-
 	fID := "1"
 	imageName := "ustiugov/helloworld:runner_workload"
-
-	log.Info("TestSendToFunctionParallel: Send 100 RPCs to the same function (in parallel)")
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < 100; i++ {
@@ -96,53 +84,81 @@ func TestSendToFunctionParallel(t *testing.T) {
 
 		go func(i int) {
 			defer vmGroup.Done()
-			fun := funcPool.GetFunction(fID, imageName)
+			fun := funcPool.GetFunction(fID, imageName, false)
 
 			resp, err := fun.Serve(context.Background(), imageName, "world")
 			require.NoError(t, err, "Function returned error")
-
-			log.Debug(fmt.Sprintf("Sent to the function %d, response=%s", i, resp.Payload))
+			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
 
 	}
-	log.Info("waiting for goroutines")
 	vmGroup.Wait()
 
-	fun := funcPool.GetFunction(fID, imageName)
+	fun := funcPool.GetFunction(fID, imageName, false)
 	message, err := fun.RemoveInstance()
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestStartSendStopTwice(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
-	orch = ctriface.NewOrchestrator("devmapper", 1)
-	funcPool = NewFuncPool()
-
-	fID := "2"
+	fID := "200"
 	imageName := "ustiugov/helloworld:runner_workload"
 
-	log.Info("TestStartSendStopTwice: Add function instance and remove it twice (serially)")
-
 	for i := 0; i < 2; i++ {
-		fun := funcPool.GetFunction(fID, imageName)
+		fun := funcPool.GetFunction(fID, imageName, false)
 
-		resp, err := fun.Serve(context.Background(), imageName, "world")
-		require.NoError(t, err, "Function returned error")
+		for k := 0; k < 2; k++ {
+			resp, err := fun.Serve(context.Background(), imageName, "world")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, world!")
+		}
 
-		log.Info(fmt.Sprintf("Sent to the function %s (instance %d), response=%s", fID, i, resp.Payload))
-
-		log.Info("Removing an instance")
-		fun = funcPool.GetFunction(fID, imageName)
+		fun = funcPool.GetFunction(fID, imageName, false)
 		message, err := fun.RemoveInstance()
 		require.NoError(t, err, "Function returned error, "+message)
 	}
+
+	servedGot := funcPool.coldStats.statMap[fID].served
+	require.Equal(t, 4, int(servedGot), "Cold start (served) stats are wrong")
+	startsGot := funcPool.coldStats.statMap[fID].started
+	require.Equal(t, 2, int(startsGot), "Cold start (starts) stats are wrong")
+}
+
+func TestStatsNotNumericFunction(t *testing.T) {
+	fID := "not_cold_func"
+	imageName := "ustiugov/helloworld:runner_workload"
+
+	fun := funcPool.GetFunction(fID, imageName, true)
+
+	resp, err := fun.Serve(context.Background(), imageName, "world")
+	require.NoError(t, err, "Function returned error")
+	require.Equal(t, resp.Payload, "Hello, world!")
+
+	fun = funcPool.GetFunction(fID, imageName, true)
+	message, err := fun.RemoveInstance()
+	require.NoError(t, err, "Function returned error, "+message)
+
+	servedGot := funcPool.coldStats.statMap[fID].served
+	require.Equal(t, 0, int(servedGot), "Cold start (served) stats are wrong")
+	startsGot := funcPool.coldStats.statMap[fID].started
+	require.Equal(t, 0, int(startsGot), "Cold start (starts) stats are wrong")
+}
+
+func TestStatsNotColdFunction(t *testing.T) {
+	fID := "3"
+	imageName := "ustiugov/helloworld:runner_workload"
+
+	fun := funcPool.GetFunction(fID, imageName, true)
+
+	resp, err := fun.Serve(context.Background(), imageName, "world")
+	require.NoError(t, err, "Function returned error")
+	require.Equal(t, resp.Payload, "Hello, world!")
+
+	fun = funcPool.GetFunction(fID, imageName, true)
+	message, err := fun.RemoveInstance()
+	require.NoError(t, err, "Function returned error, "+message)
+
+	servedGot := funcPool.coldStats.statMap[fID].served
+	require.Equal(t, 0, int(servedGot), "Cold start (served) stats are wrong")
+	startsGot := funcPool.coldStats.statMap[fID].started
+	require.Equal(t, 0, int(startsGot), "Cold start (starts) stats are wrong")
 }

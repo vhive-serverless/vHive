@@ -37,7 +37,8 @@ import (
 // FuncPool Pool of functions
 type FuncPool struct {
 	sync.Mutex
-	funcMap map[string]*Function
+	funcMap   map[string]*Function
+	coldStats *ColdStats
 }
 
 // NewFuncPool Initializes a pool of functions. Functions can only be added
@@ -45,18 +46,20 @@ type FuncPool struct {
 func NewFuncPool() *FuncPool {
 	p := new(FuncPool)
 	p.funcMap = make(map[string]*Function)
+	p.coldStats = NewColdStats()
 
 	return p
 }
 
 // GetFunction Returns a ptr to a function or creates it unless it exists
-func (p *FuncPool) GetFunction(fID, imageName string) *Function {
+func (p *FuncPool) GetFunction(fID, imageName string, isToPin bool) *Function {
 	p.Lock()
 	defer p.Unlock()
 
 	_, found := p.funcMap[fID]
 	if !found {
-		p.funcMap[fID] = NewFunction(fID, imageName)
+		p.funcMap[fID] = NewFunction(fID, imageName, p.coldStats, isToPin)
+		p.coldStats.CreateStats(fID)
 	}
 
 	return p.funcMap[fID]
@@ -73,14 +76,21 @@ type Function struct {
 	vmIDList       []string // FIXME: only a single VM per function is supported
 	lastInstanceID int
 	isActive       bool
+	isPinnedInMem  bool // if pinned, the orchestrator does not stop/offload it)
+	coldStats      *ColdStats
 }
 
 // NewFunction Initializes a function
-func NewFunction(fID, imageName string) *Function {
+// Note: for numerical fIDs, [0, hotFunctionsNum) and [hotFunctionsNum; hotFunctionsNum+warmFunctionsNum)
+// are functions that are pinned in memory (stopping or offloading by the daemon is not allowed)
+func NewFunction(fID, imageName string, coldStats *ColdStats, isToPin bool) *Function {
 	f := new(Function)
 	f.fID = fID
 	f.imageName = imageName
 	f.Once = new(sync.Once)
+	f.isPinnedInMem = false
+	f.coldStats = coldStats
+	f.isPinnedInMem = isToPin
 
 	return f
 }
@@ -113,6 +123,10 @@ func (f *Function) Serve(ctx context.Context, imageName, reqPayload string) (*hp
 	if err != nil {
 		logger.Warn("Function returned error: ", err)
 		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+	}
+
+	if !f.isPinnedInMem {
+		f.coldStats.IncServed(f.fID)
 	}
 
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
@@ -152,6 +166,10 @@ func (f *Function) AddInstance() {
 	message, _, err := orch.StartVM(ctx, vmID, f.imageName)
 	if err != nil {
 		log.Panic(message, err)
+	}
+
+	if !f.isPinnedInMem {
+		f.coldStats.IncStarted(f.fID)
 	}
 
 	f.vmIDList = append(f.vmIDList, vmID)

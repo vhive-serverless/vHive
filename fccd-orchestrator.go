@@ -25,11 +25,13 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	_ "fmt"
 	_ "io/ioutil"
 	"math/rand"
 	"net"
 	"os"
+	"strconv"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -50,9 +52,8 @@ var (
 	orch     *ctriface.Orchestrator
 	funcPool *FuncPool
 
-	hotFunctionsNum  int
-	warmFunctionsNum int
-	coldFunctions    int
+	isSaveMemory       *bool
+	pinnedFunctionsNum *int
 )
 
 /*
@@ -83,6 +84,9 @@ func main() {
 	niNum := flag.Int("ni", 1500, "Number of interfaces allocated")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
+	isSaveMemory := flag.Bool("ms", false, "Enable memory saving")
+	pinnedFunctionsNum := flag.Int("hn", 0, "Number of pinned functions")
+
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
 	}
@@ -99,11 +103,19 @@ func main() {
 	log.SetOutput(os.Stdout)
 	flag.Parse()
 
-	if *debug == true {
+	if *debug {
 		log.SetLevel(log.DebugLevel)
 		log.Debug("Debug logging is enabled")
 	} else {
 		log.SetLevel(log.InfoLevel)
+	}
+
+	if *isSaveMemory {
+		log.Info(fmt.Sprintf("Creating orchestrator for pinned=%d functions", *pinnedFunctionsNum))
+
+		if *pinnedFunctionsNum > *niNum {
+			log.Panic("Memory saving is enabled but the number of the functions pinned in memory does not make sense")
+		}
 	}
 
 	orch = ctriface.NewOrchestrator(*snapshotter, *niNum)
@@ -194,7 +206,11 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	logger := log.WithFields(log.Fields{"vmID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
-	fun := funcPool.GetFunction(fID, imageName)
+	toPin := false
+	if fIDint, err := strconv.Atoi(fID); err != nil && fIDint < *pinnedFunctionsNum {
+		toPin = true
+	}
+	fun := funcPool.GetFunction(fID, imageName, toPin)
 
 	return fun.Serve(ctx, imageName, payload)
 }
