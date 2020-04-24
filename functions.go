@@ -94,8 +94,32 @@ func (f *Function) getInstanceVMID() string {
 	return f.vmIDList[0] // TODO: load balancing when many instances are supported
 }
 
+// Serve Service RPC request and response on behalf of a function, spinning
+// function instances when necessary.
+func (f *Function) Serve(ctx context.Context, imageName, reqPayload string) (*hpb.FwdHelloResp, error) {
+	logger := log.WithFields(log.Fields{"fID": f.fID})
+
+	isColdStart := false
+
+	if !f.IsActive() {
+		isColdStart = true
+		onceBody := func() {
+			f.AddInstance()
+		}
+		f.Once.Do(onceBody)
+	}
+
+	resp, err := f.fwdRPC(ctx, reqPayload)
+	if err != nil {
+		logger.Warn("Function returned error: ", err)
+		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+	}
+
+	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
+}
+
 // FwdRPC Forward the RPC to an instance, then forwards the response back.
-func (f *Function) FwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloReply, error) {
+func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloReply, error) {
 	f.RLock()
 	defer f.RUnlock()
 

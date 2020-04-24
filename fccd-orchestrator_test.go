@@ -57,18 +57,13 @@ func TestSendToFunction(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		fun := funcPool.GetFunction(fID, imageName)
 
-		if !fun.IsActive() {
-			onceBody := func() {
-				log.Info("Adding an instance")
-				fun.AddInstance()
-			}
-			fun.Once.Do(onceBody)
+		resp, err := fun.Serve(context.Background(), imageName, "world")
+		require.NoError(t, err, "Function returned error")
+		if i == 0 {
+			require.Equal(t, resp.IsColdStart, true)
 		}
 
-		resp, err := fun.FwdRPC(context.Background(), "world")
-		require.NoError(t, err, "Function returned error")
-
-		log.Info(fmt.Sprintf("Sent to the function (%d), response=%s", i, resp.Message))
+		log.Info(fmt.Sprintf("Sent to the function (%d), response=%s", i, resp.Payload))
 	}
 
 	fun := funcPool.GetFunction(fID, imageName)
@@ -103,18 +98,10 @@ func TestSendToFunctionParallel(t *testing.T) {
 			defer vmGroup.Done()
 			fun := funcPool.GetFunction(fID, imageName)
 
-			if !fun.IsActive() {
-				onceBody := func() {
-					log.Info("Adding an instance")
-					fun.AddInstance()
-				}
-				fun.Once.Do(onceBody)
-			}
-
-			resp, err := fun.FwdRPC(context.Background(), "world")
+			resp, err := fun.Serve(context.Background(), imageName, "world")
 			require.NoError(t, err, "Function returned error")
 
-			log.Debug(fmt.Sprintf("Sent to the function %d, response=%s", i, resp.Message))
+			log.Debug(fmt.Sprintf("Sent to the function %d, response=%s", i, resp.Payload))
 		}(i)
 
 	}
@@ -148,18 +135,10 @@ func TestStartSendStopTwice(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		fun := funcPool.GetFunction(fID, imageName)
 
-		if !fun.IsActive() {
-			onceBody := func() {
-				log.Info("Adding an instance")
-				fun.AddInstance()
-			}
-			fun.Once.Do(onceBody)
-		}
-
-		resp, err := fun.FwdRPC(context.Background(), "world")
+		resp, err := fun.Serve(context.Background(), imageName, "world")
 		require.NoError(t, err, "Function returned error")
 
-		log.Info(fmt.Sprintf("Sent to the function %s (instance %d), response=%s", fID, i, resp.Message))
+		log.Info(fmt.Sprintf("Sent to the function %s (instance %d), response=%s", fID, i, resp.Payload))
 
 		log.Info("Removing an instance")
 		fun = funcPool.GetFunction(fID, imageName)

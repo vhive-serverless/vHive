@@ -45,9 +45,15 @@ const (
 	fwdPort = ":3334"
 )
 
-var flog *os.File
-var orch *ctriface.Orchestrator
-var funcPool *FuncPool
+var (
+	flog     *os.File
+	orch     *ctriface.Orchestrator
+	funcPool *FuncPool
+
+	hotFunctionsNum  int
+	warmFunctionsNum int
+	coldFunctions    int
+)
 
 /*
 type myWriter struct {
@@ -188,23 +194,7 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	logger := log.WithFields(log.Fields{"vmID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
-	isColdStart := false
-
 	fun := funcPool.GetFunction(fID, imageName)
 
-	if !fun.IsActive() {
-		isColdStart = true
-		onceBody := func() {
-			fun.AddInstance()
-		}
-		fun.Once.Do(onceBody)
-	}
-
-	resp, err := fun.FwdRPC(ctx, payload)
-	if err != nil {
-		logger.Warn("Function returned error: ", err)
-		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
-	}
-
-	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, nil
+	return fun.Serve(ctx, imageName, payload)
 }
