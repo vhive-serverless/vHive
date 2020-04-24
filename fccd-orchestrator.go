@@ -84,8 +84,8 @@ func main() {
 	niNum := flag.Int("ni", 1500, "Number of interfaces allocated")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
-	isSaveMemory := flag.Bool("ms", false, "Enable memory saving")
-	pinnedFunctionsNum := flag.Int("hn", 0, "Number of pinned functions")
+	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
+	pinnedFunctionsNum = flag.Int("hn", 0, "Number of pinned functions")
 
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
@@ -203,7 +203,7 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	imageName := in.GetImage()
 	payload := in.GetPayload()
 
-	logger := log.WithFields(log.Fields{"vmID": fID, "image": imageName, "payload": payload})
+	logger := log.WithFields(log.Fields{"fID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
 	toPin := false

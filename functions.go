@@ -59,7 +59,9 @@ func (p *FuncPool) GetFunction(fID, imageName string, isToPin bool) *Function {
 	_, found := p.funcMap[fID]
 	if !found {
 		p.funcMap[fID] = NewFunction(fID, imageName, p.coldStats, isToPin)
-		p.coldStats.CreateStats(fID)
+		if err := p.coldStats.CreateStats(fID); err != nil {
+			log.WithFields(log.Fields{"fID": fID}).Panic("GetFunction: Function exists")
+		}
 	}
 
 	return p.funcMap[fID]
@@ -97,6 +99,9 @@ func NewFunction(fID, imageName string, coldStats *ColdStats, isToPin bool) *Fun
 
 // IsActive Returns if function is active and ready to serve requests.
 func (f *Function) IsActive() bool {
+	f.RLock()
+	defer f.RUnlock()
+
 	return f.isActive
 }
 
