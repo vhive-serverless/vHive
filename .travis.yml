@@ -12,6 +12,7 @@ env:
 #  - make deps
 
 script:
+  - golangci-lint run ./...
   - go build ./... 
   - go test -v github.com/ustiugov/fccd-orchestrator/misc
 #  # "make" must be happening before "make lint" to download dependencies
