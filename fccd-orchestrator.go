@@ -32,6 +32,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -53,7 +54,9 @@ var (
 	funcPool *FuncPool
 
 	isSaveMemory       *bool
+	servedThreshold    *uint64
 	pinnedFunctionsNum *int
+	muSaveMemory       sync.Mutex
 )
 
 /*
@@ -85,6 +88,7 @@ func main() {
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
+	servedThreshold = flag.Uint64("st", 1000000, "Per-function threshold for instance shutdown or offload")
 	pinnedFunctionsNum = flag.Int("hn", 0, "Number of pinned functions")
 
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
@@ -114,7 +118,7 @@ func main() {
 		log.Info(fmt.Sprintf("Creating orchestrator for pinned=%d functions", *pinnedFunctionsNum))
 
 		if *pinnedFunctionsNum > *niNum {
-			log.Panic("Memory saving is enabled but the number of the functions pinned in memory does not make sense")
+			log.Panic("Memory saving is enabled but the number of the functions pinned in memory is smaller than niNum")
 		}
 	}
 
@@ -206,11 +210,41 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	logger := log.WithFields(log.Fields{"fID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
-	toPin := false
-	if fIDint, err := strconv.Atoi(fID); err != nil && fIDint < *pinnedFunctionsNum {
-		toPin = true
-	}
+	toPin := isToPin(fID, *pinnedFunctionsNum)
+
 	fun := funcPool.GetFunction(fID, imageName, toPin)
 
-	return fun.Serve(ctx, imageName, payload)
+	resp, err := fun.Serve(ctx, imageName, payload)
+
+	if *isSaveMemory && fun.GetStatServed() >= *servedThreshold { // to avoid herding on the inner mutex
+		go saveMemory(fun, toPin, *servedThreshold, logger)
+	}
+
+	return resp, err
+}
+
+func isToPin(fID string, pinnedFunctionsNum int) bool {
+	if fIDint, err := strconv.Atoi(fID); err != nil && fIDint < pinnedFunctionsNum {
+		return true
+	}
+	return false
+}
+
+// TODO: move this into fun.Serve
+func saveMemory(fun *Function, pinned bool, servedThreshold uint64, logger *log.Entry) {
+	muSaveMemory.Lock()
+
+	if pinned || fun.GetStatServed() < servedThreshold {
+		return
+	}
+
+	fun.ZeroServedStat()
+
+	muSaveMemory.Unlock()
+
+	logger.Debug("SaveMemory: threshold reached, about to remove the instance")
+
+	if message, err := fun.RemoveInstance(); err != nil {
+		logger.Warn("saveMemory: failed to stop VM, " + message)
+	}
 }

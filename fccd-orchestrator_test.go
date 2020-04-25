@@ -50,7 +50,14 @@ func TestMain(m *testing.M) {
 	orch = ctriface.NewOrchestrator("devmapper", 10)
 	funcPool = NewFuncPool()
 
-	os.Exit(m.Run())
+	ret := m.Run()
+
+	err := orch.StopActiveVMs()
+	if err != nil {
+		log.Printf("Failed to stop VMs, err: %v\n", err)
+	}
+
+	os.Exit(ret)
 }
 
 func TestSendToFunctionSerial(t *testing.T) {
@@ -162,3 +169,77 @@ func TestStatsNotColdFunction(t *testing.T) {
 	startsGot := funcPool.coldStats.statMap[fID].started
 	require.Equal(t, 0, int(startsGot), "Cold start (starts) stats are wrong")
 }
+
+func TestSaveMemorySerial(t *testing.T) {
+	fID := "4"
+	imageName := "ustiugov/helloworld:runner_workload"
+
+	isSaveMemory := true
+	servedThreshold := uint64(40)
+	pinnedFunctionsNum := 0
+
+	for i := 0; i < 100; i++ {
+		toPin := isToPin(fID, pinnedFunctionsNum)
+		require.Equal(t, false, toPin)
+
+		fun := funcPool.GetFunction(fID, imageName, toPin)
+
+		resp, err := fun.Serve(context.Background(), imageName, "world")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, world!")
+
+		if isSaveMemory && fun.GetStatServed() >= servedThreshold {
+			go saveMemory(fun, toPin, servedThreshold, log.WithFields(log.Fields{"fID": fID}))
+		}
+	}
+
+	startsGot := funcPool.coldStats.statMap[fID].started
+	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
+
+	fun := funcPool.GetFunction(fID, imageName, false)
+	message, err := fun.RemoveInstance()
+	require.NoError(t, err, "Function returned error, "+message)
+}
+
+/*
+func TestSaveMemoryParallel(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+	fID := "5"
+	imageName := "ustiugov/helloworld:runner_workload"
+
+	isSaveMemory := true
+	servedThreshold := uint64(4)
+	pinnedFunctionsNum := 0
+
+	var vmGroup sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		vmGroup.Add(1)
+
+		go func(i int) {
+			defer vmGroup.Done()
+
+			toPin := isToPin(fID, pinnedFunctionsNum)
+			require.Equal(t, false, toPin)
+
+			fun := funcPool.GetFunction(fID, imageName, toPin)
+
+			resp, err := fun.Serve(context.Background(), imageName, "world")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, world!")
+
+			if isSaveMemory && fun.GetStatServed() >= servedThreshold {
+				go saveMemory(fun, toPin, servedThreshold, log.WithFields(log.Fields{"fID": fID}))
+			}
+		}(i)
+
+	}
+	vmGroup.Wait()
+
+	startsGot := funcPool.coldStats.statMap[fID].started
+	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
+
+	fun := funcPool.GetFunction(fID, imageName, false)
+	message, err := fun.RemoveInstance()
+	require.NoError(t, err, "Function returned error, "+message)
+}
+*/
