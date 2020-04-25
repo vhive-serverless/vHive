@@ -84,11 +84,17 @@ func (p *VMPool) Free(vmID string) error {
 
 // GetVMMap Returns the map of VMs
 func (p *VMPool) GetVMMap() map[string]*VM {
+	p.RLock()
+	defer p.RUnlock()
+
 	return p.vmMap
 }
 
 // GetVM Returns a pointer to the VM
 func (p *VMPool) GetVM(vmID string) (*VM, error) {
+	p.RLock()
+	defer p.RUnlock()
+
 	vm, found := p.vmMap[vmID]
 	if !found {
 		log.WithFields(log.Fields{"vmID": vmID}).Panic("VM is not in the VM map")
@@ -100,6 +106,9 @@ func (p *VMPool) GetVM(vmID string) (*VM, error) {
 
 // GetFuncClient Returns the client to the function
 func (p *VMPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
+	p.RLock()
+	defer p.RUnlock()
+
 	vm, found := p.vmMap[vmID]
 	if !found {
 		log.WithFields(log.Fields{"vmID": vmID}).Panic("GetFuncClient: VM is not in the VM map")

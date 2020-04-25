@@ -61,7 +61,7 @@ type NiPool struct {
 
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
-	sync.Mutex
+	sync.RWMutex
 	vmMap  map[string]*VM
 	niPool *NiPool
 }

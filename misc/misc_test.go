@@ -33,18 +33,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAllocateFreeNi(t *testing.T) {
+func TestMain(m *testing.M) {
+	// call flag.Parse() here if TestMain uses flags
+
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
+	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
 	log.SetOutput(os.Stdout)
 
 	log.SetLevel(log.InfoLevel)
 
-	log.Info("TestAllocateFreeNi: Allocate and free NIs from a pool")
+	os.Exit(m.Run())
+}
 
+func TestAllocateFreeNi(t *testing.T) {
 	niNum := 2
 
 	var niSlice []*NetworkInterface
@@ -72,17 +77,6 @@ func TestAllocateFreeNi(t *testing.T) {
 }
 
 func TestAllocateFreeVMs(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
-	log.Info("TestAllocateFreeVMsParallel: Allocate and free VMs from a pool")
-
 	vmPool := NewVMPool(2)
 
 	vmIDs := [2]string{"test1", "test2"}
@@ -99,17 +93,6 @@ func TestAllocateFreeVMs(t *testing.T) {
 }
 
 func TestAllocateFreeVMsParallel(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
-	log.Info("TestAllocateFreeVM: Allocate and free VMs from a pool")
-
 	vmNum := 100
 
 	vmPool := NewVMPool(vmNum)
