@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/ustiugov/fccd-orchestrator.svg?token=Dx4z7rB8qLcioVK5Dhsr&branch=master)](https://travis-ci.org/ustiugov/fccd-orchestrator)
+<br />
+
 # fccd-orchestrator
 VM orchestrator for Firecracker-Containerd
 
