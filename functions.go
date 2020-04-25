@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -163,6 +164,10 @@ func (f *Function) AddInstance() {
 	f.Lock()
 	defer f.Unlock()
 
+	logger := log.WithFields(log.Fields{"fID": f.fID})
+
+	logger.Debug("Adding instance")
+
 	vmID := fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -186,6 +191,11 @@ func (f *Function) AddInstance() {
 // RemoveInstance Stops an instance (VM) of the function.
 func (f *Function) RemoveInstance() (string, error) {
 	f.Lock()
+
+	logger := log.WithFields(log.Fields{"fID": f.fID})
+
+	logger.Debug("Removing instance")
+
 	var vmID string
 	vmID, f.vmIDList = f.vmIDList[0], f.vmIDList[1:]
 
@@ -193,7 +203,7 @@ func (f *Function) RemoveInstance() (string, error) {
 		f.isActive = false
 		f.Once = new(sync.Once)
 	} else {
-		panic("List of function's instance is not empty after stopping an instance!")
+		logger.Panic("List of function's instance is not empty after stopping an instance!")
 	}
 
 	f.Unlock()
@@ -204,4 +214,14 @@ func (f *Function) RemoveInstance() (string, error) {
 	}
 
 	return message, err
+}
+
+// GetStatServed Returns the served counter value
+func (f *Function) GetStatServed() uint64 {
+	return atomic.LoadUint64(&f.coldStats.statMap[f.fID].served)
+}
+
+// ZeroServedStat Zero served counter
+func (f *Function) ZeroServedStat() {
+	atomic.StoreUint64(&f.coldStats.statMap[f.fID].served, 0)
 }
