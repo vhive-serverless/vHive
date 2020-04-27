@@ -31,8 +31,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"strconv"
-	"sync"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -53,10 +51,9 @@ var (
 	orch     *ctriface.Orchestrator
 	funcPool *FuncPool
 
-	isSaveMemory       *bool
-	servedThreshold    *uint64
-	pinnedFunctionsNum *int
-	muSaveMemory       sync.Mutex
+	isSaveMemory    *bool
+	servedThreshold *uint64
+	pinnedFuncNum   *int
 )
 
 /*
@@ -88,8 +85,8 @@ func main() {
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
-	servedThreshold = flag.Uint64("st", 1000000, "Per-function threshold for instance shutdown or offload")
-	pinnedFunctionsNum = flag.Int("hn", 0, "Number of pinned functions")
+	servedThreshold = flag.Uint64("st", 1000000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
+	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
@@ -115,16 +112,16 @@ func main() {
 	}
 
 	if *isSaveMemory {
-		log.Info(fmt.Sprintf("Creating orchestrator for pinned=%d functions", *pinnedFunctionsNum))
+		log.Info(fmt.Sprintf("Creating orchestrator for pinned=%d functions", *pinnedFuncNum))
 
-		if *pinnedFunctionsNum > *niNum {
+		if *pinnedFuncNum > *niNum {
 			log.Panic("Memory saving is enabled but the number of the functions pinned in memory is smaller than niNum")
 		}
 	}
 
 	orch = ctriface.NewOrchestrator(*snapshotter, *niNum)
 
-	funcPool = NewFuncPool()
+	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum)
 
 	go orchServe()
 	fwdServe()
@@ -210,41 +207,5 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	logger := log.WithFields(log.Fields{"fID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
-	toPin := isToPin(fID, *pinnedFunctionsNum)
-
-	fun := funcPool.GetFunction(fID, imageName, toPin)
-
-	resp, err := fun.Serve(ctx, imageName, payload)
-
-	if *isSaveMemory && fun.GetStatServed() >= *servedThreshold { // to avoid herding on the inner mutex
-		go saveMemory(fun, toPin, *servedThreshold, logger)
-	}
-
-	return resp, err
-}
-
-func isToPin(fID string, pinnedFunctionsNum int) bool {
-	if fIDint, err := strconv.Atoi(fID); err != nil && fIDint < pinnedFunctionsNum {
-		return true
-	}
-	return false
-}
-
-// TODO: move this into fun.Serve
-func saveMemory(fun *Function, pinned bool, servedThreshold uint64, logger *log.Entry) {
-	muSaveMemory.Lock()
-
-	if pinned || fun.GetStatServed() < servedThreshold {
-		return
-	}
-
-	fun.ZeroServedStat()
-
-	muSaveMemory.Unlock()
-
-	logger.Debug("SaveMemory: threshold reached, about to remove the instance")
-
-	if message, err := fun.RemoveInstance(); err != nil {
-		logger.Warn("saveMemory: failed to stop VM, " + message)
-	}
+	return funcPool.Serve(ctx, fID, imageName, payload)
 }

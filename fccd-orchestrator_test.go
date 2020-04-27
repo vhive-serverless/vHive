@@ -48,7 +48,6 @@ func TestMain(m *testing.M) {
 	log.SetLevel(log.InfoLevel)
 
 	orch = ctriface.NewOrchestrator("devmapper", 10)
-	funcPool = NewFuncPool()
 
 	ret := m.Run()
 
@@ -63,11 +62,10 @@ func TestMain(m *testing.M) {
 func TestSendToFunctionSerial(t *testing.T) {
 	fID := "0"
 	imageName := "ustiugov/helloworld:runner_workload"
+	funcPool = NewFuncPool(false, 0, 0)
 
 	for i := 0; i < 2; i++ {
-		fun := funcPool.GetFunction(fID, imageName, false)
-
-		resp, err := fun.Serve(context.Background(), imageName, "world")
+		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 		require.NoError(t, err, "Function returned error")
 		if i == 0 {
 			require.Equal(t, resp.IsColdStart, true)
@@ -76,14 +74,14 @@ func TestSendToFunctionSerial(t *testing.T) {
 		require.Equal(t, resp.Payload, "Hello, world!")
 	}
 
-	fun := funcPool.GetFunction(fID, imageName, false)
-	message, err := fun.RemoveInstance()
+	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestSendToFunctionParallel(t *testing.T) {
 	fID := "1"
 	imageName := "ustiugov/helloworld:runner_workload"
+	funcPool = NewFuncPool(false, 0, 0)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < 100; i++ {
@@ -91,9 +89,7 @@ func TestSendToFunctionParallel(t *testing.T) {
 
 		go func(i int) {
 			defer vmGroup.Done()
-			fun := funcPool.GetFunction(fID, imageName, false)
-
-			resp, err := fun.Serve(context.Background(), imageName, "world")
+			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -101,26 +97,24 @@ func TestSendToFunctionParallel(t *testing.T) {
 	}
 	vmGroup.Wait()
 
-	fun := funcPool.GetFunction(fID, imageName, false)
-	message, err := fun.RemoveInstance()
+	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestStartSendStopTwice(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	fID := "200"
 	imageName := "ustiugov/helloworld:runner_workload"
+	funcPool = NewFuncPool(false, 1, 2)
 
 	for i := 0; i < 2; i++ {
-		fun := funcPool.GetFunction(fID, imageName, false)
-
 		for k := 0; k < 2; k++ {
-			resp, err := fun.Serve(context.Background(), imageName, "world")
+			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}
 
-		fun = funcPool.GetFunction(fID, imageName, false)
-		message, err := fun.RemoveInstance()
+		message, err := funcPool.RemoveInstance(fID, imageName)
 		require.NoError(t, err, "Function returned error, "+message)
 	}
 
@@ -133,15 +127,13 @@ func TestStartSendStopTwice(t *testing.T) {
 func TestStatsNotNumericFunction(t *testing.T) {
 	fID := "not_cold_func"
 	imageName := "ustiugov/helloworld:runner_workload"
+	funcPool = NewFuncPool(true, 1, 2)
 
-	fun := funcPool.GetFunction(fID, imageName, true)
-
-	resp, err := fun.Serve(context.Background(), imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	fun = funcPool.GetFunction(fID, imageName, true)
-	message, err := fun.RemoveInstance()
+	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 
 	servedGot := funcPool.coldStats.statMap[fID].served
@@ -153,15 +145,13 @@ func TestStatsNotNumericFunction(t *testing.T) {
 func TestStatsNotColdFunction(t *testing.T) {
 	fID := "3"
 	imageName := "ustiugov/helloworld:runner_workload"
+	funcPool = NewFuncPool(true, 1, 5)
 
-	fun := funcPool.GetFunction(fID, imageName, true)
-
-	resp, err := fun.Serve(context.Background(), imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	fun = funcPool.GetFunction(fID, imageName, true)
-	message, err := fun.RemoveInstance()
+	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 
 	servedGot := funcPool.coldStats.statMap[fID].served
@@ -173,43 +163,26 @@ func TestStatsNotColdFunction(t *testing.T) {
 func TestSaveMemorySerial(t *testing.T) {
 	fID := "4"
 	imageName := "ustiugov/helloworld:runner_workload"
-
-	isSaveMemory := true
-	servedThreshold := uint64(40)
-	pinnedFunctionsNum := 0
+	funcPool = NewFuncPool(true, 40, 2)
 
 	for i := 0; i < 100; i++ {
-		toPin := isToPin(fID, pinnedFunctionsNum)
-		require.Equal(t, false, toPin)
-
-		fun := funcPool.GetFunction(fID, imageName, toPin)
-
-		resp, err := fun.Serve(context.Background(), imageName, "world")
+		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, world!")
-
-		if isSaveMemory && fun.GetStatServed() >= servedThreshold {
-			go saveMemory(fun, toPin, servedThreshold, log.WithFields(log.Fields{"fID": fID}))
-		}
 	}
 
 	startsGot := funcPool.coldStats.statMap[fID].started
 	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
 
-	fun := funcPool.GetFunction(fID, imageName, false)
-	message, err := fun.RemoveInstance()
+	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
-/*
 func TestSaveMemoryParallel(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	fID := "5"
 	imageName := "ustiugov/helloworld:runner_workload"
-
-	isSaveMemory := true
-	servedThreshold := uint64(4)
-	pinnedFunctionsNum := 0
+	funcPool = NewFuncPool(true, 4, 2)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < 10; i++ {
@@ -218,18 +191,9 @@ func TestSaveMemoryParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 
-			toPin := isToPin(fID, pinnedFunctionsNum)
-			require.Equal(t, false, toPin)
-
-			fun := funcPool.GetFunction(fID, imageName, toPin)
-
-			resp, err := fun.Serve(context.Background(), imageName, "world")
+			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
-
-			if isSaveMemory && fun.GetStatServed() >= servedThreshold {
-				go saveMemory(fun, toPin, servedThreshold, log.WithFields(log.Fields{"fID": fID}))
-			}
 		}(i)
 
 	}
@@ -238,8 +202,6 @@ func TestSaveMemoryParallel(t *testing.T) {
 	startsGot := funcPool.coldStats.statMap[fID].started
 	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
 
-	fun := funcPool.GetFunction(fID, imageName, false)
-	message, err := fun.RemoveInstance()
+	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 }
-*/

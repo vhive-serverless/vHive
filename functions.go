@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -38,34 +39,65 @@ import (
 // FuncPool Pool of functions
 type FuncPool struct {
 	sync.Mutex
-	funcMap   map[string]*Function
-	coldStats *ColdStats
+	funcMap        map[string]*Function
+	saveMemoryMode bool
+	servedTh       uint64
+	pinnedFuncNum  int
+	coldStats      *ColdStats
 }
 
 // NewFuncPool Initializes a pool of functions. Functions can only be added
 // but never removed from the map.
-func NewFuncPool() *FuncPool {
+func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int) *FuncPool {
 	p := new(FuncPool)
 	p.funcMap = make(map[string]*Function)
+	p.saveMemoryMode = saveMemoryMode
+	p.servedTh = servedTh
+	p.pinnedFuncNum = pinnedFuncNum
 	p.coldStats = NewColdStats()
 
 	return p
 }
 
-// GetFunction Returns a ptr to a function or creates it unless it exists
-func (p *FuncPool) GetFunction(fID, imageName string, isToPin bool) *Function {
+// getFunction Returns a ptr to a function or creates it unless it exists
+func (p *FuncPool) getFunction(fID, imageName string) *Function {
 	p.Lock()
 	defer p.Unlock()
 
+	logger := log.WithFields(log.Fields{"fID": fID, "imageName": imageName})
+
 	_, found := p.funcMap[fID]
 	if !found {
-		p.funcMap[fID] = NewFunction(fID, imageName, p.coldStats, isToPin)
+		isToPin := true
+
+		fIDint, err := strconv.Atoi(fID)
+		if p.saveMemoryMode && (err != nil && fIDint > p.pinnedFuncNum) {
+			isToPin = false
+		}
+
+		logger.Debug(fmt.Sprintf("Created function, pinned=%t, shut down after %d requests", isToPin, p.servedTh))
+		p.funcMap[fID] = NewFunction(fID, imageName, p.coldStats, p.servedTh, isToPin)
+
 		if err := p.coldStats.CreateStats(fID); err != nil {
-			log.WithFields(log.Fields{"fID": fID}).Panic("GetFunction: Function exists")
+			logger.Panic("GetFunction: Function exists")
 		}
 	}
 
 	return p.funcMap[fID]
+}
+
+// Serve Service RPC request by triggering the corresponding function.
+func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string) (*hpb.FwdHelloResp, error) {
+	f := p.getFunction(fID, imageName)
+
+	return f.Serve(ctx, fID, imageName, payload)
+}
+
+// RemoveInstance Removes instance of the function (blocking)
+func (p *FuncPool) RemoveInstance(fID, imageName string) (string, error) {
+	f := p.getFunction(fID, imageName)
+
+	return f.RemoveInstance()
 }
 
 //////////////////////////////// Function type //////////////////////////////////////////////
@@ -73,56 +105,61 @@ func (p *FuncPool) GetFunction(fID, imageName string, isToPin bool) *Function {
 // Function type
 type Function struct {
 	sync.RWMutex
-	Once           *sync.Once
-	fID            string
-	imageName      string
-	vmIDList       []string // FIXME: only a single VM per function is supported
-	lastInstanceID int
-	isActive       bool
-	isPinnedInMem  bool // if pinned, the orchestrator does not stop/offload it)
-	coldStats      *ColdStats
+	OnceAddInstance    *sync.Once
+	OnceRemoveInstance *sync.Once
+	fID                string
+	imageName          string
+	vmIDList           []string // FIXME: only a single VM per function is supported
+	lastInstanceID     int
+	isActive           bool
+	isPinnedInMem      bool // if pinned, the orchestrator does not stop/offload it)
+	coldStats          *ColdStats
+	servedTh           uint64
 }
 
 // NewFunction Initializes a function
 // Note: for numerical fIDs, [0, hotFunctionsNum) and [hotFunctionsNum; hotFunctionsNum+warmFunctionsNum)
 // are functions that are pinned in memory (stopping or offloading by the daemon is not allowed)
-func NewFunction(fID, imageName string, coldStats *ColdStats, isToPin bool) *Function {
+func NewFunction(fID, imageName string, coldStats *ColdStats, servedTh uint64, isToPin bool) *Function {
 	f := new(Function)
 	f.fID = fID
 	f.imageName = imageName
-	f.Once = new(sync.Once)
-	f.isPinnedInMem = false
-	f.coldStats = coldStats
+	f.OnceAddInstance = new(sync.Once)
+	f.OnceRemoveInstance = new(sync.Once)
 	f.isPinnedInMem = isToPin
+	f.coldStats = coldStats
+	f.servedTh = servedTh
 
 	return f
 }
 
-// IsActive Returns if function is active and ready to serve requests.
-func (f *Function) IsActive() bool {
+// Serve Service RPC request and response on behalf of a function, spinning
+// function instances when necessary.
+func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, error) {
 	f.RLock()
 	defer f.RUnlock()
 
-	return f.isActive
-}
-
-func (f *Function) getInstanceVMID() string {
-	return f.vmIDList[0] // TODO: load balancing when many instances are supported
-}
-
-// Serve Service RPC request and response on behalf of a function, spinning
-// function instances when necessary.
-func (f *Function) Serve(ctx context.Context, imageName, reqPayload string) (*hpb.FwdHelloResp, error) {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	isColdStart := false
 
-	if !f.IsActive() {
+	if !f.isActive {
 		isColdStart = true
 		onceBody := func() {
+			logger.Debug("Function is inactive, starting the instance...")
 			f.AddInstance()
 		}
-		f.Once.Do(onceBody)
+		f.OnceAddInstance.Do(onceBody)
+	}
+
+	if !f.isPinnedInMem && f.GetStatServed() >= f.servedTh {
+		onceBody := func() {
+			logger.Debug(fmt.Sprintf(
+				"Function has to shut down its instance, served %d requests", f.GetStatServed()))
+			f.RemoveInstanceAsync()
+			f.ZeroServedStat()
+		}
+		f.OnceRemoveInstance.Do(onceBody)
 	}
 
 	resp, err := f.fwdRPC(ctx, reqPayload)
@@ -136,6 +173,10 @@ func (f *Function) Serve(ctx context.Context, imageName, reqPayload string) (*hp
 	}
 
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
+}
+
+func (f *Function) getInstanceVMID() string {
+	return f.vmIDList[0] // TODO: load balancing when many instances are supported
 }
 
 // FwdRPC Forward the RPC to an instance, then forwards the response back.
@@ -160,10 +201,8 @@ func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 }
 
 // AddInstance Starts a VM, waits till it is ready.
+// Note: this function is called from sync.Once construct
 func (f *Function) AddInstance() {
-	f.Lock()
-	defer f.Unlock()
-
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Adding instance")
@@ -188,32 +227,48 @@ func (f *Function) AddInstance() {
 	f.isActive = true
 }
 
+// RemoveInstanceAsync Stops an instance (VM) of the function.
+// Note: this function is called from sync.Once construct
+func (f *Function) RemoveInstanceAsync() {
+	logger := log.WithFields(log.Fields{"fID": f.fID})
+
+	logger.Debug("Removing instance (async)")
+
+	vmID := f.clearInstanceState()
+
+	go func(vmID string) {
+		message, err := orch.StopSingleVM(context.Background(), vmID)
+		if err != nil {
+			log.Warn(message, err)
+		}
+	}(vmID)
+}
+
 // RemoveInstance Stops an instance (VM) of the function.
 func (f *Function) RemoveInstance() (string, error) {
 	f.Lock()
-
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Removing instance")
 
-	var vmID string
+	vmID := f.clearInstanceState()
+	f.Unlock()
+
+	return orch.StopSingleVM(context.Background(), vmID)
+}
+
+func (f *Function) clearInstanceState() (vmID string) {
 	vmID, f.vmIDList = f.vmIDList[0], f.vmIDList[1:]
 
 	if len(f.vmIDList) == 0 {
 		f.isActive = false
-		f.Once = new(sync.Once)
+		f.OnceRemoveInstance = new(sync.Once)
+		f.OnceAddInstance = new(sync.Once)
 	} else {
-		logger.Panic("List of function's instance is not empty after stopping an instance!")
+		log.Panic("List of function's instance is not empty after stopping an instance!")
 	}
 
-	f.Unlock()
-
-	message, err := orch.StopSingleVM(context.Background(), vmID)
-	if err != nil {
-		log.Warn(message, err)
-	}
-
-	return message, err
+	return vmID
 }
 
 // GetStatServed Returns the served counter value
