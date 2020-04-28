@@ -64,8 +64,8 @@ func (cs *Stats) IncStarted(fID string) {
 }
 
 // IncServed Increments per-function requests-served counter
-func (cs *Stats) IncServed(fID string) {
-	atomic.AddUint64(&cs.statMap[fID].served, 1)
+func (cs *Stats) IncServed(fID string) uint64 {
+	return atomic.AddUint64(&cs.statMap[fID].served, 1) - 1
 }
 
 // SprintStats Prints all stats

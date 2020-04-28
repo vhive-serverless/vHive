@@ -102,7 +102,6 @@ func TestSendToFunctionParallel(t *testing.T) {
 }
 
 func TestStartSendStopTwice(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
 	fID := "200"
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 1, 2)
@@ -118,9 +117,9 @@ func TestStartSendStopTwice(t *testing.T) {
 		require.NoError(t, err, "Function returned error, "+message)
 	}
 
-	servedGot := funcPool.coldStats.statMap[fID].served
+	servedGot := funcPool.stats.statMap[fID].served
 	require.Equal(t, 4, int(servedGot), "Cold start (served) stats are wrong")
-	startsGot := funcPool.coldStats.statMap[fID].started
+	startsGot := funcPool.stats.statMap[fID].started
 	require.Equal(t, 2, int(startsGot), "Cold start (starts) stats are wrong")
 }
 
@@ -136,10 +135,10 @@ func TestStatsNotNumericFunction(t *testing.T) {
 	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 
-	servedGot := funcPool.coldStats.statMap[fID].served
-	require.Equal(t, 0, int(servedGot), "Cold start (served) stats are wrong")
-	startsGot := funcPool.coldStats.statMap[fID].started
-	require.Equal(t, 0, int(startsGot), "Cold start (starts) stats are wrong")
+	servedGot := funcPool.stats.statMap[fID].served
+	require.Equal(t, 1, int(servedGot), "Cold start (served) stats are wrong")
+	startsGot := funcPool.stats.statMap[fID].started
+	require.Equal(t, 1, int(startsGot), "Cold start (starts) stats are wrong")
 }
 
 func TestStatsNotColdFunction(t *testing.T) {
@@ -154,24 +153,24 @@ func TestStatsNotColdFunction(t *testing.T) {
 	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 
-	servedGot := funcPool.coldStats.statMap[fID].served
-	require.Equal(t, 0, int(servedGot), "Cold start (served) stats are wrong")
-	startsGot := funcPool.coldStats.statMap[fID].started
-	require.Equal(t, 0, int(startsGot), "Cold start (starts) stats are wrong")
+	servedGot := funcPool.stats.statMap[fID].served
+	require.Equal(t, 1, int(servedGot), "Cold start (served) stats are wrong")
+	startsGot := funcPool.stats.statMap[fID].started
+	require.Equal(t, 1, int(startsGot), "Cold start (starts) stats are wrong")
 }
 
 func TestSaveMemorySerial(t *testing.T) {
 	fID := "4"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 40, 2)
+	funcPool = NewFuncPool(true, 4, 2)
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, world!")
 	}
 
-	startsGot := funcPool.coldStats.statMap[fID].started
+	startsGot := funcPool.stats.statMap[fID].started
 	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
 
 	message, err := funcPool.RemoveInstance(fID, imageName)
@@ -199,7 +198,7 @@ func TestSaveMemoryParallel(t *testing.T) {
 	}
 	vmGroup.Wait()
 
-	startsGot := funcPool.coldStats.statMap[fID].started
+	startsGot := funcPool.stats.statMap[fID].started
 	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
 
 	message, err := funcPool.RemoveInstance(fID, imageName)

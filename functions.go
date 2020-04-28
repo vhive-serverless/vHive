@@ -71,7 +71,8 @@ func (p *FuncPool) getFunction(fID, imageName string) *Function {
 		isToPin := true
 
 		fIDint, err := strconv.Atoi(fID)
-		if p.saveMemoryMode && (err != nil && fIDint > p.pinnedFuncNum) {
+		log.Debug(fmt.Sprintf("fIDint=%d, err=%v, pinnedFuncNum=%d", fIDint, err, p.pinnedFuncNum))
+		if p.saveMemoryMode && err == nil && fIDint > p.pinnedFuncNum {
 			isToPin = false
 		}
 
@@ -135,21 +136,13 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 // Serve Service RPC request and response on behalf of a function, spinning
 // function instances when necessary.
 func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, error) {
-	f.RLock()
-	defer f.RUnlock()
-
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	isColdStart := false
 
-	f.OnceAddInstance.Do(
-		func() {
-			isColdStart = true
-			logger.Debug("Function is inactive, starting the instance...")
-			f.AddInstance()
-		})
+	served := f.stats.IncServed(f.fID)
 
-	if !f.isPinnedInMem && f.GetStatServed() >= f.servedTh {
+	if !f.isPinnedInMem && served >= f.servedTh {
 		f.OnceRemoveInstance.Do(
 			func() {
 				logger.Debug(fmt.Sprintf(
@@ -159,13 +152,20 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 			})
 	}
 
+	f.OnceAddInstance.Do(
+		func() {
+			isColdStart = true
+			logger.Debug("Function is inactive, starting the instance...")
+			f.AddInstance()
+		})
+
+	f.RLock()
 	resp, err := f.fwdRPC(ctx, reqPayload)
 	if err != nil {
 		logger.Warn("Function returned error: ", err)
 		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
 	}
-
-	f.stats.IncServed(f.fID)
+	f.RUnlock()
 
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
 }
@@ -198,6 +198,9 @@ func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 // AddInstance Starts a VM, waits till it is ready.
 // Note: this function is called from sync.Once construct
 func (f *Function) AddInstance() {
+	f.Lock()
+	defer f.Unlock()
+
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Adding instance")
@@ -221,6 +224,9 @@ func (f *Function) AddInstance() {
 // RemoveInstanceAsync Stops an instance (VM) of the function.
 // Note: this function is called from sync.Once construct
 func (f *Function) RemoveInstanceAsync() {
+	f.Lock()
+	defer f.Unlock()
+
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Removing instance (async)")
