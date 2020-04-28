@@ -111,7 +111,6 @@ type Function struct {
 	imageName          string
 	vmIDList           []string // FIXME: only a single VM per function is supported
 	lastInstanceID     int
-	isActive           bool
 	isPinnedInMem      bool // if pinned, the orchestrator does not stop/offload it)
 	coldStats          *ColdStats
 	servedTh           uint64
@@ -143,23 +142,21 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 
 	isColdStart := false
 
-	if !f.isActive {
-		isColdStart = true
-		onceBody := func() {
+	f.OnceAddInstance.Do(
+		func() {
+			isColdStart = true
 			logger.Debug("Function is inactive, starting the instance...")
 			f.AddInstance()
-		}
-		f.OnceAddInstance.Do(onceBody)
-	}
+		})
 
 	if !f.isPinnedInMem && f.GetStatServed() >= f.servedTh {
-		onceBody := func() {
-			logger.Debug(fmt.Sprintf(
-				"Function has to shut down its instance, served %d requests", f.GetStatServed()))
-			f.RemoveInstanceAsync()
-			f.ZeroServedStat()
-		}
-		f.OnceRemoveInstance.Do(onceBody)
+		f.OnceRemoveInstance.Do(
+			func() {
+				logger.Debug(fmt.Sprintf(
+					"Function has to shut down its instance, served %d requests", f.GetStatServed()))
+				f.RemoveInstanceAsync()
+				f.ZeroServedStat()
+			})
 	}
 
 	resp, err := f.fwdRPC(ctx, reqPayload)
@@ -223,8 +220,6 @@ func (f *Function) AddInstance() {
 
 	f.vmIDList = append(f.vmIDList, vmID)
 	f.lastInstanceID++
-
-	f.isActive = true
 }
 
 // RemoveInstanceAsync Stops an instance (VM) of the function.
@@ -261,7 +256,6 @@ func (f *Function) clearInstanceState() (vmID string) {
 	vmID, f.vmIDList = f.vmIDList[0], f.vmIDList[1:]
 
 	if len(f.vmIDList) == 0 {
-		f.isActive = false
 		f.OnceRemoveInstance = new(sync.Once)
 		f.OnceAddInstance = new(sync.Once)
 	} else {
