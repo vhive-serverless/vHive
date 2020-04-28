@@ -43,7 +43,7 @@ type FuncPool struct {
 	saveMemoryMode bool
 	servedTh       uint64
 	pinnedFuncNum  int
-	coldStats      *ColdStats
+	stats          *Stats
 }
 
 // NewFuncPool Initializes a pool of functions. Functions can only be added
@@ -54,7 +54,7 @@ func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int) *FuncP
 	p.saveMemoryMode = saveMemoryMode
 	p.servedTh = servedTh
 	p.pinnedFuncNum = pinnedFuncNum
-	p.coldStats = NewColdStats()
+	p.stats = NewStats()
 
 	return p
 }
@@ -76,9 +76,9 @@ func (p *FuncPool) getFunction(fID, imageName string) *Function {
 		}
 
 		logger.Debug(fmt.Sprintf("Created function, pinned=%t, shut down after %d requests", isToPin, p.servedTh))
-		p.funcMap[fID] = NewFunction(fID, imageName, p.coldStats, p.servedTh, isToPin)
+		p.funcMap[fID] = NewFunction(fID, imageName, p.stats, p.servedTh, isToPin)
 
-		if err := p.coldStats.CreateStats(fID); err != nil {
+		if err := p.stats.CreateStats(fID); err != nil {
 			logger.Panic("GetFunction: Function exists")
 		}
 	}
@@ -112,21 +112,21 @@ type Function struct {
 	vmIDList           []string // FIXME: only a single VM per function is supported
 	lastInstanceID     int
 	isPinnedInMem      bool // if pinned, the orchestrator does not stop/offload it)
-	coldStats          *ColdStats
+	stats              *Stats
 	servedTh           uint64
 }
 
 // NewFunction Initializes a function
 // Note: for numerical fIDs, [0, hotFunctionsNum) and [hotFunctionsNum; hotFunctionsNum+warmFunctionsNum)
 // are functions that are pinned in memory (stopping or offloading by the daemon is not allowed)
-func NewFunction(fID, imageName string, coldStats *ColdStats, servedTh uint64, isToPin bool) *Function {
+func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin bool) *Function {
 	f := new(Function)
 	f.fID = fID
 	f.imageName = imageName
 	f.OnceAddInstance = new(sync.Once)
 	f.OnceRemoveInstance = new(sync.Once)
 	f.isPinnedInMem = isToPin
-	f.coldStats = coldStats
+	f.stats = Stats
 	f.servedTh = servedTh
 
 	return f
@@ -165,9 +165,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
 	}
 
-	if !f.isPinnedInMem {
-		f.coldStats.IncServed(f.fID)
-	}
+	f.stats.IncServed(f.fID)
 
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
 }
@@ -214,9 +212,7 @@ func (f *Function) AddInstance() {
 		log.Panic(message, err)
 	}
 
-	if !f.isPinnedInMem {
-		f.coldStats.IncStarted(f.fID)
-	}
+	f.stats.IncStarted(f.fID)
 
 	f.vmIDList = append(f.vmIDList, vmID)
 	f.lastInstanceID++
@@ -267,10 +263,10 @@ func (f *Function) clearInstanceState() (vmID string) {
 
 // GetStatServed Returns the served counter value
 func (f *Function) GetStatServed() uint64 {
-	return atomic.LoadUint64(&f.coldStats.statMap[f.fID].served)
+	return atomic.LoadUint64(&f.stats.statMap[f.fID].served)
 }
 
 // ZeroServedStat Zero served counter
 func (f *Function) ZeroServedStat() {
-	atomic.StoreUint64(&f.coldStats.statMap[f.fID].served, 0)
+	atomic.StoreUint64(&f.stats.statMap[f.fID].served, 0)
 }

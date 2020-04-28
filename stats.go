@@ -34,21 +34,21 @@ type FuncStat struct {
 	started uint64
 }
 
-// ColdStats Stats for the cold functions in the function pool
-type ColdStats struct {
+// Stats Stats for the cold functions in the function pool
+type Stats struct {
 	statMap map[string]*FuncStat
 }
 
-// NewColdStats Initializes per-function stat
-func NewColdStats() *ColdStats {
-	cs := new(ColdStats)
+// NewStats Initializes per-function stat
+func NewStats() *Stats {
+	cs := new(Stats)
 	cs.statMap = make(map[string]*FuncStat)
 
 	return cs
 }
 
 // CreateStats Creates stats for a function
-func (cs *ColdStats) CreateStats(fID string) error {
+func (cs *Stats) CreateStats(fID string) error {
 	if _, isPresent := cs.statMap[fID]; isPresent {
 		return errors.New("Stat exists")
 	}
@@ -59,17 +59,17 @@ func (cs *ColdStats) CreateStats(fID string) error {
 }
 
 // IncStarted Increments per-function instance-started counter
-func (cs *ColdStats) IncStarted(fID string) {
+func (cs *Stats) IncStarted(fID string) {
 	atomic.AddUint64(&cs.statMap[fID].started, 1)
 }
 
 // IncServed Increments per-function requests-served counter
-func (cs *ColdStats) IncServed(fID string) {
+func (cs *Stats) IncServed(fID string) {
 	atomic.AddUint64(&cs.statMap[fID].served, 1)
 }
 
-// SprintColdStats Prints all stats
-func (cs *ColdStats) SprintColdStats() string {
+// SprintStats Prints all stats
+func (cs *Stats) SprintStats() string {
 	var s = "==== Stats by cold functions ====\n"
 	s += "fID, #started, #served\n"
 
