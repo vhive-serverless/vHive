@@ -13,5 +13,6 @@ require (
 	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200423215527-76d239b8ccef
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200425213512-055a94a643fc
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200421101715-3d8808b0d980
+	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	google.golang.org/grpc v1.28.0
 )

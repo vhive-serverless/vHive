@@ -178,13 +178,12 @@ func TestSaveMemorySerial(t *testing.T) {
 }
 
 func TestSaveMemoryParallel(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
 	fID := "5"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 4, 2)
+	funcPool = NewFuncPool(true, 40, 2)
 
 	var vmGroup sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		vmGroup.Add(1)
 
 		go func(i int) {

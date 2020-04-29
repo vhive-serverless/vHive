@@ -30,6 +30,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/sync/semaphore"
+
 	log "github.com/sirupsen/logrus"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 )
@@ -106,15 +108,16 @@ func (p *FuncPool) RemoveInstance(fID, imageName string) (string, error) {
 // Function type
 type Function struct {
 	sync.RWMutex
-	OnceAddInstance    *sync.Once
-	OnceRemoveInstance *sync.Once
-	fID                string
-	imageName          string
-	vmIDList           []string // FIXME: only a single VM per function is supported
-	lastInstanceID     int
-	isPinnedInMem      bool // if pinned, the orchestrator does not stop/offload it)
-	stats              *Stats
-	servedTh           uint64
+	OnceAddInstance   *sync.Once
+	sem               *semaphore.Weighted
+	fID               string
+	imageName         string
+	vmIDList          []string // FIXME: only a single VM per function is supported
+	lastInstanceID    int
+	isPinnedInMem     bool // if pinned, the orchestrator does not stop/offload it)
+	stats             *Stats
+	servedTh          uint64
+	servedSyncCounter int64
 }
 
 // NewFunction Initializes a function
@@ -125,32 +128,42 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 	f.fID = fID
 	f.imageName = imageName
 	f.OnceAddInstance = new(sync.Once)
-	f.OnceRemoveInstance = new(sync.Once)
+	f.sem = semaphore.NewWeighted(int64(servedTh))
 	f.isPinnedInMem = isToPin
 	f.stats = Stats
 	f.servedTh = servedTh
+	f.servedSyncCounter = int64(servedTh) // cannot use uint64 for the counter due to the overflow
 
 	return f
 }
 
 // Serve Service RPC request and response on behalf of a function, spinning
 // function instances when necessary.
+//
+// Synchronization description:
+// 1. Function needs to start an instance (with a unique vmID) if there are none: goroutines are synchronized with do.Once
+// 2. Function (that is not pinned) can serve only up to servedTh requests (controlled by a WeightedSemaphore)
+//    a. The last goroutine needs to trigger the function's instance shutdown, then reset the semaphore,
+//       allowing new goroutines to serve their requests.
+//    b. The last goroutine is determined by the atomic counter: the goroutine wih syncID==0 shuts down
+//       the instance.
+//    c. Instance shutdown is performed asynchronously because all instances have unique IDs.
 func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, error) {
+	syncID := int64(-1) // default is no synchronization
+
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	isColdStart := false
 
-	served := f.stats.IncServed(f.fID)
+	if !f.isPinnedInMem {
+		if err := f.sem.Acquire(context.Background(), 1); err != nil {
+			logger.Panic("Failed to acquire semaphore for serving")
+		}
 
-	if !f.isPinnedInMem && served >= f.servedTh {
-		f.OnceRemoveInstance.Do(
-			func() {
-				logger.Debug(fmt.Sprintf(
-					"Function has to shut down its instance, served %d requests", f.GetStatServed()))
-				f.RemoveInstanceAsync()
-				f.ZeroServedStat()
-			})
+		syncID = atomic.AddInt64(&f.servedSyncCounter, -1) // unique number for goroutines acquiring the semaphore
 	}
+
+	f.stats.IncServed(f.fID)
 
 	f.OnceAddInstance.Do(
 		func() {
@@ -166,6 +179,14 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
 	}
 	f.RUnlock()
+
+	if !f.isPinnedInMem && syncID == 0 {
+		logger.Debug(fmt.Sprintf("Function has to shut down its instance, served %d requests", f.GetStatServed()))
+		f.RemoveInstanceAsync()
+		f.ZeroServedStat()
+		f.servedSyncCounter = int64(f.servedTh) // reset counter
+		f.sem.Release(int64(f.servedTh))
+	}
 
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
 }
@@ -258,7 +279,6 @@ func (f *Function) clearInstanceState() (vmID string) {
 	vmID, f.vmIDList = f.vmIDList[0], f.vmIDList[1:]
 
 	if len(f.vmIDList) == 0 {
-		f.OnceRemoveInstance = new(sync.Once)
 		f.OnceAddInstance = new(sync.Once)
 	} else {
 		log.Panic("List of function's instance is not empty after stopping an instance!")
