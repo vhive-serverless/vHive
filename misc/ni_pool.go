@@ -33,6 +33,8 @@ import (
 func NewNiPool(niNum int) *NiPool {
 	p := new(NiPool)
 
+	log.Debug(fmt.Sprintf("Creating a new NI pool with %d ni-s.", niNum))
+
 	for i := 0; i < niNum; i++ {
 		ni := NetworkInterface{
 			MacAddress:     fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),

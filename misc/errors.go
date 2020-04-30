@@ -30,5 +30,5 @@ import (
 type NonExistErr string
 
 func (e NonExistErr) Error() string {
-	return fmt.Sprintf("%s does not exist", e)
+	return fmt.Sprintf("%v does not exist", string(e))
 }

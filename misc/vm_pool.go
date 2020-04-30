@@ -43,6 +43,9 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	defer p.Unlock()
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Allocating a VM instance")
+
 	if _, isPresent := p.vmMap[vmID]; isPresent {
 		logger.Panic("Allocate (VM): VM exists in the map")
 	}
@@ -66,6 +69,8 @@ func (p *VMPool) Free(vmID string) error {
 	defer p.Unlock()
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Freeing a VM instance")
 
 	vm, isPresent := p.vmMap[vmID]
 	if !isPresent {
