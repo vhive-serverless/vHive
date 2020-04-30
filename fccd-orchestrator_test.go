@@ -203,3 +203,14 @@ func TestSaveMemoryParallel(t *testing.T) {
 	message, err := funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 }
+
+func TestDirectStartStopVM(t *testing.T) {
+	fID := "6"
+	imageName := "ustiugov/helloworld:runner_workload"
+	funcPool = NewFuncPool(false, 0, 0)
+
+	funcPool.AddInstance(fID, imageName)
+
+	message, err := funcPool.RemoveInstance(fID, imageName)
+	require.NoError(t, err, "Function returned error, "+message)
+}

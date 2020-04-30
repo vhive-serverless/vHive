@@ -163,23 +163,27 @@ func fwdServe() {
 	}
 }
 
+// StartVM, StopSingleVM and StopVMs are legacy functions that manage functions and VMs
+// Should be used only to bootstrap an experiment (e.g., quick parallel start of many functions)
 func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMResp, error) {
-	vmID := in.GetId()
+	fID := in.GetId()
 	imageName := in.GetImage()
-	log.WithFields(log.Fields{"vmID": vmID, "image": imageName}).Info("Received StartVM")
+	log.WithFields(log.Fields{"fID": fID, "image": imageName}).Info("Received direct StartVM")
 
-	message, tProfile, err := orch.StartVM(ctx, vmID, imageName)
-	if err != nil {
+	message, err := funcPool.AddInstance(fID, imageName)
+	tProfile := "not supported anymore"
+	//message, tProfile, err := orch.StartVM(ctx, fID, imageName)
+	if err != nil { // does not return error
 		return &pb.StartVMResp{Message: message, Profile: tProfile}, err
 	}
 
-	return &pb.StartVMResp{Message: "started VM " + vmID, Profile: tProfile}, nil
+	return &pb.StartVMResp{Message: "started VM instance for a function " + fID, Profile: tProfile}, nil
 }
 
 func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
-	vmID := in.GetId()
-	log.WithFields(log.Fields{"vmID": vmID}).Info("Received StopVM")
-	message, err := orch.StopSingleVM(ctx, vmID)
+	fID := in.GetId()
+	log.WithFields(log.Fields{"fID": fID}).Info("Received direct StopVM")
+	message, err := funcPool.RemoveInstance(fID, "bogus imageName") //orch.StopSingleVM(ctx, vmID)
 	if err != nil {
 		log.Warn(message, err)
 	}

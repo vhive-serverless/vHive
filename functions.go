@@ -96,6 +96,15 @@ func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string) (*
 	return f.Serve(ctx, fID, imageName, payload)
 }
 
+// AddInstance Adds instance of the function
+func (p *FuncPool) AddInstance(fID, imageName string) (string, error) {
+	f := p.getFunction(fID, imageName)
+
+	f.AddInstance()
+
+	return "Instance started", nil
+}
+
 // RemoveInstance Removes instance of the function (blocking)
 func (p *FuncPool) RemoveInstance(fID, imageName string) (string, error) {
 	f := p.getFunction(fID, imageName)
