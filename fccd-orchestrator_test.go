@@ -209,8 +209,13 @@ func TestDirectStartStopVM(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0)
 
-	funcPool.AddInstance(fID, imageName)
+	message, err := funcPool.AddInstance(fID, imageName)
+	require.NoError(t, err, "This error should never happen (addInstance())"+message)
 
-	message, err := funcPool.RemoveInstance(fID, imageName)
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	require.NoError(t, err, "Function returned error")
+	require.Equal(t, resp.Payload, "Hello, world!")
+
+	message, err = funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
 }

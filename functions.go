@@ -100,7 +100,13 @@ func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string) (*
 func (p *FuncPool) AddInstance(fID, imageName string) (string, error) {
 	f := p.getFunction(fID, imageName)
 
-	f.AddInstance()
+	logger := log.WithFields(log.Fields{"fID": f.fID})
+
+	f.OnceAddInstance.Do(
+		func() {
+			logger.Debug("Function is inactive, starting the instance...")
+			f.AddInstance()
+		})
 
 	return "Instance started", nil
 }
