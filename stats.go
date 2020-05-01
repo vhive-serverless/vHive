@@ -25,6 +25,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"sync/atomic"
 )
 
@@ -73,9 +74,16 @@ func (cs *Stats) SprintStats() string {
 	var s = "==== Stats by cold functions ====\n"
 	s += "fID, #started, #served\n"
 
-	for fID, ctr := range cs.statMap {
+	funcs := make([]string, 0, len(cs.statMap))
+	for fID := range cs.statMap {
+		funcs = append(funcs, fID)
+	}
+	sort.Strings(funcs)
+
+	for _, fID := range funcs {
 		s += fmt.Sprintf("%s, %d, %d\n", fID,
-			atomic.LoadUint64(&ctr.started), atomic.LoadUint64(&ctr.served))
+			atomic.LoadUint64(&cs.statMap[fID].started),
+			atomic.LoadUint64(&cs.statMap[fID].served))
 	}
 
 	s += "==================================="
