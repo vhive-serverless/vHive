@@ -74,7 +74,8 @@ func (cs *Stats) SprintStats() string {
 	s += "fID, #started, #served\n"
 
 	for fID, ctr := range cs.statMap {
-		s += fmt.Sprintf("%s, %d, %d\n", fID, ctr.started, ctr.served)
+		s += fmt.Sprintf("%s, %d, %d\n", fID,
+			atomic.LoadUint64(&ctr.started), atomic.LoadUint64(&ctr.served))
 	}
 
 	s += "==================================="

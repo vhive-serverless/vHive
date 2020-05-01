@@ -58,6 +58,15 @@ func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int) *FuncP
 	p.pinnedFuncNum = pinnedFuncNum
 	p.stats = NewStats()
 
+	heartbeat := time.NewTicker(10 * time.Second)
+
+	go func() {
+		for {
+			<-heartbeat.C
+			log.Info("FuncPool heartbeat: ", p.stats.SprintStats())
+		}
+	}()
+
 	return p
 }
 
