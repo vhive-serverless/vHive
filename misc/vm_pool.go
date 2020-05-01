@@ -31,7 +31,6 @@ import (
 // NewVMPool Initializes a pool of VMs
 func NewVMPool(niNum int) *VMPool {
 	p := new(VMPool)
-	p.vmMap = make(map[string]*VM)
 	p.niPool = NewNiPool(niNum)
 
 	return p
@@ -39,86 +38,79 @@ func NewVMPool(niNum int) *VMPool {
 
 // Allocate Initializes a VM, activates it and then adds it to VM map
 func (p *VMPool) Allocate(vmID string) (*VM, error) {
-	p.Lock()
-	defer p.Unlock()
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Allocating a VM instance")
 
-	if _, isPresent := p.vmMap[vmID]; isPresent {
+	if _, isPresent := p.vmMap.Load(vmID); isPresent {
 		logger.Panic("Allocate (VM): VM exists in the map")
 	}
 
-	p.vmMap[vmID] = NewVM(vmID)
+	vm := NewVM(vmID)
 
 	var err error
-	p.vmMap[vmID].Ni, err = p.niPool.Allocate()
+	vm.Ni, err = p.niPool.Allocate()
 	if err != nil {
 		logger.Warn("Ni allocation failed, freeing VM from the pool")
-		delete(p.vmMap, vmID)
 		return nil, err
 	}
 
-	return p.vmMap[vmID], nil
+	p.vmMap.Store(vmID, vm)
+
+	return vm, nil
 }
 
 // Free Removes a VM from the pool and transitions it to Deactivating
 func (p *VMPool) Free(vmID string) error {
-	p.Lock()
-	defer p.Unlock()
-
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Freeing a VM instance")
 
-	vm, isPresent := p.vmMap[vmID]
+	vmIn, isPresent := p.vmMap.Load(vmID)
 	if !isPresent {
 		log.WithFields(log.Fields{"vmID": vmID}).Panic("Free (VM): VM does not exist in the map")
 		return NonExistErr("Free (VM): VM does not exist when freeing a VM from the pool")
 	}
+	vm := vmIn.(*VM)
 
 	logger.Debug("Free (VM): Freeing VM from the pool")
 
 	p.niPool.Free(vm.Ni)
 
-	delete(p.vmMap, vmID)
+	p.vmMap.Delete(vmID)
 
 	return nil
 }
 
-// GetVMMap Returns the map of VMs
-func (p *VMPool) GetVMMap() map[string]*VM {
-	p.RLock()
-	defer p.RUnlock()
+// GetVMMap Returns a copy of vmMap as a regular concurrency-unsafe map
+func (p *VMPool) GetVMMap() (m map[string]*VM) {
+	p.vmMap.Range(func(key, value interface{}) bool {
+		m[key.(string)] = value.(*VM)
+		return true
+	})
 
-	return p.vmMap
+	return m
 }
 
 // GetVM Returns a pointer to the VM
 func (p *VMPool) GetVM(vmID string) (*VM, error) {
-	p.RLock()
-	defer p.RUnlock()
-
-	vm, found := p.vmMap[vmID]
+	vm, found := p.vmMap.Load(vmID)
 	if !found {
 		log.WithFields(log.Fields{"vmID": vmID}).Panic("VM is not in the VM map")
 		return nil, NonExistErr("GetVM: VM is not in the VM map")
 	}
 
-	return vm, nil
+	return vm.(*VM), nil
 }
 
 // GetFuncClient Returns the client to the function
 func (p *VMPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
-	p.RLock()
-	defer p.RUnlock()
-
-	vm, found := p.vmMap[vmID]
+	vm, found := p.vmMap.Load(vmID)
 	if !found {
 		log.WithFields(log.Fields{"vmID": vmID}).Panic("GetFuncClient: VM is not in the VM map")
 		return nil, NonExistErr("GetFuncClient: VM is not in the VM map")
 	}
 
-	return vm.FuncClient, nil
+	return vm.(*VM).FuncClient, nil
 }

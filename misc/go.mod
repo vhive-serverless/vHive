@@ -11,5 +11,6 @@ require (
 	github.com/sirupsen/logrus v1.5.0
 	github.com/stretchr/testify v1.5.1
 	github.com/ustiugov/fccd-orchestrator v0.0.0-20200421101715-3d8808b0d980
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/grpc v1.28.0
 )

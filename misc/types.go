@@ -26,6 +26,7 @@ import (
 	"sync"
 
 	"github.com/containerd/containerd"
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc"
 
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
@@ -42,9 +43,7 @@ type NetworkInterface struct {
 
 // VM type
 type VM struct {
-	ID string
-	//	functionID string // unused
-
+	ID         string
 	Image      *containerd.Image
 	Container  *containerd.Container
 	Task       *containerd.Task
@@ -56,13 +55,14 @@ type VM struct {
 
 // NiPool Pool of NIs
 type NiPool struct {
+	sync.Mutex
 	niList []NetworkInterface
+	sem    *semaphore.Weighted
 }
 
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
-	sync.RWMutex
-	vmMap  map[string]*VM
+	vmMap  sync.Map
 	niPool *NiPool
 }
 

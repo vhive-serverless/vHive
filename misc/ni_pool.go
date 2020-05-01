@@ -23,15 +23,18 @@
 package misc
 
 import (
+	"context"
 	"fmt"
+	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/semaphore"
 )
 
 // NewNiPool Initializes a new NI pool
 func NewNiPool(niNum int) *NiPool {
 	p := new(NiPool)
+	p.sem = semaphore.NewWeighted(int64(niNum))
 
 	log.Debug(fmt.Sprintf("Creating a new NI pool with %d ni-s.", niNum))
 
@@ -51,9 +54,22 @@ func NewNiPool(niNum int) *NiPool {
 
 // Allocate Returns a pointer to a pre-initialized NI
 func (p *NiPool) Allocate() (*NetworkInterface, error) {
+	d := time.Now().Add(10 * time.Second)
+	ctx, cancel := context.WithDeadline(context.Background(), d)
+	defer cancel()
+	if err := p.sem.Acquire(context.Background(), 1); err != nil {
+		log.Panic("Failed to acquire semaphore for NI allocate")
+	}
+	if ctx.Err() != nil {
+		log.Panic("Deadline exceeded when waiting for a free NI", ctx.Err())
+	}
+
 	var ni NetworkInterface
+
+	p.Lock()
+	defer p.Unlock()
 	if len(p.niList) == 0 {
-		return nil, errors.New("No NI available")
+		log.Panic("No NI available")
 	}
 	ni, p.niList = p.niList[0], p.niList[1:]
 
@@ -64,6 +80,11 @@ func (p *NiPool) Allocate() (*NetworkInterface, error) {
 
 // Free Returns NI to the list of NIs in the pool
 func (p *NiPool) Free(ni *NetworkInterface) {
+	p.sem.Release(1)
+
+	p.Lock()
+	defer p.Unlock()
+
 	p.niList = append(p.niList, *ni)
 	log.Debug("Free (NI): freed ni with IP=" + ni.PrimaryAddress)
 }
