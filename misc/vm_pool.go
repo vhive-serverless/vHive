@@ -84,7 +84,8 @@ func (p *VMPool) Free(vmID string) error {
 }
 
 // GetVMMap Returns a copy of vmMap as a regular concurrency-unsafe map
-func (p *VMPool) GetVMMap() (m map[string]*VM) {
+func (p *VMPool) GetVMMap() map[string]*VM {
+	m := make(map[string]*VM)
 	p.vmMap.Range(func(key, value interface{}) bool {
 		m[key.(string)] = value.(*VM)
 		return true
