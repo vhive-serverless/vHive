@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"sync/atomic"
 )
 
@@ -78,7 +79,11 @@ func (cs *Stats) SprintStats() string {
 	for fID := range cs.statMap {
 		funcs = append(funcs, fID)
 	}
-	sort.Strings(funcs)
+	sort.Slice(funcs, func(i, j int) bool {
+		numA, _ := strconv.Atoi(funcs[i])
+		numB, _ := strconv.Atoi(funcs[j])
+		return numA < numB
+	})
 
 	for _, fID := range funcs {
 		s += fmt.Sprintf("%s, %d, %d\n", fID,
