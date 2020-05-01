@@ -34,7 +34,9 @@ func TestStartStopSerial(t *testing.T) {
 	message, _, err := orch.StartVM(ctx, "test_vmID", "ustiugov/helloworld:runner_workload")
 	require.NoError(t, err, "Failed to start VM, "+message)
 
-	message, err = orch.StopSingleVM(ctx, "test_vmID")
+	ch := make(chan bool, 1)
+	message, err = orch.StopSingleVM(ctx, "test_vmID", ch)
+	<-ch
 	require.NoError(t, err, "Failed to stop VM, "+message)
 }
 
@@ -77,7 +79,9 @@ func TestStartStopParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("test_%d", i)
-				message, err := orch.StopSingleVM(ctx, vmID)
+				ch := make(chan bool, 1)
+				message, err := orch.StopSingleVM(ctx, vmID, ch)
+				<-ch
 				require.NoError(t, err, "Failed to stop VM, "+message)
 			}(i)
 		}
