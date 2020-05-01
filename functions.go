@@ -188,8 +188,15 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 		})
 
 	f.RLock()
-	resp, err := f.fwdRPC(ctx, reqPayload)
-	if err != nil {
+	// FIXME: keep a strict deadline for fowrwarding RPCs to a warm function
+	// Eventually, it needs to be RPC-dependent and probably client-defined
+	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Second))
+	defer cancel()
+	resp, err := f.fwdRPC(ctxFwd, reqPayload)
+	if err != nil && ctx.Err() == context.Canceled {
+		// client-defined deadline exceeded
+		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+	} else if err != nil {
 		logger.Warn("Function returned error: ", err)
 		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
 	}

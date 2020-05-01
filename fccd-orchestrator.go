@@ -26,11 +26,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	_ "fmt"
-	_ "io/ioutil"
 	"math/rand"
 	"net"
 	"os"
+	"runtime"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -78,6 +77,7 @@ func (m *myWriter) Write(p []byte) (n int, err error) {
 
 func main() {
 	var err error
+	runtime.GOMAXPROCS(16)
 
 	rand.Seed(42)
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
