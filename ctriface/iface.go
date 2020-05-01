@@ -319,7 +319,7 @@ func (o *Orchestrator) cleanup(ctx context.Context, vm *misc.VM, isVM, isCont, i
 // StopSingleVM Shuts down a VM
 // VM can be starting or deactivating (do nothing), active (shut down)
 // Note: VMs are not quisced before being stopped
-func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string, ready chan bool) (string, error) {
+func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received StopVM")
 
@@ -332,12 +332,6 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string, ready chan
 		}
 		logger.Panic("StopVM: GetVM() failed for an unknown reason")
 
-	}
-
-	err = o.vmPool.Free(vmID)
-	ready <- true // Indicate to the caller that NI is ready to be reused
-	if err != nil {
-		return "Free", err
 	}
 
 	logger = log.WithFields(log.Fields{"vmID": vmID})
@@ -368,6 +362,10 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string, ready chan
 		return "Stopping VM " + vmID + " failed", err
 	}
 
+	if err := o.vmPool.Free(vmID); err != nil {
+		return "Free", err
+	}
+
 	logger.Debug("Stopped VM successfully")
 
 	return "VM " + vmID + " stopped successfully", nil
@@ -381,9 +379,7 @@ func (o *Orchestrator) StopActiveVMs() error {
 		logger := log.WithFields(log.Fields{"vmID": vmID})
 		go func(vmID string, vm *misc.VM) {
 			defer vmGroup.Done()
-			ch := make(chan bool)
-			message, err := o.StopSingleVM(context.Background(), vmID, ch)
-			<-ch
+			message, err := o.StopSingleVM(context.Background(), vmID)
 			if err != nil {
 				logger.Warn(message, err)
 			}
