@@ -85,7 +85,7 @@ func main() {
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
-	servedThreshold = flag.Uint64("st", 1000000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
+	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
@@ -121,7 +121,7 @@ func main() {
 
 	orch = ctriface.NewOrchestrator(*snapshotter, *niNum)
 
-	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum)
+	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, false)
 
 	go orchServe()
 	fwdServe()

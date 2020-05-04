@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -35,6 +36,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 )
+
+var isTestMode bool // set with a call to NewFuncPool
 
 //////////////////////////////// FunctionPool type //////////////////////////////////////////
 
@@ -50,7 +53,7 @@ type FuncPool struct {
 
 // NewFuncPool Initializes a pool of functions. Functions can only be added
 // but never removed from the map.
-func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int) *FuncPool {
+func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int, testModeOn bool) *FuncPool {
 	p := new(FuncPool)
 	p.funcMap = make(map[string]*Function)
 	p.saveMemoryMode = saveMemoryMode
@@ -58,7 +61,7 @@ func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int) *FuncP
 	p.pinnedFuncNum = pinnedFuncNum
 	p.stats = NewStats()
 
-	heartbeat := time.NewTicker(10 * time.Second)
+	heartbeat := time.NewTicker(60 * time.Second)
 
 	go func() {
 		for {
@@ -66,6 +69,8 @@ func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int) *FuncP
 			log.Info("FuncPool heartbeat: ", p.stats.SprintStats())
 		}
 	}()
+
+	isTestMode = testModeOn
 
 	return p
 }
@@ -155,8 +160,18 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 	f.sem = semaphore.NewWeighted(int64(servedTh))
 	f.isPinnedInMem = isToPin
 	f.stats = Stats
-	f.servedTh = servedTh
-	f.servedSyncCounter = int64(servedTh) // cannot use uint64 for the counter due to the overflow
+
+	// Normal distribution with stddev=servedTh/2, mean=servedTh
+	rand.Seed(10000)
+	thresh := int64(rand.NormFloat64()*float64(servedTh/2) + float64(servedTh))
+	if thresh <= 0 {
+		thresh = int64(servedTh)
+	}
+	if isTestMode && servedTh == 40 { // 40 is used in tests
+		thresh = 40
+	}
+	f.servedTh = uint64(thresh)
+	f.servedSyncCounter = int64(f.servedTh) // cannot use uint64 for the counter due to the overflow
 
 	return f
 }
