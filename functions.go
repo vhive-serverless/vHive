@@ -283,7 +283,7 @@ func (f *Function) AddInstance() {
 
 	vmID := fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	defer cancel()
 
 	message, _, err := orch.StartVM(ctx, vmID, f.imageName)
