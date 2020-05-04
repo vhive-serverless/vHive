@@ -138,7 +138,6 @@ func (p *FuncPool) RemoveInstance(fID, imageName string) (string, error) {
 type Function struct {
 	sync.RWMutex
 	OnceAddInstance   *sync.Once
-	sem               *semaphore.Weighted
 	fID               string
 	imageName         string
 	vmIDList          []string // FIXME: only a single VM per function is supported
@@ -146,6 +145,7 @@ type Function struct {
 	isPinnedInMem     bool // if pinned, the orchestrator does not stop/offload it)
 	stats             *Stats
 	servedTh          uint64
+	sem               *semaphore.Weighted
 	servedSyncCounter int64
 }
 
@@ -157,7 +157,6 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 	f.fID = fID
 	f.imageName = imageName
 	f.OnceAddInstance = new(sync.Once)
-	f.sem = semaphore.NewWeighted(int64(servedTh))
 	f.isPinnedInMem = isToPin
 	f.stats = Stats
 
@@ -170,8 +169,19 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 	if isTestMode && servedTh == 40 { // 40 is used in tests
 		thresh = 40
 	}
+
 	f.servedTh = uint64(thresh)
+	f.sem = semaphore.NewWeighted(int64(f.servedTh))
 	f.servedSyncCounter = int64(f.servedTh) // cannot use uint64 for the counter due to the overflow
+
+	log.WithFields(
+		log.Fields{
+			"fID":      f.fID,
+			"image":    f.imageName,
+			"isPinned": f.isPinnedInMem,
+			"servedTh": f.servedTh,
+		},
+	).Info("New function added")
 
 	return f
 }
