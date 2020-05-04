@@ -161,7 +161,6 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 	f.stats = Stats
 
 	// Normal distribution with stddev=servedTh/2, mean=servedTh
-	rand.Seed(10000)
 	thresh := int64(rand.NormFloat64()*float64(servedTh/2) + float64(servedTh))
 	if thresh <= 0 {
 		thresh = int64(servedTh)
