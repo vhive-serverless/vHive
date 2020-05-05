@@ -32,6 +32,8 @@ import (
 	"time"
 
 	"golang.org/x/sync/semaphore"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	log "github.com/sirupsen/logrus"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
@@ -221,17 +223,27 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 		})
 
 	f.RLock()
-	// FIXME: keep a strict deadline for fowrwarding RPCs to a warm function
+	// FIXME: keep a strict deadline for forwarding RPCs to a warm function
 	// Eventually, it needs to be RPC-dependent and probably client-defined
 	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Second))
 	defer cancel()
 	resp, err := f.fwdRPC(ctxFwd, reqPayload)
 	if err != nil && ctx.Err() == context.Canceled {
-		// client-defined deadline exceeded
+		// context deadline exceeded
 		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
 	} else if err != nil {
-		logger.Warn("Function returned error: ", err)
-		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+		if e, ok := status.FromError(err); ok {
+			switch e.Code() {
+			case codes.DeadlineExceeded:
+				// deadline exceeded
+				return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+			default:
+				logger.Warn("Function returned error: ", err)
+				return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, err
+			}
+		} else {
+			logger.Panic("Not able to parse error returned ", err)
+		}
 	}
 	f.RUnlock()
 

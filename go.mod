@@ -10,7 +10,7 @@ require (
 	github.com/golang/protobuf v1.3.3
 	github.com/sirupsen/logrus v1.5.0
 	github.com/stretchr/testify v1.5.1
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200501193612-c339fed857de
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200505104126-a0cbcd460db7
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200501193612-c339fed857de
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200421101715-3d8808b0d980
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
