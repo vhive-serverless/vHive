@@ -248,7 +248,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		grpc.WithConnectParams(connParams),
 		grpc.WithContextDialer(contextDialer),
 	}
-	ctxx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(ctxx, vm.Ni.PrimaryAddress+":50051", gopts...)
 	vm.Conn = conn
