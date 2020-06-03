@@ -23,68 +23,66 @@
 package misc
 
 import (
-	"context"
-	"fmt"
-	"time"
+    "context"
+    "fmt"
+    "time"
 
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/semaphore"
+    log "github.com/sirupsen/logrus"
+    "golang.org/x/sync/semaphore"
 )
 
 // NewNiPool Initializes a new NI pool
 func NewNiPool(niNum int) *NiPool {
-	p := new(NiPool)
-	p.sem = semaphore.NewWeighted(int64(niNum))
+    p := new(NiPool)
+    p.sem = semaphore.NewWeighted(int64(niNum))
 
-	log.Debug(fmt.Sprintf("Creating a new NI pool with %d ni-s.", niNum))
+    log.Debug(fmt.Sprintf("Creating a new NI pool with %d ni-s.", niNum))
 
-	for i := 0; i < niNum; i++ {
-		ni := NetworkInterface{
-			MacAddress:     fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),
-			HostDevName:    fmt.Sprintf("fc-%d-tap0", i),
-			PrimaryAddress: fmt.Sprintf("19%d.128.%d.%d", i%2+6, (i+2)/256, (i+2)%256),
-			Subnet:         "/10",
-			GatewayAddress: fmt.Sprintf("19%d.128.0.1", i%2+6),
-		}
-		p.niList = append(p.niList, ni)
-	}
+    for i := 0; i < niNum; i++ {
+        ni := NetworkInterface{
+            MacAddress:     fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),
+            HostDevName:    fmt.Sprintf("fc-%d-tap0", i),
+            PrimaryAddress: fmt.Sprintf("19%d.128.%d.%d", i%2+6, (i+2)/256, (i+2)%256),
+            Subnet:         "/10",
+            GatewayAddress: fmt.Sprintf("19%d.128.0.1", i%2+6),
+        }
+        p.niList = append(p.niList, ni)
+    }
 
-	return p
+    return p
 }
 
 // Allocate Returns a pointer to a pre-initialized NI
 func (p *NiPool) Allocate() (*NetworkInterface, error) {
-	d := time.Now().Add(10 * time.Second)
-	ctx, cancel := context.WithDeadline(context.Background(), d)
-	defer cancel()
-	if err := p.sem.Acquire(context.Background(), 1); err != nil {
-		log.Panic("Failed to acquire semaphore for NI allocate")
-	}
-	if ctx.Err() != nil {
-		log.Panic("Deadline exceeded when waiting for a free NI", ctx.Err())
-	}
+    d := time.Now().Add(10 * time.Second)
+    ctx, cancel := context.WithDeadline(context.Background(), d)
+    defer cancel()
+    if err := p.sem.Acquire(context.Background(), 1); err != nil {
+        log.Panic("Failed to acquire semaphore for NI allocate")
+    }
 
-	var ni NetworkInterface
 
-	p.Lock()
-	defer p.Unlock()
-	if len(p.niList) == 0 {
-		log.Panic("No NI available")
-	}
-	ni, p.niList = p.niList[0], p.niList[1:]
+    var ni NetworkInterface
 
-	log.Debug("Allocate (NI): allocated ni with IP=" + ni.PrimaryAddress)
+    p.Lock()
+    defer p.Unlock()
+    if len(p.niList) == 0 {
+        log.Panic("No NI available")
+    }
+    ni, p.niList = p.niList[0], p.niList[1:]
 
-	return &ni, nil
+    log.Debug("Allocate (NI): allocated ni with IP=" + ni.PrimaryAddress)
+
+    return &ni, nil
 }
 
 // Free Returns NI to the list of NIs in the pool
 func (p *NiPool) Free(ni *NetworkInterface) {
-	p.sem.Release(1)
+    p.sem.Release(1)
 
-	p.Lock()
-	defer p.Unlock()
+    p.Lock()
+    defer p.Unlock()
 
-	p.niList = append(p.niList, *ni)
-	log.Debug("Free (NI): freed ni with IP=" + ni.PrimaryAddress)
+    p.niList = append(p.niList, *ni)
+    log.Debug("Free (NI): freed ni with IP=" + ni.PrimaryAddress)
 }
