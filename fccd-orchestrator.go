@@ -115,7 +115,7 @@ func main() {
 		log.Info(fmt.Sprintf("Creating orchestrator for pinned=%d functions", *pinnedFuncNum))
 
 		if *pinnedFuncNum > *niNum {
-			log.Panic("Memory saving is enabled but the number of the functions pinned in memory is smaller than niNum")
+			log.Panic("Memory saving is enabled but the number of the functions pinned in memory is larger than niNum")
 		}
 	}
 
