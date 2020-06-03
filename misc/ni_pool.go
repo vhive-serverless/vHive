@@ -78,11 +78,11 @@ func (p *NiPool) Allocate() (*NetworkInterface, error) {
 
 // Free Returns NI to the list of NIs in the pool
 func (p *NiPool) Free(ni *NetworkInterface) {
-    p.sem.Release(1)
-
     p.Lock()
     defer p.Unlock()
 
     p.niList = append(p.niList, *ni)
     log.Debug("Free (NI): freed ni with IP=" + ni.PrimaryAddress)
+
+    p.sem.Release(1)
 }
