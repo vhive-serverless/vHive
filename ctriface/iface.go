@@ -102,7 +102,7 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
     image, found := o.cachedImages[imageName]
     if !found {
         var err error
-        log.Debug("Orchestrator received StartVM")
+        log.Debug("Image not found in the orchestrator's cached images.")
         image, err = o.client.Pull(ctx, "docker.io/"+imageName,
             containerd.WithPullUnpack,
             containerd.WithPullSnapshotter(o.snapshotter),
