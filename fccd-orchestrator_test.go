@@ -32,6 +32,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
+	"github.com/ustiugov/fccd-orchestrator/misc"
 )
 
 func TestMain(m *testing.M) {
@@ -56,6 +57,8 @@ func TestMain(m *testing.M) {
 		log.Printf("Failed to stop VMs, err: %v\n", err)
 	}
 
+	misc.CleanupTaps(orch.GetNiNum())
+	
 	os.Exit(ret)
 }
 
