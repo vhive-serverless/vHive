@@ -52,12 +52,9 @@ func TestMain(m *testing.M) {
 func TestCreateCleanTaps(t *testing.T) {
 	niNum := []int{100, 1100}
 
-	var ret error
 	for _, n := range niNum {
-		ret = CreateTaps(n)
-		require.Equal(t, ret, nil, fmt.Sprintf("CreateTaps failed for %d taps", n))
-		ret = CleanupTaps(n)
-		require.Equal(t, ret, nil, fmt.Sprintf("CleanupTaps failed for %d taps", n))
+		CreateTaps(n)
+		RemoveTaps(n)
 	}
 }
 
