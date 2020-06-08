@@ -61,37 +61,38 @@ func MakeTapName(id int) string {
 
 // Creates a single tap and connects it to the master
 func createSingleTap(id int, bridgeId int, wg *sync.WaitGroup) {
+	logger := log.WithFields(log.Fields{"tap": MakeTapName(id), "bridge": makeBridgeName(bridgeId)})
+
 	defer wg.Done()
 
 	la := netlink.NewLinkAttrs()
 	la.Name = MakeTapName(id)
 
-	log.Debug(fmt.Sprintf("Creating, setting master and enabling tap %s", la.Name))
+	logger.Debug("Creating, setting master and enabling tap")
 
 	tap := &netlink.Tuntap{LinkAttrs: la, Mode: netlink.TUNTAP_MODE_TAP}
 
 	if err := netlink.LinkAdd(tap); err != nil  {
 		fmt.Println(err)
-		log.Panic(fmt.Sprintf("Tap %s could not be created", tap.Name))
+		logger.Panic("Tap could not be created")
 	}
 
 	br, err := netlink.LinkByName(makeBridgeName(bridgeId))
 	if err != nil {
-		log.Panic(fmt.Sprintf("could not create %s, because corresponding bridge %s does not exist",
-			tap.Name, makeBridgeName(bridgeId)))
+		logger.Panic("Could not create tap, because corresponding bridge does not exist")
 	}
 
 	if  err := netlink.LinkSetMaster(tap, br); err != nil {
-		log.Panic(fmt.Sprintf("Master of %s could not be set to %s", tap.Name, makeBridgeName(bridgeId)))
+		logger.Panic("Master could not be set")
 	}
 
 	if err := netlink.LinkSetUp(tap); err != nil {
-		log.Panic(fmt.Sprintf("Tap %s could not be enabled", tap.Name))
+		logger.Panic("Tap could not be enabled")
 	}
 }
 
 // Creates bridges and taps necessary for a number of network interfaces
-func CreateTaps(niNum int) error {
+func CreateTaps(niNum int) {
 	log.Info(fmt.Sprintf("Creating bridges and taps for a new NI pool with %d ni-s.", niNum))
 
 	numBridges := int(math.Ceil(float64(niNum)/float64(TapsPerBridge))) // up to 1000 taps per bridge
@@ -100,12 +101,14 @@ func CreateTaps(niNum int) error {
 		la := netlink.NewLinkAttrs()
 		la.Name = makeBridgeName(i)
 
-		log.Debug("Creating bridge " + la.Name)
+		logger := log.WithFields(log.Fields{"bridge": makeBridgeName(i)})
+
+		logger.Debug("Creating bridge")
 
 		br := &netlink.Bridge{LinkAttrs: la}
 
 		if err := netlink.LinkAdd(br); err != nil  {
-			log.Panic(fmt.Sprintf("Bridge %s could not be created", br.Name))
+			logger.Panic("Bridge could not be created")
 		}
 	}
 
@@ -118,87 +121,87 @@ func CreateTaps(niNum int) error {
 
 	wg.Wait()
 
-	log.Debug(fmt.Sprintf("Enabling bridges and adding IP to them"))
+	log.Debug("Enabling bridges and adding IP to them")
 
 	for i := 0; i < numBridges; i++ {
-		log.Debug(fmt.Sprintf("Enabling bridge %s", makeBridgeName(i)))
+		logger := log.WithFields(log.Fields{"bridge": makeBridgeName(i)})
+
+		logger.Debug("Enabling bridge")
 
 		br, err := netlink.LinkByName(makeBridgeName(i))
 		if err != nil {
-			log.Panic(fmt.Sprintf("could not enable bridge %s, because it does not exist",
-				makeBridgeName(i)))
+			logger.Panic("Could not find bridge")
 		}
 
 		if err := netlink.LinkSetUp(br); err != nil {
-			log.Panic(fmt.Sprintf("Bridge %s could not be enabled", makeBridgeName(i)))
+			logger.Panic("Bridge exists but could not be enabled")
 		}
 
 		bridgeAddress := MakeGatewayAddr(i) + Subnet
 
-		log.Debug(fmt.Sprintf("Adding ip: %s to bridge %s", bridgeAddress, makeBridgeName(i)))
+		logger.Debug(fmt.Sprintf("Adding ip: %s to bridge", bridgeAddress))
 
 		addr, err := netlink.ParseAddr(bridgeAddress)
 		if err != nil {
-			log.Panic(fmt.Sprintf("could not parse %s", bridgeAddress))
+			log.Panic(fmt.Sprintf("could not parse bridge address %s", bridgeAddress))
 		}
 
 		if err := netlink.AddrAdd(br, addr); err != nil {
-			log.Panic(fmt.Sprintf("could not add %s to %s", bridgeAddress, makeBridgeName(i)))
+			logger.Panic(fmt.Sprintf("could not add %s to bridge", bridgeAddress))
 		}
 	}
-
-	return nil
 }
 
 // Deletes a single tap
-func cleanupSingleTap(id int, wg *sync.WaitGroup) {
+func removeSingleTap(id int, wg *sync.WaitGroup) {
+	logger := log.WithFields(log.Fields{"bridge": makeBridgeName(id)})
+
 	defer wg.Done()
 
 	name := MakeTapName(id)
 
-	log.Debug(fmt.Sprintf("Deleting tap %s", name))
+	logger.Debug("Deleting tap")
 
 	tap, err := netlink.LinkByName(name)
 	if err != nil {
-		log.Info(fmt.Sprintf("Could not find tap %s", name))
+		logger.Warn("Could not find tap")
 		return
 	}
 
 	if err := netlink.LinkDel(tap); err != nil  {
-		log.Panic(fmt.Sprintf("Tap %s could not be deleted", name))
+		logger.Panic("Tap could not be deleted")
 	}
 }
 
 // Cleans up bridges and taps necessary for a number of network interfaces
-func CleanupTaps(niNum int) error {
-	log.Info(fmt.Sprintf("Cleaning up bridges and taps for a NI pool with %d ni-s.", niNum))
+func RemoveTaps(niNum int) {
+	log.Info(fmt.Sprintf("Removing bridges and taps for a NI pool with %d ni-s.", niNum))
 
 	var wg sync.WaitGroup
 	wg.Add(niNum)
 
 	for i := 0; i < niNum; i++ {
-		go cleanupSingleTap(i, &wg)
+		go removeSingleTap(i, &wg)
 	}
 
 	wg.Wait()
 
-	TapsPerBridge := 1000
 	numBridges := int(math.Ceil(float64(niNum)/float64(TapsPerBridge))) // up to 1000 taps per bridge
 	for i := 0; i < numBridges; i++ {
-		name := makeBridgeName(i)
+		bridgeName := makeBridgeName(i)
 
-		log.Debug("Deleting bridge " + name)
+		logger := log.WithFields(log.Fields{"bridge": bridgeName})
 
-		br, err := netlink.LinkByName(name)
+		logger.Debug("Deleting bridge")
+
+		br, err := netlink.LinkByName(bridgeName)
 		if err != nil {
-			log.Info(fmt.Sprintf("Could not find bridge %s", name))
+			logger.WithFields(log.Fields{"bridge": bridgeName}).Warn("Could not find bridge")
 			continue
 		}
 
 		if err := netlink.LinkDel(br); err != nil  {
-			log.Panic(fmt.Sprintf("Bridge %s could not be deleted", name))
+			logger.WithFields(log.Fields{"bridge": bridgeName}).Panic("Bridge could not be deleted")
 		}
 	}
-
-	return nil
 }
