@@ -171,7 +171,7 @@ func cleanupSingleTap(id int, wg *sync.WaitGroup) {
 
 // Cleans up bridges and taps necessary for a number of network interfaces
 func CleanupTaps(niNum int) error {
-	log.Debug(fmt.Sprintf("Cleaning up bridges and taps for a NI pool with %d ni-s.", niNum))
+	log.Info(fmt.Sprintf("Cleaning up bridges and taps for a NI pool with %d ni-s.", niNum))
 
 	var wg sync.WaitGroup
 	wg.Add(niNum)

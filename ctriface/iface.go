@@ -62,6 +62,7 @@ const (
 
 // Orchestrator Drives all VMs
 type Orchestrator struct {
+	niNum        int
 	vmPool       *misc.VMPool
 	cachedImages map[string]containerd.Image
 	snapshotter  string
@@ -75,11 +76,14 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 	var err error
 
 	o := new(Orchestrator)
-	o.vmPool = misc.NewVMPool(niNum)
+	o.niNum = niNum
+	o.vmPool = misc.NewVMPool(o.niNum)
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 
-	//o.setupCloseHandler()
+	misc.CreateTaps(o.niNum)
+
+	o.setupCloseHandler()
 	o.setupHeartbeat()
 
 	log.Info("Creating containerd client")
@@ -417,6 +421,7 @@ func (o *Orchestrator) setupCloseHandler() {
 		<-c
 		log.Info("\r- Ctrl+C pressed in Terminal")
 		_ = o.StopActiveVMs()
+		misc.CleanupTaps(o.niNum)
 		os.Exit(0)
 	}()
 }
