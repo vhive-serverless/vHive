@@ -57,12 +57,10 @@ func (p *NiPool) Allocate() (*NetworkInterface, error) {
 	d := time.Now().Add(10 * time.Second)
 	ctx, cancel := context.WithDeadline(context.Background(), d)
 	defer cancel()
-	if err := p.sem.Acquire(context.Background(), 1); err != nil {
-		log.Panic("Failed to acquire semaphore for NI allocate")
+	if err := p.sem.Acquire(ctx, 1); err != nil {
+		log.Panic("Failed to acquire semaphore for NI allocate (or timed out)")
 	}
-	if ctx.Err() != nil {
-		log.Panic("Deadline exceeded when waiting for a free NI", ctx.Err())
-	}
+
 
 	var ni NetworkInterface
 
@@ -80,11 +78,11 @@ func (p *NiPool) Allocate() (*NetworkInterface, error) {
 
 // Free Returns NI to the list of NIs in the pool
 func (p *NiPool) Free(ni *NetworkInterface) {
-	p.sem.Release(1)
-
 	p.Lock()
 	defer p.Unlock()
 
 	p.niList = append(p.niList, *ni)
 	log.Debug("Free (NI): freed ni with IP=" + ni.PrimaryAddress)
+
+	p.sem.Release(1)
 }
