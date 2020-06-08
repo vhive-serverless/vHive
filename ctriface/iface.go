@@ -121,6 +121,10 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	return &image, nil
 }
 
+func (o *Orchestrator) getNiNum() int {
+	return o.niNum
+}
+
 func (o *Orchestrator) getVMConfig(vmID string, ni misc.NetworkInterface) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
