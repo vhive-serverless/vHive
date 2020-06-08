@@ -12,8 +12,6 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-
-	"github.com/ustiugov/fccd-orchestrator/misc"
 )
 
 func TestStartStopSerial(t *testing.T) {
@@ -39,7 +37,7 @@ func TestStartStopSerial(t *testing.T) {
 	message, err = orch.StopSingleVM(ctx, "test_vmID")
 	require.NoError(t, err, "Failed to stop VM, "+message)
 
-	misc.CleanupTaps(1)
+	orch.Cleanup()
 }
 
 func TestStartStopParallel(t *testing.T) {
@@ -88,5 +86,5 @@ func TestStartStopParallel(t *testing.T) {
 		vmGroup.Wait()
 	}
 
-	misc.CleanupTaps(vmNum)
+	orch.Cleanup()
 }

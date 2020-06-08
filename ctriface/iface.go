@@ -121,8 +121,8 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	return &image, nil
 }
 
-func (o *Orchestrator) GetNiNum() int {
-	return o.niNum
+func (o *Orchestrator) Cleanup() {
+	misc.RemoveTaps(o.niNum)
 }
 
 func (o *Orchestrator) getVMConfig(vmID string, ni misc.NetworkInterface) *proto.CreateVMRequest {
@@ -427,7 +427,7 @@ func (o *Orchestrator) setupCloseHandler() {
 		<-c
 		log.Info("\r- Ctrl+C pressed in Terminal")
 		_ = o.StopActiveVMs()
-		misc.CleanupTaps(o.niNum)
+		o.Cleanup()
 		os.Exit(0)
 	}()
 }
