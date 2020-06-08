@@ -57,8 +57,8 @@ func (p *NiPool) Allocate() (*NetworkInterface, error) {
 	d := time.Now().Add(10 * time.Second)
 	ctx, cancel := context.WithDeadline(context.Background(), d)
 	defer cancel()
-	if err := p.sem.Acquire(context.Background(), 1); err != nil {
-		log.Panic("Failed to acquire semaphore for NI allocate")
+	if err := p.sem.Acquire(ctx, 1); err != nil {
+		log.Panic("Failed to acquire semaphore for NI allocate (or timed out)")
 	}
 
 

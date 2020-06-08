@@ -30,6 +30,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 
@@ -89,7 +90,7 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 	}
 	log.Info("Created containerd client")
 
-	log.Info("Creating firecrackerclient")
+	log.Info("Creating firecracker client")
 	o.fcClient, err = fcclient.New(containerdTTRPCAddress)
 	if err != nil {
 		log.Fatal("Failed to start firecracker client", err)
@@ -102,7 +103,7 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	image, found := o.cachedImages[imageName]
 	if !found {
 		var err error
-		log.Debug("Image not found in the orchestrator's cached images.")
+		log.Debug(fmt.Sprintf("Pulling image %s", imageName))
 		image, err = o.client.Pull(ctx, "docker.io/"+imageName,
 			containerd.WithPullUnpack,
 			containerd.WithPullSnapshotter(o.snapshotter),
