@@ -121,6 +121,7 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	return &image, nil
 }
 
+// Cleanup Removes the open taps and bridges
 func (o *Orchestrator) Cleanup() {
 	misc.RemoveTaps(o.niNum)
 }

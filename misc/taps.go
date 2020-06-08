@@ -34,19 +34,21 @@ import (
 
 
 const (
+	// Subnet Number of bits in the subnet mask
 	Subnet = "/10"
+	// TapsPerBridge Number of taps per bridge
 	TapsPerBridge = 1000
 ) 
 
-// Creates the primary address for a tap
+// MakePrimaryAddress Creates the primary address for a tap
 func MakePrimaryAddress(id int) string {
-	bridgeId := id/TapsPerBridge
-	return fmt.Sprintf("19%d.128.%d.%d", bridgeId, (id+2)/256, (id+2)%256)
+	bridgeID := id/TapsPerBridge
+	return fmt.Sprintf("19%d.128.%d.%d", bridgeID, (id+2)/256, (id+2)%256)
 }
 
-// Create gateway address
-func MakeGatewayAddr(bridgeId int) string {
-	return fmt.Sprintf("19%d.128.0.1", bridgeId)
+// MakeGatewayAddr Creates the gateway address (first address in pool)
+func MakeGatewayAddr(bridgeID int) string {
+	return fmt.Sprintf("19%d.128.0.1", bridgeID)
 }
 
 // Create bridge name
@@ -54,14 +56,14 @@ func makeBridgeName(id int) string {
 	return fmt.Sprintf("br%d", id)
 }
 
-// Create tap name
+// MakeTapName Creates the tap name
 func MakeTapName(id int) string {
 	return fmt.Sprintf("fc-%d-tap0", id)
 }
 
 // Creates a single tap and connects it to the master
-func createSingleTap(id int, bridgeId int, wg *sync.WaitGroup) {
-	logger := log.WithFields(log.Fields{"tap": MakeTapName(id), "bridge": makeBridgeName(bridgeId)})
+func createSingleTap(id int, bridgeID int, wg *sync.WaitGroup) {
+	logger := log.WithFields(log.Fields{"tap": MakeTapName(id), "bridge": makeBridgeName(bridgeID)})
 
 	defer wg.Done()
 
@@ -77,7 +79,7 @@ func createSingleTap(id int, bridgeId int, wg *sync.WaitGroup) {
 		logger.Panic("Tap could not be created")
 	}
 
-	br, err := netlink.LinkByName(makeBridgeName(bridgeId))
+	br, err := netlink.LinkByName(makeBridgeName(bridgeID))
 	if err != nil {
 		logger.Panic("Could not create tap, because corresponding bridge does not exist")
 	}
@@ -91,7 +93,7 @@ func createSingleTap(id int, bridgeId int, wg *sync.WaitGroup) {
 	}
 }
 
-// Creates bridges and taps necessary for a number of network interfaces
+// CreateTaps Creates bridges and taps necessary for a number of network interfaces
 func CreateTaps(niNum int) {
 	log.Info(fmt.Sprintf("Creating bridges and taps for a new NI pool with %d ni-s.", niNum))
 
@@ -173,7 +175,7 @@ func removeSingleTap(id int, wg *sync.WaitGroup) {
 	}
 }
 
-// Cleans up bridges and taps necessary for a number of network interfaces
+// RemoveTaps Removes bridges and taps necessary for a number of network interfaces
 func RemoveTaps(niNum int) {
 	log.Info(fmt.Sprintf("Removing bridges and taps for a NI pool with %d ni-s.", niNum))
 
