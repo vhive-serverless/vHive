@@ -119,7 +119,7 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	return &image, nil
 }
 
-func (o *Orchestrator) getNiNum() int {
+func (o *Orchestrator) GetNiNum() int {
 	return o.niNum
 }
 
