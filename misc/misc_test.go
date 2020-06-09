@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,15 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestCreateCleanTaps(t *testing.T) {
+	niNum := []int{100, 1100}
+
+	for _, n := range niNum {
+		CreateTaps(n)
+		RemoveTaps(n)
+	}
+}
+
 func TestAllocateFreeNi(t *testing.T) {
 	niNum := 2
 
@@ -63,10 +72,10 @@ func TestAllocateFreeNi(t *testing.T) {
 
 		niRef := NetworkInterface{
 			MacAddress:     fmt.Sprintf("02:FC:00:00:%02X:%02X", i/256, i%256),
-			HostDevName:    fmt.Sprintf("fc-%d-tap0", i),
-			PrimaryAddress: fmt.Sprintf("19%d.128.%d.%d", i%2+6, (i+2)/256, (i+2)%256),
-			Subnet:         "/10",
-			GatewayAddress: fmt.Sprintf("19%d.128.0.1", i%2+6),
+			HostDevName:    MakeTapName(i),
+			PrimaryAddress: MakePrimaryAddress(i),
+			Subnet:         Subnet,
+			GatewayAddress: MakeGatewayAddr(i/TapsPerBridge),
 		}
 		require.Equal(t, ni.PrimaryAddress, niRef.PrimaryAddress, "PrimaryAddress is not the same")
 	}

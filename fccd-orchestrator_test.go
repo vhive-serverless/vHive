@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,6 +56,8 @@ func TestMain(m *testing.M) {
 		log.Printf("Failed to stop VMs, err: %v\n", err)
 	}
 
+	orch.Cleanup()
+	
 	os.Exit(ret)
 }
 

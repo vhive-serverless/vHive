@@ -36,6 +36,8 @@ func TestStartStopSerial(t *testing.T) {
 
 	message, err = orch.StopSingleVM(ctx, "test_vmID")
 	require.NoError(t, err, "Failed to stop VM, "+message)
+
+	orch.Cleanup()
 }
 
 func TestStartStopParallel(t *testing.T) {
@@ -83,4 +85,6 @@ func TestStartStopParallel(t *testing.T) {
 		}
 		vmGroup.Wait()
 	}
+
+	orch.Cleanup()
 }
