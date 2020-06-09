@@ -29,7 +29,7 @@ func TestStartStopSerial(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1)
+	orch := NewOrchestrator("devmapper", 1, true)
 
 	message, _, err := orch.StartVM(ctx, "test_vmID", "ustiugov/helloworld:runner_workload")
 	require.NoError(t, err, "Failed to start VM, "+message)
@@ -56,7 +56,7 @@ func TestStartStopParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
-	orch := NewOrchestrator("devmapper", vmNum)
+	orch := NewOrchestrator("devmapper", vmNum, true)
 
 	{
 		var vmGroup sync.WaitGroup

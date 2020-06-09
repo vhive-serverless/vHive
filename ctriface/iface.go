@@ -24,13 +24,13 @@ package ctriface
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
 	"sync"
 	"syscall"
 	"time"
-	"fmt"
 
 	log "github.com/sirupsen/logrus"
 
@@ -73,7 +73,7 @@ type Orchestrator struct {
 }
 
 // NewOrchestrator Initializes a new orchestrator
-func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
+func NewOrchestrator(snapshotter string, niNum int, testModeOn bool) *Orchestrator {
 	var err error
 
 	o := new(Orchestrator)
@@ -84,8 +84,10 @@ func NewOrchestrator(snapshotter string, niNum int) *Orchestrator {
 
 	misc.CreateTaps(o.niNum)
 
-	o.setupCloseHandler()
-	o.setupHeartbeat()
+	if !testModeOn {
+		o.setupCloseHandler()
+		o.setupHeartbeat()
+	}
 
 	log.Info("Creating containerd client")
 	o.client, err = containerd.New(containerdAddress)
