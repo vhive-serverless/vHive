@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 
 	log.SetLevel(log.InfoLevel)
 
-	orch = ctriface.NewOrchestrator("devmapper", 1)
+	orch = ctriface.NewOrchestrator("devmapper", 1, true)
 
 	ret := m.Run()
 
@@ -57,7 +57,7 @@ func TestMain(m *testing.M) {
 	}
 
 	orch.Cleanup()
-	
+
 	os.Exit(ret)
 }
 

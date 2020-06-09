@@ -55,26 +55,6 @@ var (
 	pinnedFuncNum   *int
 )
 
-/*
-type myWriter struct {
-	io.Writer
-}
-
-func (m *myWriter) Write(p []byte) (n int, err error) {
-	n, err = m.Writer.Write(p)
-
-	if flusher, ok := m.Writer.(interface{ Flush() }); ok {
-		flusher.Flush()
-	} else if syncer := m.Writer.(interface{ Sync() error }); ok {
-		// Preserve original error
-		if err2 := syncer.Sync(); err2 != nil && err == nil {
-			err = err2
-		}
-	}
-	return
-}
-*/
-
 func main() {
 	var err error
 	runtime.GOMAXPROCS(16)
@@ -93,8 +73,6 @@ func main() {
 	}
 	defer flog.Close()
 
-	//log.SetOutput(&myWriter{Writer: flog})
-	//	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -119,7 +97,7 @@ func main() {
 		}
 	}
 
-	orch = ctriface.NewOrchestrator(*snapshotter, *niNum)
+	orch = ctriface.NewOrchestrator(*snapshotter, *niNum, false)
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, false)
 
