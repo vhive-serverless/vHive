@@ -63,14 +63,16 @@ func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int, testMo
 	p.pinnedFuncNum = pinnedFuncNum
 	p.stats = NewStats()
 
-	heartbeat := time.NewTicker(60 * time.Second)
+	if !testModeOn {
+		heartbeat := time.NewTicker(60 * time.Second)
 
-	go func() {
-		for {
-			<-heartbeat.C
-			log.Info("FuncPool heartbeat: ", p.stats.SprintStats())
-		}
-	}()
+		go func() {
+			for {
+				<-heartbeat.C
+				log.Info("FuncPool heartbeat: ", p.stats.SprintStats())
+			}
+		}()
+	}
 
 	isTestMode = testModeOn
 
