@@ -156,7 +156,7 @@ func CreateTaps(niNum int) {
 
 // Deletes a single tap
 func removeSingleTap(id int, wg *sync.WaitGroup) {
-	logger := log.WithFields(log.Fields{"bridge": makeBridgeName(id)})
+	logger := log.WithFields(log.Fields{"tap": MakeTapName(id)})
 
 	defer wg.Done()
 
