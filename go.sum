@@ -359,6 +359,8 @@ github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200421101715-3d8808b0d980 h
 github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200421101715-3d8808b0d980/go.mod h1:aUY+GlW8TqiPIl+pGzjweddprqDLEQyBPNBtbWGieXo=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200617123207-cff37815af4e h1:5aqGKekpTIwAmZKDSvyT5wzSJJtDnJfhS7PRUiNd9lw=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200617123207-cff37815af4e/go.mod h1:348NgoXqABsXbb2M0gaEnawDfLQd5xhjeA+HpS0TSzU=
+github.com/ustiugov/firecracker-containerd v0.0.0-20200617162450-2164fef218a8 h1:f603tIhZSwbElZdSngNGZbhyh09H8Bn0EJ72FteOL9Q=
+github.com/ustiugov/firecracker-containerd v0.0.0-20200617162450-2164fef218a8/go.mod h1:348NgoXqABsXbb2M0gaEnawDfLQd5xhjeA+HpS0TSzU=
 github.com/vektah/gqlparser v1.1.2/go.mod h1:1ycwN7Ij5njmMkPPAOaRFY4rET2Enx7IkVv3vaXspKw=
 github.com/vishvananda/netlink v0.0.0-20181108222139-023a6dafdcdf/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netlink v1.1.0 h1:1iyaYNBLmP6L0220aDnYQpo1QEV4t4hJ+xEEhhJH8j0=
