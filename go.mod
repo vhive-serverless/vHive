@@ -5,7 +5,7 @@ go 1.13
 // Workaround for github.com/containerd/containerd issue #3031
 replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
 
-replace github.com/firecracker-microvm/firecracker-containerd => github.com/ustiugov/firecracker-containerd v0.0.0-20200617123207-cff37815af4e
+replace github.com/firecracker-microvm/firecracker-containerd => github.com/ustiugov/firecracker-containerd v0.0.0-20200617162450-2164fef218a8
 
 require (
 	github.com/containerd/containerd v1.3.5-0.20200521195814-e655edce10c9
