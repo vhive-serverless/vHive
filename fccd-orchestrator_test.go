@@ -63,7 +63,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestSendToFunctionPauseResumeSerial(t *testing.T) {
-	fID := "pause_resume"
+	fID := "1337"
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
@@ -72,16 +72,15 @@ func TestSendToFunctionPauseResumeSerial(t *testing.T) {
 	require.Equal(t, resp.IsColdStart, true)
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	// Pause VM here
 	_, err = orch.PauseVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when pausing VM")
 
-	//timeout_ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	//resp, err = funcPool.Serve(timeout_ctx, fID, imageName, "world")
-	//require.Error(t, err, "Function did not time out on 2nd run")
-	//require.Equal(t, resp.Payload, "")
+	// NOTE: Current implementation just return error but does not time out
+	//timeout_ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	require.Error(t, err, "Function did not time out on 2nd run")
+	require.Equal(t, resp.Payload, "")
 
-	// Resume VM here
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
 
