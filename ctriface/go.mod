@@ -2,8 +2,10 @@ module github.com/ustiugov/fccd-orchestrator/ctriface
 
 go 1.13
 
+replace github.com/firecracker-microvm/firecracker-containerd => github.com/ustiugov/firecracker-containerd v0.0.0-20200617123207-cff37815af4e
+
 require (
-	github.com/containerd/containerd v1.3.3
+	github.com/containerd/containerd v1.3.5-0.20200521195814-e655edce10c9
 	github.com/davecgh/go-spew v1.1.1
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-20200331220105-afedbc74f5ee
 	github.com/pkg/errors v0.9.1

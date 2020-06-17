@@ -434,3 +434,33 @@ func (o *Orchestrator) setupCloseHandler() {
 		os.Exit(0)
 	}()
 }
+
+// PauseVM Pauses a VM
+func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) (string, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received PauseVM")
+	
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+
+	if _, err := o.fcClient.PauseVM(ctx, &proto.PauseVMRequest{VMID: vmID}); err != nil {
+		logger.Warn("failed to pause the VM: ", err)
+		return "Pausing VM " + vmID + " failed", err
+	}
+
+	return "VM " + vmID + " paused successfully", nil
+}
+
+// ResumeVM Resumes a VM
+func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received ResumeVM")
+
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+
+	if _, err := o.fcClient.ResumeVM(ctx, &proto.ResumeVMRequest{VMID: vmID}); err != nil {
+		logger.Warn("failed to pause the VM: ", err)
+		return "Resuming VM " + vmID + " failed", err
+	}
+
+	return "VM " + vmID + " resumed successfully", nil
+}
