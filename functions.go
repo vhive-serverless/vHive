@@ -228,7 +228,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 
 	// FIXME: keep a strict deadline for forwarding RPCs to a warm function
 	// Eventually, it needs to be RPC-dependent and probably client-defined
-	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Second))
+	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*time.Second))
 	defer cancel()
 	resp, err := f.fwdRPC(ctxFwd, reqPayload)
 	if err != nil && ctxFwd.Err() == context.Canceled {

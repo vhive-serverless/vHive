@@ -24,10 +24,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
-	"fmt"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -48,7 +49,7 @@ func TestMain(m *testing.M) {
 
 	log.SetLevel(log.InfoLevel)
 
-	orch = ctriface.NewOrchestrator("devmapper", 1, true)
+	orch = ctriface.NewOrchestrator("devmapper", 10, true)
 
 	ret := m.Run()
 
@@ -251,4 +252,51 @@ func TestDirectStartStopVM(t *testing.T) {
 
 	message, err = funcPool.RemoveInstance(fID, imageName)
 	require.NoError(t, err, "Function returned error, "+message)
+}
+
+func TestAllFunctions(t *testing.T) {
+	images := []string{
+		"ustiugov/helloworld:var_workload",
+		"ustiugov/chameleon:var_workload",
+		"ustiugov/pyaes:var_workload",
+		"ustiugov/image_rotate:var_workload",
+		"ustiugov/json_serdes:var_workload",
+		//"ustiugov/lr_serving:var_workload", Issue#15
+		//"ustiugov/cnn_serving:var_workload",
+		"ustiugov/rnn_serving:var_workload",
+		//"ustiugov/lr_training:var_workload",
+	}
+	funcPool = NewFuncPool(false, 0, 0, true)
+
+	for i := 0; i < 2; i++ {
+		var vmGroup sync.WaitGroup
+		for fID, imageName := range images {
+			reqs := []string{"world", "record", "replay"}
+			resps := []string{"world", "record_response", "replay_response"}
+			for k := 0; k < 3; k++ {
+				vmGroup.Add(1)
+				go func(fID int, imageName, request, response string) {
+					defer vmGroup.Done()
+
+					resp, err := funcPool.Serve(context.Background(), strconv.Itoa(fID), imageName, request)
+					require.NoError(t, err, "Function returned error")
+
+					require.Equal(t, resp.Payload, "Hello, "+response+"!")
+				}(fID, imageName, reqs[k], resps[k])
+			}
+			vmGroup.Wait()
+		}
+	}
+
+	var vmGroup sync.WaitGroup
+	for fID, imageName := range images {
+		vmGroup.Add(1)
+		go func(fID int, imageName string) {
+			defer vmGroup.Done()
+
+			message, err := funcPool.RemoveInstance(strconv.Itoa(fID), imageName)
+			require.NoError(t, err, "Function returned error, "+message)
+		}(fID, imageName)
+	}
+	vmGroup.Wait()
 }
