@@ -27,6 +27,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"fmt"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -59,6 +60,37 @@ func TestMain(m *testing.M) {
 	orch.Cleanup()
 
 	os.Exit(ret)
+}
+
+func TestSendToFunctionPauseResumeSerial(t *testing.T) {
+	fID := "pause_resume"
+	imageName := "ustiugov/helloworld:runner_workload"
+	funcPool = NewFuncPool(false, 0, 0, true)
+
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	require.NoError(t, err, "Function returned error on 1st run")
+	require.Equal(t, resp.IsColdStart, true)
+	require.Equal(t, resp.Payload, "Hello, world!")
+
+	// Pause VM here
+	_, err = orch.PauseVM(context.Background(), fmt.Sprintf(fID+"_0"))
+	require.NoError(t, err, "Error when pausing VM")
+
+	//timeout_ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	//resp, err = funcPool.Serve(timeout_ctx, fID, imageName, "world")
+	//require.Error(t, err, "Function did not time out on 2nd run")
+	//require.Equal(t, resp.Payload, "")
+
+	// Resume VM here
+	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
+	require.NoError(t, err, "Error when resuming VM")
+
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	require.NoError(t, err, "Function returned error on 3rd run")
+	require.Equal(t, resp.Payload, "Hello, world!")
+
+	message, err := funcPool.RemoveInstance(fID, imageName)
+	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestSendToFunctionSerial(t *testing.T) {
