@@ -330,7 +330,6 @@ func (o *Orchestrator) cleanup(ctx context.Context, vm *misc.VM, isVM, isCont, i
 }
 
 // StopSingleVM Shuts down a VM
-// VM can be starting or deactivating (do nothing), active (shut down)
 // Note: VMs are not quisced before being stopped
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -463,4 +462,92 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, error
 	}
 
 	return "VM " + vmID + " resumed successfully", nil
+}
+
+// CreateSnapshot Creates a snapshot of a VM
+func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received CreateSnapshot")
+	
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+
+	req := &proto.CreateSnapshotRequest{VMID: vmID, SnapshotFilePath: snapPath, MemFilePath: memPath}
+
+	if _, err := o.fcClient.CreateSnapshot(ctx, req); err != nil {
+		logger.Warn("failed to create snapshot of the VM: ", err)
+		return "Creating snapshot of VM " + vmID + " failed", err
+	}
+
+	return "Snapshot of VM " + vmID + " created successfully", nil
+}
+
+// LoadSnapshot Loads a snapshot of a VM
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received LoadSnapshot")
+	
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+
+	req := &proto.LoadSnapshotRequest{VMID: vmID, SnapshotFilePath: snapPath, MemFilePath: memPath}
+
+	if _, err := o.fcClient.LoadSnapshot(ctx, req); err != nil {
+		logger.Warn("failed to load snapshot of the VM: ", err)
+		return "Loading snapshot of VM " + vmID + " failed", err
+	}
+
+	return "Snapshot of VM " + vmID + " loaded successfully", nil
+}
+
+// Offload Shuts down the VM but leaves shim and other resources running.
+func (o *Orchestrator) Offload(ctx context.Context, vmID string) (string, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received Offload")
+
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+
+	if _, err := o.fcClient.Offload(ctx, &proto.OffloadRequest{VMID: vmID}); err != nil {
+		logger.Warn("failed to offload the VM: ", err)
+		return "Offloading VM " + vmID + " failed", err
+	}
+
+	return "VM " + vmID + " offloaded successfully", nil
+}
+
+// StopSingleVMOnly Shuts down a VM, but does not delete the task or container
+// Note: VMs are not quisced before being stopped
+// Broken as of now
+func (o *Orchestrator) StopSingleVMOnly(ctx context.Context, vmID string) (string, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received StopVMOnly")
+
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		if _, ok := err.(*misc.NonExistErr); ok {
+			logger.Panic("StopVMOnly: VM does not exist")
+			return "VM does not exist", nil
+		}
+		logger.Panic("StopVMOnly: GetVM() failed for an unknown reason")
+
+	}
+
+	logger = log.WithFields(log.Fields{"vmID": vmID})
+
+	if err := vm.Conn.Close(); err != nil {
+		logger.Warn("Failed to close the connection to function: ", err)
+		return "Closing connection to function in VM " + vmID + " failed", err
+	}
+
+	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+		logger.Warn("failed to stop the VM: ", err)
+		return "Stopping VM " + vmID + " failed", err
+	}
+
+	if err := o.vmPool.Free(vmID); err != nil {
+		return "Free", err
+	}
+
+	logger.Debug("Stopped VM successfully")
+
+	return "VM " + vmID + " stopped successfully", nil
 }
