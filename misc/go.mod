@@ -6,12 +6,21 @@ go 1.13
 replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
 
 require (
-	github.com/containerd/containerd v1.3.3
-	github.com/pkg/errors v0.9.1
+	github.com/Microsoft/hcsshim v0.8.9 // indirect
+	github.com/containerd/containerd v1.3.5-0.20200521195814-e655edce10c9
+	github.com/containerd/continuity v0.0.0-20200709052629-daa8e1ccc0bc // indirect
+	github.com/containerd/ttrpc v1.0.1 // indirect
+	github.com/containerd/typeurl v1.0.1 // indirect
+	github.com/docker/distribution v2.7.1+incompatible // indirect
+	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
+	github.com/gogo/googleapis v1.4.0 // indirect
+	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.5.0
 	github.com/stretchr/testify v1.5.1
-	github.com/ustiugov/fccd-orchestrator v0.0.0-20200421101715-3d8808b0d980
+	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
+	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710141806-e69a2a98f3ba
 	github.com/vishvananda/netlink v1.1.0
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	google.golang.org/grpc v1.28.0
+	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+	google.golang.org/grpc v1.30.0
 )

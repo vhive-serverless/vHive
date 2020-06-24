@@ -324,8 +324,18 @@ github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200617140736-3c8f0728840
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200617140736-3c8f0728840a/go.mod h1:YTBWO4vRBnp9WWaoSPwLekWS3XwxXVWqO6IO6DQvt48=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200617143218-c9b3c238ebd2 h1:hvyRdYvaaJgtAqG4j1dJzkUy1pkRFH3xAyAPLQEBhfU=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200617143218-c9b3c238ebd2/go.mod h1:XNcY41jJDAbiIt6FkSk1eC3GekT9I+qs18PUREuqXtU=
+<<<<<<< 603848f2670cd27add454d4d1f2a3a8e75e35b28
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200617163712-2c7eaa4ce152 h1:ZJlcOE08zGgQlHO2hrZmLIouvdmysmsHZUrlMe7j/Xs=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200617163712-2c7eaa4ce152/go.mod h1:w3QOtmLpmOFOgRmUFu/+kjDMRlLiyXh+vthF1tugygE=
+=======
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200706135218-7a63ebbc2626 h1:xfOt9e1k3KCV/gniXYDaV5fhzdsac0JBMAiUWxgOHkY=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200706135218-7a63ebbc2626/go.mod h1:3kB9yTyqwCzzcm6IdOoUQD9adKTU8YS/ZkFz2MMwYhE=
+<<<<<<< 5546571a53610fb3271827582e58124471bf2fc6
+>>>>>>> added test for multiple loads and invocations
+=======
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200709160332-9aecfd5d8df2 h1:zA5V2HFJB6qKLY4SNLMsGZO+vtw/ra5KQYmLcIy2VJ0=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200709160332-9aecfd5d8df2/go.mod h1:6zGTNzFIcG0wIx0EgzfFFX1MfVz2kqfPbA1R2Pq84l8=
+>>>>>>> orch tests passing with updated containerd
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b h1:HAh2FBZ0QkBGxU/llIVVOhfnqCPEkE353FpZg7Y6sh0=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b/go.mod h1:tPZXBU39WgZYegI7Cxm6k2434V9WR/4xyuTBK0MrlBw=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200417111927-c9f33db90a77/go.mod h1:WlEt9PMeV51HejLsw+9EIbgmGMRKyl937AROL/oAOCo=
@@ -365,6 +375,10 @@ github.com/ustiugov/firecracker-containerd v0.0.0-20200617123207-cff37815af4e h1
 github.com/ustiugov/firecracker-containerd v0.0.0-20200617123207-cff37815af4e/go.mod h1:348NgoXqABsXbb2M0gaEnawDfLQd5xhjeA+HpS0TSzU=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200617162450-2164fef218a8 h1:f603tIhZSwbElZdSngNGZbhyh09H8Bn0EJ72FteOL9Q=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200617162450-2164fef218a8/go.mod h1:348NgoXqABsXbb2M0gaEnawDfLQd5xhjeA+HpS0TSzU=
+github.com/ustiugov/firecracker-containerd v0.0.0-20200703102351-25e4842b9643 h1:PkImo0BNViYXUidek/6k6C5qqr3phFXYimda2JoHDuY=
+github.com/ustiugov/firecracker-containerd v0.0.0-20200703102351-25e4842b9643/go.mod h1:TlhOJTpmsWXzP9IZ+VBRtJO16SawdYKgG6mR+UAcLIE=
+github.com/ustiugov/firecracker-containerd v0.0.0-20200709144213-2a6e26bab456 h1:D4lgE19FmR4yXf3SExQHcdHOU2BE7Uulb4TEQgRH+fM=
+github.com/ustiugov/firecracker-containerd v0.0.0-20200709144213-2a6e26bab456/go.mod h1:OtUkc7ZUX5g2pE/keVn+mB0MCzzjKr0A8Ms/TTpOaxY=
 github.com/vektah/gqlparser v1.1.2/go.mod h1:1ycwN7Ij5njmMkPPAOaRFY4rET2Enx7IkVv3vaXspKw=
 github.com/vishvananda/netlink v0.0.0-20181108222139-023a6dafdcdf/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netlink v1.1.0 h1:1iyaYNBLmP6L0220aDnYQpo1QEV4t4hJ+xEEhhJH8j0=
