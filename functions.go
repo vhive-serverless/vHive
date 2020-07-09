@@ -91,12 +91,12 @@ func (p *FuncPool) getFunction(fID, imageName string) *Function {
 		isToPin := true
 
 		fIDint, err := strconv.Atoi(fID)
-		log.Debug(fmt.Sprintf("fIDint=%d, err=%v, pinnedFuncNum=%d", fIDint, err, p.pinnedFuncNum))
+		log.Debugf("fIDint=%d, err=%v, pinnedFuncNum=%d", fIDint, err, p.pinnedFuncNum)
 		if p.saveMemoryMode && err == nil && fIDint > p.pinnedFuncNum {
 			isToPin = false
 		}
 
-		logger.Debug(fmt.Sprintf("Created function, pinned=%t, shut down after %d requests", isToPin, p.servedTh))
+		logger.Debugf("Created function, pinned=%t, shut down after %d requests", isToPin, p.servedTh)
 		p.funcMap[fID] = NewFunction(fID, imageName, p.stats, p.servedTh, isToPin)
 
 		if err := p.stats.CreateStats(fID); err != nil {
@@ -254,7 +254,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 	f.RUnlock()
 
 	if !f.isPinnedInMem && syncID == 0 {
-		logger.Debug(fmt.Sprintf("Function has to shut down its instance, served %d requests", f.GetStatServed()))
+		logger.Debugf("Function has to shut down its instance, served %d requests", f.GetStatServed())
 		f.RemoveInstanceAsync()
 		f.ZeroServedStat()
 		f.servedSyncCounter = int64(f.servedTh) // reset counter
@@ -292,6 +292,7 @@ func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 // AddInstance Starts a VM, waits till it is ready.
 // Note: this function is called from sync.Once construct
 func (f *Function) AddInstance() {
+	// DMITRII: use LoadInstance here
 	f.Lock()
 	defer f.Unlock()
 
@@ -318,6 +319,7 @@ func (f *Function) AddInstance() {
 // RemoveInstanceAsync Stops an instance (VM) of the function.
 // Note: this function is called from sync.Once construct
 func (f *Function) RemoveInstanceAsync() {
+	// DMITRII: use CreateSnap & Offload here
 	f.Lock()
 	defer f.Unlock()
 
@@ -337,6 +339,7 @@ func (f *Function) RemoveInstanceAsync() {
 
 // RemoveInstance Stops an instance (VM) of the function.
 func (f *Function) RemoveInstance() (string, error) {
+	// DMITRII: use CreateSnap & Offload here
 	f.Lock()
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
@@ -358,6 +361,26 @@ func (f *Function) clearInstanceState() (vmID string) {
 	}
 
 	return vmID
+}
+
+// CreateInstanceSnapshot Shuts down the function's instance keeping its shim process alive
+func (f *Function) CreateInstanceSnapshot() error {
+	// ctriface: pause & createSnap
+	return nil
+}
+
+// OffloadInstance Creates a snapshot of the function's instance
+func (f *Function) OffloadInstance() error {
+	// ctriface: offload
+
+	return nil
+}
+
+// LoadInstance Loads a new instance of the function from its snapshot
+func (f *Function) LoadInstance() error {
+	// ctriface: load & resume
+
+	return nil
 }
 
 // GetStatServed Returns the served counter value
