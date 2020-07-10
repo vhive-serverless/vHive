@@ -115,7 +115,7 @@ func CreateTaps(niNum int) {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(niNum) //
+	wg.Add(niNum)
 
 	for i := 0; i < niNum; i++ {
 		go createSingleTap(i, i/TapsPerBridge, &wg)

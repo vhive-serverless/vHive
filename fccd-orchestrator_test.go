@@ -24,20 +24,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
 	"testing"
-	"fmt"
 	"time"
-	"strconv"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
-
-	//"github.com/ustiugov/fccd-orchestrator/misc"
 )
 
 func TestMain(m *testing.M) {
@@ -51,7 +48,7 @@ func TestMain(m *testing.M) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	orch = ctriface.NewOrchestrator("devmapper", 10, true)
 
@@ -181,8 +178,8 @@ func TestParallelLoadServe(t *testing.T) {
 			defer vmGroup.Done()
 			fID := strconv.Itoa(i)
 			vmID := fmt.Sprintf("%s_0", fID)
-			snapshot_file_path := fmt.Sprintf("/dev/snapshot_file_%s", fID)
-			mem_file_path := fmt.Sprintf("/dev/mem_file_%s", fID)
+			snapshotFilePath := fmt.Sprintf("/dev/snapshot_file_%s", fID)
+			memFilePath := fmt.Sprintf("/dev/mem_file_%s", fID)
 
 			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error on 1st run")
@@ -191,15 +188,15 @@ func TestParallelLoadServe(t *testing.T) {
 			_, err = orch.PauseVM(context.Background(), vmID)
 			require.NoError(t, err, "Error when pausing VM")
 
-			_, err = orch.CreateSnapshot(context.Background(), vmID, snapshot_file_path, mem_file_path)
+			_, err = orch.CreateSnapshot(context.Background(), vmID, snapshotFilePath, memFilePath)
 			require.NoError(t, err, "Error when creating snapshot of VM")
 
 			_, err = orch.Offload(context.Background(), vmID)
-			require.NoError(t, err, "Failed to offload VM, "+ vmID)
+			require.NoError(t, err, "Failed to offload VM, "+vmID)
 
 			time.Sleep(300 * time.Millisecond)
 
-			_, err = orch.LoadSnapshot(context.Background(), vmID, snapshot_file_path, mem_file_path)
+			_, err = orch.LoadSnapshot(context.Background(), vmID, snapshotFilePath, memFilePath)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 			_, err = orch.ResumeVM(context.Background(), vmID)
@@ -316,7 +313,6 @@ func TestLoadServeMultiple2(t *testing.T) {
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
-
 
 }
 
@@ -458,7 +454,7 @@ func TestStatsNotNumericFunction(t *testing.T) {
 func TestStatsNotColdFunction(t *testing.T) {
 	fID := "10"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 1, 5, true)
+	funcPool = NewFuncPool(true, 1, 11, true)
 
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error")
