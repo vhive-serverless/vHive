@@ -75,7 +75,7 @@ func TestAllocateFreeNi(t *testing.T) {
 			HostDevName:    MakeTapName(i),
 			PrimaryAddress: MakePrimaryAddress(i),
 			Subnet:         Subnet,
-			GatewayAddress: MakeGatewayAddr(i/TapsPerBridge),
+			GatewayAddress: MakeGatewayAddr(i / TapsPerBridge),
 		}
 		require.Equal(t, ni.PrimaryAddress, niRef.PrimaryAddress, "PrimaryAddress is not the same")
 	}

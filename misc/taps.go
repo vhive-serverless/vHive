@@ -26,23 +26,23 @@ import (
 	"fmt"
 	"math"
 
-	log "github.com/sirupsen/logrus"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/vishvananda/netlink"
 )
-
 
 const (
 	// Subnet Number of bits in the subnet mask
 	Subnet = "/10"
 	// TapsPerBridge Number of taps per bridge
 	TapsPerBridge = 1000
-) 
+)
 
 // MakePrimaryAddress Creates the primary address for a tap
 func MakePrimaryAddress(id int) string {
-	bridgeID := id/TapsPerBridge
+	bridgeID := id / TapsPerBridge
 	return fmt.Sprintf("19%d.128.%d.%d", bridgeID, (id+2)/256, (id+2)%256)
 }
 
@@ -74,7 +74,7 @@ func createSingleTap(id int, bridgeID int, wg *sync.WaitGroup) {
 
 	tap := &netlink.Tuntap{LinkAttrs: la, Mode: netlink.TUNTAP_MODE_TAP}
 
-	if err := netlink.LinkAdd(tap); err != nil  {
+	if err := netlink.LinkAdd(tap); err != nil {
 		fmt.Println(err)
 		logger.Panic("Tap could not be created")
 	}
@@ -84,7 +84,7 @@ func createSingleTap(id int, bridgeID int, wg *sync.WaitGroup) {
 		logger.Panic("Could not create tap, because corresponding bridge does not exist")
 	}
 
-	if  err := netlink.LinkSetMaster(tap, br); err != nil {
+	if err := netlink.LinkSetMaster(tap, br); err != nil {
 		logger.Panic("Master could not be set")
 	}
 
@@ -97,7 +97,7 @@ func createSingleTap(id int, bridgeID int, wg *sync.WaitGroup) {
 func CreateTaps(niNum int) {
 	log.Info(fmt.Sprintf("Creating bridges and taps for a new NI pool with %d ni-s.", niNum))
 
-	numBridges := int(math.Ceil(float64(niNum)/float64(TapsPerBridge))) // up to 1000 taps per bridge
+	numBridges := int(math.Ceil(float64(niNum) / float64(TapsPerBridge))) // up to 1000 taps per bridge
 
 	for i := 0; i < numBridges; i++ {
 		la := netlink.NewLinkAttrs()
@@ -109,13 +109,13 @@ func CreateTaps(niNum int) {
 
 		br := &netlink.Bridge{LinkAttrs: la}
 
-		if err := netlink.LinkAdd(br); err != nil  {
+		if err := netlink.LinkAdd(br); err != nil {
 			logger.Panic("Bridge could not be created")
 		}
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(niNum)//
+	wg.Add(niNum) //
 
 	for i := 0; i < niNum; i++ {
 		go createSingleTap(i, i/TapsPerBridge, &wg)
@@ -170,7 +170,7 @@ func removeSingleTap(id int, wg *sync.WaitGroup) {
 		return
 	}
 
-	if err := netlink.LinkDel(tap); err != nil  {
+	if err := netlink.LinkDel(tap); err != nil {
 		logger.Panic("Tap could not be deleted")
 	}
 }
@@ -188,7 +188,7 @@ func RemoveTaps(niNum int) {
 
 	wg.Wait()
 
-	numBridges := int(math.Ceil(float64(niNum)/float64(TapsPerBridge))) // up to 1000 taps per bridge
+	numBridges := int(math.Ceil(float64(niNum) / float64(TapsPerBridge))) // up to 1000 taps per bridge
 	for i := 0; i < numBridges; i++ {
 		bridgeName := makeBridgeName(i)
 
@@ -202,7 +202,7 @@ func RemoveTaps(niNum int) {
 			continue
 		}
 
-		if err := netlink.LinkDel(br); err != nil  {
+		if err := netlink.LinkDel(br); err != nil {
 			logger.WithFields(log.Fields{"bridge": bridgeName}).Panic("Bridge could not be deleted")
 		}
 	}
