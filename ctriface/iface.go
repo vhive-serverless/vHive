@@ -438,7 +438,7 @@ func (o *Orchestrator) setupCloseHandler() {
 func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received PauseVM")
-	
+
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
 	if _, err := o.fcClient.PauseVM(ctx, &proto.PauseVMRequest{VMID: vmID}); err != nil {
@@ -468,7 +468,7 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, error
 func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received CreateSnapshot")
-	
+
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
 	req := &proto.CreateSnapshotRequest{VMID: vmID, SnapshotFilePath: snapPath, MemFilePath: memPath}
@@ -485,7 +485,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID, snapPath, memPa
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
-	
+
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
 	req := &proto.LoadSnapshotRequest{VMID: vmID, SnapshotFilePath: snapPath, MemFilePath: memPath}
