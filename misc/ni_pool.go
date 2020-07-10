@@ -44,7 +44,7 @@ func NewNiPool(niNum int) *NiPool {
 			HostDevName:    MakeTapName(i),
 			PrimaryAddress: MakePrimaryAddress(i),
 			Subnet:         Subnet,
-			GatewayAddress: MakeGatewayAddr(i/TapsPerBridge),
+			GatewayAddress: MakeGatewayAddr(i / TapsPerBridge),
 		}
 		p.niList = append(p.niList, ni)
 	}
