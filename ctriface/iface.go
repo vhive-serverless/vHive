@@ -82,8 +82,6 @@ func NewOrchestrator(snapshotter string, niNum int, testModeOn bool) *Orchestrat
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 
-	misc.CreateTaps(o.niNum)
-
 	if !testModeOn {
 		o.setupCloseHandler()
 		o.setupHeartbeat()
@@ -123,16 +121,11 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	return &image, nil
 }
 
-// Cleanup Removes the open taps and bridges
-func (o *Orchestrator) Cleanup() {
-	misc.RemoveTaps(o.niNum)
-}
-
-func (o *Orchestrator) getVMConfig(vmID string, ni misc.NetworkInterface) *proto.CreateVMRequest {
+func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
 	return &proto.CreateVMRequest{
-		VMID:       vmID,
+		VMID:       vm.ID,
 		KernelArgs: kernelArgs,
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
 			VcpuCount:  1,
@@ -140,11 +133,11 @@ func (o *Orchestrator) getVMConfig(vmID string, ni misc.NetworkInterface) *proto
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
 			StaticConfig: &proto.StaticNetworkConfiguration{
-				MacAddress:  ni.MacAddress,
-				HostDevName: ni.HostDevName,
+				MacAddress:  vm.Ni.MacAddress,
+				HostDevName: vm.Ni.HostDevName,
 				IPConfig: &proto.IPConfiguration{
-					PrimaryAddr: ni.PrimaryAddress + ni.Subnet,
-					GatewayAddr: ni.GatewayAddress,
+					PrimaryAddr: vm.Ni.PrimaryAddress + vm.Ni.Subnet,
+					GatewayAddr: vm.Ni.GatewayAddress,
 				},
 			},
 		}},
@@ -175,7 +168,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
 	logger.Debug("StartVM: Creating a new VM")
 	tStart = time.Now()
-	_, err = o.fcClient.CreateVM(ctx, o.getVMConfig(vmID, *vm.Ni))
+	_, err = o.fcClient.CreateVM(ctx, o.getVMConfig(vm))
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 	if err != nil {
@@ -429,9 +422,13 @@ func (o *Orchestrator) setupCloseHandler() {
 		<-c
 		log.Info("\r- Ctrl+C pressed in Terminal")
 		_ = o.StopActiveVMs()
-		o.Cleanup()
 		os.Exit(0)
 	}()
+}
+
+// Cleanup Removes the bridges created by the VM pool's tap manager
+func (o *Orchestrator) Cleanup() {
+	o.vmPool.RemoveBridges()
 }
 
 // PauseVM Pauses a VM

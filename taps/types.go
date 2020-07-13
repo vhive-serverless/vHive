@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov
+// Copyright (c) 2020 Plamen Petrov
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,40 +20,28 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package misc
+package taps
 
-import (
-	"sync"
-
-	"github.com/containerd/containerd"
-	"google.golang.org/grpc"
-
-	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
-	"github.com/ustiugov/fccd-orchestrator/taps"
+const (
+	// Subnet Number of bits in the subnet mask
+	Subnet = "/10"
+	// TapsPerBridge Number of taps per bridge
+	TapsPerBridge = 1000
+	// NumBridges is the number of bridges for the TapManager
+	NumBridges = 2
 )
 
-// VM type
-type VM struct {
-	ID         string
-	Image      *containerd.Image
-	Container  *containerd.Container
-	Task       *containerd.Task
-	TaskCh     <-chan containerd.ExitStatus
-	Ni         *taps.NetworkInterface
-	Conn       *grpc.ClientConn
-	FuncClient *hpb.GreeterClient
+// TapManager A Tap Manager
+type TapManager struct {
+	numBridges         int
+	TapCountsPerBridge []int64
 }
 
-// VMPool Pool of active VMs (can be in several states though)
-type VMPool struct {
-	vmMap  sync.Map
-	tapManager *taps.TapManager
-}
-
-// NewVM Initialize a VM
-func NewVM(vmID string) *VM {
-	vm := new(VM)
-	vm.ID = vmID
-
-	return vm
+// NetworkInterface Network interface type, NI names are generated based on expected tap names
+type NetworkInterface struct {
+	MacAddress     string
+	HostDevName    string
+	PrimaryAddress string
+	Subnet         string
+	GatewayAddress string
 }
