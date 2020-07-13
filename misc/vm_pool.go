@@ -26,12 +26,13 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
+	"github.com/ustiugov/fccd-orchestrator/taps"
 )
 
 // NewVMPool Initializes a pool of VMs
 func NewVMPool(niNum int) *VMPool {
 	p := new(VMPool)
-	p.niPool = NewNiPool(niNum)
+	p.tapManager = taps.NewTapManager()
 
 	return p
 }
@@ -50,7 +51,7 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	vm := NewVM(vmID)
 
 	var err error
-	vm.Ni, err = p.niPool.Allocate()
+	vm.Ni, err = p.tapManager.AddTap(vmID+"_tap")
 	if err != nil {
 		logger.Warn("Ni allocation failed, freeing VM from the pool")
 		return nil, err
@@ -67,16 +68,18 @@ func (p *VMPool) Free(vmID string) error {
 
 	logger.Debug("Freeing a VM instance")
 
-	vmIn, isPresent := p.vmMap.Load(vmID)
+	_, isPresent := p.vmMap.Load(vmID)
 	if !isPresent {
 		log.WithFields(log.Fields{"vmID": vmID}).Panic("Free (VM): VM does not exist in the map")
 		return NonExistErr("Free (VM): VM does not exist when freeing a VM from the pool")
 	}
-	vm := vmIn.(*VM)
 
 	logger.Debug("Free (VM): Freeing VM from the pool")
 
-	p.niPool.Free(vm.Ni)
+	if err := p.tapManager.RemoveTap(vmID+"_tap"); err != nil {
+		logger.Error("Could not delete tap")
+		return err
+	}
 
 	p.vmMap.Delete(vmID)
 
@@ -114,4 +117,9 @@ func (p *VMPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
 	}
 
 	return vm.(*VM).FuncClient, nil
+}
+
+// RemoveBridges Removes the bridges created by the tap manager
+func (p *VMPool) RemoveBridges() {
+	p.tapManager.RemoveBridges()
 }

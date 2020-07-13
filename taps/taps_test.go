@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
+// Copyright (c) 2020 Plamen Petrov
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package misc
+package taps
 
 import (
 	"fmt"
@@ -44,57 +44,62 @@ func TestMain(m *testing.M) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
 	os.Exit(m.Run())
 }
 
-func TestAllocateFreeVMs(t *testing.T) {
-	vmPool := NewVMPool(2)
-
-	vmIDs := [2]string{"test1", "test2"}
-
-	for _, vmID := range vmIDs {
-		_, err := vmPool.Allocate(vmID)
-		require.NoError(t, err, "Failed to allocate VM")
-	}
-
-	for _, vmID := range vmIDs {
-		err := vmPool.Free(vmID)
-		require.NoError(t, err, "Failed to free a VM")
-	}
-
-	vmPool.RemoveBridges()
+func TestCreateCleanBridges(t *testing.T) {
+	tm := NewTapManager()
+	tm.RemoveBridges()
 }
 
-func TestAllocateFreeVMsParallel(t *testing.T) {
-	vmNum := 100
+func TestCreateRemoveTaps(t *testing.T) {
+	tapsNum := []int{100, 1100}
 
-	vmPool := NewVMPool(vmNum)
+	tm := NewTapManager()
 
-	var vmGroup sync.WaitGroup
-	for i := 0; i < vmNum; i++ {
-		vmGroup.Add(1)
-		go func(i int) {
-			defer vmGroup.Done()
-			vmID := fmt.Sprintf("test_%d", i)
-			_, err := vmPool.Allocate(vmID)
-			require.NoError(t, err, "Failed to allocate VM")
-		}(i)
+	for _, n := range tapsNum {
+		var wg sync.WaitGroup
+		for i := 0; i < n; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				tm.AddTap(fmt.Sprintf("tap_%d", i))
+			}(i)
+		}
+		wg.Wait()
+		for i := 0; i < n; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				tm.RemoveTap(fmt.Sprintf("tap_%d", i))
+			}(i)
+		}
+		wg.Wait()
 	}
-	vmGroup.Wait()
 
-	var vmGroupFree sync.WaitGroup
-	for i := 0; i < vmNum; i++ {
-		vmGroupFree.Add(1)
-		go func(i int) {
-			defer vmGroupFree.Done()
-			vmID := fmt.Sprintf("test_%d", i)
-			err := vmPool.Free(vmID)
-			require.NoError(t, err, "Failed to free a VM")
-		}(i)
+	tm.RemoveBridges()
+}
+
+func TestCreateRemoveExtra(t *testing.T) {
+	tapsNum := 2001
+
+	tm := NewTapManager()
+
+	for i := 0; i < tapsNum; i++ {
+		_, err := tm.AddTap(fmt.Sprintf("tap_%d", i))
+		if i < tm.numBridges*TapsPerBridge {
+			require.NoError(t, err, "Failed to create tap")
+		} else {
+			require.Error(t, err, "Did not fail to create extra taps")
+		}
 	}
-	vmGroupFree.Wait()
 
-	vmPool.RemoveBridges()
+	for i := 0; i < tapsNum; i++ {
+		tm.RemoveTap(fmt.Sprintf("tap_%d", i))
+
+	}
+
+	tm.RemoveBridges()
 }
