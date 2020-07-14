@@ -422,6 +422,7 @@ func (o *Orchestrator) setupCloseHandler() {
 		<-c
 		log.Info("\r- Ctrl+C pressed in Terminal")
 		_ = o.StopActiveVMs()
+		o.Cleanup()
 		os.Exit(0)
 	}()
 }
