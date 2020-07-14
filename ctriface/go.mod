@@ -13,9 +13,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.5.1
-	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710161907-f76633b53689
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200714121730-5e9ab120e967
-	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714121730-5e9ab120e967 // indirect
+	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200714130355-0a4bf3145bf7
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200714130355-0a4bf3145bf7
+	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714130355-0a4bf3145bf7 // indirect
 	google.golang.org/grpc v1.30.0
 
 )
