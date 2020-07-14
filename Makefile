@@ -1,3 +1,7 @@
+SUBDIRS:=ctriface taps misc
+EXTRAGOARGS:=-v -race
+EXTRATESTFILES:=fccd-orchestrator_test.go stats.go fccd-orchestrator.go functions.go 
+
 fccd: proto
 	go install github.com/ustiugov/fccd-orchestrator
 
@@ -7,3 +11,13 @@ protobuf:
 
 clean:
 	rm proto/orchestrator.pb.go
+
+test-all: test $(SUBDIRS)
+
+test:
+	go test $(EXTRATESTFILES) $(EXTRAGOARGS)
+
+$(SUBDIRS):
+	$(MAKE) -C $@
+
+.PHONY: test-all $(SUBDIRS)
