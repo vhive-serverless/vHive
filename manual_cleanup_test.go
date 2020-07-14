@@ -85,14 +85,63 @@ func TestParallelLoadServe(t *testing.T) {
 	vmGroup.Wait()
 }
 
+func TestLoadServeMultiple1(t *testing.T) {
+	// Chain:
+	// createVM > serve(1) > pause > createSnap > offload > sleep10
+	// > loadSnap > resume > serve(2) > offload > sleep10 > loadSnap
+	// > resume > serve(3)
+	fID := "5"
+	imageName := "ustiugov/helloworld:runner_workload"
+	funcPool = NewFuncPool(false, 0, 0, true)
+
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	require.NoError(t, err, "Function returned error on 1st run")
+	require.Equal(t, resp.IsColdStart, true)
+	require.Equal(t, resp.Payload, "Hello, world!")
+
+	_, err = orch.PauseVM(context.Background(), fmt.Sprintf(fID+"_0"))
+	require.NoError(t, err, "Error when pausing VM")
+
+	_, err = orch.CreateSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	require.NoError(t, err, "Error when creating snapshot of VM")
+
+	_, err = orch.Offload(context.Background(), fmt.Sprintf(fID+"_0"))
+	require.NoError(t, err, "Failed to offload VM, "+"")
+
+	time.Sleep(300 * time.Millisecond)
+
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
+
+	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
+	require.NoError(t, err, "Error when resuming VM")
+
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	require.NoError(t, err, "Function returned error on 2nd run")
+	require.Equal(t, resp.Payload, "Hello, world!")
+
+	_, err = orch.Offload(context.Background(), fmt.Sprintf(fID+"_0"))
+	require.NoError(t, err, "Failed to offload VM, "+"")
+
+	time.Sleep(300 * time.Millisecond)
+
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
+
+	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
+	require.NoError(t, err, "Error when resuming VM")
+
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	require.NoError(t, err, "Function returned error on 3rd run")
+	require.Equal(t, resp.Payload, "Hello, world!")
+}
+
 func TestLoadServeMultiple2(t *testing.T) {
-	// Needs to be cleaned up manually.
-	// Works
 	// Chain:
 	// createVM > serve(1) > pause > createSnap > offload > sleep10
 	// > loadSnap > resume > serve(2) > serve(3) > offload > sleep10 > loadSnap
 	// > resume
-	fID := "5"
+	fID := "6"
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
@@ -146,7 +195,7 @@ func TestLoadServeMultiple3(t *testing.T) {
 	// createVM > serve(1) > pause > createSnap > offload > sleep10
 	// > loadSnap > resume > offload > sleep10 > loadSnap
 	// > resume > serve(2) > serve(3)
-	fID := "6"
+	fID := "7"
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 

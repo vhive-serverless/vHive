@@ -13,6 +13,12 @@ sudo iptables -t nat -F
 echo Deleting veth* devices created by CNI
 cat /proc/net/dev | grep veth | cut -d" " -f1| cut -d":" -f1 | while read in; do sudo ip link delete "$in"; done
 
+for i in `seq 0 25`; do sudo ip link delete ${i}_tap; done
+for i in `seq 0 25`; do sudo ip link delete ${i}_0_tap; done
+sudo ip link delete br0
+sudo ip link delete br1
+sudo ip link delete plr_fnc_0_tap
+
 echo Cleaning in /var/lib/cni/ non-network
 for d in `find /var/lib/cni/ -mindepth 1 -maxdepth 1  -type d | grep -v networks`; do
     sudo rm -rf $d
@@ -37,7 +43,3 @@ echo Cleaning CNI state, e.g., allocated addresses
 sudo rm /var/lib/cni/networks/fcnet*/last_reserved_ip.0 || echo clean already
 sudo rm /var/lib/cni/networks/fcnet*/19* || echo clean already
 
-
-for i in `seq 0 25`; do sudo ip link delete ${i}_tap; done
-sudo ip link delete br0
-sudo ip link delete br1
