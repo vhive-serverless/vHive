@@ -32,6 +32,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/containerd/containerd"
@@ -144,6 +145,36 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 	}
 }
 
+func (o *Orchestrator) getFuncClient(ctx context.Context, vm *misc.VM, logger *logrus.Entry) (hpb.GreeterClient, error) {
+	logger.Debug("getFuncClient: Calling function's gRPC server")
+
+	backoffConfig := backoff.DefaultConfig
+	backoffConfig.MaxDelay = 3 * time.Second
+	connParams := grpc.ConnectParams{
+		Backoff: backoffConfig,
+	}
+
+	gopts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithInsecure(),
+		grpc.FailOnNonTempDialError(true),
+		grpc.WithConnectParams(connParams),
+		grpc.WithContextDialer(contextDialer),
+	}
+	ctxx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctxx, vm.Ni.PrimaryAddress+":50051", gopts...)
+	vm.Conn = conn
+	if err != nil {
+		if errCleanup := o.cleanup(ctx, vm, true, true, true, true); errCleanup != nil {
+			logger.Warn("Cleanup failed: ", errCleanup)
+		}
+		return nil, err
+	}
+	logger.Debug("getFuncClient: Creating a new gRPC client")
+	return hpb.NewGreeterClient(conn), nil
+}
+
 // StartVM Boots a VM if it does not exist
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
 	var tProfile string
@@ -239,33 +270,10 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	tElapsed = time.Now()
 	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
 
-	logger.Debug("StartVM: Calling function's gRPC server")
-
-	backoffConfig := backoff.DefaultConfig
-	backoffConfig.MaxDelay = 3 * time.Second
-	connParams := grpc.ConnectParams{
-		Backoff: backoffConfig,
-	}
-
-	gopts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithInsecure(),
-		grpc.FailOnNonTempDialError(true),
-		grpc.WithConnectParams(connParams),
-		grpc.WithContextDialer(contextDialer),
-	}
-	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctxx, vm.Ni.PrimaryAddress+":50051", gopts...)
-	vm.Conn = conn
+	funcClient, err := o.getFuncClient(ctx, vm, logger)
 	if err != nil {
-		if errCleanup := o.cleanup(ctx, vm, true, true, true, true); errCleanup != nil {
-			logger.Warn("Cleanup failed: ", errCleanup)
-		}
-		return "Failed to start VM", tProfile, errors.Wrap(err, "Failed to connect to a function")
+		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to connect to a function")
 	}
-	logger.Debug("StartVM: Creating a new gRPC client")
-	funcClient := hpb.NewGreeterClient(conn)
 	vm.FuncClient = &funcClient
 
 	logger.Debug("Successfully started a VM")
@@ -458,6 +466,17 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, error
 		logger.Warn("failed to pause the VM: ", err)
 		return "Resuming VM " + vmID + " failed", err
 	}
+
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		return "Snapshot of VM " + vmID + " loaded successfully", err
+	}
+
+	funcClient, err := o.getFuncClient(ctx, vm, logger)
+	if err != nil {
+		return "Failed to start VM", errors.Wrap(err, "failed to connect to a function")
+	}
+	vm.FuncClient = &funcClient
 
 	return "VM " + vmID + " resumed successfully", nil
 }
