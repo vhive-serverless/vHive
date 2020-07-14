@@ -51,7 +51,7 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	vm := NewVM(vmID)
 
 	var err error
-	vm.Ni, err = p.tapManager.AddTap(vmID+"_tap")
+	vm.Ni, err = p.tapManager.AddTap(vmID + "_tap")
 	if err != nil {
 		logger.Warn("Ni allocation failed, freeing VM from the pool")
 		return nil, err
@@ -76,7 +76,7 @@ func (p *VMPool) Free(vmID string) error {
 
 	logger.Debug("Free (VM): Freeing VM from the pool")
 
-	if err := p.tapManager.RemoveTap(vmID+"_tap"); err != nil {
+	if err := p.tapManager.RemoveTap(vmID + "_tap"); err != nil {
 		logger.Error("Could not delete tap")
 		return err
 	}

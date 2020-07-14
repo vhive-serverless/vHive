@@ -19,8 +19,8 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.5.1
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
-	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710161907-f76633b53689
-	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714121618-b03bf5c0e06e
+	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200714124456-347054937ceb
+	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714124456-347054937ceb
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.30.0
