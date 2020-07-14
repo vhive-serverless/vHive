@@ -25,7 +25,7 @@ func TestSnapLoad(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
@@ -71,7 +71,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
@@ -135,6 +135,7 @@ func TestParallelSnapLoad(t *testing.T) {
 	defer cancel()
 
 	vmNum := 5
+	vmIDBase := 6
 	orch := NewOrchestrator("devmapper", vmNum, true)
 
 	// Pull image to work around parallel pulling
@@ -149,7 +150,7 @@ func TestParallelSnapLoad(t *testing.T) {
 		vmGroup.Add(1)
 		go func(i int) {
 			defer vmGroup.Done()
-			vmID := fmt.Sprintf("test_%d", i)
+			vmID := fmt.Sprintf("%d", i+vmIDBase)
 			snapshotFilePath := fmt.Sprintf("/dev/snapshot_file_%s", vmID)
 			memFilePath := fmt.Sprintf("/dev/mem_file_%s", vmID)
 
@@ -196,6 +197,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
+	vmIDBase := 11
 	orch := NewOrchestrator("devmapper", vmNum, true)
 
 	// Pull image to work around parallel pulling
@@ -211,7 +213,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
+				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
 				require.NoError(t, err, "Failed to start VM, "+vmID+", "+message)
 			}(i)
@@ -225,7 +227,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
+				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				message, err := orch.PauseVM(ctx, vmID)
 				require.NoError(t, err, "Failed to pause VM, "+vmID+", "+message)
 			}(i)
@@ -239,7 +241,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
+				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				snapshotFilePath := fmt.Sprintf("/dev/snapshot_file_%s", vmID)
 				memFilePath := fmt.Sprintf("/dev/mem_file_%s", vmID)
 				message, err := orch.CreateSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
@@ -255,7 +257,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
+				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				message, err := orch.Offload(ctx, vmID)
 				require.NoError(t, err, "Failed to offload VM, "+vmID+", "+message)
 			}(i)
@@ -271,7 +273,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
+				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				snapshotFilePath := fmt.Sprintf("/dev/snapshot_file_%s", vmID)
 				memFilePath := fmt.Sprintf("/dev/mem_file_%s", vmID)
 				message, err := orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
@@ -287,7 +289,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
+				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				message, err := orch.ResumeVM(ctx, vmID)
 				require.NoError(t, err, "Failed to resume VM, "+vmID+", "+message)
 			}(i)

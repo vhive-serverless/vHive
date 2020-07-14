@@ -15,7 +15,7 @@ clean:
 test-all: test $(SUBDIRS)
 
 test:
-	go test $(EXTRATESTFILES) $(EXTRAGOARGS)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
 
 $(SUBDIRS):
 	$(MAKE) -C $@

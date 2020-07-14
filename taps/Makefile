@@ -1,6 +1,6 @@
 EXTRAGOARGS:=-v -race
 
 test:
-	go test ./ $(EXTRAGOARGS)
+	sudo env "PATH=$(PATH)" go test ./ $(EXTRAGOARGS)
 
 .PHONY: test
