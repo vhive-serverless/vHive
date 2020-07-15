@@ -455,6 +455,8 @@ github.com/ustiugov/firecracker-containerd v0.0.0-20200709144213-2a6e26bab456 h1
 github.com/ustiugov/firecracker-containerd v0.0.0-20200709144213-2a6e26bab456/go.mod h1:OtUkc7ZUX5g2pE/keVn+mB0MCzzjKr0A8Ms/TTpOaxY=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200710135524-67aece3e7f88 h1:D8ly/oUfNCn+ldK3YQYZthT2CsKBj7pR1z8ufAL4D50=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200710135524-67aece3e7f88/go.mod h1:4cfp/cHPGP+Hs2veZzY1cKrvEALiXBO9Fo6PDjTAq0s=
+github.com/ustiugov/firecracker-containerd v0.0.0-20200715134131-c793614a7535 h1:Rgv/yEGNSqpM06dpdL9UuNY20v4weULbjdn430uYCPo=
+github.com/ustiugov/firecracker-containerd v0.0.0-20200715134131-c793614a7535/go.mod h1:4cfp/cHPGP+Hs2veZzY1cKrvEALiXBO9Fo6PDjTAq0s=
 github.com/ustiugov/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123/go.mod h1:zyc9BrKGePpNLbQ5y2ZtdzXEfpMJeHPeFNVpyo0S1WQ=
 github.com/vektah/gqlparser v1.1.2/go.mod h1:1ycwN7Ij5njmMkPPAOaRFY4rET2Enx7IkVv3vaXspKw=
 github.com/vishvananda/netlink v0.0.0-20181108222139-023a6dafdcdf/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
