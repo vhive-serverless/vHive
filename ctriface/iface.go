@@ -499,13 +499,18 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID, snapPath, memPa
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string, isUpf bool) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-	req := &proto.LoadSnapshotRequest{VMID: vmID, SnapshotFilePath: snapPath, MemFilePath: memPath}
+	req := &proto.LoadSnapshotRequest{
+		VMID:             vmID,
+		SnapshotFilePath: snapPath,
+		MemFilePath:      memPath,
+		EnableUserPF:     isUpf,
+	}
 
 	if _, err := o.fcClient.LoadSnapshot(ctx, req); err != nil {
 		logger.Warn("failed to load snapshot of the VM: ", err)
