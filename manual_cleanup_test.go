@@ -71,7 +71,7 @@ func TestParallelLoadServe(t *testing.T) {
 
 			time.Sleep(300 * time.Millisecond)
 
-			_, err = orch.LoadSnapshot(context.Background(), vmID, snapshotFilePath, memFilePath)
+			_, err = orch.LoadSnapshot(context.Background(), vmID, snapshotFilePath, memFilePath, false)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 			_, err = orch.ResumeVM(context.Background(), vmID)
@@ -94,6 +94,9 @@ func TestLoadServeMultiple1(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
+	snapshotFile := "/tmp/snap_test_" + fID
+	memFile := "/tmp/mem_test_" + fID
+
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
@@ -102,7 +105,7 @@ func TestLoadServeMultiple1(t *testing.T) {
 	_, err = orch.PauseVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when pausing VM")
 
-	_, err = orch.CreateSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.CreateSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile)
 	require.NoError(t, err, "Error when creating snapshot of VM")
 
 	_, err = orch.Offload(context.Background(), fmt.Sprintf(fID+"_0"))
@@ -110,7 +113,7 @@ func TestLoadServeMultiple1(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile, false)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
@@ -125,7 +128,7 @@ func TestLoadServeMultiple1(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile, false)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
@@ -145,6 +148,9 @@ func TestLoadServeMultiple2(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
+	snapshotFile := "/tmp/snap_test_" + fID
+	memFile := "/tmp/mem_test_" + fID
+
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
@@ -153,7 +159,7 @@ func TestLoadServeMultiple2(t *testing.T) {
 	_, err = orch.PauseVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when pausing VM")
 
-	_, err = orch.CreateSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.CreateSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile)
 	require.NoError(t, err, "Error when creating snapshot of VM")
 
 	_, err = orch.Offload(context.Background(), fmt.Sprintf(fID+"_0"))
@@ -161,7 +167,7 @@ func TestLoadServeMultiple2(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile, false)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
@@ -180,7 +186,7 @@ func TestLoadServeMultiple2(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile, false)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
@@ -199,6 +205,9 @@ func TestLoadServeMultiple3(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
+	snapshotFile := "/tmp/snap_test_" + fID
+	memFile := "/tmp/mem_test_" + fID
+
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
@@ -207,7 +216,7 @@ func TestLoadServeMultiple3(t *testing.T) {
 	_, err = orch.PauseVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when pausing VM")
 
-	_, err = orch.CreateSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.CreateSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile)
 	require.NoError(t, err, "Error when creating snapshot of VM")
 
 	_, err = orch.Offload(context.Background(), fmt.Sprintf(fID+"_0"))
@@ -215,7 +224,7 @@ func TestLoadServeMultiple3(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile, false)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
@@ -226,7 +235,7 @@ func TestLoadServeMultiple3(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), snapshotFile, memFile, false)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))

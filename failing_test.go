@@ -53,7 +53,7 @@ func TestServePauseSnapLoadServe(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
+	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test", false)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
