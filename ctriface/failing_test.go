@@ -28,7 +28,7 @@ func TestStartSnapStop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, true)
+	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
 
 	vmID := "2"
 
@@ -46,7 +46,7 @@ func TestStartSnapStop(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file", false)
+	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 	message, err = orch.ResumeVM(ctx, vmID)

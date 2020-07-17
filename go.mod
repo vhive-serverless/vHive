@@ -14,7 +14,7 @@ require (
 	github.com/golang/protobuf v1.3.3
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.5.1
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200717112852-e54464c54909
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200720155131-b39156b53543
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200714162243-d6dc0c083e9e
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200714162243-d6dc0c083e9e // indirect
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200714162243-d6dc0c083e9e

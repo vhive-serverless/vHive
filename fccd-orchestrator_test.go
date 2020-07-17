@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -47,9 +48,9 @@ func TestMain(m *testing.M) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
-	orch = ctriface.NewOrchestrator("devmapper", 10, true)
+	orch = ctriface.NewOrchestrator("devmapper", 10, ctriface.WithTestModeOn(true), ctriface.WithSnapshotsEnabled(true))
 
 	ret := m.Run()
 
@@ -68,7 +69,7 @@ func TestPauseResumeSerial(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
 	require.Equal(t, resp.Payload, "Hello, world!")
@@ -78,14 +79,14 @@ func TestPauseResumeSerial(t *testing.T) {
 
 	// NOTE: Current implementation just return error but does not time out
 	//timeout_ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.Error(t, err, "Function did not time out on 2nd run")
 	require.Equal(t, resp.Payload, "")
 
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 3rd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -98,7 +99,7 @@ func TestServePauseSnapResumeServe(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
 	require.Equal(t, resp.Payload, "Hello, world!")
@@ -112,7 +113,7 @@ func TestServePauseSnapResumeServe(t *testing.T) {
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 2nd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -126,7 +127,7 @@ func TestSendToFunctionSerial(t *testing.T) {
 	funcPool = NewFuncPool(false, 0, 0, true)
 
 	for i := 0; i < 2; i++ {
-		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 		require.NoError(t, err, "Function returned error")
 		if i == 0 {
 			require.Equal(t, resp.IsColdStart, true)
@@ -150,7 +151,7 @@ func TestSendToFunctionParallel(t *testing.T) {
 
 		go func(i int) {
 			defer vmGroup.Done()
-			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -169,13 +170,14 @@ func TestStartSendStopTwice(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		for k := 0; k < 2; k++ {
-			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}
 
 		message, err := funcPool.RemoveInstance(fID, imageName)
 		require.NoError(t, err, "Function returned error, "+message)
+		time.Sleep(300 * time.Millisecond)
 	}
 
 	servedGot := funcPool.stats.statMap[fID].served
@@ -189,7 +191,7 @@ func TestStatsNotNumericFunction(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(true, 1, 2, true)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -207,7 +209,7 @@ func TestStatsNotColdFunction(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(true, 1, 11, true)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -226,7 +228,7 @@ func TestSaveMemorySerial(t *testing.T) {
 	funcPool = NewFuncPool(true, 40, 2, true)
 
 	for i := 0; i < 100; i++ {
-		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, world!")
 	}
@@ -250,7 +252,7 @@ func TestSaveMemoryParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 
-			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -270,10 +272,10 @@ func TestDirectStartStopVM(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
-	message, err := funcPool.AddInstance(fID, imageName)
+	message, err := funcPool.AddInstance(fID, imageName, false)
 	require.NoError(t, err, "This error should never happen (addInstance())"+message)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -305,7 +307,7 @@ func TestAllFunctions(t *testing.T) {
 				go func(fID int, imageName, request, response string) {
 					defer vmGroup.Done()
 
-					resp, err := funcPool.Serve(context.Background(), strconv.Itoa(fID), imageName, request)
+					resp, err := funcPool.Serve(context.Background(), strconv.Itoa(fID), imageName, request, false)
 					require.NoError(t, err, "Function returned error")
 
 					require.Equal(t, resp.Payload, "Hello, "+response+"!")

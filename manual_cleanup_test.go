@@ -39,7 +39,7 @@ func TestParallelLoadServe(t *testing.T) {
 	funcPool = NewFuncPool(false, 0, 0, true)
 
 	// Pull image to work around parallel pulling limitation
-	resp, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "world", false)
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 	// -----------------------------------------------------
@@ -56,7 +56,7 @@ func TestParallelLoadServe(t *testing.T) {
 			snapshotFilePath := fmt.Sprintf("/dev/snapshot_file_%s", fID)
 			memFilePath := fmt.Sprintf("/dev/mem_file_%s", fID)
 
-			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 			require.NoError(t, err, "Function returned error on 1st run")
 			require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -77,7 +77,7 @@ func TestParallelLoadServe(t *testing.T) {
 			_, err = orch.ResumeVM(context.Background(), vmID)
 			require.NoError(t, err, "Error when resuming VM")
 
-			resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 			require.NoError(t, err, "Function returned error on 2nd run")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -97,7 +97,7 @@ func TestLoadServeMultiple1(t *testing.T) {
 	snapshotFile := "/tmp/snap_test_" + fID
 	memFile := "/tmp/mem_test_" + fID
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
 	require.Equal(t, resp.Payload, "Hello, world!")
@@ -119,7 +119,7 @@ func TestLoadServeMultiple1(t *testing.T) {
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 2nd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -134,7 +134,7 @@ func TestLoadServeMultiple1(t *testing.T) {
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 3rd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 }
@@ -151,7 +151,7 @@ func TestLoadServeMultiple2(t *testing.T) {
 	snapshotFile := "/tmp/snap_test_" + fID
 	memFile := "/tmp/mem_test_" + fID
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
 	require.Equal(t, resp.Payload, "Hello, world!")
@@ -173,11 +173,11 @@ func TestLoadServeMultiple2(t *testing.T) {
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 2nd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 3rd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -208,7 +208,7 @@ func TestLoadServeMultiple3(t *testing.T) {
 	snapshotFile := "/tmp/snap_test_" + fID
 	memFile := "/tmp/mem_test_" + fID
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
 	require.Equal(t, resp.Payload, "Hello, world!")
@@ -241,11 +241,11 @@ func TestLoadServeMultiple3(t *testing.T) {
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 2nd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 3rd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 }

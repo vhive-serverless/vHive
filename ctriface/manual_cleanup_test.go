@@ -31,7 +31,7 @@ func TestSnapLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, true)
+	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
 
 	vmID := "1"
 
@@ -52,7 +52,7 @@ func TestSnapLoad(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file", false)
+	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 	message, err = orch.ResumeVM(ctx, vmID)
@@ -77,7 +77,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, true)
+	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
 
 	vmID := "3"
 
@@ -95,7 +95,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1", false)
+	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 	message, err = orch.ResumeVM(ctx, vmID)
@@ -106,7 +106,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1", false)
+	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 	message, err = orch.ResumeVM(ctx, vmID)
@@ -136,7 +136,7 @@ func TestParallelSnapLoad(t *testing.T) {
 
 	vmNum := 5
 	vmIDBase := 6
-	orch := NewOrchestrator("devmapper", vmNum, true)
+	orch := NewOrchestrator("devmapper", vmNum, WithTestModeOn(true))
 
 	// Pull image to work around parallel pulling
 	message, _, err := orch.StartVM(ctx, "img_plr", "ustiugov/helloworld:runner_workload")
@@ -168,7 +168,7 @@ func TestParallelSnapLoad(t *testing.T) {
 
 			time.Sleep(300 * time.Millisecond)
 
-			message, err = orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath, false)
+			message, err = orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID+", "+message)
 
 			message, err = orch.ResumeVM(ctx, vmID)
@@ -198,7 +198,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 
 	vmNum := 10
 	vmIDBase := 11
-	orch := NewOrchestrator("devmapper", vmNum, true)
+	orch := NewOrchestrator("devmapper", vmNum, WithTestModeOn(true))
 
 	// Pull image to work around parallel pulling
 	message, _, err := orch.StartVM(ctx, "img_plr", "ustiugov/helloworld:runner_workload")
@@ -276,7 +276,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				snapshotFilePath := fmt.Sprintf("/dev/snapshot_file_%s", vmID)
 				memFilePath := fmt.Sprintf("/dev/mem_file_%s", vmID)
-				message, err := orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath, false)
+				message, err := orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
 				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID+", "+message)
 			}(i)
 		}

@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -70,10 +71,12 @@ type Orchestrator struct {
 	client       *containerd.Client
 	fcClient     *fcclient.Client
 	// store *skv.KVStore
+	snapshotsEnabled bool
+	isUPFEnabled     bool
 }
 
 // NewOrchestrator Initializes a new orchestrator
-func NewOrchestrator(snapshotter string, niNum int, testModeOn bool) *Orchestrator {
+func NewOrchestrator(snapshotter string, niNum int, opts ...OrchestratorOption) *Orchestrator {
 	var err error
 
 	o := new(Orchestrator)
@@ -81,10 +84,11 @@ func NewOrchestrator(snapshotter string, niNum int, testModeOn bool) *Orchestrat
 	o.vmPool = misc.NewVMPool(o.niNum)
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
+	o.snapshotsEnabled = false
+	o.isUPFEnabled = false
 
-	if !testModeOn {
-		o.setupCloseHandler()
-		o.setupHeartbeat()
+	for _, opt := range opts {
+		opt(o)
 	}
 
 	log.Info("Creating containerd client")
@@ -107,7 +111,7 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	image, found := o.cachedImages[imageName]
 	if !found {
 		var err error
-		log.Debugf("Pulling image %s", imageName)
+		log.Debug(fmt.Sprintf("Pulling image %s", imageName))
 		image, err = o.client.Pull(ctx, "docker.io/"+imageName,
 			containerd.WithPullUnpack,
 			containerd.WithPullSnapshotter(o.snapshotter),
@@ -439,6 +443,16 @@ func (o *Orchestrator) Cleanup() {
 	o.vmPool.RemoveBridges()
 }
 
+// GetSnapshotsEnabled Returns the snapshots mode of the orchestrator
+func (o *Orchestrator) GetSnapshotsEnabled() bool {
+	return o.snapshotsEnabled
+}
+
+// GetUPFEnabled Returns the UPF mode of the orchestrator
+func (o *Orchestrator) GetUPFEnabled() bool {
+	return o.isUPFEnabled
+}
+
 // PauseVM Pauses a VM
 func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -498,7 +512,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID, snapPath, memPa
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string, isUpf bool) (string, error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
 
@@ -508,7 +522,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath
 		VMID:             vmID,
 		SnapshotFilePath: snapPath,
 		MemFilePath:      memPath,
-		EnableUserPF:     isUpf,
+		EnableUserPF:     o.GetUPFEnabled(),
 	}
 
 	if _, err := o.fcClient.LoadSnapshot(ctx, req); err != nil {

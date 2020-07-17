@@ -29,7 +29,7 @@ func TestPauseSnapResume(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, true)
+	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
 
 	vmID := "4"
 
@@ -66,7 +66,7 @@ func TestStartStopSerial(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, true)
+	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
 
 	vmID := "5"
 
@@ -94,7 +94,7 @@ func TestPauseResumeSerial(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, true)
+	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
 
 	vmID := "6"
 
@@ -129,7 +129,7 @@ func TestStartStopParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
-	orch := NewOrchestrator("devmapper", vmNum, true)
+	orch := NewOrchestrator("devmapper", vmNum, WithTestModeOn(true))
 
 	{
 		var vmGroup sync.WaitGroup
@@ -137,7 +137,7 @@ func TestStartStopParallel(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("test_%d", i)
+				vmID := fmt.Sprintf("%d", i)
 				message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
 				require.NoError(t, err, "Failed to start VM, "+message)
 			}(i)
@@ -151,7 +151,7 @@ func TestStartStopParallel(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("test_%d", i)
+				vmID := fmt.Sprintf("%d", i)
 				message, err := orch.StopSingleVM(ctx, vmID)
 				require.NoError(t, err, "Failed to stop VM, "+message)
 			}(i)
@@ -178,7 +178,7 @@ func TestPauseResumeParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
-	orch := NewOrchestrator("devmapper", vmNum, true)
+	orch := NewOrchestrator("devmapper", vmNum, WithTestModeOn(true))
 
 	{
 		var vmGroup sync.WaitGroup
@@ -186,7 +186,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("test_%d", i)
+				vmID := fmt.Sprintf("%d", i)
 				message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
 				require.NoError(t, err, "Failed to start VM, "+message)
 			}(i)
@@ -200,7 +200,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("test_%d", i)
+				vmID := fmt.Sprintf("%d", i)
 				message, err := orch.PauseVM(ctx, vmID)
 				require.NoError(t, err, "Failed to pause VM, "+message)
 			}(i)
@@ -214,7 +214,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("test_%d", i)
+				vmID := fmt.Sprintf("%d", i)
 				message, err := orch.ResumeVM(ctx, vmID)
 				require.NoError(t, err, "Failed to resume VM, "+message)
 			}(i)
@@ -228,7 +228,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
-				vmID := fmt.Sprintf("test_%d", i)
+				vmID := fmt.Sprintf("%d", i)
 				message, err := orch.StopSingleVM(ctx, vmID)
 				require.NoError(t, err, "Failed to stop VM, "+message)
 			}(i)
