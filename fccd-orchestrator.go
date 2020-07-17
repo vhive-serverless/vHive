@@ -97,7 +97,7 @@ func main() {
 		}
 	}
 
-	orch = ctriface.NewOrchestrator(*snapshotter, *niNum, false)
+	orch = ctriface.NewOrchestrator(*snapshotter, *niNum, ctriface.WithTestModeOn(false), ctriface.WithSnapshotsEnabled(true))
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, false)
 
@@ -148,7 +148,7 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 	imageName := in.GetImage()
 	log.WithFields(log.Fields{"fID": fID, "image": imageName}).Info("Received direct StartVM")
 
-	message, err := funcPool.AddInstance(fID, imageName)
+	message, err := funcPool.AddInstance(fID, imageName, false)
 	tProfile := "not supported anymore"
 	//message, tProfile, err := orch.StartVM(ctx, fID, imageName)
 	if err != nil { // does not return error
@@ -189,5 +189,5 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	logger := log.WithFields(log.Fields{"fID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
-	return funcPool.Serve(ctx, fID, imageName, payload)
+	return funcPool.Serve(ctx, fID, imageName, payload, false)
 }

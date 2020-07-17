@@ -37,7 +37,7 @@ func TestServePauseSnapLoadServe(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
 	require.Equal(t, resp.Payload, "Hello, world!")
@@ -59,7 +59,7 @@ func TestServePauseSnapLoadServe(t *testing.T) {
 	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
 	require.NoError(t, err, "Error when resuming VM")
 
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
 	require.NoError(t, err, "Function returned error on 2nd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 

@@ -16,6 +16,7 @@ require (
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200714130355-0a4bf3145bf7
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200714130355-0a4bf3145bf7
 	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714130355-0a4bf3145bf7 // indirect
+	golang.org/x/tools v0.0.0-20200721032237-77f530d86f9a // indirect
 	google.golang.org/grpc v1.30.0
 
 )

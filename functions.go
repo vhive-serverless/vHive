@@ -108,14 +108,14 @@ func (p *FuncPool) getFunction(fID, imageName string) *Function {
 }
 
 // Serve Service RPC request by triggering the corresponding function.
-func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string) (*hpb.FwdHelloResp, error) {
+func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string, isUPF bool) (*hpb.FwdHelloResp, error) {
 	f := p.getFunction(fID, imageName)
 
-	return f.Serve(ctx, fID, imageName, payload)
+	return f.Serve(ctx, fID, imageName, payload, isUPF)
 }
 
 // AddInstance Adds instance of the function
-func (p *FuncPool) AddInstance(fID, imageName string) (string, error) {
+func (p *FuncPool) AddInstance(fID, imageName string, isUPF bool) (string, error) {
 	f := p.getFunction(fID, imageName)
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})
@@ -123,7 +123,7 @@ func (p *FuncPool) AddInstance(fID, imageName string) (string, error) {
 	f.OnceAddInstance.Do(
 		func() {
 			logger.Debug("Function is inactive, starting the instance...")
-			f.AddInstance()
+			f.AddInstance(isUPF)
 		})
 
 	return "Instance started", nil
@@ -141,16 +141,18 @@ func (p *FuncPool) RemoveInstance(fID, imageName string) (string, error) {
 // Function type
 type Function struct {
 	sync.RWMutex
-	OnceAddInstance   *sync.Once
-	fID               string
-	imageName         string
-	vmIDList          []string // FIXME: only a single VM per function is supported
-	lastInstanceID    int
-	isPinnedInMem     bool // if pinned, the orchestrator does not stop/offload it)
-	stats             *Stats
-	servedTh          uint64
-	sem               *semaphore.Weighted
-	servedSyncCounter int64
+	OnceAddInstance        *sync.Once
+	fID                    string
+	imageName              string
+	vmID               string
+	lastInstanceID         int
+	isPinnedInMem          bool // if pinned, the orchestrator does not stop/offload it)
+	stats                  *Stats
+	servedTh               uint64
+	sem                    *semaphore.Weighted
+	servedSyncCounter      int64
+	isSnapshotReady        bool // if ready, the orchestrator should load the instance rather than creating it
+	OnceCreateSnapInstance *sync.Once
 }
 
 // NewFunction Initializes a function
@@ -163,6 +165,8 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 	f.OnceAddInstance = new(sync.Once)
 	f.isPinnedInMem = isToPin
 	f.stats = Stats
+	f.isSnapshotReady = false
+	f.OnceCreateSnapInstance = new(sync.Once)
 
 	// Normal distribution with stddev=servedTh/2, mean=servedTh
 	thresh := int64(rand.NormFloat64()*float64(servedTh/2) + float64(servedTh))
@@ -200,7 +204,7 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 //    b. The last goroutine is determined by the atomic counter: the goroutine wih syncID==0 shuts down
 //       the instance.
 //    c. Instance shutdown is performed asynchronously because all instances have unique IDs.
-func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, error) {
+func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string, isUPF bool) (*hpb.FwdHelloResp, error) {
 	syncID := int64(-1) // default is no synchronization
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})
@@ -221,7 +225,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 		func() {
 			isColdStart = true
 			logger.Debug("Function is inactive, starting the instance...")
-			f.AddInstance()
+			f.AddInstance(isUPF)
 		})
 
 	f.RLock()
@@ -255,17 +259,17 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 
 	if !f.isPinnedInMem && syncID == 0 {
 		logger.Debugf("Function has to shut down its instance, served %d requests", f.GetStatServed())
-		f.RemoveInstanceAsync()
+		if orch.GetSnapshotsEnabled() {
+			f.RemoveInstance()
+		} else {
+			f.RemoveInstanceAsync()
+		}
 		f.ZeroServedStat()
 		f.servedSyncCounter = int64(f.servedTh) // reset counter
 		f.sem.Release(int64(f.servedTh))
 	}
 
 	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, err
-}
-
-func (f *Function) getInstanceVMID() string {
-	return f.vmIDList[0] // TODO: load balancing when many instances are supported
 }
 
 // FwdRPC Forward the RPC to an instance, then forwards the response back.
@@ -275,7 +279,7 @@ func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
-	funcClientPtr, err := orch.GetFuncClient(f.getInstanceVMID())
+	funcClientPtr, err := orch.GetFuncClient(f.vmID)
 	if err != nil {
 		return &hpb.HelloReply{Message: "Failed to get function client"}, err
 	}
@@ -291,8 +295,7 @@ func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 
 // AddInstance Starts a VM, waits till it is ready.
 // Note: this function is called from sync.Once construct
-func (f *Function) AddInstance() {
-	// DMITRII: use LoadInstance here
+func (f *Function) AddInstance(isUPF bool) {
 	f.Lock()
 	defer f.Unlock()
 
@@ -300,20 +303,21 @@ func (f *Function) AddInstance() {
 
 	logger.Debug("Adding instance")
 
-	vmID := fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	defer cancel()
 
-	message, _, err := orch.StartVM(ctx, vmID, f.imageName)
-	if err != nil {
-		log.Panic(message, err)
+	if f.isSnapshotReady {
+		f.LoadInstance(isUPF)
+	} else {
+		message, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
+		if err != nil {
+			log.Panic(message, err)
+		}
+		f.vmID = f.getVMID()
+		f.lastInstanceID++
 	}
 
 	f.stats.IncStarted(f.fID)
-
-	f.vmIDList = append(f.vmIDList, vmID)
-	f.lastInstanceID++
 }
 
 // RemoveInstanceAsync Stops an instance (VM) of the function.
@@ -345,42 +349,86 @@ func (f *Function) RemoveInstance() (string, error) {
 
 	logger.Debug("Removing instance")
 
-	vmID := f.clearInstanceState()
+	if orch.GetSnapshotsEnabled() {
+		f.OffloadInstance()
+
+		_ = f.clearInstanceState()
+
+		f.Unlock()
+		return "Successfully offloaded instance " + f.vmID, nil
+	}
 	f.Unlock()
 
-	return orch.StopSingleVM(context.Background(), vmID)
+	_ = f.clearInstanceState()
+
+	return orch.StopSingleVM(context.Background(), f.vmID)
 }
 
 func (f *Function) clearInstanceState() (vmID string) {
-	vmID, f.vmIDList = f.vmIDList[0], f.vmIDList[1:]
-
-	if len(f.vmIDList) == 0 {
-		f.OnceAddInstance = new(sync.Once)
-	} else {
-		log.Panic("List of function's instance is not empty after stopping an instance!")
-	}
+	f.OnceAddInstance = new(sync.Once)
 
 	return vmID
 }
 
 // CreateInstanceSnapshot Shuts down the function's instance keeping its shim process alive
-func (f *Function) CreateInstanceSnapshot() error {
-	// ctriface: pause & createSnap
-	return nil
+func (f *Function) CreateInstanceSnapshot() {
+	logger := log.WithFields(log.Fields{"fID": f.fID})
+
+	logger.Debug("Creating instance snapshot")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	defer cancel()
+
+	message, err := orch.PauseVM(ctx, f.vmID)
+	if err != nil {
+		log.Panic(message, err)
+	}
+	message, err = orch.CreateSnapshot(ctx, f.vmID, f.getSnapshotFilePath(), f.getMemFilePath())
+	if err != nil {
+		log.Panic(message, err)
+	}
 }
 
-// OffloadInstance Creates a snapshot of the function's instance
-func (f *Function) OffloadInstance() error {
-	// ctriface: offload
+// OffloadInstance Offloads the instance
+func (f *Function) OffloadInstance() {
+	logger := log.WithFields(log.Fields{"fID": f.fID})
 
-	return nil
+	f.OnceCreateSnapInstance.Do(
+		func() {
+			logger.Debug("First time offloading, need to create a snapshot first")
+			f.CreateInstanceSnapshot()
+			f.isSnapshotReady = true
+		})
+
+	logger.Debug("Offloading instance")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	defer cancel()
+
+	message, err := orch.Offload(ctx, f.vmID)
+	if err != nil {
+		log.Panic(message, err)
+	}
 }
 
-// LoadInstance Loads a new instance of the function from its snapshot
-func (f *Function) LoadInstance() error {
-	// ctriface: load & resume
+// LoadInstance Loads a new instance of the function from its snapshot and resumes it
+func (f *Function) LoadInstance(isUPF bool) {
+	logger := log.WithFields(log.Fields{"fID": f.fID})
 
-	return nil
+	logger.Debug("Loading instance")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	defer cancel()
+
+	message, err := orch.LoadSnapshot(ctx, f.vmID, f.getSnapshotFilePath(), f.getMemFilePath(), isUPF)
+	if err != nil {
+		log.Panic(message, err)
+	}
+
+	message, err = orch.ResumeVM(ctx, f.vmID)
+	if err != nil {
+		log.Panic(message, err)
+	}
 }
 
 // GetStatServed Returns the served counter value
@@ -391,4 +439,19 @@ func (f *Function) GetStatServed() uint64 {
 // ZeroServedStat Zero served counter
 func (f *Function) ZeroServedStat() {
 	atomic.StoreUint64(&f.stats.statMap[f.fID].served, 0)
+}
+
+// getVMID Creates the vmID for the function
+func (f *Function) getVMID() string {
+	return fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
+}
+
+// getSnapshotFilePath Creates the snapshot file path for the function
+func (f *Function) getSnapshotFilePath() string {
+	return fmt.Sprintf("/dev/snap_file_%s", f.vmID)
+}
+
+// getMemFilePath Creates the memory file path for the function
+func (f *Function) getMemFilePath() string {
+	return fmt.Sprintf("/dev/mem_file_%s", f.vmID)
 }
