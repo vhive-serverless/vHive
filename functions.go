@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -108,14 +108,14 @@ func (p *FuncPool) getFunction(fID, imageName string) *Function {
 }
 
 // Serve Service RPC request by triggering the corresponding function.
-func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string, isUPF bool) (*hpb.FwdHelloResp, error) {
+func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string) (*hpb.FwdHelloResp, error) {
 	f := p.getFunction(fID, imageName)
 
-	return f.Serve(ctx, fID, imageName, payload, isUPF)
+	return f.Serve(ctx, fID, imageName, payload)
 }
 
 // AddInstance Adds instance of the function
-func (p *FuncPool) AddInstance(fID, imageName string, isUPF bool) (string, error) {
+func (p *FuncPool) AddInstance(fID, imageName string) (string, error) {
 	f := p.getFunction(fID, imageName)
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})
@@ -123,17 +123,17 @@ func (p *FuncPool) AddInstance(fID, imageName string, isUPF bool) (string, error
 	f.OnceAddInstance.Do(
 		func() {
 			logger.Debug("Function is inactive, starting the instance...")
-			f.AddInstance(isUPF)
+			f.AddInstance()
 		})
 
 	return "Instance started", nil
 }
 
 // RemoveInstance Removes instance of the function (blocking)
-func (p *FuncPool) RemoveInstance(fID, imageName string) (string, error) {
+func (p *FuncPool) RemoveInstance(fID, imageName string, sync bool) (string, error) {
 	f := p.getFunction(fID, imageName)
 
-	return f.RemoveInstance()
+	return f.RemoveInstance(sync)
 }
 
 //////////////////////////////// Function type //////////////////////////////////////////////
@@ -144,7 +144,7 @@ type Function struct {
 	OnceAddInstance        *sync.Once
 	fID                    string
 	imageName              string
-	vmID               string
+	vmID                   string
 	lastInstanceID         int
 	isPinnedInMem          bool // if pinned, the orchestrator does not stop/offload it)
 	stats                  *Stats
@@ -204,7 +204,7 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 //    b. The last goroutine is determined by the atomic counter: the goroutine wih syncID==0 shuts down
 //       the instance.
 //    c. Instance shutdown is performed asynchronously because all instances have unique IDs.
-func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string, isUPF bool) (*hpb.FwdHelloResp, error) {
+func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, error) {
 	syncID := int64(-1) // default is no synchronization
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})
@@ -225,7 +225,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string,
 		func() {
 			isColdStart = true
 			logger.Debug("Function is inactive, starting the instance...")
-			f.AddInstance(isUPF)
+			f.AddInstance()
 		})
 
 	f.RLock()
@@ -259,10 +259,8 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string,
 
 	if !f.isPinnedInMem && syncID == 0 {
 		logger.Debugf("Function has to shut down its instance, served %d requests", f.GetStatServed())
-		if orch.GetSnapshotsEnabled() {
-			f.RemoveInstance()
-		} else {
-			f.RemoveInstanceAsync()
+		if _, err := f.RemoveInstance(false); err != nil {
+			logger.Panic("Failed to remove instance after servedTh expired", err)
 		}
 		f.ZeroServedStat()
 		f.servedSyncCounter = int64(f.servedTh) // reset counter
@@ -295,7 +293,7 @@ func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 
 // AddInstance Starts a VM, waits till it is ready.
 // Note: this function is called from sync.Once construct
-func (f *Function) AddInstance(isUPF bool) {
+func (f *Function) AddInstance() {
 	f.Lock()
 	defer f.Unlock()
 
@@ -307,7 +305,7 @@ func (f *Function) AddInstance(isUPF bool) {
 	defer cancel()
 
 	if f.isSnapshotReady {
-		f.LoadInstance(isUPF)
+		f.LoadInstance()
 	} else {
 		message, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
 		if err != nil {
@@ -321,47 +319,47 @@ func (f *Function) AddInstance(isUPF bool) {
 }
 
 // RemoveInstanceAsync Stops an instance (VM) of the function.
-// Note: this function is called from sync.Once construct
 func (f *Function) RemoveInstanceAsync() {
-	// DMITRII: use CreateSnap & Offload here
-	f.Lock()
-	defer f.Unlock()
-
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Removing instance (async)")
 
-	vmID := f.clearInstanceState()
-
-	go func(vmID string) {
-		message, err := orch.StopSingleVM(context.Background(), vmID)
+	go func() {
+		message, err := orch.StopSingleVM(context.Background(), f.vmID)
 		if err != nil {
 			log.Warn(message, err)
 		}
-	}(vmID)
+	}()
 }
 
 // RemoveInstance Stops an instance (VM) of the function.
-func (f *Function) RemoveInstance() (string, error) {
+func (f *Function) RemoveInstance(sync bool) (string, error) {
 	// DMITRII: use CreateSnap & Offload here
 	f.Lock()
-	logger := log.WithFields(log.Fields{"fID": f.fID})
+	defer f.Unlock()
+
+	logger := log.WithFields(log.Fields{"fID": f.fID, "sync": sync})
 
 	logger.Debug("Removing instance")
 
-	if orch.GetSnapshotsEnabled() {
-		f.OffloadInstance()
-
-		_ = f.clearInstanceState()
-
-		f.Unlock()
-		return "Successfully offloaded instance " + f.vmID, nil
-	}
-	f.Unlock()
+	var r string
+	var err error = nil
 
 	_ = f.clearInstanceState()
 
-	return orch.StopSingleVM(context.Background(), f.vmID)
+	if orch.GetSnapshotsEnabled() {
+		f.OffloadInstance()
+		r = "Successfully offloaded instance " + f.vmID
+	} else {
+		if sync {
+			r, err = orch.StopSingleVM(context.Background(), f.vmID)
+		} else {
+			f.RemoveInstanceAsync()
+			r = "Successfully removed (async) instance " + f.vmID
+		}
+	}
+
+	return r, err
 }
 
 func (f *Function) clearInstanceState() (vmID string) {
@@ -376,7 +374,7 @@ func (f *Function) CreateInstanceSnapshot() {
 
 	logger.Debug("Creating instance snapshot")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	message, err := orch.PauseVM(ctx, f.vmID)
@@ -402,25 +400,26 @@ func (f *Function) OffloadInstance() {
 
 	logger.Debug("Offloading instance")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	message, err := orch.Offload(ctx, f.vmID)
 	if err != nil {
 		log.Panic(message, err)
 	}
+	time.Sleep(300 * time.Millisecond)
 }
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
-func (f *Function) LoadInstance(isUPF bool) {
+func (f *Function) LoadInstance() {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Loading instance")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	message, err := orch.LoadSnapshot(ctx, f.vmID, f.getSnapshotFilePath(), f.getMemFilePath(), isUPF)
+	message, err := orch.LoadSnapshot(ctx, f.vmID, f.getSnapshotFilePath(), f.getMemFilePath())
 	if err != nil {
 		log.Panic(message, err)
 	}

@@ -14,12 +14,11 @@ require (
 	github.com/golang/protobuf v1.3.3
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.5.1
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200720155131-b39156b53543
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200721084835-1c1547bbc277
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200714162243-d6dc0c083e9e
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200714162243-d6dc0c083e9e // indirect
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200714162243-d6dc0c083e9e
 	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714162243-d6dc0c083e9e // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	golang.org/x/tools v0.0.0-20200717024301-6ddee64345a6 // indirect
 	google.golang.org/grpc v1.30.0
 )

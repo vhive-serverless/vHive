@@ -97,7 +97,7 @@ func main() {
 		}
 	}
 
-	orch = ctriface.NewOrchestrator(*snapshotter, *niNum, ctriface.WithTestModeOn(false), ctriface.WithSnapshotsEnabled(true))
+	orch = ctriface.NewOrchestrator(*snapshotter, *niNum, ctriface.WithTestModeOn(false), ctriface.WithSnapshots(true))
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, false)
 
@@ -148,7 +148,7 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 	imageName := in.GetImage()
 	log.WithFields(log.Fields{"fID": fID, "image": imageName}).Info("Received direct StartVM")
 
-	message, err := funcPool.AddInstance(fID, imageName, false)
+	message, err := funcPool.AddInstance(fID, imageName)
 	tProfile := "not supported anymore"
 	//message, tProfile, err := orch.StartVM(ctx, fID, imageName)
 	if err != nil { // does not return error
@@ -161,7 +161,7 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
 	fID := in.GetId()
 	log.WithFields(log.Fields{"fID": fID}).Info("Received direct StopVM")
-	message, err := funcPool.RemoveInstance(fID, "bogus imageName") //orch.StopSingleVM(ctx, vmID)
+	message, err := funcPool.RemoveInstance(fID, "bogus imageName", true) //orch.StopSingleVM(ctx, vmID)
 	if err != nil {
 		log.Warn(message, err)
 	}
@@ -189,5 +189,5 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	logger := log.WithFields(log.Fields{"fID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
-	return funcPool.Serve(ctx, fID, imageName, payload, false)
+	return funcPool.Serve(ctx, fID, imageName, payload)
 }

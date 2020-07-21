@@ -24,9 +24,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -37,33 +35,16 @@ func TestServePauseSnapLoadServe(t *testing.T) {
 	imageName := "ustiugov/helloworld:runner_workload"
 	funcPool = NewFuncPool(false, 0, 0, true)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world", false)
+	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error on 1st run")
 	require.Equal(t, resp.IsColdStart, true)
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	_, err = orch.PauseVM(context.Background(), fmt.Sprintf(fID+"_0"))
-	require.NoError(t, err, "Error when pausing VM")
-
-	_, err = orch.CreateSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test")
-	require.NoError(t, err, "Error when creating snapshot of VM")
-
-	_, err = orch.Offload(context.Background(), fmt.Sprintf(fID+"_0"))
-	require.NoError(t, err, "Failed to offload VM, "+"")
-
-	time.Sleep(300 * time.Millisecond)
-
-	_, err = orch.LoadSnapshot(context.Background(), fmt.Sprintf(fID+"_0"), "/tmp/snap_test", "/tmp/mem_test", false)
-	require.NoError(t, err, "Failed to load snapshot of VM, "+"")
-
-	_, err = orch.ResumeVM(context.Background(), fmt.Sprintf(fID+"_0"))
-	require.NoError(t, err, "Error when resuming VM")
-
-	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world", false)
+	resp, err = funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error on 2nd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
 	// Breaks here because removing instance does not work
-	message, err := funcPool.RemoveInstance(fID, imageName)
+	message, err := funcPool.RemoveInstance(fID, imageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
