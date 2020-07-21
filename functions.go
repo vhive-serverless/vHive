@@ -30,6 +30,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"path/filepath"
 
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc/codes"
@@ -130,10 +131,10 @@ func (p *FuncPool) AddInstance(fID, imageName string) (string, error) {
 }
 
 // RemoveInstance Removes instance of the function (blocking)
-func (p *FuncPool) RemoveInstance(fID, imageName string, sync bool) (string, error) {
+func (p *FuncPool) RemoveInstance(fID, imageName string, isSync bool) (string, error) {
 	f := p.getFunction(fID, imageName)
 
-	return f.RemoveInstance(sync)
+	return f.RemoveInstance(isSync)
 }
 
 //////////////////////////////// Function type //////////////////////////////////////////////
@@ -333,17 +334,16 @@ func (f *Function) RemoveInstanceAsync() {
 }
 
 // RemoveInstance Stops an instance (VM) of the function.
-func (f *Function) RemoveInstance(sync bool) (string, error) {
-	// DMITRII: use CreateSnap & Offload here
+func (f *Function) RemoveInstance(isSync bool) (string, error) {
 	f.Lock()
 	defer f.Unlock()
 
-	logger := log.WithFields(log.Fields{"fID": f.fID, "sync": sync})
+	logger := log.WithFields(log.Fields{"fID": f.fID, "isSync": isSync})
 
 	logger.Debug("Removing instance")
 
 	var r string
-	var err error = nil
+	var err error
 
 	_ = f.clearInstanceState()
 
@@ -351,7 +351,7 @@ func (f *Function) RemoveInstance(sync bool) (string, error) {
 		f.OffloadInstance()
 		r = "Successfully offloaded instance " + f.vmID
 	} else {
-		if sync {
+		if isSync {
 			r, err = orch.StopSingleVM(context.Background(), f.vmID)
 		} else {
 			f.RemoveInstanceAsync()
@@ -407,10 +407,11 @@ func (f *Function) OffloadInstance() {
 	if err != nil {
 		log.Panic(message, err)
 	}
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(300 * time.Millisecond) // FIXME: Need to check when resources are freed up instead of sleeping
 }
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
+// The tap, the shim and the vmID remain the same
 func (f *Function) LoadInstance() {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
@@ -447,10 +448,10 @@ func (f *Function) getVMID() string {
 
 // getSnapshotFilePath Creates the snapshot file path for the function
 func (f *Function) getSnapshotFilePath() string {
-	return fmt.Sprintf("/dev/snap_file_%s", f.vmID)
+	return fmt.Sprintf(filepath.Join("/dev", "snap_file_%s"), f.vmID)
 }
 
 // getMemFilePath Creates the memory file path for the function
 func (f *Function) getMemFilePath() string {
-	return fmt.Sprintf("/dev/mem_file_%s", f.vmID)
+	return fmt.Sprintf(filepath.Join("/dev", "mem_file_%s"), f.vmID)
 }
