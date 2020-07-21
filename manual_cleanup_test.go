@@ -49,7 +49,7 @@ func TestParallelServe(t *testing.T) {
 		vmGroup.Add(1)
 		go func(i int) {
 			defer vmGroup.Done()
-			fID := strconv.Itoa(15+i)
+			fID := strconv.Itoa(15 + i)
 
 			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error on 1st run")

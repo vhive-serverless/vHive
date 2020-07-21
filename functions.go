@@ -26,11 +26,11 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
-	"path/filepath"
 
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc/codes"
@@ -345,7 +345,7 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 	var r string
 	var err error
 
-	_ = f.clearInstanceState()
+	f.OnceAddInstance = new(sync.Once)
 
 	if orch.GetSnapshotsEnabled() {
 		f.OffloadInstance()
@@ -362,13 +362,7 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 	return r, err
 }
 
-func (f *Function) clearInstanceState() (vmID string) {
-	f.OnceAddInstance = new(sync.Once)
-
-	return vmID
-}
-
-// CreateInstanceSnapshot Shuts down the function's instance keeping its shim process alive
+// CreateInstanceSnapshot Creates a snapshot of the instance
 func (f *Function) CreateInstanceSnapshot() {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
