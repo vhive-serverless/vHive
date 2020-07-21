@@ -7,6 +7,6 @@ test:
 
 test-man:
 	sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS)
-
+	./../scripts/clean_fcctr.sh
 
 .PHONY: test test-man

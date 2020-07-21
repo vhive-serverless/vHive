@@ -161,7 +161,7 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
 	fID := in.GetId()
 	log.WithFields(log.Fields{"fID": fID}).Info("Received direct StopVM")
-	message, err := funcPool.RemoveInstance(fID, "bogus imageName", true) //orch.StopSingleVM(ctx, vmID)
+	message, err := funcPool.RemoveInstance(fID, "bogus imageName", true)
 	if err != nil {
 		log.Warn(message, err)
 	}

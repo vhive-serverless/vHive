@@ -13,12 +13,11 @@ protobuf:
 clean:
 	rm proto/orchestrator.pb.go
 
-test-all: test $(SUBDIRS) test-man
+test-orch: test test-man
 
 test:
 	sudo env "PATH=$(PATH)" "GOORCHSNAPSHOTS=false" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
 	sudo env "PATH=$(PATH)" "GOORCHSNAPSHOTS=true" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
-	./scripts/clean_fcctr.sh
 
 test-man:
 	sudo env "PATH=$(PATH)" "GOORCHSNAPSHOTS=false" go test $(EXTRAGOARGS_NORACE) -run TestParallelServe
@@ -31,4 +30,6 @@ $(SUBDIRS):
 	$(MAKE) -C $@ test
 	$(MAKE) -C $@ test-man
 
-.PHONY: test-all $(SUBDIRS)
+test-subdirs: $(SUBDIRS)
+
+.PHONY: test-orch $(SUBDIRS) test-subdirs
