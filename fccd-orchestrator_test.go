@@ -202,10 +202,10 @@ func TestStatsNotColdFunction(t *testing.T) {
 func TestSaveMemorySerial(t *testing.T) {
 	fID := "5"
 	imageName := "ustiugov/helloworld:runner_workload"
-        var (
-                servedTh      uint64 = 40
-                pinnedFuncNum int    = 2
-        )
+	var (
+		servedTh      uint64 = 40
+		pinnedFuncNum int    = 2
+	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 100; i++ {
