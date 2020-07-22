@@ -84,8 +84,6 @@ func NewOrchestrator(snapshotter string, niNum int, opts ...OrchestratorOption) 
 	o.vmPool = misc.NewVMPool(o.niNum)
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
-	o.snapshotsEnabled = false
-	o.isUPFEnabled = false
 
 	for _, opt := range opts {
 		opt(o)

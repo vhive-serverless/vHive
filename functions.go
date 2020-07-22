@@ -166,7 +166,6 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 	f.OnceAddInstance = new(sync.Once)
 	f.isPinnedInMem = isToPin
 	f.stats = Stats
-	f.isSnapshotReady = false
 	f.OnceCreateSnapInstance = new(sync.Once)
 
 	// Normal distribution with stddev=servedTh/2, mean=servedTh
