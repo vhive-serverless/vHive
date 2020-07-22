@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -52,6 +51,7 @@ import (
 
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	"github.com/ustiugov/fccd-orchestrator/misc"
+	"github.com/ustiugov/fccd-orchestrator/metrics"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
@@ -177,9 +177,12 @@ func (o *Orchestrator) getFuncClient(ctx context.Context, vm *misc.VM, logger *l
 }
 
 // StartVM Boots a VM if it does not exist
-func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, string, error) {
-	var tProfile string
-	var tStart, tElapsed time.Time
+func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, *metrics.StartVMStat, error) {
+	var (
+		startVMStat *metrics.StartVMStat = metrics.NewStartVMStat()
+		tStart time.Time
+	)
+
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
 
@@ -187,27 +190,25 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
 		logger.Panic("StartVM: Unknown error")
-		return "StartVM: Unknown error", tProfile, err
+		return "StartVM: Unknown error", startVMStat, err
 	}
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 	tStart = time.Now()
 	if vm.Image, err = o.getImage(ctx, imageName); err != nil {
-		return "Failed to start VM", tProfile, errors.Wrapf(err, "Failed to get/pull image")
+		return "Failed to start VM", startVMStat, errors.Wrapf(err, "Failed to get/pull image")
 	}
-	tElapsed = time.Now()
-	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
+	startVMStat.GetImage = time.Since(tStart).Microseconds()
 
 	logger.Debug("StartVM: Creating a new VM")
 	tStart = time.Now()
 	_, err = o.fcClient.CreateVM(ctx, o.getVMConfig(vm))
-	tElapsed = time.Now()
-	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
+	startVMStat.FcCreateVM = time.Since(tStart).Microseconds()
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vm, false, false, false, false); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create the VM")
+		return "Failed to start VM", startVMStat, errors.Wrap(err, "failed to create the VM")
 	}
 
 	logger.Debug("StartVM: Creating a new container")
@@ -225,39 +226,36 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		containerd.WithRuntime("aws.firecracker", nil),
 	)
 	vm.Container = &container
-	tElapsed = time.Now()
-	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
+	startVMStat.NewContainer = time.Since(tStart).Microseconds()
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vm, true, false, false, false); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a container")
+		return "Failed to start VM", startVMStat, errors.Wrap(err, "failed to create a container")
 	}
 
 	logger.Debug("StartVM: Creating a new task")
 	tStart = time.Now()
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
 	vm.Task = &task
-	tElapsed = time.Now()
-	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
+	startVMStat.NewTask = time.Since(tStart).Microseconds()
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vm, true, true, false, false); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to create a task")
+		return "Failed to start VM", startVMStat, errors.Wrap(err, "failed to create a task")
 	}
 
 	logger.Debug("StartVM: Waiting for the task to get ready")
 	tStart = time.Now()
 	ch, err := task.Wait(ctx)
 	vm.TaskCh = ch
-	tElapsed = time.Now()
-	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
+	startVMStat.TaskWait = time.Since(tStart).Microseconds()
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vm, true, true, true, false); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to wait for a task")
+		return "Failed to start VM", startVMStat, errors.Wrap(err, "failed to wait for a task")
 	}
 
 	logger.Debug("StartVM: Starting the task")
@@ -266,20 +264,19 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 		if errCleanup := o.cleanup(ctx, vm, true, true, true, false); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
-		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to start a task")
+		return "Failed to start VM", startVMStat, errors.Wrap(err, "failed to start a task")
 	}
-	tElapsed = time.Now()
-	tProfile += strconv.FormatInt(tElapsed.Sub(tStart).Microseconds(), 10) + ";"
+	startVMStat.TaskStart = time.Since(tStart).Microseconds()
 
 	funcClient, err := o.getFuncClient(ctx, vm, logger)
 	if err != nil {
-		return "Failed to start VM", tProfile, errors.Wrap(err, "failed to connect to a function")
+		return "Failed to start VM", startVMStat, errors.Wrap(err, "failed to connect to a function")
 	}
 	vm.FuncClient = &funcClient
 
 	logger.Debug("Successfully started a VM")
 
-	return "VM, container, and task started successfully", tProfile, nil
+	return "VM, container, and task started successfully", startVMStat, nil
 }
 
 // GetFuncClient Returns the client for the function
@@ -510,7 +507,12 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID, snapPath, memPa
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, *metrics.LoadSnapshotStat, error) {
+	var (
+		loadSnapshotStat *metrics.LoadSnapshotStat = metrics.NewLoadSnapshotStat()
+		tStart time.Time
+	)
+
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
 
@@ -523,12 +525,14 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath
 		EnableUserPF:     o.GetUPFEnabled(),
 	}
 
+	tStart = time.Now()
 	if _, err := o.fcClient.LoadSnapshot(ctx, req); err != nil {
 		logger.Warn("failed to load snapshot of the VM: ", err)
-		return "Loading snapshot of VM " + vmID + " failed", err
+		return "Loading snapshot of VM " + vmID + " failed", loadSnapshotStat, err
 	}
+	loadSnapshotStat.Full = time.Since(tStart).Microseconds()
 
-	return "Snapshot of VM " + vmID + " loaded successfully", nil
+	return "Snapshot of VM " + vmID + " loaded successfully", loadSnapshotStat, nil
 }
 
 // Offload Shuts down the VM but leaves shim and other resources running.
