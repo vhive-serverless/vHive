@@ -34,7 +34,9 @@ import (
 func TestParallelServe(t *testing.T) {
 	// Needs to be cleaned up manually.
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 1, 0, true)
+	var servedTh uint64 = 1
+	pinnedFuncNum := 0
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	// Pull image to work around parallel pulling limitation
 	resp, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "world")
@@ -66,7 +68,9 @@ func TestParallelServe(t *testing.T) {
 func TestServeThree(t *testing.T) {
 	fID := "20"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 1, 0, true)
+	var servedTh uint64 = 1
+	pinnedFuncNum := 0
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error on 1st run")

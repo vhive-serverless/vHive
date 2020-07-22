@@ -97,9 +97,11 @@ func main() {
 		}
 	}
 
-	orch = ctriface.NewOrchestrator(*snapshotter, *niNum, ctriface.WithTestModeOn(false), ctriface.WithSnapshots(true))
+	testModeOn := false
 
-	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, false)
+	orch = ctriface.NewOrchestrator(*snapshotter, *niNum, ctriface.WithTestModeOn(testModeOn), ctriface.WithSnapshots(true))
+
+	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
 	go orchServe()
 	fwdServe()
@@ -160,8 +162,9 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 
 func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
 	fID := in.GetId()
+	isSync := true
 	log.WithFields(log.Fields{"fID": fID}).Info("Received direct StopVM")
-	message, err := funcPool.RemoveInstance(fID, "bogus imageName", true)
+	message, err := funcPool.RemoveInstance(fID, "bogus imageName", isSync)
 	if err != nil {
 		log.Warn(message, err)
 	}
