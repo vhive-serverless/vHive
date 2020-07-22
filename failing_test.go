@@ -33,7 +33,9 @@ func TestServePauseSnapLoadServe(t *testing.T) {
 	// Needs to be cleaned up manually.
 	fID := "3"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(false, 0, 0, true)
+	var servedTh uint64 = 0
+	pinnedFuncNum := 0
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error on 1st run")

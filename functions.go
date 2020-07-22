@@ -342,8 +342,10 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 
 	logger.Debug("Removing instance")
 
-	var r string
-	var err error
+	var (
+		r   string
+		err error
+	)
 
 	f.OnceAddInstance = new(sync.Once)
 

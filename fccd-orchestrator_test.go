@@ -35,6 +35,11 @@ import (
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 )
 
+const (
+	isTestModeConst   = true
+	isSaveMemoryConst = true
+)
+
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
 
@@ -77,7 +82,9 @@ func TestMain(m *testing.M) {
 func TestSendToFunctionSerial(t *testing.T) {
 	fID := "1"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(false, 0, 0, true)
+	var servedTh uint64 = 0
+	pinnedFuncNum := 0
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 2; i++ {
 		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
@@ -96,7 +103,9 @@ func TestSendToFunctionSerial(t *testing.T) {
 func TestSendToFunctionParallel(t *testing.T) {
 	fID := "2"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(false, 0, 0, true)
+	var servedTh uint64 = 0
+	pinnedFuncNum := 0
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < 100; i++ {
@@ -119,7 +128,9 @@ func TestSendToFunctionParallel(t *testing.T) {
 func TestStartSendStopTwice(t *testing.T) {
 	fID := "3"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(false, 1, 2, true)
+	var servedTh uint64 = 1
+	pinnedFuncNum := 2
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 2; i++ {
 		for k := 0; k < 2; k++ {
@@ -141,7 +152,9 @@ func TestStartSendStopTwice(t *testing.T) {
 func TestStatsNotNumericFunction(t *testing.T) {
 	fID := "not_cld"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 1, 2, true)
+	var servedTh uint64 = 1
+	pinnedFuncNum := 2
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error")
@@ -159,7 +172,9 @@ func TestStatsNotNumericFunction(t *testing.T) {
 func TestStatsNotColdFunction(t *testing.T) {
 	fID := "4"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 1, 4, true)
+	var servedTh uint64 = 1
+	pinnedFuncNum := 4
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error")
@@ -177,7 +192,9 @@ func TestStatsNotColdFunction(t *testing.T) {
 func TestSaveMemorySerial(t *testing.T) {
 	fID := "5"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 40, 2, true)
+	var servedTh uint64 = 40
+	pinnedFuncNum := 2
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 100; i++ {
 		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
@@ -195,7 +212,9 @@ func TestSaveMemorySerial(t *testing.T) {
 func TestSaveMemoryParallel(t *testing.T) {
 	fID := "6"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(true, 40, 2, true)
+	var servedTh uint64 = 40
+	pinnedFuncNum := 2
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < 100; i++ {
@@ -222,7 +241,9 @@ func TestSaveMemoryParallel(t *testing.T) {
 func TestDirectStartStopVM(t *testing.T) {
 	fID := "7"
 	imageName := "ustiugov/helloworld:runner_workload"
-	funcPool = NewFuncPool(false, 0, 0, true)
+	var servedTh uint64 = 0
+	pinnedFuncNum := 0
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	message, err := funcPool.AddInstance(fID, imageName)
 	require.NoError(t, err, "This error should never happen (addInstance())"+message)
@@ -247,7 +268,9 @@ func TestAllFunctions(t *testing.T) {
 		"ustiugov/rnn_serving:var_workload",
 		//"ustiugov/lr_training:var_workload",
 	}
-	funcPool = NewFuncPool(false, 0, 0, true)
+	var servedTh uint64 = 0
+	pinnedFuncNum := 0
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 2; i++ {
 		var vmGroup sync.WaitGroup
