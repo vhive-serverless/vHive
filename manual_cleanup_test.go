@@ -34,8 +34,10 @@ import (
 func TestParallelServe(t *testing.T) {
 	// Needs to be cleaned up manually.
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 1
-	pinnedFuncNum := 0
+	var (
+		servedTh      uint64 = 1
+		pinnedFuncNum int
+	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	// Pull image to work around parallel pulling limitation
@@ -68,8 +70,10 @@ func TestParallelServe(t *testing.T) {
 func TestServeThree(t *testing.T) {
 	fID := "20"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 1
-	pinnedFuncNum := 0
+	var (
+		servedTh      uint64 = 1
+		pinnedFuncNum int
+	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")

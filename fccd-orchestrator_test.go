@@ -82,8 +82,10 @@ func TestMain(m *testing.M) {
 func TestSendToFunctionSerial(t *testing.T) {
 	fID := "1"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 0
-	pinnedFuncNum := 0
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+	)
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 2; i++ {
@@ -103,8 +105,10 @@ func TestSendToFunctionSerial(t *testing.T) {
 func TestSendToFunctionParallel(t *testing.T) {
 	fID := "2"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 0
-	pinnedFuncNum := 0
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+	)
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	var vmGroup sync.WaitGroup
@@ -128,8 +132,10 @@ func TestSendToFunctionParallel(t *testing.T) {
 func TestStartSendStopTwice(t *testing.T) {
 	fID := "3"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 1
-	pinnedFuncNum := 2
+	var (
+		servedTh      uint64 = 1
+		pinnedFuncNum int    = 2
+	)
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 2; i++ {
@@ -152,8 +158,10 @@ func TestStartSendStopTwice(t *testing.T) {
 func TestStatsNotNumericFunction(t *testing.T) {
 	fID := "not_cld"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 1
-	pinnedFuncNum := 2
+	var (
+		servedTh      uint64 = 1
+		pinnedFuncNum int    = 2
+	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
@@ -172,8 +180,10 @@ func TestStatsNotNumericFunction(t *testing.T) {
 func TestStatsNotColdFunction(t *testing.T) {
 	fID := "4"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 1
-	pinnedFuncNum := 4
+	var (
+		servedTh      uint64 = 1
+		pinnedFuncNum int    = 4
+	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
@@ -192,8 +202,10 @@ func TestStatsNotColdFunction(t *testing.T) {
 func TestSaveMemorySerial(t *testing.T) {
 	fID := "5"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 40
-	pinnedFuncNum := 2
+        var (
+                servedTh      uint64 = 40
+                pinnedFuncNum int    = 2
+        )
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 100; i++ {
@@ -212,8 +224,10 @@ func TestSaveMemorySerial(t *testing.T) {
 func TestSaveMemoryParallel(t *testing.T) {
 	fID := "6"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 40
-	pinnedFuncNum := 2
+	var (
+		servedTh      uint64 = 40
+		pinnedFuncNum int    = 2
+	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	var vmGroup sync.WaitGroup
@@ -241,8 +255,10 @@ func TestSaveMemoryParallel(t *testing.T) {
 func TestDirectStartStopVM(t *testing.T) {
 	fID := "7"
 	imageName := "ustiugov/helloworld:runner_workload"
-	var servedTh uint64 = 0
-	pinnedFuncNum := 0
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+	)
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	message, err := funcPool.AddInstance(fID, imageName)
@@ -268,8 +284,10 @@ func TestAllFunctions(t *testing.T) {
 		"ustiugov/rnn_serving:var_workload",
 		//"ustiugov/lr_training:var_workload",
 	}
-	var servedTh uint64 = 0
-	pinnedFuncNum := 0
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+	)
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 2; i++ {
