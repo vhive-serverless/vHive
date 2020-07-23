@@ -67,3 +67,12 @@ func TestLoadSnapshotStats(t *testing.T) {
 
 	PrintLoadSnapshotStats(s1, s2)
 }
+
+func TestServeStats(t *testing.T) {
+	s1 := NewServeStat()
+	s1.GetResponse = 25
+	s1.RetireOld = 10
+	require.Equal(t, int64(35), s1.Total(), "Total is incorrect")
+
+	PrintServeStats(s1)
+}
