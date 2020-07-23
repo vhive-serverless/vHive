@@ -43,3 +43,10 @@ type StartVMStat struct {
 	TaskWait     int64
 	TaskStart    int64
 }
+
+// ServeStat Serve Stats
+type ServeStat struct {
+	AddInstance int64
+	GetResponse int64
+	RetireOld   int64
+}
