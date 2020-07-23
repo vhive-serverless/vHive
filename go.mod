@@ -13,9 +13,10 @@ require (
 	github.com/containerd/containerd v1.3.6
 	github.com/golang/protobuf v1.3.3
 	github.com/sirupsen/logrus v1.6.0
-	github.com/stretchr/testify v1.5.1
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200722073430-90c1342030ac
+	github.com/stretchr/testify v1.6.1
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200723105930-96d5e1cb279b
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200717125634-528c6e9f9cc9
+	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200723105930-96d5e1cb279b
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200717125634-528c6e9f9cc9 // indirect
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200717125634-528c6e9f9cc9
 	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200717125634-528c6e9f9cc9 // indirect

@@ -89,7 +89,7 @@ func TestSendToFunctionSerial(t *testing.T) {
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 2; i++ {
-		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+		resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 		require.NoError(t, err, "Function returned error")
 		if i == 0 {
 			require.Equal(t, resp.IsColdStart, true)
@@ -117,7 +117,7 @@ func TestSendToFunctionParallel(t *testing.T) {
 
 		go func(i int) {
 			defer vmGroup.Done()
-			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -140,7 +140,7 @@ func TestStartSendStopTwice(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		for k := 0; k < 2; k++ {
-			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}
@@ -164,7 +164,7 @@ func TestStatsNotNumericFunction(t *testing.T) {
 	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -186,7 +186,7 @@ func TestStatsNotColdFunction(t *testing.T) {
 	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -209,7 +209,7 @@ func TestSaveMemorySerial(t *testing.T) {
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 100; i++ {
-		resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+		resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, world!")
 	}
@@ -237,7 +237,7 @@ func TestSaveMemoryParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 
-			resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -264,7 +264,7 @@ func TestDirectStartStopVM(t *testing.T) {
 	message, err := funcPool.AddInstance(fID, imageName)
 	require.NoError(t, err, "This error should never happen (addInstance())"+message)
 
-	resp, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
@@ -300,7 +300,7 @@ func TestAllFunctions(t *testing.T) {
 				go func(fID int, imageName, request, response string) {
 					defer vmGroup.Done()
 
-					resp, err := funcPool.Serve(context.Background(), strconv.Itoa(8+fID), imageName, request)
+					resp, _, err := funcPool.Serve(context.Background(), strconv.Itoa(8+fID), imageName, request)
 					require.NoError(t, err, "Function returned error")
 
 					require.Equal(t, resp.Payload, "Hello, "+response+"!")
