@@ -192,5 +192,6 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	logger := log.WithFields(log.Fields{"fID": fID, "image": imageName, "payload": payload})
 	logger.Debug("Received FwdHelloVM")
 
-	return funcPool.Serve(ctx, fID, imageName, payload)
+	resp, _, err := funcPool.Serve(ctx, fID, imageName, payload)
+	return resp, err
 }

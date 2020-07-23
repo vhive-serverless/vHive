@@ -101,8 +101,8 @@ func TestBenchmarkLoadSnapshotWithCache(t *testing.T) {
 	benchCount := 10
 	loadStats := make([]*metrics.LoadSnapshotStat, benchCount)
 
-	snapshotFile := "/dev/snapshot_file"
-	memFile := "/dev/mem_file"
+	snapshotFile := "/snapshot_file"
+	memFile := "/mem_file"
 
 	// Pull image and prepare snapshot
 	message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
@@ -113,6 +113,14 @@ func TestBenchmarkLoadSnapshotWithCache(t *testing.T) {
 
 	message, err = orch.CreateSnapshot(ctx, vmID, snapshotFile, memFile)
 	require.NoError(t, err, "Failed to create snapshot of VM, "+message)
+
+	message, err = orch.Offload(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM, "+message)
+
+	time.Sleep(300 * time.Millisecond)
+
+	message, _, err = orch.LoadSnapshot(ctx, vmID, snapshotFile, memFile)
+	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 	message, err = orch.Offload(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM, "+message)
@@ -158,8 +166,8 @@ func TestBenchmarkLoadSnapshotNoCache(t *testing.T) {
 	benchCount := 10
 	loadStats := make([]*metrics.LoadSnapshotStat, benchCount)
 
-	snapshotFile := "/dev/snapshot_file"
-	memFile := "/dev/mem_file"
+	snapshotFile := "/snapshot_file"
+	memFile := "/mem_file"
 
 	// Pull image and prepare snapshot
 	message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")

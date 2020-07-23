@@ -46,21 +46,21 @@ func (s *ServeStat) PrintTotal() {
 
 // PrintAll Prints a breakdown of the time it took to Serve
 func (s *ServeStat) PrintAll() {
-	fmt.Printf("Serve Stats  \tus\n")
-	fmt.Printf("GetImage     \t%d\n", s.AddInstance)
-	fmt.Printf("FcCreateVM   \t%d\n", s.GetResponse)
-	fmt.Printf("NewContainer \t%d\n", s.RetireOld)
-	fmt.Printf("Total        \t%d\n", s.Total())
+	fmt.Printf("Serve Stats     \tus\n")
+	fmt.Printf("AddInstance     \t%d\n", s.AddInstance)
+	fmt.Printf("GetResponse     \t%d\n", s.GetResponse)
+	fmt.Printf("RetireOld       \t%d\n", s.RetireOld)
+	fmt.Printf("Total           \t%d\n", s.Total())
 }
 
 // PrintServeStats prints the mean and
 // standard deviation of each component of
 // ServeStat statistics
-func PrintServeStats(startVMstats ...*ServeStat) {
-	addInstances := make([]float64, len(startVMstats))
-	getResponses := make([]float64, len(startVMstats))
-	retireOlds := make([]float64, len(startVMstats))
-	totals := make([]float64, len(startVMstats))
+func PrintServeStats(serveStats ...*ServeStat) {
+	addInstances := make([]float64, len(serveStats))
+	getResponses := make([]float64, len(serveStats))
+	retireOlds := make([]float64, len(serveStats))
+	totals := make([]float64, len(serveStats))
 
 	for i, s := range startVMstats {
 		addInstances[i] = float64(s.AddInstance)
