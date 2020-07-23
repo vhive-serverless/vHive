@@ -52,7 +52,7 @@ func TestSnapLoad(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file")
+	message, _, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 	message, err = orch.ResumeVM(ctx, vmID)
@@ -95,7 +95,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1")
+	message, _, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 	message, err = orch.ResumeVM(ctx, vmID)
@@ -106,7 +106,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	message, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1")
+	message, _, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 	message, err = orch.ResumeVM(ctx, vmID)
@@ -168,7 +168,7 @@ func TestParallelSnapLoad(t *testing.T) {
 
 			time.Sleep(300 * time.Millisecond)
 
-			message, err = orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
+			message, _, err = orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID+", "+message)
 
 			message, err = orch.ResumeVM(ctx, vmID)
@@ -276,7 +276,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				snapshotFilePath := fmt.Sprintf("/dev/snapshot_file_%s", vmID)
 				memFilePath := fmt.Sprintf("/dev/mem_file_%s", vmID)
-				message, err := orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
+				message, _, err := orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
 				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID+", "+message)
 			}(i)
 		}

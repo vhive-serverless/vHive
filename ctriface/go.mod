@@ -14,10 +14,9 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200717125634-528c6e9f9cc9
-	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200722141002-55dbdeb43861
+	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200723085111-a9d697412510
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200717125634-528c6e9f9cc9
 	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200717125634-528c6e9f9cc9
-	golang.org/x/tools v0.0.0-20200721223218-6123e77877b2 // indirect
 	google.golang.org/grpc v1.30.0
 
 )
