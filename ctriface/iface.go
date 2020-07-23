@@ -50,8 +50,8 @@ import (
 	_ "google.golang.org/grpc/status" //tmp
 
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
-	"github.com/ustiugov/fccd-orchestrator/misc"
 	"github.com/ustiugov/fccd-orchestrator/metrics"
+	"github.com/ustiugov/fccd-orchestrator/misc"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
@@ -180,7 +180,7 @@ func (o *Orchestrator) getFuncClient(ctx context.Context, vm *misc.VM, logger *l
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (string, *metrics.StartVMStat, error) {
 	var (
 		startVMStat *metrics.StartVMStat = metrics.NewStartVMStat()
-		tStart time.Time
+		tStart      time.Time
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
@@ -510,7 +510,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID, snapPath, memPa
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID, snapPath, memPath string) (string, *metrics.LoadSnapshotStat, error) {
 	var (
 		loadSnapshotStat *metrics.LoadSnapshotStat = metrics.NewLoadSnapshotStat()
-		tStart time.Time
+		tStart           time.Time
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
