@@ -24,6 +24,8 @@ package metrics
 
 import (
 	"fmt"
+
+	"gonum.org/v1/gonum/stat"
 )
 
 // NewLoadSnapshotStat Create a new LoadSnapshotStat
@@ -44,20 +46,37 @@ func (s *LoadSnapshotStat) PrintTotal() {
 
 // PrintAll Prints a breakdown of the time it took to LoadSnapshot
 func (s *LoadSnapshotStat) PrintAll() {
-	fmt.Printf("LoadSnap Stats\t\tus\n")
-	fmt.Printf("Full\t\t%d\n", s.Full)
-	fmt.Printf("Total\t\t%d\n", s.Total())
+	fmt.Printf("LoadSnap Stats\tus\n")
+	fmt.Printf("Full          \t%d\n", s.Full)
+	fmt.Printf("Total         \t%d\n", s.Total())
+}
+
+// PrintLoadSnapshotStats prints the mean and
+// standard deviation of each component of
+// LoadSnapshot statistics
+func PrintLoadSnapshotStats(loadSnapshotStats ...*LoadSnapshotStat) {
+	fulls := make([]float64, len(loadSnapshotStats))
+	totals := make([]float64, len(loadSnapshotStats))
+
+	for i, s := range loadSnapshotStats {
+		fulls[i] = float64(s.Full)
+		totals[i] = float64(s.Total())
+	}
+
+	var (
+		mean float64
+		std  float64
+	)
+	fmt.Printf("LoadSnap Stats\tMean(us)\tStdDev(us)\n")
+	mean, std = stat.MeanStdDev(fulls, nil)
+	fmt.Printf("Full          \t%12.2f\t%12.2f\n", mean, std)
+	mean, std = stat.MeanStdDev(totals, nil)
+	fmt.Printf("Total         \t%12.2f\t%12.2f\n", mean, std)
 }
 
 // Aggregate Aggregates multiple stats into one
-func (s *LoadSnapshotStat) Aggregate(otherStats ...*LoadSnapshotStat) *LoadSnapshotStat {
-	agg := NewLoadSnapshotStat()
-
-	otherStats = append(otherStats, s)
-
-	for _, s := range otherStats {
-		agg.Full += s.Full
+func (s *LoadSnapshotStat) Aggregate(otherStats ...*LoadSnapshotStat) {
+	for _, other := range otherStats {
+		s.Full += other.Full
 	}
-
-	return agg
 }

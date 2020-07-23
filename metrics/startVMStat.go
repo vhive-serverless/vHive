@@ -24,6 +24,8 @@ package metrics
 
 import (
 	"fmt"
+
+	"gonum.org/v1/gonum/stat"
 )
 
 // NewStartVMStat Creates a new StartVMStat
@@ -44,30 +46,67 @@ func (s *StartVMStat) PrintTotal() {
 
 // PrintAll Prints a breakdown of the time it took to StartVM
 func (s *StartVMStat) PrintAll() {
-	fmt.Printf("StartVM Stats\t\tus\n")
-	fmt.Printf("GetImage\t\t%d\n", s.GetImage)
-	fmt.Printf("FcCreateVM\t\t%d\n", s.FcCreateVM)
-	fmt.Printf("NewContainer\t\t%d\n", s.NewContainer)
-	fmt.Printf("NewTask\t\t%d\n", s.NewTask)
-	fmt.Printf("TaskWait\t\t%d\n", s.TaskWait)
-	fmt.Printf("TaskStart\t\t%d\n", s.TaskStart)
-	fmt.Printf("Total\t\t%d\n", s.Total())
+	fmt.Printf("StartVM Stats\tus\n")
+	fmt.Printf("GetImage     \t%d\n", s.GetImage)
+	fmt.Printf("FcCreateVM   \t%d\n", s.FcCreateVM)
+	fmt.Printf("NewContainer \t%d\n", s.NewContainer)
+	fmt.Printf("NewTask      \t%d\n", s.NewTask)
+	fmt.Printf("TaskWait     \t%d\n", s.TaskWait)
+	fmt.Printf("TaskStart    \t%d\n", s.TaskStart)
+	fmt.Printf("Total        \t%d\n", s.Total())
+}
+
+// PrintStartVMStats prints the mean and
+// standard deviation of each component of
+// StartVM statistics
+func PrintStartVMStats(startVMstats ...*StartVMStat) {
+	getImages := make([]float64, len(startVMstats))
+	fcCreateVMs := make([]float64, len(startVMstats))
+	newContainers := make([]float64, len(startVMstats))
+	newTasks := make([]float64, len(startVMstats))
+	taskWaits := make([]float64, len(startVMstats))
+	taskStarts := make([]float64, len(startVMstats))
+	totals := make([]float64, len(startVMstats))
+
+	for i, s := range startVMstats {
+		getImages[i] = float64(s.GetImage)
+		fcCreateVMs[i] = float64(s.FcCreateVM)
+		newContainers[i] = float64(s.NewContainer)
+		newTasks[i] = float64(s.NewTask)
+		taskWaits[i] = float64(s.TaskWait)
+		taskStarts[i] = float64(s.TaskStart)
+		totals[i] = float64(s.Total())
+	}
+
+	var (
+		mean float64
+		std  float64
+	)
+	fmt.Printf("StartVM Stats\tMean(us)\tStdDev(us)\n")
+	mean, std = stat.MeanStdDev(getImages, nil)
+	fmt.Printf("GetImage     \t%12.2f\t%12.2f\n", mean, std)
+	mean, std = stat.MeanStdDev(fcCreateVMs, nil)
+	fmt.Printf("FcCreateVM   \t%12.2f\t%12.2f\n", mean, std)
+	mean, std = stat.MeanStdDev(newContainers, nil)
+	fmt.Printf("NewContainer \t%12.2f\t%12.2f\n", mean, std)
+	mean, std = stat.MeanStdDev(newTasks, nil)
+	fmt.Printf("NewTask      \t%12.2f\t%12.2f\n", mean, std)
+	mean, std = stat.MeanStdDev(taskWaits, nil)
+	fmt.Printf("TaskWait     \t%12.2f\t%12.2f\n", mean, std)
+	mean, std = stat.MeanStdDev(taskStarts, nil)
+	fmt.Printf("TaskStart    \t%12.2f\t%12.2f\n", mean, std)
+	mean, std = stat.MeanStdDev(totals, nil)
+	fmt.Printf("Total        \t%12.2f\t%12.2f\n", mean, std)
 }
 
 // Aggregate Aggregates multiple stats into one
-func (s *StartVMStat) Aggregate(otherStats ...*StartVMStat) *StartVMStat {
-	agg := NewStartVMStat()
-
-	otherStats = append(otherStats, s)
-
-	for _, s := range otherStats {
-		agg.GetImage += s.GetImage
-		agg.FcCreateVM += s.FcCreateVM
-		agg.NewContainer += s.NewContainer
-		agg.NewTask += s.NewTask
-		agg.TaskWait += s.TaskWait
-		agg.TaskStart += s.TaskStart
+func (s *StartVMStat) Aggregate(otherStats ...*StartVMStat) {
+	for _, other := range otherStats {
+		s.GetImage += other.GetImage
+		s.FcCreateVM += other.FcCreateVM
+		s.NewContainer += other.NewContainer
+		s.NewTask += other.NewTask
+		s.TaskWait += other.TaskWait
+		s.TaskStart += other.TaskStart
 	}
-
-	return agg
 }
