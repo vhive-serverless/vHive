@@ -23,7 +23,9 @@
 package metrics
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 
 	"gonum.org/v1/gonum/stat"
 )
@@ -59,7 +61,7 @@ func (s *StartVMStat) PrintAll() {
 // PrintStartVMStats prints the mean and
 // standard deviation of each component of
 // StartVM statistics
-func PrintStartVMStats(startVMstats ...*StartVMStat) {
+func PrintStartVMStats(resultsPath string, startVMstats ...*StartVMStat) {
 	getImages := make([]float64, len(startVMstats))
 	fcCreateVMs := make([]float64, len(startVMstats))
 	newContainers := make([]float64, len(startVMstats))
@@ -81,22 +83,38 @@ func PrintStartVMStats(startVMstats ...*StartVMStat) {
 	var (
 		mean float64
 		std  float64
+		f    *os.File
+		err  error
 	)
-	fmt.Printf("StartVM Stats\tMean(us)\tStdDev(us)\n")
+
+	if resultsPath == "" {
+		f = os.Stdout
+	} else {
+		f, err = os.Create(resultsPath)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+	}
+
+	w := bufio.NewWriter(f)
+
+	fmt.Fprintf(w, "StartVM Stats\tMean(us)\tStdDev(us)\n")
 	mean, std = stat.MeanStdDev(getImages, nil)
-	fmt.Printf("GetImage     \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "GetImage     \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(fcCreateVMs, nil)
-	fmt.Printf("FcCreateVM   \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "FcCreateVM   \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(newContainers, nil)
-	fmt.Printf("NewContainer \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "NewContainer \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(newTasks, nil)
-	fmt.Printf("NewTask      \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "NewTask      \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(taskWaits, nil)
-	fmt.Printf("TaskWait     \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "TaskWait     \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(taskStarts, nil)
-	fmt.Printf("TaskStart    \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "TaskStart    \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(totals, nil)
-	fmt.Printf("Total        \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "Total        \t%12.2f\t%12.2f\n", mean, std)
+	w.Flush()
 }
 
 // Aggregate Aggregates multiple stats into one
