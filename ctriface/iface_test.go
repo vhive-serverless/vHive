@@ -42,7 +42,7 @@ func TestPauseSnapResume(t *testing.T) {
 	message, err = orch.CreateSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file")
 	require.NoError(t, err, "Failed to create snapshot of VM, "+message)
 
-	message, err = orch.ResumeVM(ctx, vmID)
+	message, _, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM, "+message)
 
 	message, err = orch.StopSingleVM(ctx, vmID)
@@ -104,7 +104,7 @@ func TestPauseResumeSerial(t *testing.T) {
 	message, err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM, "+message)
 
-	message, err = orch.ResumeVM(ctx, vmID)
+	message, _, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM, "+message)
 
 	message, err = orch.StopSingleVM(ctx, vmID)
@@ -215,7 +215,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				message, err := orch.ResumeVM(ctx, vmID)
+				message, _, err := orch.ResumeVM(ctx, vmID)
 				require.NoError(t, err, "Failed to resume VM, "+message)
 			}(i)
 		}
