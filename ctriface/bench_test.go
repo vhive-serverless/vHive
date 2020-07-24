@@ -190,7 +190,7 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 2000 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
@@ -298,7 +298,7 @@ func getAllImages() map[string]string {
 	m["json_serdes"] = "ustiugov/json_serdes:var_workload"
 	//m["lr_serving"] = "ustiugov/lr_serving:var_workload" Issue#15
 	//m["cnn_serving"] = "ustiugov/cnn_serving:var_workload"
-	m["rnn_serving"] = "ustiugov/rnn_serving:var_workload"
+	//m["rnn_serving"] = "ustiugov/rnn_serving:var_workload"
 	//m["lr_training"] = "ustiugov/lr_training:var_workload"
 
 	return m

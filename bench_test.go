@@ -26,6 +26,8 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -33,92 +35,118 @@ import (
 	"github.com/ustiugov/fccd-orchestrator/metrics"
 )
 
+const (
+	benchDir = "bench_results"
+)
+
 func TestBenchmarkServeWithCache(t *testing.T) {
-	fID := "1"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
 		isSyncOffload bool = true
 	)
+
+	images := getAllImages()
+	benchCount := 10
+	vmID := 0
+
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	// Pull image to work around parallel pulling limitation
-	resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "world")
-	require.NoError(t, err, "Function returned error")
-	require.Equal(t, resp.Payload, "Hello, world!")
+	createResultsDir()
 
-	message, err := funcPool.RemoveInstance("plr_fnc", imageName, isSyncOffload)
-	require.NoError(t, err, "Function returned error, "+message)
-	// -----------------------------------------------------
+	for funcName, imageName := range images {
+		vmIDString := strconv.Itoa(vmID)
+		serveStats := make([]*metrics.ServeStat, benchCount)
 
-	resp, _, err = funcPool.Serve(context.Background(), fID, imageName, "world")
-	require.NoError(t, err, "Function returned error")
-	require.Equal(t, resp.Payload, "Hello, world!")
-
-	message, err = funcPool.RemoveInstance(fID, imageName, isSyncOffload)
-	require.NoError(t, err, "Function returned error, "+message)
-
-	benchCount := 10
-	serveStats := make([]*metrics.ServeStat, benchCount)
-
-	for i := 0; i < 10; i++ {
-		resp, stat, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+		// Pull image
+		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, world!")
+		require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-		serveStats[i] = stat
-
-		message, err := funcPool.RemoveInstance(fID, imageName, isSyncOffload)
+		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
-	}
+		// -----------------------------------------------------------------------
 
-	metrics.PrintServeStats(serveStats...)
+		// Warm up loadsnapshot
+		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+		message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+
+		for i := 0; i < benchCount; i++ {
+			resp, stat, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			serveStats[i] = stat
+
+			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+			require.NoError(t, err, "Function returned error, "+message)
+		}
+
+		vmID++
+
+		outFileName := "serve_" + funcName + "_cache.txt"
+		metrics.PrintServeStats(getOutFile(outFileName), serveStats...)
+	}
 }
 
 func TestBenchmarkServeNoCache(t *testing.T) {
-	fID := "1"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
 		isSyncOffload bool = true
 	)
+
+	images := getAllImages()
+	benchCount := 10
+	vmID := 10
+
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	// Pull image to work around parallel pulling limitation
-	resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "world")
-	require.NoError(t, err, "Function returned error")
-	require.Equal(t, resp.Payload, "Hello, world!")
+	createResultsDir()
 
-	message, err := funcPool.RemoveInstance("plr_fnc", imageName, isSyncOffload)
-	require.NoError(t, err, "Function returned error, "+message)
-	// -----------------------------------------------------
+	for funcName, imageName := range images {
+		vmIDString := strconv.Itoa(vmID)
+		serveStats := make([]*metrics.ServeStat, benchCount)
 
-	resp, _, err = funcPool.Serve(context.Background(), fID, imageName, "world")
-	require.NoError(t, err, "Function returned error")
-	require.Equal(t, resp.Payload, "Hello, world!")
-
-	message, err = funcPool.RemoveInstance(fID, imageName, isSyncOffload)
-	require.NoError(t, err, "Function returned error, "+message)
-
-	benchCount := 10
-	serveStats := make([]*metrics.ServeStat, benchCount)
-
-	for i := 0; i < 10; i++ {
-		dropPageCache()
-
-		resp, stat, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+		// Pull image
+		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, world!")
+		require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-		serveStats[i] = stat
-
-		message, err := funcPool.RemoveInstance(fID, imageName, isSyncOffload)
+		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
-	}
+		// -----------------------------------------------------------------------
 
-	metrics.PrintServeStats(serveStats...)
+		// Warm up loadsnapshot
+		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+		message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+
+		for i := 0; i < benchCount; i++ {
+			dropPageCache()
+
+			resp, stat, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			serveStats[i] = stat
+
+			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+			require.NoError(t, err, "Function returned error, "+message)
+		}
+
+		vmID++
+
+		outFileName := "serve_" + funcName + "_nocache.txt"
+		metrics.PrintServeStats(getOutFile(outFileName), serveStats...)
+	}
 }
 
 func dropPageCache() {
@@ -129,4 +157,29 @@ func dropPageCache() {
 	if err := cmd.Run(); err != nil {
 		log.Fatalf("Failed to drop caches: %v", err)
 	}
+}
+
+func createResultsDir() {
+	if err := os.MkdirAll(benchDir, 0666); err != nil {
+		log.Fatalf("Failed to create results dir: %v", err)
+	}
+}
+
+func getOutFile(name string) string {
+	return filepath.Join(benchDir, name)
+}
+
+func getAllImages() map[string]string {
+	m := make(map[string]string)
+	m["helloworld"] = "ustiugov/helloworld:var_workload"
+	m["chameleon"] = "ustiugov/chameleon:var_workload"
+	m["pyaes"] = "ustiugov/pyaes:var_workload"
+	m["image_rotate"] = "ustiugov/image_rotate:var_workload"
+	m["json_serdes"] = "ustiugov/json_serdes:var_workload"
+	//m["lr_serving"] = "ustiugov/lr_serving:var_workload" Issue#15
+	//m["cnn_serving"] = "ustiugov/cnn_serving:var_workload"
+	//m["rnn_serving"] = "ustiugov/rnn_serving:var_workload"
+	//m["lr_training"] = "ustiugov/lr_training:var_workload"
+
+	return m
 }

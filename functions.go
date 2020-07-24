@@ -437,7 +437,7 @@ func (f *Function) LoadInstance() {
 		log.Panic(message, err)
 	}
 
-	message, err = orch.ResumeVM(ctx, f.vmID)
+	message, _, err = orch.ResumeVM(ctx, f.vmID)
 	if err != nil {
 		log.Panic(message, err)
 	}
