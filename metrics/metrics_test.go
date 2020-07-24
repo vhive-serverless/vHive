@@ -49,7 +49,7 @@ func TestStartVMStats(t *testing.T) {
 	require.Equal(t, int64(0), agg.FcCreateVM, "FcCreateVM value is incorrect")
 	require.Equal(t, int64(200), agg.Total(), "Aggregate Total is incorrect")
 
-	PrintStartVMStats(s1, s2)
+	PrintStartVMStats("", s1, s2)
 }
 
 func TestLoadSnapshotStats(t *testing.T) {
@@ -65,7 +65,7 @@ func TestLoadSnapshotStats(t *testing.T) {
 	require.Equal(t, int64(20), agg.Full, "Full Total is incorrect")
 	require.Equal(t, int64(20), agg.Total(), "Aggregate Total is incorrect")
 
-	PrintLoadSnapshotStats(s1, s2)
+	PrintLoadSnapshotStats("", s1, s2)
 }
 
 func TestServeStats(t *testing.T) {
@@ -74,5 +74,14 @@ func TestServeStats(t *testing.T) {
 	s1.RetireOld = 10
 	require.Equal(t, int64(35), s1.Total(), "Total is incorrect")
 
-	PrintServeStats(s1)
+	PrintServeStats("", s1)
+}
+
+func TestResumeVMStats(t *testing.T) {
+	s1 := NewResumeVMStat()
+	s1.FcResume = 25
+	s1.ReconnectFuncClient = 10
+	require.Equal(t, int64(35), s1.Total(), "Total is incorrect")
+
+	PrintResumeVMStats("", s1)
 }

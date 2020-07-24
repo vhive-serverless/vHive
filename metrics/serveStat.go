@@ -23,7 +23,9 @@
 package metrics
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 
 	"gonum.org/v1/gonum/stat"
 )
@@ -56,13 +58,13 @@ func (s *ServeStat) PrintAll() {
 // PrintServeStats prints the mean and
 // standard deviation of each component of
 // ServeStat statistics
-func PrintServeStats(serveStats ...*ServeStat) {
+func PrintServeStats(resultsPath string, serveStats ...*ServeStat) {
 	addInstances := make([]float64, len(serveStats))
 	getResponses := make([]float64, len(serveStats))
 	retireOlds := make([]float64, len(serveStats))
 	totals := make([]float64, len(serveStats))
 
-	for i, s := range startVMstats {
+	for i, s := range serveStats {
 		addInstances[i] = float64(s.AddInstance)
 		getResponses[i] = float64(s.GetResponse)
 		retireOlds[i] = float64(s.RetireOld)
@@ -72,14 +74,30 @@ func PrintServeStats(serveStats ...*ServeStat) {
 	var (
 		mean float64
 		std  float64
+		f    *os.File
+		err  error
 	)
-	fmt.Printf("Serve Stats   \tMean(us)\tStdDev(us)\n")
+
+	if resultsPath == "" {
+		f = os.Stdout
+	} else {
+		f, err = os.Create(resultsPath)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+	}
+
+	w := bufio.NewWriter(f)
+
+	fmt.Fprintf(w, "Serve Stats   \tMean(us)\tStdDev(us)\n")
 	mean, std = stat.MeanStdDev(addInstances, nil)
-	fmt.Printf("AddInstance   \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "AddInstance   \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(getResponses, nil)
-	fmt.Printf("GetResponse   \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "GetResponse   \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(retireOlds, nil)
-	fmt.Printf("RetireOld     \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "RetireOld     \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(totals, nil)
-	fmt.Printf("Total         \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "Total         \t%12.2f\t%12.2f\n", mean, std)
+	w.Flush()
 }

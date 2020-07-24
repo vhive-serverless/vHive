@@ -34,6 +34,12 @@ type LoadSnapshotStat struct {
 	Full int64
 }
 
+// ResumeVMStat ResumeVM Stats
+type ResumeVMStat struct {
+	FcResume            int64
+	ReconnectFuncClient int64
+}
+
 // StartVMStat StartVM Stats
 type StartVMStat struct {
 	GetImage     int64

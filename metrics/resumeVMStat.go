@@ -30,38 +30,41 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
-// NewLoadSnapshotStat Create a new LoadSnapshotStat
-func NewLoadSnapshotStat() *LoadSnapshotStat {
-	s := new(LoadSnapshotStat)
+// NewResumeVMStat Creates a new ResumeVMStat
+func NewResumeVMStat() *ResumeVMStat {
+	s := new(ResumeVMStat)
 	return s
 }
 
-// Total Calculates the total time taken to LoadSnapshot
-func (s *LoadSnapshotStat) Total() int64 {
-	return s.Full
+// Total Calculates the total time it took to ResumeVM
+func (s *ResumeVMStat) Total() int64 {
+	return s.FcResume + s.ReconnectFuncClient
 }
 
-// PrintTotal Prints the total time taken to LoadSnapshot
-func (s *LoadSnapshotStat) PrintTotal() {
-	fmt.Printf("LoadSnapshot total: %d us\n", s.Total())
+// PrintTotal Prints the total time to ResumeVM
+func (s *ResumeVMStat) PrintTotal() {
+	fmt.Printf("ResumeVM total: %d us\n", s.Total())
 }
 
-// PrintAll Prints a breakdown of the time it took to LoadSnapshot
-func (s *LoadSnapshotStat) PrintAll() {
-	fmt.Printf("LoadSnap Stats\tus\n")
-	fmt.Printf("Full          \t%d\n", s.Full)
-	fmt.Printf("Total         \t%d\n", s.Total())
+// PrintAll Prints a breakdown of the time it took to ResumeVM
+func (s *ResumeVMStat) PrintAll() {
+	fmt.Printf("ResumeVM Stats        \tus\n")
+	fmt.Printf("FcResume              \t%d\n", s.FcResume)
+	fmt.Printf("ReconnectFuncClient   \t%d\n", s.ReconnectFuncClient)
+	fmt.Printf("Total                 \t%d\n", s.Total())
 }
 
-// PrintLoadSnapshotStats prints the mean and
+// PrintResumeVMStats prints the mean and
 // standard deviation of each component of
-// LoadSnapshot statistics
-func PrintLoadSnapshotStats(resultsPath string, loadSnapshotStats ...*LoadSnapshotStat) {
-	fulls := make([]float64, len(loadSnapshotStats))
-	totals := make([]float64, len(loadSnapshotStats))
+// ResumeVM statistics
+func PrintResumeVMStats(resultsPath string, resumeVMstats ...*ResumeVMStat) {
+	fcResumes := make([]float64, len(resumeVMstats))
+	reconnectFuncClients := make([]float64, len(resumeVMstats))
+	totals := make([]float64, len(resumeVMstats))
 
-	for i, s := range loadSnapshotStats {
-		fulls[i] = float64(s.Full)
+	for i, s := range resumeVMstats {
+		fcResumes[i] = float64(s.FcResume)
+		reconnectFuncClients[i] = float64(s.ReconnectFuncClient)
 		totals[i] = float64(s.Total())
 	}
 
@@ -84,17 +87,12 @@ func PrintLoadSnapshotStats(resultsPath string, loadSnapshotStats ...*LoadSnapsh
 
 	w := bufio.NewWriter(f)
 
-	fmt.Fprintf(w, "LoadSnap Stats\tMean(us)\tStdDev(us)\n")
-	mean, std = stat.MeanStdDev(fulls, nil)
-	fmt.Fprintf(w, "Full          \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "ResumeVM Stats        \tMean(us)\tStdDev(us)\n")
+	mean, std = stat.MeanStdDev(fcResumes, nil)
+	fmt.Fprintf(w, "FcResume              \t%12.2f\t%12.2f\n", mean, std)
+	mean, std = stat.MeanStdDev(reconnectFuncClients, nil)
+	fmt.Fprintf(w, "ReconnectFuncClient   \t%12.2f\t%12.2f\n", mean, std)
 	mean, std = stat.MeanStdDev(totals, nil)
-	fmt.Fprintf(w, "Total         \t%12.2f\t%12.2f\n", mean, std)
+	fmt.Fprintf(w, "Total                 \t%12.2f\t%12.2f\n", mean, std)
 	w.Flush()
-}
-
-// Aggregate Aggregates multiple stats into one
-func (s *LoadSnapshotStat) Aggregate(otherStats ...*LoadSnapshotStat) {
-	for _, other := range otherStats {
-		s.Full += other.Full
-	}
 }
