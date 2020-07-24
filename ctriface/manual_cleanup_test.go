@@ -44,7 +44,7 @@ func TestSnapLoad(t *testing.T) {
 	message, err = orch.CreateSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file")
 	require.NoError(t, err, "Failed to create snapshot of VM, "+message)
 
-	message, err = orch.ResumeVM(ctx, vmID)
+	message, _, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM, "+message)
 
 	message, err = orch.Offload(ctx, vmID)
@@ -55,7 +55,7 @@ func TestSnapLoad(t *testing.T) {
 	message, _, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file", "/tmp/mem_file")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
-	message, err = orch.ResumeVM(ctx, vmID)
+	message, _, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM, "+message)
 
 	orch.Cleanup()
@@ -98,7 +98,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 	message, _, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
-	message, err = orch.ResumeVM(ctx, vmID)
+	message, _, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM, "+message)
 
 	message, err = orch.Offload(ctx, vmID)
@@ -109,7 +109,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 	message, _, err = orch.LoadSnapshot(ctx, vmID, "/tmp/snapshot_file1", "/tmp/mem_file1")
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
-	message, err = orch.ResumeVM(ctx, vmID)
+	message, _, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM, "+message)
 
 	message, err = orch.Offload(ctx, vmID)
@@ -171,7 +171,7 @@ func TestParallelSnapLoad(t *testing.T) {
 			message, _, err = orch.LoadSnapshot(ctx, vmID, snapshotFilePath, memFilePath)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID+", "+message)
 
-			message, err = orch.ResumeVM(ctx, vmID)
+			message, _, err = orch.ResumeVM(ctx, vmID)
 			require.NoError(t, err, "Failed to resume VM, "+vmID+", "+message)
 		}(i)
 	}
@@ -290,7 +290,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				message, err := orch.ResumeVM(ctx, vmID)
+				message, _, err := orch.ResumeVM(ctx, vmID)
 				require.NoError(t, err, "Failed to resume VM, "+vmID+", "+message)
 			}(i)
 		}

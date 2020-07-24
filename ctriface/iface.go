@@ -464,29 +464,38 @@ func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) (string, error)
 }
 
 // ResumeVM Resumes a VM
-func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, error) {
+func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, *metrics.ResumeVMStat, error) {
+	var (
+		resumeVMStat *metrics.ResumeVMStat = metrics.NewResumeVMStat()
+		tStart       time.Time
+	)
+
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received ResumeVM")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
+	tStart = time.Now()
 	if _, err := o.fcClient.ResumeVM(ctx, &proto.ResumeVMRequest{VMID: vmID}); err != nil {
 		logger.Warn("failed to pause the VM: ", err)
-		return "Resuming VM " + vmID + " failed", err
+		return "Resuming VM " + vmID + " failed", resumeVMStat, err
 	}
+	resumeVMStat.FcResume = time.Since(tStart).Microseconds()
 
 	vm, err := o.vmPool.GetVM(vmID)
 	if err != nil {
-		return "Snapshot of VM " + vmID + " loaded successfully", err
+		return "Snapshot of VM " + vmID + " loaded successfully", resumeVMStat, err
 	}
 
+	tStart = time.Now()
 	funcClient, err := o.getFuncClient(ctx, vm, logger)
 	if err != nil {
-		return "Failed to start VM", errors.Wrap(err, "failed to connect to a function")
+		return "Failed to start VM", resumeVMStat, errors.Wrap(err, "failed to connect to a function")
 	}
 	vm.FuncClient = &funcClient
+	resumeVMStat.ReconnectFuncClient = time.Since(tStart).Microseconds()
 
-	return "VM " + vmID + " resumed successfully", nil
+	return "VM " + vmID + " resumed successfully", resumeVMStat, nil
 }
 
 // CreateSnapshot Creates a snapshot of a VM
