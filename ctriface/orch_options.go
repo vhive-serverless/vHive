@@ -50,7 +50,7 @@ func WithUPF(isUPFEnabled bool) OrchestratorOption {
 }
 
 // WithSnapshotsDir Sets the directory where
-// should be stored
+// snapshots should be stored
 func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.snapshotsDir = snapshotsDir

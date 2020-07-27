@@ -56,7 +56,7 @@ func TestBenchmarkServeWithCache(t *testing.T) {
 
 	for funcName, imageName := range images {
 		vmIDString := strconv.Itoa(vmID)
-		serveStats := make([]*metrics.ServeStat, benchCount)
+		serveStats := make([]*metrics.Metric, benchCount)
 
 		// Pull image
 		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
@@ -89,7 +89,7 @@ func TestBenchmarkServeWithCache(t *testing.T) {
 		vmID++
 
 		outFileName := "serve_" + funcName + "_cache.txt"
-		metrics.PrintServeStats(getOutFile(outFileName), serveStats...)
+		metrics.PrintMeanStd(getOutFile(outFileName), serveStats...)
 	}
 }
 
@@ -110,7 +110,7 @@ func TestBenchmarkServeNoCache(t *testing.T) {
 
 	for funcName, imageName := range images {
 		vmIDString := strconv.Itoa(vmID)
-		serveStats := make([]*metrics.ServeStat, benchCount)
+		serveStats := make([]*metrics.Metric, benchCount)
 
 		// Pull image
 		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
@@ -145,7 +145,7 @@ func TestBenchmarkServeNoCache(t *testing.T) {
 		vmID++
 
 		outFileName := "serve_" + funcName + "_nocache.txt"
-		metrics.PrintServeStats(getOutFile(outFileName), serveStats...)
+		metrics.PrintMeanStd(getOutFile(outFileName), serveStats...)
 	}
 }
 
@@ -170,16 +170,15 @@ func getOutFile(name string) string {
 }
 
 func getAllImages() map[string]string {
-	m := make(map[string]string)
-	m["helloworld"] = "ustiugov/helloworld:var_workload"
-	m["chameleon"] = "ustiugov/chameleon:var_workload"
-	m["pyaes"] = "ustiugov/pyaes:var_workload"
-	m["image_rotate"] = "ustiugov/image_rotate:var_workload"
-	m["json_serdes"] = "ustiugov/json_serdes:var_workload"
-	//m["lr_serving"] = "ustiugov/lr_serving:var_workload" Issue#15
-	//m["cnn_serving"] = "ustiugov/cnn_serving:var_workload"
-	//m["rnn_serving"] = "ustiugov/rnn_serving:var_workload"
-	//m["lr_training"] = "ustiugov/lr_training:var_workload"
-
-	return m
+	return map[string]string{
+		"helloworld":   "ustiugov/helloworld:var_workload",
+		"chameleon":    "ustiugov/chameleon:var_workload",
+		"pyaes":        "ustiugov/pyaes:var_workload",
+		"image_rotate": "ustiugov/image_rotate:var_workload",
+		"json_serdes":  "ustiugov/json_serdes:var_workload",
+		//"lr_serving" : "ustiugov/lr_serving:var_workload", Issue#15
+		//"cnn_serving" "ustiugov/cnn_serving:var_workload",
+		"rnn_serving": "ustiugov/rnn_serving:var_workload",
+		//"lr_training" : "ustiugov/lr_training:var_workload",
+	}
 }

@@ -26,7 +26,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -110,7 +109,7 @@ func (p *FuncPool) getFunction(fID, imageName string) *Function {
 }
 
 // Serve Service RPC request by triggering the corresponding function.
-func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string) (*hpb.FwdHelloResp, *metrics.ServeStat, error) {
+func (p *FuncPool) Serve(ctx context.Context, fID, imageName, payload string) (*hpb.FwdHelloResp, *metrics.Metric, error) {
 	f := p.getFunction(fID, imageName)
 
 	return f.Serve(ctx, fID, imageName, payload)
@@ -205,17 +204,15 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 //    b. The last goroutine is determined by the atomic counter: the goroutine wih syncID==0 shuts down
 //       the instance.
 //    c. Instance shutdown is performed asynchronously because all instances have unique IDs.
-func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, *metrics.ServeStat, error) {
+func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, *metrics.Metric, error) {
 	var (
-		serveStat *metrics.ServeStat = metrics.NewServeStat()
-		tStart    time.Time
+		serveMetric *metrics.Metric = metrics.NewMetric()
+		tStart      time.Time
+		syncID      int64 = -1 // default is no synchronization
+		isColdStart bool  = false
 	)
 
-	syncID := int64(-1) // default is no synchronization
-
 	logger := log.WithFields(log.Fields{"fID": f.fID})
-
-	isColdStart := false
 
 	if !f.isPinnedInMem {
 		if err := f.sem.Acquire(context.Background(), 1); err != nil {
@@ -227,15 +224,14 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 
 	f.stats.IncServed(f.fID)
 
-	tStart = time.Now()
-
 	f.OnceAddInstance.Do(
 		func() {
 			isColdStart = true
 			logger.Debug("Function is inactive, starting the instance...")
+			tStart = time.Now()
 			f.AddInstance()
+			serveMetric.MetricMap[metrics.AddInstance] = metrics.ToUS(time.Since(tStart))
 		})
-	serveStat.AddInstance = time.Since(tStart).Microseconds()
 
 	f.RLock()
 
@@ -246,23 +242,23 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 
 	tStart = time.Now()
 	resp, err := f.fwdRPC(ctxFwd, reqPayload)
-	serveStat.GetResponse = time.Since(tStart).Microseconds()
+	serveMetric.MetricMap[metrics.FuncInvocation] = metrics.ToUS(time.Since(tStart))
 
 	if err != nil && ctxFwd.Err() == context.Canceled {
 		// context deadline exceeded
 		f.RUnlock()
-		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, serveStat, err
+		return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, serveMetric, err
 	} else if err != nil {
 		if e, ok := status.FromError(err); ok {
 			switch e.Code() {
 			case codes.DeadlineExceeded:
 				// deadline exceeded
 				f.RUnlock()
-				return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, serveStat, err
+				return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, serveMetric, err
 			default:
 				logger.Warn("Function returned error: ", err)
 				f.RUnlock()
-				return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, serveStat, err
+				return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: ""}, serveMetric, err
 			}
 		} else {
 			logger.Panic("Not able to parse error returned ", err)
@@ -270,21 +266,19 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 	}
 	f.RUnlock()
 
-	tStart = time.Now()
-
 	if !f.isPinnedInMem && syncID == 0 {
 		logger.Debugf("Function has to shut down its instance, served %d requests", f.GetStatServed())
+		tStart = time.Now()
 		if _, err := f.RemoveInstance(false); err != nil {
 			logger.Panic("Failed to remove instance after servedTh expired", err)
 		}
+		serveMetric.MetricMap[metrics.RetireOld] = metrics.ToUS(time.Since(tStart))
 		f.ZeroServedStat()
 		f.servedSyncCounter = int64(f.servedTh) // reset counter
 		f.sem.Release(int64(f.servedTh))
 	}
 
-	serveStat.RetireOld = time.Since(tStart).Microseconds()
-
-	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, serveStat, err
+	return &hpb.FwdHelloResp{IsColdStart: isColdStart, Payload: resp.Message}, serveMetric, err
 }
 
 // FwdRPC Forward the RPC to an instance, then forwards the response back.
@@ -393,7 +387,7 @@ func (f *Function) CreateInstanceSnapshot() {
 	if err != nil {
 		log.Panic(message, err)
 	}
-	message, err = orch.CreateSnapshot(ctx, f.vmID, f.getSnapshotFilePath(), f.getMemFilePath())
+	message, err = orch.CreateSnapshot(ctx, f.vmID)
 	if err != nil {
 		log.Panic(message, err)
 	}
@@ -432,7 +426,7 @@ func (f *Function) LoadInstance() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	message, _, err := orch.LoadSnapshot(ctx, f.vmID, f.getSnapshotFilePath(), f.getMemFilePath())
+	message, _, err := orch.LoadSnapshot(ctx, f.vmID)
 	if err != nil {
 		log.Panic(message, err)
 	}
@@ -456,14 +450,4 @@ func (f *Function) ZeroServedStat() {
 // getVMID Creates the vmID for the function
 func (f *Function) getVMID() string {
 	return fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
-}
-
-// getSnapshotFilePath Creates the snapshot file path for the function
-func (f *Function) getSnapshotFilePath() string {
-	return fmt.Sprintf(filepath.Join("/root", "snap_file_%s"), f.vmID)
-}
-
-// getMemFilePath Creates the memory file path for the function
-func (f *Function) getMemFilePath() string {
-	return fmt.Sprintf(filepath.Join("/root", "mem_file_%s"), f.vmID)
 }
