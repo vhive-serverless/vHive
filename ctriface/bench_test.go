@@ -67,7 +67,7 @@ func TestBenchmarkStart(t *testing.T) {
 
 	for funcName, imageName := range images {
 		vmIDString := strconv.Itoa(vmID)
-		startStats := make([]*metrics.StartVMStat, benchCount)
+		startMetrics := make([]*metrics.Metric, benchCount)
 
 		// Pull image
 		message, _, err := orch.StartVM(ctx, vmIDString, imageName)
@@ -77,16 +77,16 @@ func TestBenchmarkStart(t *testing.T) {
 		require.NoError(t, err, "Failed to stop VM, "+message)
 
 		for i := 0; i < benchCount; i++ {
-			message, stat, err := orch.StartVM(ctx, vmIDString, imageName)
+			message, metric, err := orch.StartVM(ctx, vmIDString, imageName)
 			require.NoError(t, err, "Failed to start VM, "+message)
-			startStats[i] = stat
+			startMetrics[i] = metric
 
 			message, err = orch.StopSingleVM(ctx, vmIDString)
 			require.NoError(t, err, "Failed to stop VM, "+message)
 		}
 
 		outFileName := "start_" + funcName + ".txt"
-		metrics.PrintStartVMStats(getOutFile(outFileName), startStats...)
+		metrics.PrintMeanStd(getOutFile(outFileName), startMetrics...)
 
 		vmID++
 
@@ -120,11 +120,8 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 
 	for funcName, imageName := range images {
 		vmIDString := strconv.Itoa(vmID)
-		loadStats := make([]*metrics.LoadSnapshotStat, benchCount)
-		resumeStats := make([]*metrics.ResumeVMStat, benchCount)
-
-		snapshotFile := "/snapshot_file_" + funcName
-		memFile := "/mem_file_" + funcName
+		loadMetrics := make([]*metrics.Metric, benchCount)
+		resumeMetrics := make([]*metrics.Metric, benchCount)
 
 		// Pull image and prepare snapshot
 		message, _, err := orch.StartVM(ctx, vmIDString, imageName)
@@ -133,7 +130,7 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 		message, err = orch.PauseVM(ctx, vmIDString)
 		require.NoError(t, err, "Failed to pause VM, "+vmIDString+", "+message)
 
-		message, err = orch.CreateSnapshot(ctx, vmIDString, snapshotFile, memFile)
+		message, err = orch.CreateSnapshot(ctx, vmIDString)
 		require.NoError(t, err, "Failed to create snapshot of VM, "+message)
 
 		message, err = orch.Offload(ctx, vmIDString)
@@ -141,7 +138,7 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 
 		time.Sleep(300 * time.Millisecond)
 
-		message, _, err = orch.LoadSnapshot(ctx, vmIDString, snapshotFile, memFile)
+		message, _, err = orch.LoadSnapshot(ctx, vmIDString)
 		require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 		message, _, err = orch.ResumeVM(ctx, vmIDString)
@@ -153,14 +150,14 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 
 		for i := 0; i < benchCount; i++ {
-			message, loadStat, err := orch.LoadSnapshot(ctx, vmIDString, snapshotFile, memFile)
+			message, loadMetric, err := orch.LoadSnapshot(ctx, vmIDString)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
-			message, resumeStat, err := orch.ResumeVM(ctx, vmIDString)
+			message, resumeMetric, err := orch.ResumeVM(ctx, vmIDString)
 			require.NoError(t, err, "Failed to resume VM, "+message)
 
-			loadStats[i] = loadStat
-			resumeStats[i] = resumeStat
+			loadMetrics[i] = loadMetric
+			resumeMetrics[i] = resumeMetric
 
 			message, err = orch.Offload(ctx, vmIDString)
 			require.NoError(t, err, "Failed to offload VM, "+message)
@@ -168,11 +165,11 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 			time.Sleep(300 * time.Millisecond)
 		}
 
-		outFileName := "load_" + funcName + ".txt"
-		metrics.PrintLoadSnapshotStats(getOutFile(outFileName), loadStats...)
+		outFileName := "load_" + funcName + "_cache.txt"
+		metrics.PrintMeanStd(getOutFile(outFileName), loadMetrics...)
 
-		outFileName = "resume_" + funcName + ".txt"
-		metrics.PrintResumeVMStats(getOutFile(outFileName), resumeStats...)
+		outFileName = "resume_" + funcName + "_cache.txt"
+		metrics.PrintMeanStd(getOutFile(outFileName), resumeMetrics...)
 
 		vmID++
 
@@ -200,17 +197,14 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 
 	images := getAllImages()
 	benchCount := 10
-	vmID := 10
+	vmID := 20
 
 	createResultsDir()
 
 	for funcName, imageName := range images {
 		vmIDString := strconv.Itoa(vmID)
-		loadStats := make([]*metrics.LoadSnapshotStat, benchCount)
-		resumeStats := make([]*metrics.ResumeVMStat, benchCount)
-
-		snapshotFile := "/snapshot_file_" + funcName
-		memFile := "/mem_file_" + funcName
+		loadMetrics := make([]*metrics.Metric, benchCount)
+		resumeMetrics := make([]*metrics.Metric, benchCount)
 
 		// Pull image and prepare snapshot
 		message, _, err := orch.StartVM(ctx, vmIDString, imageName)
@@ -219,7 +213,7 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 		message, err = orch.PauseVM(ctx, vmIDString)
 		require.NoError(t, err, "Failed to pause VM, "+vmIDString+", "+message)
 
-		message, err = orch.CreateSnapshot(ctx, vmIDString, snapshotFile, memFile)
+		message, err = orch.CreateSnapshot(ctx, vmIDString)
 		require.NoError(t, err, "Failed to create snapshot of VM, "+message)
 
 		message, err = orch.Offload(ctx, vmIDString)
@@ -227,7 +221,7 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 
 		time.Sleep(300 * time.Millisecond)
 
-		message, _, err = orch.LoadSnapshot(ctx, vmIDString, snapshotFile, memFile)
+		message, _, err = orch.LoadSnapshot(ctx, vmIDString)
 		require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
 		message, _, err = orch.ResumeVM(ctx, vmIDString)
@@ -241,14 +235,14 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 		for i := 0; i < benchCount; i++ {
 			dropPageCache()
 
-			message, loadStat, err := orch.LoadSnapshot(ctx, vmIDString, snapshotFile, memFile)
+			message, loadMetric, err := orch.LoadSnapshot(ctx, vmIDString)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
-			message, resumeStat, err := orch.ResumeVM(ctx, vmIDString)
+			message, resumeMetric, err := orch.ResumeVM(ctx, vmIDString)
 			require.NoError(t, err, "Failed to resume VM, "+message)
 
-			loadStats[i] = loadStat
-			resumeStats[i] = resumeStat
+			loadMetrics[i] = loadMetric
+			resumeMetrics[i] = resumeMetric
 
 			message, err = orch.Offload(ctx, vmIDString)
 			require.NoError(t, err, "Failed to offload VM, "+message)
@@ -257,10 +251,10 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 		}
 
 		outFileName := "load_" + funcName + "_nocache.txt"
-		metrics.PrintLoadSnapshotStats(getOutFile(outFileName), loadStats...)
+		metrics.PrintMeanStd(getOutFile(outFileName), loadMetrics...)
 
 		outFileName = "resume_" + funcName + "_nocache.txt"
-		metrics.PrintResumeVMStats(getOutFile(outFileName), resumeStats...)
+		metrics.PrintMeanStd(getOutFile(outFileName), resumeMetrics...)
 
 		vmID++
 
@@ -290,16 +284,15 @@ func getOutFile(name string) string {
 }
 
 func getAllImages() map[string]string {
-	m := make(map[string]string)
-	m["helloworld"] = "ustiugov/helloworld:var_workload"
-	m["chameleon"] = "ustiugov/chameleon:var_workload"
-	m["pyaes"] = "ustiugov/pyaes:var_workload"
-	m["image_rotate"] = "ustiugov/image_rotate:var_workload"
-	m["json_serdes"] = "ustiugov/json_serdes:var_workload"
-	//m["lr_serving"] = "ustiugov/lr_serving:var_workload" Issue#15
-	//m["cnn_serving"] = "ustiugov/cnn_serving:var_workload"
-	//m["rnn_serving"] = "ustiugov/rnn_serving:var_workload"
-	//m["lr_training"] = "ustiugov/lr_training:var_workload"
-
-	return m
+	return map[string]string{
+		"helloworld":   "ustiugov/helloworld:var_workload",
+		"chameleon":    "ustiugov/chameleon:var_workload",
+		"pyaes":        "ustiugov/pyaes:var_workload",
+		"image_rotate": "ustiugov/image_rotate:var_workload",
+		"json_serdes":  "ustiugov/json_serdes:var_workload",
+		//"lr_serving" : "ustiugov/lr_serving:var_workload", Issue#15
+		//"cnn_serving" "ustiugov/cnn_serving:var_workload",
+		"rnn_serving": "ustiugov/rnn_serving:var_workload",
+		//"lr_training" : "ustiugov/lr_training:var_workload",
+	}
 }

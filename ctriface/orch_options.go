@@ -48,3 +48,11 @@ func WithUPF(isUPFEnabled bool) OrchestratorOption {
 		o.isUPFEnabled = isUPFEnabled
 	}
 }
+
+// WithSnapshotsDir Sets the directory where
+// should be stored
+func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.snapshotsDir = snapshotsDir
+	}
+}
