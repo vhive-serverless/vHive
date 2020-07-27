@@ -28,6 +28,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -180,5 +181,144 @@ func getAllImages() map[string]string {
 		//"cnn_serving" "ustiugov/cnn_serving:var_workload",
 		"rnn_serving": "ustiugov/rnn_serving:var_workload",
 		//"lr_training" : "ustiugov/lr_training:var_workload",
+	}
+}
+
+func TestParallelServeWithCache(t *testing.T) {
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+		isSyncOffload bool = true
+	)
+
+	images := getAllImages()
+	parallel := 4
+	vmID := 0
+
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+
+	createResultsDir()
+
+	for funcName, imageName := range images {
+
+		serveMetrics := make([]*metrics.Metric, parallel)
+
+		for i := 0; i < parallel; i++ {
+			vmIDString := strconv.Itoa(vmID + i)
+
+			// Pull image and create VM
+			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+			require.NoError(t, err, "Function returned error, "+message)
+			// -----------------------------------------------------------------------
+
+			// Warm up loadsnapshot
+			resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+			require.NoError(t, err, "Function returned error, "+message)
+		}
+
+		var vmGroup sync.WaitGroup
+		start := make(chan struct{})
+
+		for i := 0; i < parallel; i++ {
+			vmIDString := strconv.Itoa(vmID + i)
+
+			vmGroup.Add(1)
+
+			go func(i int) {
+				<-start
+				defer vmGroup.Done()
+
+				resp, metric, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+				serveMetrics[i] = metric
+
+				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+				require.NoError(t, err, "Function returned error, "+message)
+			}(i)
+		}
+
+		close(start)
+		vmGroup.Wait()
+
+		vmID += parallel
+
+		outFileName := "serve_" + funcName + "_par_cache.txt"
+		metrics.PrintMeanStd(getOutFile(outFileName), serveMetrics...)
+	}
+}
+
+func TestParallelServeNoCache(t *testing.T) {
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+		isSyncOffload bool = true
+	)
+
+	images := getAllImages()
+	parallel := 4
+	vmID := 0
+
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+
+	createResultsDir()
+
+	for funcName, imageName := range images {
+
+		serveMetrics := make([]*metrics.Metric, parallel)
+
+		for i := 0; i < parallel; i++ {
+			vmIDString := strconv.Itoa(vmID + i)
+
+			// Pull image and create VM
+			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+			require.NoError(t, err, "Function returned error, "+message)
+		}
+
+		var vmGroup sync.WaitGroup
+		start := make(chan struct{})
+
+		dropPageCache()
+
+		for i := 0; i < parallel; i++ {
+			vmIDString := strconv.Itoa(vmID + i)
+
+			vmGroup.Add(1)
+
+			go func(i int) {
+				<-start
+				defer vmGroup.Done()
+
+				resp, metric, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+				serveMetrics[i] = metric
+
+				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+				require.NoError(t, err, "Function returned error, "+message)
+			}(i)
+		}
+
+		close(start)
+		vmGroup.Wait()
+
+		vmID += parallel
+
+		outFileName := "serve_" + funcName + "_par_nocache.txt"
+		metrics.PrintMeanStd(getOutFile(outFileName), serveMetrics...)
 	}
 }
