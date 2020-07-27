@@ -43,8 +43,8 @@ const (
 
 	// AddInstance Time to add instance - load snap or start vm
 	AddInstance = "AddInstance"
-	// GetResponse Time to get response from function
-	GetResponse = "GetResponse"
+	// FuncInvocation Time to get response from function
+	FuncInvocation = "FuncInvocation"
 	// RetireOld Time to offload/stop instance if threshold exceeded
 	RetireOld = "RetireOld"
 
