@@ -86,10 +86,20 @@ func NewOrchestrator(snapshotter string, niNum int, opts ...OrchestratorOption) 
 	o.vmPool = misc.NewVMPool(o.niNum)
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
-	o.snapshotsDir = "/fccd"
+	o.snapshotsDir = "/fccd/snapshots"
 
 	for _, opt := range opts {
 		opt(o)
+	}
+
+	if _, err := os.Stat(o.snapshotsDir); err != nil {
+		if !os.IsNotExist(err) {
+			log.Panicf("Snapshot dir %s exists", o.snapshotsDir)
+		}
+	}
+
+	if err := os.MkdirAll(o.snapshotsDir, 0666); err != nil {
+		log.Panicf("Failed to create snapshots dir %s", o.snapshotsDir)
 	}
 
 	log.Info("Creating containerd client")
@@ -437,8 +447,12 @@ func (o *Orchestrator) setupCloseHandler() {
 }
 
 // Cleanup Removes the bridges created by the VM pool's tap manager
+// Cleans up snapshots directory
 func (o *Orchestrator) Cleanup() {
 	o.vmPool.RemoveBridges()
+	if err := os.RemoveAll(o.snapshotsDir); err != nil {
+		log.Panic("failed to delete snapshots dir", err)
+	}
 }
 
 // GetSnapshotsEnabled Returns the snapshots mode of the orchestrator

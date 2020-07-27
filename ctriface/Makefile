@@ -2,7 +2,7 @@ EXTRAGOARGS:=-v -race -cover
 EXTRATESTFILES:=iface_test.go iface.go dialer.go orch_options.go
 MANUALTESTFILES:=manual_cleanup_test.go iface.go dialer.go orch_options.go
 BENCHFILES:=bench_test.go iface.go dialer.go orch_options.go
-GOBENCH:=-v -timeout 9999s
+GOBENCH:=-v -timeout 1500s
 
 test:
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
