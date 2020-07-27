@@ -184,7 +184,7 @@ func getAllImages() map[string]string {
 	}
 }
 
-func TestParallelServeWithCache(t *testing.T) {
+func TestBenchParallelServeWithCache(t *testing.T) {
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
@@ -257,7 +257,7 @@ func TestParallelServeWithCache(t *testing.T) {
 	}
 }
 
-func TestParallelServeNoCache(t *testing.T) {
+func TestBenchParallelServeNoCache(t *testing.T) {
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
