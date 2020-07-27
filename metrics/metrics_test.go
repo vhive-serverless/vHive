@@ -34,9 +34,9 @@ func TestMetrics(t *testing.T) {
 	s1.MetricMap[TaskStart] = 15.0
 	require.Equal(t, float64(25.0), s1.Total(), "Total is incorrect")
 
-        s2 := NewMetric()
-        s2.MetricMap[GetImage] = 40.0
-        s2.MetricMap[TaskStart] = 25.0
+	s2 := NewMetric()
+	s2.MetricMap[GetImage] = 40.0
+	s2.MetricMap[TaskStart] = 25.0
 
 	PrintMeanStd("", s1, s2)
 }
