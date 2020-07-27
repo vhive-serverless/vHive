@@ -28,60 +28,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStartVMStats(t *testing.T) {
-	s1 := NewStartVMStat()
-	s1.GetImage = 10
-	s1.TaskStart = 15
-	require.Equal(t, int64(25), s1.Total(), "Total is incorrect")
+func TestMetrics(t *testing.T) {
+	s1 := NewMetric()
+	s1.MetricMap[GetImage] = 10.0
+	s1.MetricMap[TaskStart] = 15.0
+	require.Equal(t, float64(25.0), s1.Total(), "Total is incorrect")
 
-	s2 := NewStartVMStat()
-	s2.GetImage = 10
-	s2.TaskStart = 15
-	s2.NewContainer = 150
+        s2 := NewMetric()
+        s2.MetricMap[GetImage] = 40.0
+        s2.MetricMap[TaskStart] = 25.0
 
-	agg := NewStartVMStat()
-	agg.Aggregate(s1, s2)
-	require.Equal(t, int64(20), agg.GetImage, "GetImage value is incorrect")
-	require.Equal(t, int64(30), agg.TaskStart, "TaskStart value is incorrect")
-	require.Equal(t, int64(150), agg.NewContainer, "NewContainer value is incorrect")
-	require.Equal(t, int64(0), agg.TaskWait, "TaskWait value is incorrect")
-	require.Equal(t, int64(0), agg.NewTask, "NewTask value is incorrect")
-	require.Equal(t, int64(0), agg.FcCreateVM, "FcCreateVM value is incorrect")
-	require.Equal(t, int64(200), agg.Total(), "Aggregate Total is incorrect")
-
-	PrintStartVMStats("", s1, s2)
-}
-
-func TestLoadSnapshotStats(t *testing.T) {
-	s1 := NewLoadSnapshotStat()
-	s1.Full = 10
-	require.Equal(t, int64(10), s1.Total(), "Total is incorrect")
-
-	s2 := NewLoadSnapshotStat()
-	s2.Full = 10
-
-	agg := NewLoadSnapshotStat()
-	agg.Aggregate(s1, s2)
-	require.Equal(t, int64(20), agg.Full, "Full Total is incorrect")
-	require.Equal(t, int64(20), agg.Total(), "Aggregate Total is incorrect")
-
-	PrintLoadSnapshotStats("", s1, s2)
-}
-
-func TestServeStats(t *testing.T) {
-	s1 := NewServeStat()
-	s1.GetResponse = 25
-	s1.RetireOld = 10
-	require.Equal(t, int64(35), s1.Total(), "Total is incorrect")
-
-	PrintServeStats("", s1)
-}
-
-func TestResumeVMStats(t *testing.T) {
-	s1 := NewResumeVMStat()
-	s1.FcResume = 25
-	s1.ReconnectFuncClient = 10
-	require.Equal(t, int64(35), s1.Total(), "Total is incorrect")
-
-	PrintResumeVMStats("", s1)
+	PrintMeanStd("", s1, s2)
 }
