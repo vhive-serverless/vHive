@@ -54,7 +54,11 @@ import (
 	"github.com/ustiugov/fccd-orchestrator/metrics"
 	"github.com/ustiugov/fccd-orchestrator/misc"
 
+	github.com/hashicorp/go-multierror
+
 	_ "github.com/davecgh/go-spew/spew" //tmp
+
+	"github.com/go-multierror/multierror"
 )
 
 const (
@@ -74,6 +78,9 @@ type Orchestrator struct {
 	snapshotsEnabled bool
 	isUPFEnabled     bool
 	snapshotsDir     string
+
+	memoryManager memory.MemoryManager
+	memoryManagerQuit chan int
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -98,6 +105,13 @@ func NewOrchestrator(snapshotter string, opts ...OrchestratorOption) *Orchestrat
 
 	if err := os.MkdirAll(o.snapshotsDir, 0666); err != nil {
 		log.Panicf("Failed to create snapshots dir %s", o.snapshotsDir)
+	}
+
+	if o.GetSnapshotsEnabled() {
+		o.memoryManagerQuit = make(chan int)
+		o.memoryManager = NewMemoryManager(o.memoryManagerQuit)
+		// TODO: Close the channel when orchestrator closes,
+		// effectively shutting down the memory manager
 	}
 
 	log.Info("Creating containerd client")
@@ -215,7 +229,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 
 	logger.Debug("StartVM: Creating a new VM")
 	tStart = time.Now()
-	_, err = o.fcClient.CreateVM(ctx, o.getVMConfig(vm))
+	resp, err = o.fcClient.CreateVM(ctx, o.getVMConfig(vm))
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {
 		if errCleanup := o.cleanup(ctx, vm, false, false, false, false); errCleanup != nil {
@@ -288,6 +302,12 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	}
 	vm.FuncClient = &funcClient
 	startVMMetric.MetricMap[metrics.ConnectFuncClient] = metrics.ToUS(time.Since(tStart))
+
+	if o.GetSnapshotsEnabled() {
+		logger.Debug("Registering VM with the memory manager")
+		o.memoryManager.RegisterVM(vmID, resp.SendSockPath, o.getMemoryFile(vmID), o.getSnapshotFile(vmID))
+	}
+	
 
 	logger.Debug("Successfully started a VM")
 
@@ -525,8 +545,8 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, *metr
 // CreateSnapshot Creates a snapshot of a VM
 func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) (string, error) {
 	var (
-		snapPath string = filepath.Join(o.snapshotsDir, "snap_file_"+vmID)
-		memPath  string = filepath.Join(o.snapshotsDir, "mem_file_"+vmID)
+		snapPath string = getSnapshotFile(vmID)
+		memPath  string = getMemoryFile(vmID)
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -549,8 +569,10 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 	var (
 		loadSnapshotMetric *metrics.Metric = metrics.NewMetric()
 		tStart             time.Time
-		snapPath           string = filepath.Join(o.snapshotsDir, "snap_file_"+vmID)
-		memPath            string = filepath.Join(o.snapshotsDir, "mem_file_"+vmID)
+		snapPath string = getSnapshotFile(vmID)
+		memPath  string = getMemoryFile(vmID)
+		loadErr, addInstanceErr error
+		loadDone chan int = make(chan int)
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -565,12 +587,27 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 		EnableUserPF:     o.GetUPFEnabled(),
 	}
 
-	tStart = time.Now()
-	if _, err := o.fcClient.LoadSnapshot(ctx, req); err != nil {
-		logger.Warn("failed to load snapshot of the VM: ", err)
-		return "Loading snapshot of VM " + vmID + " failed", loadSnapshotMetric, err
+	go func() {
+		defer close(loadDone)
+
+		if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
+			logger.Warn("Failed to load snapshot of the VM: ", err)
+		}
+		loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
 	}
-	loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
+
+	if o.GetSnapshotsEnabled() {
+		if addInstanceErr = o.memoryManager.AddInstance(vmID); addInstanceErr != nil {
+			logger.Warn("Failed to add instance to the memory manager", err)
+		}
+	}
+
+	<-loadDone
+	
+	if loadErr != nil || addInstanceErr != nil {
+		multierr := multierror.Of(loadErr, addInstanceErr)
+		return "Failed to load snapshot of VM " + vmID, loadSnapshotMetric, multierr
+	}
 
 	return "Snapshot of VM " + vmID + " loaded successfully", loadSnapshotMetric, nil
 }
@@ -585,6 +622,13 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) (string, error)
 	if _, err := o.fcClient.Offload(ctx, &proto.OffloadRequest{VMID: vmID}); err != nil {
 		logger.Warn("failed to offload the VM: ", err)
 		return "Offloading VM " + vmID + " failed", err
+	}
+
+	if o.GetSnapshotsEnabled() {
+		if err := o.memoryManager.RemoveInstance(vmID); err != nil {
+			logger.Error("Failed to remove VM from the memory manager")
+			return "", err
+		}	
 	}
 
 	return "VM " + vmID + " offloaded successfully", nil
@@ -627,4 +671,12 @@ func (o *Orchestrator) StopSingleVMOnly(ctx context.Context, vmID string) (strin
 	logger.Debug("Stopped VM successfully")
 
 	return "VM " + vmID + " stopped successfully", nil
+}
+
+func (o *Orchestrator) getSnapshotFile(vmID string) {
+	return filepath.Join(o.snapshotsDir, "snap_file_"+vmID)
+}
+
+func (o *Orchestrator) getMemoryFile(vmID string) {
+	return filepath.Join(o.snapshotsDir, "mem_file_"+vmID)
 }
