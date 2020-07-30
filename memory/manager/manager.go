@@ -7,183 +7,320 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	DefaultMemManagerBaseDir = "/root/fccd-mem_manager"
+)
+
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
-	// clarify if necessary
-	placeholder bool
-}
-
-// SnapshotState Holds the paths to snapshot files
-type SnapshotState struct {
-	VMMStatePath, GuestMemPath, WorkingSetPath string
-	InstanceSockAddr                           string
-	UserFaultFD                                *os.File
-	trace                                      *Trace
-
-	// Enables trace recording for the instance
-	IsRecordMode bool
-	// serve page faults one by one upon their occurence
-	IsLazyServing bool
-	// install the whole working set in the guest memory
-	IsReplayWorkingSet bool
-	// prefetch the VMM state to the host memory
-	IsPrefetchVMMState bool
-}
-
-// NewSnapshotState Initializes a snapshot state
-func NewSnapshotState( /*...*/ ) *SnapshotState {
-	s := new(SnapshotState)
-	//trace = initTrace(/*...*/)
-	// other fields
-
-	return s
+	RecordReplayModeEnabled bool
+	MemManagerBaseDir string
 }
 
 // MemoryManager Serves page faults coming from VMs
 type MemoryManager struct {
-	snapStateMap map[string]*SnapshotState // indexed by vmID
-	fdTraceMap   map[int]*Trace            // Indexed by FD
+	sync.Mutex
+	inactive map[string]*SnapshotState
+	activeFdState map[int]*SnapshotState // indexed by FD
+	activeVmFd   map[string]int            // Indexed by vmID
 	epfd         int
 }
 
 // NewMemoryManager Initializes a new memory manager
 func NewMemoryManager(quitCh chan int) *MemoryManager {
-	v := new(MemoryManager)
-	log.Debugf("Inializing the memory manager")
+	log.Debug("Inializing the memory manager")
 
-	v.snapStateMap = make(map[string]SnapshotState)
+	v := new(MemoryManager)
+	v.inactive = make(map[string]*SnapshotState)
+	v.activeFdState = make(map[int]*SnapshotState)
+	v.activeVmFd = make(map[string]int)
+
+
 	// start the main (polling) loop in a goroutine
 	// https://github.com/ustiugov/staged-data-tiering/blob/88b9e51b6c36e82261f0937a66e08f01ab9cf941/fc_load_profiler/uffd.go#L409
 
 	// use select + cases to execute the infinite loop and also wait for a
 	// message on quitCh channel to terminate the main loop
+	readyCh := make(chan int)
+	v.pollingLoop(readyCh, quitCh)
+
+	<-readyCh
 
 	return v
 }
 
+// RegisterVM Register a VM which is going to be
+// managed by the memory manager
+func (v *MemoryManager) RegisterVM(cfg *SnapshotStateCfg) error {
+	v.Lock()
+	defer v.Unlock()
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Registering VM with the memory manager")
+
+	if _, ok := v.inactive[vmID]; ok {
+		logger.Error("VM already registered the memory manager")
+		return errors.New("VM exists in the memory manager")
+	}
+
+	if _, ok := v.activeVmFd[vmID]; ok {
+		logger.Error("VM already active in the memory manager")
+		return errors.New("VM already active in the memory manager")
+	}
+
+	state := NewSnapshotState(cfg)
+
+	v.inactive[vmID] = state
+
+	return nil
+}
+
 // AddInstance Receives a file descriptor by sockAddr from the hypervisor
-func (v *MemoryManager) AddInstance(vmID, state *SnapshotState) (err error) {
-	log.Debugf("Adding instance to the memory manager")
+func (v *MemoryManager) AddInstance(vmID) (err error) {
+	v.Lock()
+	defer v.Unlock()
+	
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Adding instance to the memory manager")
 
 	var (
 		event syscall.EpollEvent
-		fd    int
+		fdInt    int
 	)
 
-	if _, ok := v.snapStateMap[vmID]; ok {
-		// PLAMEN: Return Error
+	if _, ok := v.inactive[vmID]; !ok {
+		logger.Error("VM not registered with the memory manager")
+		return errors.New("VM not registered with the memory manager")
 	}
 
-	// receive the fd from the socket
-	// https://github.com/ustiugov/staged-data-tiering/blob/88b9e51b6c36e82261f0937a66e08f01ab9cf941/fc_load_profiler/uffd.go#L32
+	if _, ok := v.vmFdMap[vmID]; ok {
+		logger.Error("VM exists in the memory manager")
+		return errors.New("VM exists in the memory manager")
+	}
+
+	if err := state.mapGuestMemory(); err != nil {
+		logger.Error("Failed to map guest memory")
+		return err
+	}
+
 	state.getUFFD()
 
-	// add the fd to the interesting (epolled) events list, and also to snapStateMap,
-	// with epollCtl(..EPOLL_CTL_ADD..)
-	fd = int(state.UserFaultFD.Fd())
+	fdInt = int(state.UserFaultFD.Fd())
 
-	v.snapStateMap[vmID] = state
-	v.fdTraceMap[fd] = state.Trace
+	delete(v.inactive, vmID)
+	v.activeVmFd[vmID] = fdInt
+	v.activeFdState[fdInt] = state
 
 	event.Events = syscall.EPOLLIN
-	event.Fd = int32(fd)
+	event.Fd = int32(fdInt)
 
-	if e := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_ADD, fd, &event); e != nil {
-		log.Fatalf("epoll_ctl: %v", e)
-		os.Exit(1)
+	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
+		logger.Error("Failed to subscribe VM")
+		return err
 	}
-
-	// mmap the guest memory file for lazy access (default)
-	// https://github.com/ustiugov/staged-data-tiering/blob/88b9e51b6c36e82261f0937a66e08f01ab9cf941/fc_load_profiler/uffd.go#L384
-	mapGuestMemory(state.trace)
 
 	return
 }
 
 // RemoveInstance Receives a file descriptor by sockAddr from the hypervisor
-func (v *MemoryManager) RemoveInstance(vmID string) {
+func (v *MemoryManager) RemoveInstance(vmID string) error {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Removing instance from the memory manager")
+
 	var (
 		state SnapshotState
-		fd    int
+		fdInt    int
 		ok    bool
 	)
 
-	state, ok = v.snapStateMap[vmID]
+	if _, ok := v.inactive[vmID]; !ok {
+		logger.Error("VM not registered with the memory manager")
+		return errors.New("VM not registered with the memory manager")
+	}
+
+	fdInt, ok = v.vmFdMap[vmID]
 	if !ok {
-		// PLAMEN: return error
+		logger.Error("Failed to find fd")
+		return errors.New("Failed to find fd")
 	}
 
-	// remove the VM's fd from the interesting (epolled) events list, and also
-	// from the snapStateMap, with epollCtl(..EPOLL_CTL_DEL..)
-	fd = int(state.UserFaultFD.Fd())
-	if _, ok = v.fdTraceMap[fd]; !ok {
-		// PLAMEN: Return Error
+	state, ok = v.snapStateMap[fdInt]
+	if !ok {
+		logger.Error("Failed to find snapshot state")
+		return errors.New("Failed to find snapshot state")
 	}
 
-	if e := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_DEL, fd, &event); e != nil {
-		log.Fatalf("epoll_ctl: %v", e)
-		os.Exit(1)
+	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_DEL, fdInt, &event); e != nil {
+		logger.Error("Failed to unsubscribe VM")
+		return err
 	}
 
 	// munmap the guest memory file
 	// https://github.com/ustiugov/staged-data-tiering/blob/88b9e51b6c36e82261f0937a66e08f01ab9cf941/fc_load_profiler/uffd.go#L403
-	unmapGuestMemory(state.trace)
+	if err := state.unmapGuestMemory(); err != nil {
+		logger.Error("Failed to munmap guest memory")
+		return err
+	}
 
-	delete(v.snapStateMap, vmID)
-	delete(v.fdTraceMap, fd)
+	state.UserFaultFD.Close()
+
+	delete(v.snapStateMap, fdInt)
+	delete(v.vmFdMap, vmId)
+	v.inactive = state
+
+	return nil
 }
 
 // FetchState Fetches the working set file (or the whole guest memory) and/or the VMM state file
 func (v *MemoryManager) FetchState(vmID string) (err error) {
-	return
+	// NOT IMPLEMENTED
+	return nil
 }
 
-func (s *SnapshotState) getUFFD() {
-	var d net.Dialer
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+func (v *MemoryManager) pollingLoop(readyCh, quitCh chan int) {
+	var (
+		events [1000]syscall.EpollEvent
+		err error
+		servedNum   int
+		startAddress uint64
+	)
+
+	v.epfd, err = syscall.EpollCreate1(0)
+	if err != nil {
+		log.Fatalf("epoll_create1: %v", err)
+		os.Exit(1)
+	}
+	defer syscall.Close(v.epfd)
+
+	close(readyCh)
 
 	for {
-		c, err := d.DialContext(ctx, "unix", s.InstanceSockAddr)
-		if err != nil {
-			time.Sleep(1 * time.Millisecond)
-			continue
+		select {
+		case <-quitCh:
+			log.Debug("Handler received a signal to quit")
+			return
+		default:
+			nevents, e := syscall.EpollWait(v.epfd, events[:], -1)
+			if e != nil {
+				log.Fatalf("epoll_wait: %v", e)
+				break
+			}
+			if nevents < 1 {
+				panic("Wrong number of events")
+			}
+
+			for _, event := range events {
+				fd := event.Fd
+				_, ok := v.activeFdState[fd]
+				if !ok {
+					log.Fatalf("received event from file which is not active")
+				}
+
+				address := extractPageFaultAddress(fd)
+
+				state := v.getSnapshotState(fd)
+				state.startAddressOnce.Do(
+					func() {
+						state.startAddress = address
+					}
+				)
+				go v.servePageFault(fd, address)
+			}
 		}
-
-		defer c.Close()
-
-		sendfdConn := c.(*net.UnixConn)
-
-		fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
-		if err != nil {
-			log.Fatalf("Failed to receive the uffd: %v", err)
-		}
-
-		s.UserFaultFD = fs[0]
 	}
 }
 
-func mapGuestMemory(trace *Trace) {
-	fd, err := os.OpenFile(trace.guestMemFileName, os.O_RDONLY, 0600)
+
+func installRegion(fd int, src, dst, mode, len uint64) error {
+	cUC := C.struct_uffdio_copy{
+		mode: C.ulonglong(mode),
+		copy: 0,
+		src:  C.ulonglong(src),
+		dst:  C.ulonglong(dst),
+		len:  C.ulonglong(pageSize * len),
+	}
+
+	err := ioctl(fd.Fd(), int(C.const_UFFDIO_COPY), unsafe.Pointer(&cUC))
 	if err != nil {
-		log.Fatalf("Failed to open guest memory file: %v", err)
+		return err
 	}
 
-	prot := unix.PROT_READ
-
-	flags := unix.MAP_PRIVATE
-	if trace.isPrefault {
-		flags |= unix.MAP_POPULATE
-	}
-
-	trace.guestMem, err = unix.Mmap(int(fd.Fd()), 0, trace.guestMemSize, prot, flags)
-	if err != nil {
-		log.Fatalf("Failed to mmap guest memory file: %v", err)
-	}
+	return nil
 }
 
-func unmapGuestMemory(trace *Trace) {
-	if err := unix.Munmap(trace.guestMem); err != nil {
-		log.Fatalf("Failed to munmap guest memory file: %v", err)
+func (v *MemoryManager) servePageFault(fd int, address uint64) {
+	snapState := v.getSnapshotState(fd)
+	offset := address - state.startAddress
+
+	src := uint64(uintptr(unsafe.Pointer(&state.guestMem[offset])))
+	dst := uint64(int64(address) & ^(int64(pageSize) - 1))
+	mode := uint64(0)
+
+	installRegion(fd, src, dst, mode, 1)
+}
+
+
+func (v *MemoryManager) extractPageFaultAddress(fd int) uint64 {
+	goMsg := make([]byte, C.sizeof_struct_uffd_msg)
+	if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
+		log.Fatalf("Read uffd_msg failed: %v", err)
 	}
+
+	if event := uint8(goMsg[0]); event != uint8(C.const_UFFD_EVENT_PAGEFAULT) {
+		log.Fatal("Received wrong event type")
+	}
+
+	return binary.LittleEndian.Uint64(goMsg[16:])
+}
+
+func (v *MemoryManager) getSnapshotState(fd int) *SnapshotState {
+	if state, ok := v.activeFdState[fd]; ok {
+		return state
+	}
+	log.Fatalf("getSnapshotState: fd not found")
+}
+
+func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
+	_, _, errno := unix.Syscall(
+		unix.SYS_IOCTL,
+		fd,
+		uintptr(request),
+		// Note that the conversion from unsafe.Pointer to uintptr _must_
+		// occur in the call expression.  See the package unsafe documentation
+		// for more details.
+		uintptr(argp),
+	)
+	if errno != 0 {
+		return os.NewSyscallError("ioctl", fmt.Errorf("%d", int(errno)))
+	}
+
+	return nil
+}
+
+func (s *SnapshotState) mapGuestMemory(state *misc.SnapshotState) error {
+	fd, err := os.OpenFile(s.guestMemFileName, os.O_RDONLY, 0600)
+	if err != nil {
+		log.Errorf("Failed to open guest memory file: %v", err)
+		return err
+	}
+
+	s.guestMem, err = unix.Mmap(int(fd.Fd()), 0, s.guestMemSize, unix.PROT_READ, unix.MAP_PRIVATE)
+	if err != nil {
+		log.Errorf("Failed to mmap guest memory file: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *SnapshotState) unmapGuestMemory() error {
+	if err := unix.Munmap(s.guestMem); err != nil {
+		log.Errorf("Failed to munmap guest memory file: %v", err)
+		return err
+	}
+	
+	return nil
 }

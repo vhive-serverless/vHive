@@ -20,32 +20,21 @@ type Record struct {
 // Trace Contains records
 type Trace struct {
 	sync.Mutex
-	traceFileName, guestMemFileName, wsCopyFileName string
+	traceFileName string
 
 	isRecord bool
 
 	trace   []Record
 	regions map[uint64]int
-
-	guestMem   []byte
-	workingSet []byte
 }
 
-func initTrace(
-	traceFileName, wsCopyFileName, guestMemFileName string,
-	isRecord, isReplay bool,
-) *Trace {
+func initTrace(traceFileName string) *Trace {
 	t := new(Trace)
 
 	t.traceFileName = traceFileName
 	t.regions = make(map[uint64]int)
 	t.wsCopyFileName = wsCopyFileName
-	t.guestMemFileName = guestMemFileName
-	t.isRecord = isRecord
-
-	if isReplay {
-		t.readTrace()
-	}
+	t.trace = make([]Record, 0)
 
 	return t
 }
@@ -83,10 +72,6 @@ func (t *Trace) WriteTrace() {
 	}
 
 	t.processRegions()
-
-	if t.isRecord {
-		t.writeWorkingSetPagesToFile()
-	}
 }
 
 // readTrace Reads all the records from a CSV file
@@ -147,13 +132,13 @@ func (t *Trace) processRegions() {
 	}
 }
 
-func (t *Trace) writeWorkingSetPagesToFile() {
-	fSrc, err := os.Open(t.guestMemFileName)
+func (t *Trace) writeWorkingSetPagesToFile(guestMemFileName, wsCopyFileName string) {
+	fSrc, err := os.Open(guestMemFileName)
 	if err != nil {
 		log.Fatalf("Failed to open guest memory file for reading")
 	}
 	defer fSrc.Close()
-	fDst, err := os.Create(t.wsCopyFileName)
+	fDst, err := os.Create(wsCopyFileName)
 	if err != nil {
 		log.Fatalf("Failed to open ws file for writing")
 	}
