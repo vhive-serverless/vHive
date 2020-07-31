@@ -1,16 +1,31 @@
 [![Build Status](https://travis-ci.com/ustiugov/fccd-orchestrator.svg?token=Dx4z7rB8qLcioVK5Dhsr&branch=master)](https://travis-ci.com/github/ustiugov/fccd-orchestrator)
 <br />
 
-# fccd-orchestrator
-VM orchestrator for Firecracker-Containerd
+# Usage notes
 
-# Golang specifics
-Need to clone the firecracker-containerd dependency (that might be a fork) under 
-`src/github/firecracker-microvm/firecracker-containerd` because this repo depends on
-repos from the origin. This Golang/fork workaround is taken from [here](http://code.openark.org/blog/development/forking-golang-repositories-on-github-and-managing-the-import-path).
+## Networking
+The orchestrator creates taps and bridges with IPs when starting/loading and offloading/stopping VMs.
 
-# Networking
-The orchestrator (re)uses the taps (IPs) when starting and stopping VMs.
-
-Note: CNI network configuration is supported in general (commented out for now) but it does not allow to 
+Note 1: CNI network configuration is supported in general (commented out for now) but it does not allow to 
 keep track of the IP addresses that are given to VMs or reuse them.
+
+Note 2: When orchestrator panics, it leaves taps and bridges that need to be cleaned manually by running `scripts/clean_fcctr.sh`
+
+
+# Development notes
+
+## Testing
+
+The orchestrator includes both unit/module tests and end-2-end tests. 
+
+To run the unit tests:
+```
+make test-subdirs
+```
+
+To run the end-to-end tests:
+```
+make test-orch
+```
+
+**Before merging any code, make sure ALL tests pass on your local machine!** Travis testing TBD.
