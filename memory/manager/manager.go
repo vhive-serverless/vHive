@@ -1,14 +1,27 @@
 package manager
 
+/*
+#include "header.h"
+*/
+import "C"
+
 import (
 	"os"
+	"sync"
+	"unsafe"
+	"golang.org/x/sys/unix"
+	"errors"
+	"syscall"
+	"encoding/binary"
+	"fmt"
 
-	"github.com/ftrvxmtrx/fd"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	DefaultMemManagerBaseDir = "/root/fccd-mem_manager"
+	pageSize = 4096
+	MaxVMsNum = 10000
 )
 
 // MemoryManagerCfg Global config of the manager
@@ -22,7 +35,7 @@ type MemoryManager struct {
 	sync.Mutex
 	inactive map[string]*SnapshotState
 	activeFdState map[int]*SnapshotState // indexed by FD
-	activeVmFd   map[string]int            // Indexed by vmID
+	activeVmFd   map[string]int         // Indexed by vmID
 	epfd         int
 }
 
@@ -42,7 +55,7 @@ func NewMemoryManager(quitCh chan int) *MemoryManager {
 	// use select + cases to execute the infinite loop and also wait for a
 	// message on quitCh channel to terminate the main loop
 	readyCh := make(chan int)
-	v.pollingLoop(readyCh, quitCh)
+	v.pollUserPageFaults(readyCh, quitCh)
 
 	<-readyCh
 
@@ -54,6 +67,8 @@ func NewMemoryManager(quitCh chan int) *MemoryManager {
 func (v *MemoryManager) RegisterVM(cfg *SnapshotStateCfg) error {
 	v.Lock()
 	defer v.Unlock()
+
+	vmID := cfg.vmID
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -77,7 +92,7 @@ func (v *MemoryManager) RegisterVM(cfg *SnapshotStateCfg) error {
 }
 
 // AddInstance Receives a file descriptor by sockAddr from the hypervisor
-func (v *MemoryManager) AddInstance(vmID) (err error) {
+func (v *MemoryManager) AddInstance(vmID string) (err error) {
 	v.Lock()
 	defer v.Unlock()
 	
@@ -88,14 +103,17 @@ func (v *MemoryManager) AddInstance(vmID) (err error) {
 	var (
 		event syscall.EpollEvent
 		fdInt    int
+		ok bool
+		state *SnapshotState
 	)
 
-	if _, ok := v.inactive[vmID]; !ok {
+	state, ok = v.inactive[vmID]
+	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
 
-	if _, ok := v.vmFdMap[vmID]; ok {
+	if _, ok = v.activeVmFd[vmID]; ok {
 		logger.Error("VM exists in the memory manager")
 		return errors.New("VM exists in the memory manager")
 	}
@@ -107,7 +125,7 @@ func (v *MemoryManager) AddInstance(vmID) (err error) {
 
 	state.getUFFD()
 
-	fdInt = int(state.UserFaultFD.Fd())
+	fdInt = int(state.userFaultFD.Fd())
 
 	delete(v.inactive, vmID)
 	v.activeVmFd[vmID] = fdInt
@@ -116,7 +134,7 @@ func (v *MemoryManager) AddInstance(vmID) (err error) {
 	event.Events = syscall.EPOLLIN
 	event.Fd = int32(fdInt)
 
-	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
+	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_ADD, int(fdInt), &event); err != nil {
 		logger.Error("Failed to subscribe VM")
 		return err
 	}
@@ -131,7 +149,7 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 	logger.Debug("Removing instance from the memory manager")
 
 	var (
-		state SnapshotState
+		state *SnapshotState
 		fdInt    int
 		ok    bool
 	)
@@ -141,19 +159,19 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 		return errors.New("VM not registered with the memory manager")
 	}
 
-	fdInt, ok = v.vmFdMap[vmID]
+	fdInt, ok = v.activeVmFd[vmID]
 	if !ok {
 		logger.Error("Failed to find fd")
 		return errors.New("Failed to find fd")
 	}
 
-	state, ok = v.snapStateMap[fdInt]
+	state, ok = v.activeFdState[fdInt]
 	if !ok {
 		logger.Error("Failed to find snapshot state")
 		return errors.New("Failed to find snapshot state")
 	}
 
-	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_DEL, fdInt, &event); e != nil {
+	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_DEL, int(fdInt), nil); err != nil {
 		logger.Error("Failed to unsubscribe VM")
 		return err
 	}
@@ -165,11 +183,11 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 		return err
 	}
 
-	state.UserFaultFD.Close()
+	state.userFaultFD.Close()
 
-	delete(v.snapStateMap, fdInt)
-	delete(v.vmFdMap, vmId)
-	v.inactive = state
+	delete(v.activeFdState, fdInt)
+	delete(v.activeVmFd, vmID)
+	v.inactive[vmID] = state
 
 	return nil
 }
@@ -180,12 +198,10 @@ func (v *MemoryManager) FetchState(vmID string) (err error) {
 	return nil
 }
 
-func (v *MemoryManager) pollingLoop(readyCh, quitCh chan int) {
+func (v *MemoryManager) pollUserPageFaults(readyCh, quitCh chan int) {
 	var (
-		events [1000]syscall.EpollEvent
+		events [MaxVMsNum]syscall.EpollEvent
 		err error
-		servedNum   int
-		startAddress uint64
 	)
 
 	v.epfd, err = syscall.EpollCreate1(0)
@@ -212,21 +228,21 @@ func (v *MemoryManager) pollingLoop(readyCh, quitCh chan int) {
 				panic("Wrong number of events")
 			}
 
-			for _, event := range events {
-				fd := event.Fd
+			for i := 0; i < nevents; i++ {
+				event := events[i]
+				fd := int(event.Fd)
 				_, ok := v.activeFdState[fd]
 				if !ok {
 					log.Fatalf("received event from file which is not active")
 				}
 
-				address := extractPageFaultAddress(fd)
+				address := v.extractPageFaultAddress(fd)
 
 				state := v.getSnapshotState(fd)
 				state.startAddressOnce.Do(
 					func() {
 						state.startAddress = address
-					}
-				)
+					})
 				go v.servePageFault(fd, address)
 			}
 		}
@@ -243,7 +259,7 @@ func installRegion(fd int, src, dst, mode, len uint64) error {
 		len:  C.ulonglong(pageSize * len),
 	}
 
-	err := ioctl(fd.Fd(), int(C.const_UFFDIO_COPY), unsafe.Pointer(&cUC))
+	err := ioctl(uintptr(fd), int(C.const_UFFDIO_COPY), unsafe.Pointer(&cUC))
 	if err != nil {
 		return err
 	}
@@ -252,7 +268,7 @@ func installRegion(fd int, src, dst, mode, len uint64) error {
 }
 
 func (v *MemoryManager) servePageFault(fd int, address uint64) {
-	snapState := v.getSnapshotState(fd)
+	state := v.getSnapshotState(fd)
 	offset := address - state.startAddress
 
 	src := uint64(uintptr(unsafe.Pointer(&state.guestMem[offset])))
@@ -281,6 +297,7 @@ func (v *MemoryManager) getSnapshotState(fd int) *SnapshotState {
 		return state
 	}
 	log.Fatalf("getSnapshotState: fd not found")
+	return nil
 }
 
 func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
@@ -300,27 +317,6 @@ func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
 	return nil
 }
 
-func (s *SnapshotState) mapGuestMemory(state *misc.SnapshotState) error {
-	fd, err := os.OpenFile(s.guestMemFileName, os.O_RDONLY, 0600)
-	if err != nil {
-		log.Errorf("Failed to open guest memory file: %v", err)
-		return err
-	}
-
-	s.guestMem, err = unix.Mmap(int(fd.Fd()), 0, s.guestMemSize, unix.PROT_READ, unix.MAP_PRIVATE)
-	if err != nil {
-		log.Errorf("Failed to mmap guest memory file: %v", err)
-		return err
-	}
-
-	return nil
-}
-
-func (s *SnapshotState) unmapGuestMemory() error {
-	if err := unix.Munmap(s.guestMem); err != nil {
-		log.Errorf("Failed to munmap guest memory file: %v", err)
-		return err
-	}
-	
-	return nil
+func registerForUpf(startAddress []byte, len uint64) uintptr {
+	return uintptr(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
 }

@@ -1,6 +1,17 @@
 package manager
 
-// SnapshotStateCfg Config to initialize
+import (
+	"os"
+	"sync"
+	"net"
+	"context"
+	"time"
+	"github.com/ftrvxmtrx/fd"
+	log "github.com/sirupsen/logrus"
+	"path/filepath"
+	"golang.org/x/sys/unix"
+)
+// SnapshotStateCfg Config to initialize SnapshotState
 type SnapshotStateCfg struct {
 	vmID string
 	vMMStatePath, guestMemPath, instanceSockAddr string
@@ -13,7 +24,7 @@ type SnapshotStateCfg struct {
 // of the VM.
 type SnapshotState struct {
 	SnapshotStateCfg
-	startAddressOnce sync.Once // to check if start address has been initialized
+	startAddressOnce *sync.Once // to check if start address has been initialized
 	startAddress uint64
 	baseDir string
 	userFaultFD                                *os.File
@@ -41,7 +52,7 @@ func NewSnapshotState(cfg *SnapshotStateCfg) *SnapshotState {
 
 	s.createDir()
 
-	s.trace = initTrace(s.getTraceFile)
+	s.trace = initTrace(s.getTraceFile())
 	// other fields
 
 	return s
@@ -69,13 +80,15 @@ func (s *SnapshotState) getUFFD() {
 		}
 
 		s.userFaultFD = fs[0]
+
+		return
 	}
 }
 
 func (s *SnapshotState) createDir() {
-	path := filepath.Join(s.memManagerBaseDir, o.vmID)
-	if err := os.MkdirAll(path, 0666); err := nil {
-		log.Fatalf("Failed to create snapshot state dir for VM %s", o.vmID)
+	path := filepath.Join(s.memManagerBaseDir, s.vmID)
+	if err := os.MkdirAll(path, 0666); err != nil {
+		log.Fatalf("Failed to create snapshot state dir for VM %s", s.vmID)
 	}
 	s.baseDir = path
 }

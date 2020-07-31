@@ -33,7 +33,6 @@ func initTrace(traceFileName string) *Trace {
 
 	t.traceFileName = traceFileName
 	t.regions = make(map[uint64]int)
-	t.wsCopyFileName = wsCopyFileName
 	t.trace = make([]Record, 0)
 
 	return t
