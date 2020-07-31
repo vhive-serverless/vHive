@@ -22,8 +22,6 @@ type Trace struct {
 	sync.Mutex
 	traceFileName string
 
-	isRecord bool
-
 	trace   []Record
 	regions map[uint64]int
 }

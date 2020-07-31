@@ -33,6 +33,7 @@ type MemoryManagerCfg struct {
 // MemoryManager Serves page faults coming from VMs
 type MemoryManager struct {
 	sync.Mutex
+	MemoryManagerCfg
 	inactive map[string]*SnapshotState
 	activeFdState map[int]*SnapshotState // indexed by FD
 	activeVmFd   map[string]int         // Indexed by vmID
@@ -40,7 +41,7 @@ type MemoryManager struct {
 }
 
 // NewMemoryManager Initializes a new memory manager
-func NewMemoryManager(quitCh chan int) *MemoryManager {
+func NewMemoryManager(cfg *MemoryManagerCfg, quitCh chan int) *MemoryManager {
 	log.Debug("Inializing the memory manager")
 
 	v := new(MemoryManager)
@@ -48,14 +49,16 @@ func NewMemoryManager(quitCh chan int) *MemoryManager {
 	v.activeFdState = make(map[int]*SnapshotState)
 	v.activeVmFd = make(map[string]int)
 
+	v.MemoryManagerCfg = *cfg
+	if v.MemManagerBaseDir == "" {
+		v.MemManagerBaseDir = DefaultMemManagerBaseDir
+	}
+	if err := os.MkdirAll(v.MemManagerBaseDir, 0666); err != nil {
+		log.Fatal("Failed to create mem manager base dir", err)
+	}
 
-	// start the main (polling) loop in a goroutine
-	// https://github.com/ustiugov/staged-data-tiering/blob/88b9e51b6c36e82261f0937a66e08f01ab9cf941/fc_load_profiler/uffd.go#L409
-
-	// use select + cases to execute the infinite loop and also wait for a
-	// message on quitCh channel to terminate the main loop
 	readyCh := make(chan int)
-	v.pollUserPageFaults(readyCh, quitCh)
+	go v.pollUserPageFaults(readyCh, quitCh)
 
 	<-readyCh
 
@@ -88,11 +91,32 @@ func (v *MemoryManager) RegisterVM(cfg *SnapshotStateCfg) error {
 
 	v.inactive[vmID] = state
 
+	logger.Debug("VM registered successfully")
+	return nil
+}
+
+// DeregisterVM Deregisters a VM from the memory manager
+func (v *MemoryManager) DeregisterVM(vmID string) error {
+	v.Lock()
+	defer v.Unlock()
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Degistering VM from the memory manager")
+
+	if _, ok := v.inactive[vmID]; !ok {
+		logger.Error("VM is not register or is still active in the memory manager")
+		return errors.New("VM is not register or is still active in the memory manager")
+	}
+
+	delete(v.inactive, vmID)
+
+	logger.Debug("Successfully degistered VM from the memory manager")
 	return nil
 }
 
 // AddInstance Receives a file descriptor by sockAddr from the hypervisor
-func (v *MemoryManager) AddInstance(vmID string) (err error) {
+func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err error) {
 	v.Lock()
 	defer v.Unlock()
 	
@@ -123,7 +147,11 @@ func (v *MemoryManager) AddInstance(vmID string) (err error) {
 		return err
 	}
 
-	state.getUFFD()
+	if userFaultFDFile == nil {
+		state.getUFFD()
+	} else {
+		state.userFaultFD = userFaultFDFile	
+	}
 
 	fdInt = int(state.userFaultFD.Fd())
 
@@ -139,11 +167,15 @@ func (v *MemoryManager) AddInstance(vmID string) (err error) {
 		return err
 	}
 
-	return
+	logger.Debug("Instance added successfully")
+	return nil
 }
 
 // RemoveInstance Receives a file descriptor by sockAddr from the hypervisor
 func (v *MemoryManager) RemoveInstance(vmID string) error {
+	v.Lock()
+	defer v.Unlock()
+
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Removing instance from the memory manager")
@@ -154,7 +186,7 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 		ok    bool
 	)
 
-	if _, ok := v.inactive[vmID]; !ok {
+	if _, ok := v.inactive[vmID]; ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
@@ -171,13 +203,11 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 		return errors.New("Failed to find snapshot state")
 	}
 
-	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_DEL, int(fdInt), nil); err != nil {
+	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_DEL, fdInt, nil); err != nil {
 		logger.Error("Failed to unsubscribe VM")
 		return err
 	}
 
-	// munmap the guest memory file
-	// https://github.com/ustiugov/staged-data-tiering/blob/88b9e51b6c36e82261f0937a66e08f01ab9cf941/fc_load_profiler/uffd.go#L403
 	if err := state.unmapGuestMemory(); err != nil {
 		logger.Error("Failed to munmap guest memory")
 		return err
@@ -204,6 +234,8 @@ func (v *MemoryManager) pollUserPageFaults(readyCh, quitCh chan int) {
 		err error
 	)
 
+	log.Debug("Starting polling loop")
+
 	v.epfd, err = syscall.EpollCreate1(0)
 	if err != nil {
 		log.Fatalf("epoll_create1: %v", err)
@@ -213,17 +245,21 @@ func (v *MemoryManager) pollUserPageFaults(readyCh, quitCh chan int) {
 
 	close(readyCh)
 
+	log.Debug("Polling loop running")
+
 	for {
 		select {
 		case <-quitCh:
 			log.Debug("Handler received a signal to quit")
 			return
 		default:
+			fmt.Println("callin epoll_wait")
 			nevents, e := syscall.EpollWait(v.epfd, events[:], -1)
 			if e != nil {
 				log.Fatalf("epoll_wait: %v", e)
 				break
 			}
+			fmt.Println(nevents)
 			if nevents < 1 {
 				panic("Wrong number of events")
 			}
@@ -241,6 +277,7 @@ func (v *MemoryManager) pollUserPageFaults(readyCh, quitCh chan int) {
 				state := v.getSnapshotState(fd)
 				state.startAddressOnce.Do(
 					func() {
+						log.Debug("Received page fault to start address")
 						state.startAddress = address
 					})
 				go v.servePageFault(fd, address)
@@ -270,6 +307,8 @@ func installRegion(fd int, src, dst, mode, len uint64) error {
 func (v *MemoryManager) servePageFault(fd int, address uint64) {
 	state := v.getSnapshotState(fd)
 	offset := address - state.startAddress
+
+	log.Debugf("Serving offset: %d", offset)
 
 	src := uint64(uintptr(unsafe.Pointer(&state.guestMem[offset])))
 	dst := uint64(int64(address) & ^(int64(pageSize) - 1))
