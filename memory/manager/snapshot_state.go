@@ -53,7 +53,6 @@ func NewSnapshotState(cfg *SnapshotStateCfg) *SnapshotState {
 	s.createDir()
 
 	s.trace = initTrace(s.getTraceFile())
-	// other fields
 
 	return s
 }
