@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -88,4 +89,7 @@ func TestServeThree(t *testing.T) {
 	resp, _, err = funcPool.Serve(context.Background(), fID, imageName, "world")
 	require.NoError(t, err, "Function returned error on 3rd run")
 	require.Equal(t, resp.Payload, "Hello, world!")
+
+	// FIXME: Removes this sleep when Issue#30
+	time.Sleep(10 * time.Second)
 }
