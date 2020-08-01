@@ -117,7 +117,7 @@ func PrintMeanStd(resultsPath string, metricsList ...*Metric) {
 	if resultsPath == "" {
 		f = os.Stdout
 	} else {
-		f, err = os.Create(resultsPath)
+		f, err = os.OpenFile(resultsPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 		if err != nil {
 			panic(err)
 		}
@@ -140,17 +140,17 @@ func PrintMeanStd(resultsPath string, metricsList ...*Metric) {
 
 	w := bufio.NewWriter(f)
 
-	fmt.Fprintf(w, "Stats    \tMean(us)    \tStdDev(us)\n")
+	fmt.Fprintf(w, "Stats\tMean(us)\tStdDev(us)\n")
 
 	for _, k := range keys {
 		v := agg[k]
 		mean, std = stat.MeanStdDev(v, nil)
-		fmt.Fprintf(w, "%s    \t%12.1f    \t%12.1f\n", k, mean, std)
+		fmt.Fprintf(w, "%s\t%12.1f\t%12.1f\n", k, mean, std)
 		w.Flush()
 	}
 
 	mean, std = stat.MeanStdDev(totals, nil)
-	fmt.Fprintf(w, "Total    \t%12.1f    \t%12.1f\n", mean, std)
+	fmt.Fprintf(w, "Total\t%12.1f\t%12.1f\n", mean, std)
 	w.Flush()
 }
 
