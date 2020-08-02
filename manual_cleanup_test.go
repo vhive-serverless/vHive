@@ -54,7 +54,7 @@ func TestParallelServe(t *testing.T) {
 		vmGroup.Add(1)
 		go func(i int) {
 			defer vmGroup.Done()
-			fID := strconv.Itoa(15 + i)
+			fID := strconv.Itoa(100 + i)
 
 			resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error on 1st run")
@@ -69,7 +69,7 @@ func TestParallelServe(t *testing.T) {
 }
 
 func TestServeThree(t *testing.T) {
-	fID := "20"
+	fID := "200"
 	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64 = 1
