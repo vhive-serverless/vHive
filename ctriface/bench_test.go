@@ -73,6 +73,8 @@ func TestBenchmarkStart(t *testing.T) {
 		require.NoError(t, err, "Failed to pull image "+imageName)
 
 		for i := 0; i < benchCount; i++ {
+			dropPageCache()
+
 			message, metric, err := orch.StartVM(ctx, vmIDString, imageName)
 			require.NoError(t, err, "Failed to start VM, "+message)
 			startMetrics[i] = metric
