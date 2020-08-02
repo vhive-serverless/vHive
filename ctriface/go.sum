@@ -377,6 +377,7 @@ github.com/ustiugov/fccd-orchestrator v0.0.0-20200714125803-ec58429be14d h1:UW5R
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200714130355-0a4bf3145bf7 h1:evWpQ4LCzOfDQmgXEiLg6ldTpAiwbQlK3ky/u5TTT3A=
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200722115050-c92a0ba639e9 h1:bl70tn2A2ir7opdglOZKfi2hrnFQXiavWKNUM361MHw=
 github.com/ustiugov/fccd-orchestrator v0.0.0-20200722141002-55dbdeb43861 h1:NKd5TlZCGrL59LDX7oTX9zF9isTUfgW2NKW1bFDiRIg=
+github.com/ustiugov/fccd-orchestrator v0.0.0-20200731162949-5664d63aaa4c h1:lD6Ck3ecXy0x6fPtu1HjfKNfwsMiKJmM78UaV+v68rE=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200416161917-c9cd3cf6dbcf/go.mod h1:2x1L5ydHhOsleqG/GQ9MLWgjF1YQF91u5pe0TvKEjhI=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710144657-9fbec6857e48 h1:BXnRBeRgnVfl4oYD9720hsSe5TScGSP8bpVBBpHEQMw=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710144657-9fbec6857e48/go.mod h1:5dhCs/XynpQoQcrhd/YgUBjGahhNpTknQUcC1kHRCaA=
@@ -404,6 +405,14 @@ github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200727100916-b838e9b56a67
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200727100916-b838e9b56a67/go.mod h1:NOrYF6usVkdr6gpXAP7pk7jp1MlAXlrZQuUEOVhRuV8=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200727115924-ea27568b4c04 h1:H5PUKmgr+tRmq48OPnfVJfFoSwD7YC1tYIhaT2MjRDQ=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200727115924-ea27568b4c04/go.mod h1:kqi59gkrrgkSH4W9PH85SL00/kLZysF4NlmmpZFLs58=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200731162949-5664d63aaa4c h1:I5mSb5Ix5Bt21CEQX7Xd42P1NOfRI30Xbn5QieuT5MQ=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200731162949-5664d63aaa4c/go.mod h1:kqi59gkrrgkSH4W9PH85SL00/kLZysF4NlmmpZFLs58=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200801094947-a106f0fb4177 h1:mjTUFBhyN7nf6RcpCHgzSgOlMBAwZMgEMiLTS1aLnD8=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200801094947-a106f0fb4177/go.mod h1:kqi59gkrrgkSH4W9PH85SL00/kLZysF4NlmmpZFLs58=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200801100754-ddb16237792f h1:nW2OU6CFjQhS6SEz8kAaE5YXToK/u8D+BxQSBIgyZ8g=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200801100754-ddb16237792f/go.mod h1:kqi59gkrrgkSH4W9PH85SL00/kLZysF4NlmmpZFLs58=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200802080330-6625f75bece1 h1:4mmko5us8Wee+xZLxPhjoMTLNvVFBZAkeARvlBE4CnQ=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200802080330-6625f75bece1/go.mod h1:kqi59gkrrgkSH4W9PH85SL00/kLZysF4NlmmpZFLs58=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b h1:HAh2FBZ0QkBGxU/llIVVOhfnqCPEkE353FpZg7Y6sh0=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416161510-f6f32fa5d52b/go.mod h1:tPZXBU39WgZYegI7Cxm6k2434V9WR/4xyuTBK0MrlBw=
 github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200416171230-6533745bd3b1 h1:5BWRtXybC0fFszNmZHqWzPaNNZ0ctLfWvYey0DEKjAk=
