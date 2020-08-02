@@ -28,7 +28,7 @@ func TestStartSnapStop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
 
 	vmID := "2"
 

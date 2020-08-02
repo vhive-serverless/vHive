@@ -31,7 +31,7 @@ func TestSnapLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
 
 	vmID := "1"
 
@@ -77,7 +77,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", 1, WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
 
 	vmID := "3"
 
@@ -136,7 +136,7 @@ func TestParallelSnapLoad(t *testing.T) {
 
 	vmNum := 5
 	vmIDBase := 6
-	orch := NewOrchestrator("devmapper", vmNum, WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
 
 	// Pull image to work around parallel pulling
 	message, _, err := orch.StartVM(ctx, "img_plr", "ustiugov/helloworld:runner_workload")
@@ -196,7 +196,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 
 	vmNum := 10
 	vmIDBase := 11
-	orch := NewOrchestrator("devmapper", vmNum, WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
 
 	// Pull image to work around parallel pulling
 	message, _, err := orch.StartVM(ctx, "img_plr", "ustiugov/helloworld:runner_workload")
