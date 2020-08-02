@@ -65,7 +65,6 @@ const (
 
 // Orchestrator Drives all VMs
 type Orchestrator struct {
-	niNum        int
 	vmPool       *misc.VMPool
 	cachedImages map[string]containerd.Image
 	snapshotter  string
@@ -78,12 +77,11 @@ type Orchestrator struct {
 }
 
 // NewOrchestrator Initializes a new orchestrator
-func NewOrchestrator(snapshotter string, niNum int, opts ...OrchestratorOption) *Orchestrator {
+func NewOrchestrator(snapshotter string, opts ...OrchestratorOption) *Orchestrator {
 	var err error
 
 	o := new(Orchestrator)
-	o.niNum = niNum
-	o.vmPool = misc.NewVMPool(o.niNum)
+	o.vmPool = misc.NewVMPool()
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"

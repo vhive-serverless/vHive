@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200717125634-528c6e9f9cc9
 	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200802194123-c242b3604af0
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200717125634-528c6e9f9cc9
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200802202844-93b0bce596ca
 	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200717125634-528c6e9f9cc9
 	google.golang.org/grpc v1.30.0
 
