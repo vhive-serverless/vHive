@@ -30,7 +30,7 @@ import (
 )
 
 // NewVMPool Initializes a pool of VMs
-func NewVMPool(niNum int) *VMPool {
+func NewVMPool() *VMPool {
 	p := new(VMPool)
 	p.tapManager = taps.NewTapManager()
 
