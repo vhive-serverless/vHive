@@ -283,11 +283,13 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	}
 	startVMMetric.MetricMap[metrics.TaskStart] = metrics.ToUS(time.Since(tStart))
 
+	tStart = time.Now()
 	funcClient, err := o.getFuncClient(ctx, vm, logger)
 	if err != nil {
 		return "Failed to start VM", startVMMetric, errors.Wrap(err, "failed to connect to a function")
 	}
 	vm.FuncClient = &funcClient
+	startVMMetric.MetricMap[metrics.ConnectFuncClient] = metrics.ToUS(time.Since(tStart))
 
 	logger.Debug("Successfully started a VM")
 
@@ -373,8 +375,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 		return "Killing task of VM " + vmID + " failed", err
 	}
 
-	//FIXME: Seems like some tasks need some time to die Issue#15
-	time.Sleep(100 * time.Millisecond)
+	<-vm.TaskCh
 
 	if _, err := task.Delete(ctx); err != nil {
 		logger.Warn("failed to delete the task of the VM: ", err)
@@ -516,7 +517,7 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, *metr
 		return "Failed to start VM", resumeVMMetric, errors.Wrap(err, "failed to connect to a function")
 	}
 	vm.FuncClient = &funcClient
-	resumeVMMetric.MetricMap[metrics.ReconnectFuncClient] = metrics.ToUS(time.Since(tStart))
+	resumeVMMetric.MetricMap[metrics.ConnectFuncClient] = metrics.ToUS(time.Since(tStart))
 
 	return "VM " + vmID + " resumed successfully", resumeVMMetric, nil
 }
