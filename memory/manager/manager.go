@@ -6,38 +6,39 @@ package manager
 import "C"
 
 import (
+	"encoding/binary"
+	"errors"
+	"fmt"
 	"os"
 	"sync"
-	"unsafe"
-	"golang.org/x/sys/unix"
-	"errors"
 	"syscall"
-	"encoding/binary"
-	"fmt"
+	"unsafe"
+
+	"golang.org/x/sys/unix"
 
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	DefaultMemManagerBaseDir = "/root/fccd-mem_manager"
-	pageSize = 4096
-	MaxVMsNum = 10000
+	pageSize                 = 4096
+	MaxVMsNum                = 10000
 )
 
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
 	RecordReplayModeEnabled bool
-	MemManagerBaseDir string
+	MemManagerBaseDir       string
 }
 
 // MemoryManager Serves page faults coming from VMs
 type MemoryManager struct {
 	sync.Mutex
 	MemoryManagerCfg
-	inactive map[string]*SnapshotState
+	inactive      map[string]*SnapshotState
 	activeFdState map[int]*SnapshotState // indexed by FD
-	activeVmFd   map[string]int         // Indexed by vmID
-	epfd         int
+	activeVmFd    map[string]int         // Indexed by vmID
+	epfd          int
 }
 
 // NewMemoryManager Initializes a new memory manager
@@ -102,7 +103,7 @@ func (v *MemoryManager) DeregisterVM(vmID string) error {
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
-	logger.Debug("Degistering VM from the memory manager")
+	logger.Debug("Deregistering VM from the memory manager")
 
 	if _, ok := v.inactive[vmID]; !ok {
 		logger.Error("VM is not register or is still active in the memory manager")
@@ -111,7 +112,7 @@ func (v *MemoryManager) DeregisterVM(vmID string) error {
 
 	delete(v.inactive, vmID)
 
-	logger.Debug("Successfully degistered VM from the memory manager")
+	logger.Debug("Successfully deregistered VM from the memory manager")
 	return nil
 }
 
@@ -119,15 +120,15 @@ func (v *MemoryManager) DeregisterVM(vmID string) error {
 func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err error) {
 	v.Lock()
 	defer v.Unlock()
-	
+
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Adding instance to the memory manager")
 
 	var (
 		event syscall.EpollEvent
-		fdInt    int
-		ok bool
+		fdInt int
+		ok    bool
 		state *SnapshotState
 	)
 
@@ -150,10 +151,11 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 	if userFaultFDFile == nil {
 		state.getUFFD()
 	} else {
-		state.userFaultFD = userFaultFDFile	
+		state.userFaultFD = userFaultFDFile
 	}
 
 	fdInt = int(state.userFaultFD.Fd())
+	log.Debugf("AddInstance: Adding uffd=%d to epoll\n", fdInt)
 
 	delete(v.inactive, vmID)
 	v.activeVmFd[vmID] = fdInt
@@ -182,7 +184,7 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 
 	var (
 		state *SnapshotState
-		fdInt    int
+		fdInt int
 		ok    bool
 	)
 
@@ -231,7 +233,7 @@ func (v *MemoryManager) FetchState(vmID string) (err error) {
 func (v *MemoryManager) pollUserPageFaults(readyCh, quitCh chan int) {
 	var (
 		events [MaxVMsNum]syscall.EpollEvent
-		err error
+		err    error
 	)
 
 	log.Debug("Starting polling loop")
@@ -253,20 +255,32 @@ func (v *MemoryManager) pollUserPageFaults(readyCh, quitCh chan int) {
 			log.Debug("Handler received a signal to quit")
 			return
 		default:
-			fmt.Println("callin epoll_wait")
+			log.Debug("Calling epoll_wait")
 			nevents, e := syscall.EpollWait(v.epfd, events[:], -1)
 			if e != nil {
 				log.Fatalf("epoll_wait: %v", e)
 				break
 			}
-			fmt.Println(nevents)
+			log.Debugf("Received %d events\n", nevents)
+
 			if nevents < 1 {
 				panic("Wrong number of events")
 			}
 
 			for i := 0; i < nevents; i++ {
 				event := events[i]
+
 				fd := int(event.Fd)
+				log.Debugf("Received event for fd=%d\n", fd)
+
+				/*
+					if (event.Events & (syscall.EPOLLHUP | syscall.EPOLLERR)) != 0 {
+						state := v.getSnapshotState(fd)
+						state.userFaultFD.Close()
+						break
+					}
+				*/
+
 				_, ok := v.activeFdState[fd]
 				if !ok {
 					log.Fatalf("received event from file which is not active")
@@ -280,12 +294,14 @@ func (v *MemoryManager) pollUserPageFaults(readyCh, quitCh chan int) {
 						log.Debug("Received page fault to start address")
 						state.startAddress = address
 					})
-				go v.servePageFault(fd, address)
+
+				//go v.servePageFault(fd, address) FIXME
+				v.servePageFault(fd, address)
+				log.Debugf("Finished serving page fault\n")
 			}
 		}
 	}
 }
-
 
 func installRegion(fd int, src, dst, mode, len uint64) error {
 	cUC := C.struct_uffdio_copy{
@@ -317,8 +333,8 @@ func (v *MemoryManager) servePageFault(fd int, address uint64) {
 	installRegion(fd, src, dst, mode, 1)
 }
 
-
 func (v *MemoryManager) extractPageFaultAddress(fd int) uint64 {
+	log.Debug("Reading from uffd")
 	goMsg := make([]byte, C.sizeof_struct_uffd_msg)
 	if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
 		log.Fatalf("Read uffd_msg failed: %v", err)
@@ -356,6 +372,6 @@ func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
 	return nil
 }
 
-func registerForUpf(startAddress []byte, len uint64) uintptr {
-	return uintptr(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
+func registerForUpf(startAddress []byte, len uint64) int {
+	return int(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
 }
