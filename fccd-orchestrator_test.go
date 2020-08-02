@@ -279,10 +279,10 @@ func TestAllFunctions(t *testing.T) {
 		"ustiugov/pyaes:var_workload",
 		"ustiugov/image_rotate:var_workload",
 		"ustiugov/json_serdes:var_workload",
-		//"ustiugov/lr_serving:var_workload", Issue#15
-		//"ustiugov/cnn_serving:var_workload",
+		"ustiugov/lr_serving:var_workload",
+		"ustiugov/cnn_serving:var_workload",
 		"ustiugov/rnn_serving:var_workload",
-		//"ustiugov/lr_training:var_workload",
+		"ustiugov/lr_training:var_workload",
 	}
 	var (
 		servedTh      uint64
