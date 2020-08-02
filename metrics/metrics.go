@@ -35,8 +35,8 @@ import (
 const (
 	// FcResume Time it takes to resume a VM from containerd
 	FcResume = "FcResume"
-	// ReconnectFuncClient Time it takes to reconnect function client
-	ReconnectFuncClient = "ReconnectFuncClient"
+	// ConnectFuncClient Time it takes to reconnect function client
+	ConnectFuncClient = "ConnectFuncClient"
 
 	// Full Used when there is no breakdown
 	Full = "Full"
