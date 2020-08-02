@@ -61,7 +61,6 @@ func main() {
 
 	rand.Seed(42)
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
-	niNum := flag.Int("ni", 1500, "Number of interfaces allocated")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
@@ -91,15 +90,11 @@ func main() {
 
 	if *isSaveMemory {
 		log.Info(fmt.Sprintf("Creating orchestrator for pinned=%d functions", *pinnedFuncNum))
-
-		if *pinnedFuncNum > *niNum {
-			log.Panic("Memory saving is enabled but the number of the functions pinned in memory is larger than niNum")
-		}
 	}
 
 	testModeOn := false
 
-	orch = ctriface.NewOrchestrator(*snapshotter, *niNum, ctriface.WithTestModeOn(testModeOn), ctriface.WithSnapshots(true))
+	orch = ctriface.NewOrchestrator(*snapshotter, ctriface.WithTestModeOn(testModeOn), ctriface.WithSnapshots(true))
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
