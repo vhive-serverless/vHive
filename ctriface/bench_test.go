@@ -47,7 +47,6 @@ func TestBenchmarkStart(t *testing.T) {
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
 	log.SetOutput(os.Stdout)
 
@@ -70,11 +69,8 @@ func TestBenchmarkStart(t *testing.T) {
 		startMetrics := make([]*metrics.Metric, benchCount)
 
 		// Pull image
-		message, _, err := orch.StartVM(ctx, vmIDString, imageName)
-		require.NoError(t, err, "Failed to start VM, "+message)
-
-		message, err = orch.StopSingleVM(ctx, vmIDString)
-		require.NoError(t, err, "Failed to stop VM, "+message)
+		_, err := orch.getImage(ctx, imageName)
+		require.NoError(t, err, "Failed to pull image "+imageName)
 
 		for i := 0; i < benchCount; i++ {
 			message, metric, err := orch.StartVM(ctx, vmIDString, imageName)
@@ -100,7 +96,6 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
 	log.SetOutput(os.Stdout)
 
@@ -168,7 +163,7 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 		outFileName := "load_" + funcName + "_cache.txt"
 		metrics.PrintMeanStd(getOutFile(outFileName), loadMetrics...)
 
-		outFileName = "resume_" + funcName + "_cache.txt"
+		outFileName = "load_" + funcName + "_cache.txt"
 		metrics.PrintMeanStd(getOutFile(outFileName), resumeMetrics...)
 
 		vmID++
@@ -253,7 +248,7 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 		outFileName := "load_" + funcName + "_nocache.txt"
 		metrics.PrintMeanStd(getOutFile(outFileName), loadMetrics...)
 
-		outFileName = "resume_" + funcName + "_nocache.txt"
+		outFileName = "load_" + funcName + "_nocache.txt"
 		metrics.PrintMeanStd(getOutFile(outFileName), resumeMetrics...)
 
 		vmID++
@@ -274,7 +269,7 @@ func dropPageCache() {
 }
 
 func createResultsDir() {
-	if err := os.MkdirAll(benchDir, 0666); err != nil {
+	if err := os.MkdirAll(benchDir, 0777); err != nil {
 		log.Fatalf("Failed to create results dir: %v", err)
 	}
 }
@@ -290,9 +285,9 @@ func getAllImages() map[string]string {
 		"pyaes":        "ustiugov/pyaes:var_workload",
 		"image_rotate": "ustiugov/image_rotate:var_workload",
 		"json_serdes":  "ustiugov/json_serdes:var_workload",
-		//"lr_serving" : "ustiugov/lr_serving:var_workload", Issue#15
-		//"cnn_serving" "ustiugov/cnn_serving:var_workload",
-		"rnn_serving": "ustiugov/rnn_serving:var_workload",
-		//"lr_training" : "ustiugov/lr_training:var_workload",
+		"lr_serving":   "ustiugov/lr_serving:var_workload",
+		"cnn_serving":  "ustiugov/cnn_serving:var_workload",
+		"rnn_serving":  "ustiugov/rnn_serving:var_workload",
+		"lr_training":  "ustiugov/lr_training:var_workload",
 	}
 }

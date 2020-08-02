@@ -175,7 +175,9 @@ func (o *Orchestrator) getFuncClient(ctx context.Context, vm *misc.VM, logger *l
 		grpc.WithConnectParams(connParams),
 		grpc.WithContextDialer(contextDialer),
 	}
-	ctxx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	//  This timeout must be large enough for all functions to start up (e.g., ML training takes few seconds)
+	ctxx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(ctxx, vm.Ni.PrimaryAddress+":50051", gopts...)
 	vm.Conn = conn
@@ -370,6 +372,10 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) (string, e
 		logger.Warn("Failed to kill the task: ", err)
 		return "Killing task of VM " + vmID + " failed", err
 	}
+
+	//FIXME: Seems like some tasks need some time to die Issue#15
+	time.Sleep(100 * time.Millisecond)
+
 	if _, err := task.Delete(ctx); err != nil {
 		logger.Warn("failed to delete the task of the VM: ", err)
 		return "Deleting task of VM " + vmID + " failed", err
