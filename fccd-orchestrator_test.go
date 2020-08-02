@@ -65,7 +65,7 @@ func TestMain(m *testing.M) {
 		log.Panic("Invalid snapshots mode environment variable")
 	}
 
-	orch = ctriface.NewOrchestrator("devmapper", 10, ctriface.WithTestModeOn(true), ctriface.WithSnapshots(envBool))
+	orch = ctriface.NewOrchestrator("devmapper", ctriface.WithTestModeOn(true), ctriface.WithSnapshots(envBool))
 
 	ret := m.Run()
 
