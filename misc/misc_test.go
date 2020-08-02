@@ -34,13 +34,10 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// call flag.Parse() here if TestMain uses flags
-
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
 	log.SetOutput(os.Stdout)
 
@@ -50,7 +47,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestAllocateFreeVMs(t *testing.T) {
-	vmPool := NewVMPool(2)
+	vmPool := NewVMPool()
 
 	vmIDs := [2]string{"test1", "test2"}
 
@@ -70,7 +67,7 @@ func TestAllocateFreeVMs(t *testing.T) {
 func TestAllocateFreeVMsParallel(t *testing.T) {
 	vmNum := 100
 
-	vmPool := NewVMPool(vmNum)
+	vmPool := NewVMPool()
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
