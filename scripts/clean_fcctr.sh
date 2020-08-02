@@ -13,8 +13,8 @@ sudo iptables -t nat -F
 echo Deleting veth* devices created by CNI
 cat /proc/net/dev | grep veth | cut -d" " -f1| cut -d":" -f1 | while read in; do sudo ip link delete "$in"; done
 
-for i in `seq 0 25`; do sudo ip link delete ${i}_tap; done
-for i in `seq 0 25`; do sudo ip link delete ${i}_0_tap; done
+for i in `seq 0 28`; do sudo ip link delete ${i}_tap; done
+for i in `seq 0 28`; do sudo ip link delete ${i}_0_tap; done
 sudo ip link delete br0
 sudo ip link delete br1
 sudo ip link delete plr_fnc_0_tap
