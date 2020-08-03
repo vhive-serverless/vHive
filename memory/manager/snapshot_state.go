@@ -2,15 +2,16 @@ package manager
 
 import (
 	"context"
-	"github.com/ftrvxmtrx/fd"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"net"
 	"os"
 	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/ftrvxmtrx/fd"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	"unsafe"
 )
@@ -135,19 +136,11 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	var (
 		events [MaxVMsNum]syscall.EpollEvent
-		err    error
 	)
 
 	logger.Debug("Starting polling loop")
 
-	s.epfd, err = syscall.EpollCreate1(0)
-	if err != nil {
-		logger.Fatalf("epoll_create1: %v", err)
-		os.Exit(1)
-	}
 	defer syscall.Close(s.epfd)
-
-	close(readyCh)
 
 	logger.Debug("Polling loop running")
 

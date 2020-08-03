@@ -160,14 +160,18 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 	event.Events = syscall.EPOLLIN
 	event.Fd = int32(fdInt)
 
-	go state.pollUserPageFaults(readyCh)
-
-	<-readyCh
+	state.epfd, err = syscall.EpollCreate1(0)
+	if err != nil {
+		logger.Fatalf("epoll_create1: %v", err)
+		os.Exit(1)
+	}
 
 	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_ADD, int(fdInt), &event); err != nil {
 		logger.Error("Failed to subscribe VM")
 		return err
 	}
+
+	go state.pollUserPageFaults(readyCh)
 
 	logger.Debug("Instance added successfully")
 	return nil
