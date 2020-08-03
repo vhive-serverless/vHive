@@ -38,11 +38,10 @@ type MemoryManager struct {
 	inactive      map[string]*SnapshotState
 	activeFdState map[int]*SnapshotState // indexed by FD
 	activeVmFd    map[string]int         // Indexed by vmID
-	epfd          int
 }
 
 // NewMemoryManager Initializes a new memory manager
-func NewMemoryManager(cfg *MemoryManagerCfg, quitCh chan int) *MemoryManager {
+func NewMemoryManager(cfg *MemoryManagerCfg) *MemoryManager {
 	log.Debug("Inializing the memory manager")
 
 	v := new(MemoryManager)
@@ -57,11 +56,6 @@ func NewMemoryManager(cfg *MemoryManagerCfg, quitCh chan int) *MemoryManager {
 	if err := os.MkdirAll(v.MemManagerBaseDir, 0666); err != nil {
 		log.Fatal("Failed to create mem manager base dir", err)
 	}
-
-	readyCh := make(chan int)
-	go v.pollUserPageFaults(readyCh, quitCh)
-
-	<-readyCh
 
 	return v
 }
@@ -126,10 +120,11 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 	logger.Debug("Adding instance to the memory manager")
 
 	var (
-		event syscall.EpollEvent
-		fdInt int
-		ok    bool
-		state *SnapshotState
+		event   syscall.EpollEvent
+		fdInt   int
+		ok      bool
+		state   *SnapshotState
+		readyCh chan int = make(chan int)
 	)
 
 	state, ok = v.inactive[vmID]
@@ -155,6 +150,7 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 	}
 
 	fdInt = int(state.userFaultFD.Fd())
+	state.userFaultFDInt = fdInt
 	log.Debugf("AddInstance: Adding uffd=%d to epoll\n", fdInt)
 
 	delete(v.inactive, vmID)
@@ -164,7 +160,11 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 	event.Events = syscall.EPOLLIN
 	event.Fd = int32(fdInt)
 
-	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_ADD, int(fdInt), &event); err != nil {
+	go state.pollUserPageFaults(readyCh)
+
+	<-readyCh
+
+	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_ADD, int(fdInt), &event); err != nil {
 		logger.Error("Failed to subscribe VM")
 		return err
 	}
@@ -205,10 +205,12 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 		return errors.New("Failed to find snapshot state")
 	}
 
-	if err := syscall.EpollCtl(v.epfd, syscall.EPOLL_CTL_DEL, fdInt, nil); err != nil {
+	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_DEL, fdInt, nil); err != nil {
 		logger.Error("Failed to unsubscribe VM")
 		return err
 	}
+
+	close(state.quitCh)
 
 	if err := state.unmapGuestMemory(); err != nil {
 		logger.Error("Failed to munmap guest memory")
@@ -230,79 +232,6 @@ func (v *MemoryManager) FetchState(vmID string) (err error) {
 	return nil
 }
 
-func (v *MemoryManager) pollUserPageFaults(readyCh, quitCh chan int) {
-	var (
-		events [MaxVMsNum]syscall.EpollEvent
-		err    error
-	)
-
-	log.Debug("Starting polling loop")
-
-	v.epfd, err = syscall.EpollCreate1(0)
-	if err != nil {
-		log.Fatalf("epoll_create1: %v", err)
-		os.Exit(1)
-	}
-	defer syscall.Close(v.epfd)
-
-	close(readyCh)
-
-	log.Debug("Polling loop running")
-
-	for {
-		select {
-		case <-quitCh:
-			log.Debug("Handler received a signal to quit")
-			return
-		default:
-			log.Debug("Calling epoll_wait")
-			nevents, e := syscall.EpollWait(v.epfd, events[:], -1)
-			if e != nil {
-				log.Fatalf("epoll_wait: %v", e)
-				break
-			}
-			log.Debugf("Received %d events\n", nevents)
-
-			if nevents < 1 {
-				panic("Wrong number of events")
-			}
-
-			for i := 0; i < nevents; i++ {
-				event := events[i]
-
-				fd := int(event.Fd)
-				log.Debugf("Received event for fd=%d\n", fd)
-
-				/*
-					if (event.Events & (syscall.EPOLLHUP | syscall.EPOLLERR)) != 0 {
-						state := v.getSnapshotState(fd)
-						state.userFaultFD.Close()
-						break
-					}
-				*/
-
-				_, ok := v.activeFdState[fd]
-				if !ok {
-					log.Fatalf("received event from file which is not active")
-				}
-
-				address := v.extractPageFaultAddress(fd)
-
-				state := v.getSnapshotState(fd)
-				state.startAddressOnce.Do(
-					func() {
-						log.Debug("Received page fault to start address")
-						state.startAddress = address
-					})
-
-				//go v.servePageFault(fd, address) FIXME
-				v.servePageFault(fd, address)
-				log.Debugf("Finished serving page fault\n")
-			}
-		}
-	}
-}
-
 func installRegion(fd int, src, dst, mode, len uint64) error {
 	cUC := C.struct_uffdio_copy{
 		mode: C.ulonglong(mode),
@@ -317,41 +246,6 @@ func installRegion(fd int, src, dst, mode, len uint64) error {
 		return err
 	}
 
-	return nil
-}
-
-func (v *MemoryManager) servePageFault(fd int, address uint64) {
-	state := v.getSnapshotState(fd)
-	offset := address - state.startAddress
-
-	log.Debugf("Serving offset: %d", offset)
-
-	src := uint64(uintptr(unsafe.Pointer(&state.guestMem[offset])))
-	dst := uint64(int64(address) & ^(int64(pageSize) - 1))
-	mode := uint64(0)
-
-	installRegion(fd, src, dst, mode, 1)
-}
-
-func (v *MemoryManager) extractPageFaultAddress(fd int) uint64 {
-	log.Debug("Reading from uffd")
-	goMsg := make([]byte, C.sizeof_struct_uffd_msg)
-	if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
-		log.Fatalf("Read uffd_msg failed: %v", err)
-	}
-
-	if event := uint8(goMsg[0]); event != uint8(C.const_UFFD_EVENT_PAGEFAULT) {
-		log.Fatal("Received wrong event type")
-	}
-
-	return binary.LittleEndian.Uint64(goMsg[16:])
-}
-
-func (v *MemoryManager) getSnapshotState(fd int) *SnapshotState {
-	if state, ok := v.activeFdState[fd]; ok {
-		return state
-	}
-	log.Fatalf("getSnapshotState: fd not found")
 	return nil
 }
 
@@ -374,4 +268,18 @@ func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
 
 func registerForUpf(startAddress []byte, len uint64) int {
 	return int(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
+}
+
+func extractPageFaultAddress(fd int) uint64 {
+	log.Debug("Reading from uffd")
+	goMsg := make([]byte, C.sizeof_struct_uffd_msg)
+	if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
+		log.Fatalf("Read uffd_msg failed: %v", err)
+	}
+
+	if event := uint8(goMsg[0]); event != uint8(C.const_UFFD_EVENT_PAGEFAULT) {
+		log.Fatal("Received wrong event type")
+	}
+
+	return binary.LittleEndian.Uint64(goMsg[16:])
 }

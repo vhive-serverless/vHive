@@ -12,7 +12,6 @@ import (
 
 	"errors"
 	"fmt"
-	"sync"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/stretchr/testify/require"
@@ -30,12 +29,11 @@ func TestManagerSingleClient(t *testing.T) {
 	var (
 		uffd              int
 		region            []byte
-		regionSize        int      = 4 * pageSize
-		uffdFileName      string   = "/tmp/uffd_file.file"
-		guestMemoryPath            = "/tmp/guest_mem"
-		memManagerBaseDir string   = "/tmp/manager"
-		quitCh            chan int = make(chan int)
-		vmID              string   = "1"
+		regionSize        int    = 4 * pageSize
+		uffdFileName      string = "/tmp/uffd_file.file"
+		guestMemoryPath          = "/tmp/guest_mem"
+		memManagerBaseDir string = "/tmp/manager"
+		vmID              string = "1"
 	)
 
 	log.SetLevel(log.DebugLevel)
@@ -54,7 +52,7 @@ func TestManagerSingleClient(t *testing.T) {
 	managerCfg := &MemoryManagerCfg{
 		MemManagerBaseDir: memManagerBaseDir,
 	}
-	manager := NewMemoryManager(managerCfg, quitCh)
+	manager := NewMemoryManager(managerCfg)
 
 	stateCfg := &SnapshotStateCfg{
 		vmID:              vmID,
@@ -91,9 +89,8 @@ func TestManagerParallel(t *testing.T) {
 		FullTimestamp:   true,
 	})
 	var (
-		regionSize        int      = 4 * pageSize
-		memManagerBaseDir string   = "/tmp/manager"
-		quitCh            chan int = make(chan int)
+		regionSize        int    = 4 * pageSize
+		memManagerBaseDir string = "/tmp/manager"
 		err               error
 	)
 
@@ -119,18 +116,12 @@ func TestManagerParallel(t *testing.T) {
 		clients[i] = initClient(uffd, region, uffdFileName, guestMemoryPath, vmID, uffdFile)
 	}
 
-	var wg sync.WaitGroup
-
 	managerCfg := &MemoryManagerCfg{
 		MemManagerBaseDir: memManagerBaseDir,
 	}
-	manager := NewMemoryManager(managerCfg, quitCh)
+	manager := NewMemoryManager(managerCfg)
 
 	for i := 0; i < NumParallel; i++ {
-		wg.Add(1)
-
-		defer wg.Done()
-
 		c := clients[i]
 		stateCfg := &SnapshotStateCfg{
 			vmID:              c.vmID,
@@ -155,8 +146,6 @@ func TestManagerParallel(t *testing.T) {
 		require.NoError(t, err, "Failed to deregister vm")
 
 	}
-
-	wg.Wait()
 }
 
 func prepareGuestMemoryFile(guestFileName string, size int) {
