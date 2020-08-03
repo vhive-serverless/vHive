@@ -136,14 +136,13 @@ func TestParallelSnapLoad(t *testing.T) {
 
 	vmNum := 5
 	vmIDBase := 6
+	imageName := "ustiugov/helloworld:runner_workload"
+
 	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
 
-	// Pull image to work around parallel pulling
-	message, _, err := orch.StartVM(ctx, "img_plr", "ustiugov/helloworld:runner_workload")
-	require.NoError(t, err, "Failed to start VM, "+message)
-
-	message, err = orch.StopSingleVM(ctx, "img_plr")
-	require.NoError(t, err, "Failed to stop VM, "+message)
+	// Pull image
+	_, err := orch.getImage(ctx, imageName)
+	require.NoError(t, err, "Failed to pull image "+imageName)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -196,14 +195,13 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 
 	vmNum := 10
 	vmIDBase := 11
+	imageName := "ustiugov/helloworld:runner_workload"
+
 	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
 
-	// Pull image to work around parallel pulling
-	message, _, err := orch.StartVM(ctx, "img_plr", "ustiugov/helloworld:runner_workload")
-	require.NoError(t, err, "Failed to start VM, "+message)
-
-	message, err = orch.StopSingleVM(ctx, "img_plr")
-	require.NoError(t, err, "Failed to stop VM, "+message)
+	// Pull image
+	_, err := orch.getImage(ctx, imageName)
+	require.NoError(t, err, "Failed to pull image "+imageName)
 
 	{
 		var vmGroup sync.WaitGroup
@@ -212,7 +210,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+				message, _, err := orch.StartVM(ctx, vmID, imageName)
 				require.NoError(t, err, "Failed to start VM, "+vmID+", "+message)
 			}(i)
 		}
