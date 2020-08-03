@@ -369,12 +369,12 @@ func getMemFootprint() (float64, error) {
 
 	cmd := exec.Command("ps", "-o", "rss", "-p", strconv.Itoa(pid))
 
-	stdout, err := cmd.Output()
+	out, err := cmd.Output()
 	if err != nil {
 		log.Warnf("Failed to run ps command: %v", err)
 	}
 
-	infoArr := strings.Split(string(stdout), "\n")[1]
+	infoArr := strings.Split(string(out), "\n")[1]
 	stats := strings.Fields(infoArr)
 
 	rss, err := strconv.ParseFloat(stats[0], 64)
