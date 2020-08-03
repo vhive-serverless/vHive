@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"sync"
 
+	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,6 +23,10 @@ const (
 )
 
 func TestManagerSingleClient(t *testing.T) {
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
 	var (
 		uffd              int
 		region            []byte
@@ -58,11 +63,16 @@ func TestManagerSingleClient(t *testing.T) {
 		guestMemSize:      regionSize,
 	}
 
+	//time.Sleep(2 * time.Second)
+
 	err = manager.RegisterVM(stateCfg)
 	require.NoError(t, err, "Failed to register VM")
+	//time.Sleep(2 * time.Second)
 
 	err = manager.AddInstance(vmID, uffdFile)
 	require.NoError(t, err, "Failed to add VM")
+
+	//time.Sleep(2 * time.Second)
 
 	err = validateGuestMemory(region)
 	require.NoError(t, err, "Failed to validate guest memory")
@@ -76,6 +86,10 @@ func TestManagerSingleClient(t *testing.T) {
 }
 
 func TestManagerParallel(t *testing.T) {
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
 	var (
 		regionSize        int      = 4 * pageSize
 		memManagerBaseDir string   = "/tmp/manager"
