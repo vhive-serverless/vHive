@@ -12,13 +12,14 @@ import (
 
 	"errors"
 	"fmt"
+	"sync"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	NumParallel = 2
+	NumParallel = 10
 )
 
 func TestManagerSingleClient(t *testing.T) {
@@ -121,6 +122,8 @@ func TestManagerParallel(t *testing.T) {
 	}
 	manager := NewMemoryManager(managerCfg)
 
+	var wg sync.WaitGroup
+
 	for i := 0; i < NumParallel; i++ {
 		c := clients[i]
 		stateCfg := &SnapshotStateCfg{
@@ -130,22 +133,30 @@ func TestManagerParallel(t *testing.T) {
 			guestMemSize:      regionSize,
 		}
 
-		err = manager.RegisterVM(stateCfg)
-		require.NoError(t, err, "Failed to register VM")
+		wg.Add(1)
 
-		err = manager.AddInstance(c.vmID, c.uffdFile)
-		require.NoError(t, err, "Failed to add VM")
+		go func() {
+			defer wg.Done()
 
-		err = validateGuestMemory(c.region)
-		require.NoError(t, err, "Failed to validate guest memory")
+			err = manager.RegisterVM(stateCfg)
+			require.NoError(t, err, "Failed to register VM")
 
-		err = manager.RemoveInstance(c.vmID)
-		require.NoError(t, err, "Failed to remove intance")
+			err = manager.AddInstance(c.vmID, c.uffdFile)
+			require.NoError(t, err, "Failed to add VM")
 
-		err = manager.DeregisterVM(c.vmID)
-		require.NoError(t, err, "Failed to deregister vm")
+			err = validateGuestMemory(c.region)
+			require.NoError(t, err, "Failed to validate guest memory")
+
+			err = manager.RemoveInstance(c.vmID)
+			require.NoError(t, err, "Failed to remove intance")
+
+			err = manager.DeregisterVM(c.vmID)
+			require.NoError(t, err, "Failed to deregister vm")
+		}()
 
 	}
+
+	wg.Wait()
 }
 
 func prepareGuestMemoryFile(guestFileName string, size int) {
