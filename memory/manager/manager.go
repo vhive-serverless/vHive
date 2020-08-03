@@ -6,7 +6,6 @@ package manager
 import "C"
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -20,9 +19,9 @@ import (
 )
 
 const (
-	DefaultMemManagerBaseDir = "/root/fccd-mem_manager"
+	defaultMemManagerBaseDir = "/root/fccd-mem_manager"
 	pageSize                 = 4096
-	MaxVMsNum                = 10000
+	maxVMsNum                = 10000
 )
 
 // MemoryManagerCfg Global config of the manager
@@ -37,7 +36,7 @@ type MemoryManager struct {
 	MemoryManagerCfg
 	inactive      map[string]*SnapshotState
 	activeFdState map[int]*SnapshotState // indexed by FD
-	activeVmFd    map[string]int         // Indexed by vmID
+	activeVMFD    map[string]int         // Indexed by vmID
 }
 
 // NewMemoryManager Initializes a new memory manager
@@ -47,11 +46,11 @@ func NewMemoryManager(cfg *MemoryManagerCfg) *MemoryManager {
 	v := new(MemoryManager)
 	v.inactive = make(map[string]*SnapshotState)
 	v.activeFdState = make(map[int]*SnapshotState)
-	v.activeVmFd = make(map[string]int)
+	v.activeVMFD = make(map[string]int)
 
 	v.MemoryManagerCfg = *cfg
 	if v.MemManagerBaseDir == "" {
-		v.MemManagerBaseDir = DefaultMemManagerBaseDir
+		v.MemManagerBaseDir = defaultMemManagerBaseDir
 	}
 	if err := os.MkdirAll(v.MemManagerBaseDir, 0666); err != nil {
 		log.Fatal("Failed to create mem manager base dir", err)
@@ -77,7 +76,7 @@ func (v *MemoryManager) RegisterVM(cfg *SnapshotStateCfg) error {
 		return errors.New("VM exists in the memory manager")
 	}
 
-	if _, ok := v.activeVmFd[vmID]; ok {
+	if _, ok := v.activeVMFD[vmID]; ok {
 		logger.Error("VM already active in the memory manager")
 		return errors.New("VM already active in the memory manager")
 	}
@@ -133,7 +132,7 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 		return errors.New("VM not registered with the memory manager")
 	}
 
-	if _, ok = v.activeVmFd[vmID]; ok {
+	if _, ok = v.activeVMFD[vmID]; ok {
 		logger.Error("VM exists in the memory manager")
 		return errors.New("VM exists in the memory manager")
 	}
@@ -154,7 +153,7 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 	log.Debugf("AddInstance: Adding uffd=%d to epoll\n", fdInt)
 
 	delete(v.inactive, vmID)
-	v.activeVmFd[vmID] = fdInt
+	v.activeVMFD[vmID] = fdInt
 	v.activeFdState[fdInt] = state
 
 	event.Events = syscall.EPOLLIN
@@ -197,7 +196,7 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 		return errors.New("VM not registered with the memory manager")
 	}
 
-	fdInt, ok = v.activeVmFd[vmID]
+	fdInt, ok = v.activeVMFD[vmID]
 	if !ok {
 		logger.Error("Failed to find fd")
 		return errors.New("Failed to find fd")
@@ -224,9 +223,10 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 	state.userFaultFD.Close()
 
 	delete(v.activeFdState, fdInt)
-	delete(v.activeVmFd, vmID)
+	delete(v.activeVMFD, vmID)
 	v.inactive[vmID] = state
 
+	logger.Debug("Successfully removed instance from the memory manager")
 	return nil
 }
 
@@ -274,16 +274,10 @@ func registerForUpf(startAddress []byte, len uint64) int {
 	return int(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
 }
 
-func extractPageFaultAddress(fd int) uint64 {
-	log.Debug("Reading from uffd")
-	goMsg := make([]byte, C.sizeof_struct_uffd_msg)
-	if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
-		log.Fatalf("Read uffd_msg failed: %v", err)
-	}
+func sizeOfUFFDMsg() int {
+	return C.sizeof_struct_uffd_msg
+}
 
-	if event := uint8(goMsg[0]); event != uint8(C.const_UFFD_EVENT_PAGEFAULT) {
-		log.Fatal("Received wrong event type")
-	}
-
-	return binary.LittleEndian.Uint64(goMsg[16:])
+func uffdPageFault() uint8 {
+	return uint8(C.const_UFFD_EVENT_PAGEFAULT)
 }

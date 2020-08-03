@@ -2,6 +2,8 @@ package manager
 
 import (
 	"context"
+	"encoding/binary"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -135,7 +137,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 	logger := log.WithFields(log.Fields{"vmID": s.vmID})
 
 	var (
-		events [MaxVMsNum]syscall.EpollEvent
+		events [maxVMsNum]syscall.EpollEvent
 	)
 
 	logger.Debug("Starting polling loop")
@@ -172,7 +174,20 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 					logger.Fatalf("Received event from unknown fd")
 				}
 
-				address := extractPageFaultAddress(fd)
+				log.Debug("Reading from uffd")
+				goMsg := make([]byte, sizeOfUFFDMsg())
+				if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
+					if !errors.Is(err, syscall.EBADF) {
+						log.Fatalf("Read uffd_msg failed: %v", err)
+					}
+					break
+				}
+
+				if event := uint8(goMsg[0]); event != uffdPageFault() {
+					log.Debugf("Event type %d", event)
+				}
+
+				address := binary.LittleEndian.Uint64(goMsg[16:])
 
 				s.startAddressOnce.Do(
 					func() {
