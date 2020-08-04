@@ -22,7 +22,7 @@ const (
 	NumParallel = 10
 )
 
-func TestManagerSingleClient(t *testing.T) {
+func TestSingleClient(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -46,37 +46,34 @@ func TestManagerSingleClient(t *testing.T) {
 		log.Errorf("Failed to mmap: %v", err)
 	}
 
+	defer unix.Munmap(region)
+
 	uffd = registerForUpf(region, uint64(regionSize))
 
 	uffdFile := os.NewFile(uintptr(uffd), uffdFileName)
 
-	managerCfg := &MemoryManagerCfg{
+	managerCfg := MemoryManagerCfg{
 		MemManagerBaseDir: memManagerBaseDir,
 	}
 	manager := NewMemoryManager(managerCfg)
 
-	stateCfg := &SnapshotStateCfg{
+	stateCfg := SnapshotStateCfg{
 		vmID:              vmID,
 		guestMemPath:      guestMemoryPath,
 		memManagerBaseDir: manager.MemManagerBaseDir,
 		guestMemSize:      regionSize,
 	}
 
-	//time.Sleep(2 * time.Second)
-
 	err = manager.RegisterVM(stateCfg)
 	require.NoError(t, err, "Failed to register VM")
-	//time.Sleep(2 * time.Second)
 
-	err = manager.AddInstance(vmID, uffdFile)
+	err = manager.Activate(vmID, uffdFile)
 	require.NoError(t, err, "Failed to add VM")
-
-	//time.Sleep(2 * time.Second)
 
 	err = validateGuestMemory(region)
 	require.NoError(t, err, "Failed to validate guest memory")
 
-	err = manager.RemoveInstance(vmID)
+	err = manager.Deactivate(vmID)
 	require.NoError(t, err, "Failed to remove intance")
 
 	err = manager.DeregisterVM(vmID)
@@ -84,7 +81,7 @@ func TestManagerSingleClient(t *testing.T) {
 
 }
 
-func TestManagerParallel(t *testing.T) {
+func TestParallelClients(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -109,6 +106,7 @@ func TestManagerParallel(t *testing.T) {
 		if err != nil {
 			log.Errorf("Failed to mmap: %v", err)
 		}
+		defer unix.Munmap(region)
 
 		uffd := registerForUpf(region, uint64(regionSize))
 		uffdFileName := fmt.Sprintf("file_%s", vmID)
@@ -117,7 +115,7 @@ func TestManagerParallel(t *testing.T) {
 		clients[i] = initClient(uffd, region, uffdFileName, guestMemoryPath, vmID, uffdFile)
 	}
 
-	managerCfg := &MemoryManagerCfg{
+	managerCfg := MemoryManagerCfg{
 		MemManagerBaseDir: memManagerBaseDir,
 	}
 	manager := NewMemoryManager(managerCfg)
@@ -126,7 +124,7 @@ func TestManagerParallel(t *testing.T) {
 
 	for i := 0; i < NumParallel; i++ {
 		c := clients[i]
-		stateCfg := &SnapshotStateCfg{
+		stateCfg := SnapshotStateCfg{
 			vmID:              c.vmID,
 			guestMemPath:      c.guestMemoryPath,
 			memManagerBaseDir: manager.MemManagerBaseDir,
@@ -141,13 +139,13 @@ func TestManagerParallel(t *testing.T) {
 			err = manager.RegisterVM(stateCfg)
 			require.NoError(t, err, "Failed to register VM")
 
-			err = manager.AddInstance(c.vmID, c.uffdFile)
+			err = manager.Activate(c.vmID, c.uffdFile)
 			require.NoError(t, err, "Failed to add VM")
 
 			err = validateGuestMemory(c.region)
 			require.NoError(t, err, "Failed to validate guest memory")
 
-			err = manager.RemoveInstance(c.vmID)
+			err = manager.Deactivate(c.vmID)
 			require.NoError(t, err, "Failed to remove intance")
 
 			err = manager.DeregisterVM(c.vmID)
@@ -168,7 +166,7 @@ func prepareGuestMemoryFile(guestFileName string, size int) {
 		}
 	}
 
-	err := ioutil.WriteFile(guestFileName, toWrite, 0666)
+	err := ioutil.WriteFile(guestFileName, toWrite, 0777)
 	if err != nil {
 		panic(err)
 	}
