@@ -21,7 +21,6 @@ import (
 const (
 	defaultMemManagerBaseDir = "/root/fccd-mem_manager"
 	pageSize                 = 4096
-	maxVMsNum                = 10000
 )
 
 // MemoryManagerCfg Global config of the manager
@@ -41,7 +40,7 @@ type MemoryManager struct {
 
 // NewMemoryManager Initializes a new memory manager
 func NewMemoryManager(cfg MemoryManagerCfg) *MemoryManager {
-	log.Debug("Inializing the memory manager")
+	log.Debug("Initializing the memory manager")
 
 	m := new(MemoryManager)
 	m.inactive = make(map[string]*SnapshotState)
@@ -64,7 +63,7 @@ func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
 	m.Lock()
 	defer m.Unlock()
 
-	vmID := cfg.vmID
+	vmID := cfg.VMID
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -162,7 +161,12 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		return err
 	}
 
-	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_ADD, int(fdInt), &event); err != nil {
+	if err := syscall.SetNonblock(fdInt, true); err != nil {
+		logger.Error("Failed to make FD nonblocking")
+		return err
+	}
+
+	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_ADD, fdInt, &event); err != nil {
 		logger.Error("Failed to subscribe VM")
 		return err
 	}
