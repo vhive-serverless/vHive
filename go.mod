@@ -10,14 +10,15 @@ replace github.com/firecracker-microvm/firecracker-containerd => github.com/usti
 replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/ustiugov/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
 
 require (
-	github.com/containerd/containerd v1.3.6
-	github.com/golang/protobuf v1.3.3
+	github.com/containerd/containerd v1.3.7
+	github.com/golang/protobuf v1.4.2
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200803150239-38207cf20711
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200727123940-f2d08f161c49
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200717125634-528c6e9f9cc9
-	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200802194423-0ff4cd255633
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200802203303-bef5197cbab6 // indirect
+	github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200804110744-475c2d2817dd // indirect
+	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200727123940-f2d08f161c49
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200717125634-528c6e9f9cc9 // indirect
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200717125634-528c6e9f9cc9
 	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200717125634-528c6e9f9cc9 // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
