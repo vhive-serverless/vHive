@@ -177,17 +177,11 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 					logger.Fatalf("Received event from unknown fd")
 				}
 
-				log.Debug("calling read")
 				goMsg := make([]byte, sizeOfUFFDMsg())
-				nread, err := syscall.Read(fd, goMsg)
-				log.Debugf("Read %d", nread)
-				if err != nil || nread != len(goMsg) {
-					log.Debug("Error in read")
+
+				if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
 					if !errors.Is(err, syscall.EBADF) {
 						log.Fatalf("Read uffd_msg failed: %v", err)
-					}
-					if nread == 0 {
-						log.Debug("read 0")
 					}
 					break
 				}
