@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/stretchr/testify/require"
@@ -58,10 +59,10 @@ func TestSingleClient(t *testing.T) {
 	manager := NewMemoryManager(managerCfg)
 
 	stateCfg := SnapshotStateCfg{
-		vmID:              vmID,
-		guestMemPath:      guestMemoryPath,
-		memManagerBaseDir: manager.MemManagerBaseDir,
-		guestMemSize:      regionSize,
+		VMID:              vmID,
+		GuestMemPath:      guestMemoryPath,
+		MemManagerBaseDir: manager.MemManagerBaseDir,
+		GuestMemSize:      regionSize,
 	}
 
 	err = manager.RegisterVM(stateCfg)
@@ -78,6 +79,8 @@ func TestSingleClient(t *testing.T) {
 
 	err = manager.DeregisterVM(vmID)
 	require.NoError(t, err, "Failed to deregister vm")
+
+	time.Sleep(2 * time.Second)
 
 }
 
@@ -125,10 +128,10 @@ func TestParallelClients(t *testing.T) {
 	for i := 0; i < NumParallel; i++ {
 		c := clients[i]
 		stateCfg := SnapshotStateCfg{
-			vmID:              c.vmID,
-			guestMemPath:      c.guestMemoryPath,
-			memManagerBaseDir: manager.MemManagerBaseDir,
-			guestMemSize:      regionSize,
+			VMID:              c.vmID,
+			GuestMemPath:      c.guestMemoryPath,
+			MemManagerBaseDir: manager.MemManagerBaseDir,
+			GuestMemSize:      regionSize,
 		}
 
 		wg.Add(1)

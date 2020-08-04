@@ -20,11 +20,11 @@ import (
 
 // SnapshotStateCfg Config to initialize SnapshotState
 type SnapshotStateCfg struct {
-	vmID                                         string
-	vMMStatePath, guestMemPath, instanceSockAddr string
-	memManagerBaseDir                            string // base directory where the memory manager stores data
-	isRecordMode                                 bool
-	guestMemSize                                 int
+	VMID                                         string
+	VMMStatePath, GuestMemPath, InstanceSockAddr string
+	MemManagerBaseDir                            string // base directory where the memory manager stores data
+	IsRecordMode                                 bool
+	GuestMemSize                                 int
 }
 
 // SnapshotState Stores the state of the snapshot
@@ -74,7 +74,7 @@ func (s *SnapshotState) getUFFD() error {
 	defer cancel()
 
 	for {
-		c, err := d.DialContext(ctx, "unix", s.instanceSockAddr)
+		c, err := d.DialContext(ctx, "unix", s.InstanceSockAddr)
 		if err != nil {
 			if ctx.Err() != nil {
 				log.Error("Failed to dial within the context timeout")
@@ -101,25 +101,25 @@ func (s *SnapshotState) getUFFD() error {
 }
 
 func (s *SnapshotState) createDir() {
-	path := filepath.Join(s.memManagerBaseDir, s.vmID)
+	path := filepath.Join(s.MemManagerBaseDir, s.VMID)
 	if err := os.MkdirAll(path, 0777); err != nil {
-		log.Fatalf("Failed to create snapshot state dir for VM %s", s.vmID)
+		log.Fatalf("Failed to create snapshot state dir for VM %s", s.VMID)
 	}
 	s.baseDir = path
 }
 
 func (s *SnapshotState) getTraceFile() string {
-	return filepath.Join(s.baseDir, "trace_"+s.vmID)
+	return filepath.Join(s.baseDir, "trace_"+s.VMID)
 }
 
 func (s *SnapshotState) mapGuestMemory() error {
-	fd, err := os.OpenFile(s.guestMemPath, os.O_RDONLY, 0777)
+	fd, err := os.OpenFile(s.GuestMemPath, os.O_RDONLY, 0777)
 	if err != nil {
 		log.Errorf("Failed to open guest memory file: %v", err)
 		return err
 	}
 
-	s.guestMem, err = unix.Mmap(int(fd.Fd()), 0, s.guestMemSize, unix.PROT_READ, unix.MAP_PRIVATE)
+	s.guestMem, err = unix.Mmap(int(fd.Fd()), 0, s.GuestMemSize, unix.PROT_READ, unix.MAP_PRIVATE)
 	if err != nil {
 		log.Errorf("Failed to mmap guest memory file: %v", err)
 		return err
@@ -138,10 +138,10 @@ func (s *SnapshotState) unmapGuestMemory() error {
 }
 
 func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
-	logger := log.WithFields(log.Fields{"vmID": s.vmID})
+	logger := log.WithFields(log.Fields{"vmID": s.VMID})
 
 	var (
-		events [maxVMsNum]syscall.EpollEvent
+		events [1]syscall.EpollEvent
 	)
 
 	logger.Debug("Starting polling loop")
@@ -177,10 +177,17 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 					logger.Fatalf("Received event from unknown fd")
 				}
 
+				log.Debug("calling read")
 				goMsg := make([]byte, sizeOfUFFDMsg())
-				if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
+				nread, err := syscall.Read(fd, goMsg)
+				log.Debugf("Read %d", nread)
+				if err != nil || nread != len(goMsg) {
+					log.Debug("Error in read")
 					if !errors.Is(err, syscall.EBADF) {
 						log.Fatalf("Read uffd_msg failed: %v", err)
+					}
+					if nread == 0 {
+						log.Debug("read 0")
 					}
 					break
 				}
