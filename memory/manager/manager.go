@@ -40,30 +40,29 @@ type MemoryManager struct {
 }
 
 // NewMemoryManager Initializes a new memory manager
-func NewMemoryManager(cfg *MemoryManagerCfg) *MemoryManager {
+func NewMemoryManager(cfg MemoryManagerCfg) *MemoryManager {
 	log.Debug("Inializing the memory manager")
 
-	v := new(MemoryManager)
-	v.inactive = make(map[string]*SnapshotState)
-	v.activeFdState = make(map[int]*SnapshotState)
-	v.activeVMFD = make(map[string]int)
+	m := new(MemoryManager)
+	m.inactive = make(map[string]*SnapshotState)
+	m.activeFdState = make(map[int]*SnapshotState)
+	m.activeVMFD = make(map[string]int)
 
-	v.MemoryManagerCfg = *cfg
-	if v.MemManagerBaseDir == "" {
-		v.MemManagerBaseDir = defaultMemManagerBaseDir
+	m.MemoryManagerCfg = cfg
+	if m.MemManagerBaseDir == "" {
+		m.MemManagerBaseDir = defaultMemManagerBaseDir
 	}
-	if err := os.MkdirAll(v.MemManagerBaseDir, 0666); err != nil {
+	if err := os.MkdirAll(m.MemManagerBaseDir, 0777); err != nil {
 		log.Fatal("Failed to create mem manager base dir", err)
 	}
 
-	return v
+	return m
 }
 
-// RegisterVM Register a VM which is going to be
-// managed by the memory manager
-func (v *MemoryManager) RegisterVM(cfg *SnapshotStateCfg) error {
-	v.Lock()
-	defer v.Unlock()
+// RegisterVM Registers a VM within the memory manager
+func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
+	m.Lock()
+	defer m.Unlock()
 
 	vmID := cfg.vmID
 
@@ -71,48 +70,47 @@ func (v *MemoryManager) RegisterVM(cfg *SnapshotStateCfg) error {
 
 	logger.Debug("Registering VM with the memory manager")
 
-	if _, ok := v.inactive[vmID]; ok {
+	if _, ok := m.inactive[vmID]; ok {
 		logger.Error("VM already registered the memory manager")
 		return errors.New("VM exists in the memory manager")
 	}
 
-	if _, ok := v.activeVMFD[vmID]; ok {
+	if _, ok := m.activeVMFD[vmID]; ok {
 		logger.Error("VM already active in the memory manager")
 		return errors.New("VM already active in the memory manager")
 	}
 
 	state := NewSnapshotState(cfg)
 
-	v.inactive[vmID] = state
+	m.inactive[vmID] = state
 
-	logger.Debug("VM registered successfully")
 	return nil
 }
 
 // DeregisterVM Deregisters a VM from the memory manager
-func (v *MemoryManager) DeregisterVM(vmID string) error {
-	v.Lock()
-	defer v.Unlock()
+func (m *MemoryManager) DeregisterVM(vmID string) error {
+	m.Lock()
+	defer m.Unlock()
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Deregistering VM from the memory manager")
 
-	if _, ok := v.inactive[vmID]; !ok {
+	if _, ok := m.inactive[vmID]; !ok {
 		logger.Error("VM is not register or is still active in the memory manager")
 		return errors.New("VM is not register or is still active in the memory manager")
 	}
 
-	delete(v.inactive, vmID)
+	delete(m.inactive, vmID)
 
-	logger.Debug("Successfully deregistered VM from the memory manager")
 	return nil
 }
 
-// AddInstance Receives a file descriptor by sockAddr from the hypervisor
-func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err error) {
-	v.Lock()
-	defer v.Unlock()
+// Activate Receives a file descriptor by sockAddr from the hypervisor
+// userFaultFDFile is for testing only
+func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err error) {
+	m.Lock()
+	defer m.Unlock()
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -126,13 +124,13 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 		readyCh chan int = make(chan int)
 	)
 
-	state, ok = v.inactive[vmID]
+	state, ok = m.inactive[vmID]
 	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
 
-	if _, ok = v.activeVMFD[vmID]; ok {
+	if _, ok = m.activeVMFD[vmID]; ok {
 		logger.Error("VM exists in the memory manager")
 		return errors.New("VM exists in the memory manager")
 	}
@@ -143,26 +141,25 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 	}
 
 	if userFaultFDFile == nil {
-		state.getUFFD()
+		if err := state.getUFFD(); err != nil {
+			logger.Error("Failed to get uffd")
+			return err
+		}
 	} else {
 		state.userFaultFD = userFaultFDFile
 	}
 
 	fdInt = int(state.userFaultFD.Fd())
-	state.userFaultFDInt = fdInt
-	log.Debugf("AddInstance: Adding uffd=%d to epoll\n", fdInt)
 
-	delete(v.inactive, vmID)
-	v.activeVMFD[vmID] = fdInt
-	v.activeFdState[fdInt] = state
+	m.activate(vmID, fdInt, state)
 
 	event.Events = syscall.EPOLLIN
 	event.Fd = int32(fdInt)
 
 	state.epfd, err = syscall.EpollCreate1(0)
 	if err != nil {
-		logger.Fatalf("epoll_create1: %v", err)
-		os.Exit(1)
+		logger.Error("Failed to create epoller")
+		return err
 	}
 
 	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_ADD, int(fdInt), &event); err != nil {
@@ -172,14 +169,15 @@ func (v *MemoryManager) AddInstance(vmID string, userFaultFDFile *os.File) (err 
 
 	go state.pollUserPageFaults(readyCh)
 
-	logger.Debug("Instance added successfully")
+	<-readyCh
+
 	return nil
 }
 
-// RemoveInstance Receives a file descriptor by sockAddr from the hypervisor
-func (v *MemoryManager) RemoveInstance(vmID string) error {
-	v.Lock()
-	defer v.Unlock()
+// Deactivate Receives a file descriptor by sockAddr from the hypervisor
+func (m *MemoryManager) Deactivate(vmID string) error {
+	m.Lock()
+	defer m.Unlock()
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -191,26 +189,21 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 		ok    bool
 	)
 
-	if _, ok := v.inactive[vmID]; ok {
+	if _, ok := m.inactive[vmID]; ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
 
-	fdInt, ok = v.activeVMFD[vmID]
+	fdInt, ok = m.activeVMFD[vmID]
 	if !ok {
 		logger.Error("Failed to find fd")
 		return errors.New("Failed to find fd")
 	}
 
-	state, ok = v.activeFdState[fdInt]
+	state, ok = m.activeFdState[fdInt]
 	if !ok {
 		logger.Error("Failed to find snapshot state")
 		return errors.New("Failed to find snapshot state")
-	}
-
-	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_DEL, fdInt, nil); err != nil {
-		logger.Error("Failed to unsubscribe VM")
-		return err
 	}
 
 	close(state.quitCh)
@@ -222,16 +215,25 @@ func (v *MemoryManager) RemoveInstance(vmID string) error {
 
 	state.userFaultFD.Close()
 
-	delete(v.activeFdState, fdInt)
-	delete(v.activeVMFD, vmID)
-	v.inactive[vmID] = state
+	m.deactivate(vmID, state)
 
-	logger.Debug("Successfully removed instance from the memory manager")
 	return nil
 }
 
+func (m *MemoryManager) activate(vmID string, fd int, state *SnapshotState) {
+	delete(m.inactive, vmID)
+	m.activeVMFD[vmID] = fd
+	m.activeFdState[fd] = state
+}
+
+func (m *MemoryManager) deactivate(vmID string, state *SnapshotState) {
+	delete(m.activeFdState, m.activeVMFD[vmID])
+	delete(m.activeVMFD, vmID)
+	m.inactive[vmID] = state
+}
+
 // FetchState Fetches the working set file (or the whole guest memory) and/or the VMM state file
-func (v *MemoryManager) FetchState(vmID string) (err error) {
+func (m *MemoryManager) FetchState(vmID string) (err error) {
 	// NOT IMPLEMENTED
 	return nil
 }
@@ -276,8 +278,4 @@ func registerForUpf(startAddress []byte, len uint64) int {
 
 func sizeOfUFFDMsg() int {
 	return C.sizeof_struct_uffd_msg
-}
-
-func uffdPageFault() uint8 {
-	return uint8(C.const_UFFD_EVENT_PAGEFAULT)
 }

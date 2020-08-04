@@ -22,7 +22,7 @@ import (
 type SnapshotStateCfg struct {
 	vmID                                         string
 	vMMStatePath, guestMemPath, instanceSockAddr string
-	memManagerBaseDir                            string
+	memManagerBaseDir                            string // base directory where the memory manager stores data
 	isRecordMode                                 bool
 	guestMemSize                                 int
 }
@@ -35,7 +35,6 @@ type SnapshotState struct {
 	startAddress     uint64
 	baseDir          string
 	userFaultFD      *os.File
-	userFaultFDInt   int
 	trace            *Trace
 	epfd             int
 	quitCh           chan int
@@ -55,10 +54,10 @@ type SnapshotState struct {
 }
 
 // NewSnapshotState Initializes a snapshot state
-func NewSnapshotState(cfg *SnapshotStateCfg) *SnapshotState {
+func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	s := new(SnapshotState)
 	s.startAddressOnce = new(sync.Once)
-	s.SnapshotStateCfg = *cfg
+	s.SnapshotStateCfg = cfg
 
 	s.createDir()
 
@@ -69,14 +68,18 @@ func NewSnapshotState(cfg *SnapshotStateCfg) *SnapshotState {
 	return s
 }
 
-func (s *SnapshotState) getUFFD() {
+func (s *SnapshotState) getUFFD() error {
 	var d net.Dialer
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	for {
 		c, err := d.DialContext(ctx, "unix", s.instanceSockAddr)
 		if err != nil {
+			if ctx.Err() != nil {
+				log.Error("Failed to dial within the context timeout")
+				return err
+			}
 			time.Sleep(1 * time.Millisecond)
 			continue
 		}
@@ -87,18 +90,19 @@ func (s *SnapshotState) getUFFD() {
 
 		fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
 		if err != nil {
-			log.Fatalf("Failed to receive the uffd: %v", err)
+			log.Error("Failed to receive the uffd")
+			return err
 		}
 
 		s.userFaultFD = fs[0]
 
-		return
+		return nil
 	}
 }
 
 func (s *SnapshotState) createDir() {
 	path := filepath.Join(s.memManagerBaseDir, s.vmID)
-	if err := os.MkdirAll(path, 0666); err != nil {
+	if err := os.MkdirAll(path, 0777); err != nil {
 		log.Fatalf("Failed to create snapshot state dir for VM %s", s.vmID)
 	}
 	s.baseDir = path
@@ -109,7 +113,7 @@ func (s *SnapshotState) getTraceFile() string {
 }
 
 func (s *SnapshotState) mapGuestMemory() error {
-	fd, err := os.OpenFile(s.guestMemPath, os.O_RDONLY, 0666)
+	fd, err := os.OpenFile(s.guestMemPath, os.O_RDONLY, 0777)
 	if err != nil {
 		log.Errorf("Failed to open guest memory file: %v", err)
 		return err
@@ -144,7 +148,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	defer syscall.Close(s.epfd)
 
-	logger.Debug("Polling loop running")
+	close(readyCh)
 
 	for {
 		select {
@@ -152,13 +156,11 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 			logger.Debug("Handler received a signal to quit")
 			return
 		default:
-			logger.Debug("Calling epoll_wait")
 			nevents, e := syscall.EpollWait(s.epfd, events[:], -1)
 			if e != nil {
 				logger.Fatalf("epoll_wait: %v", e)
 				break
 			}
-			logger.Debugf("Received %d events\n", nevents)
 
 			if nevents < 1 {
 				panic("Wrong number of events")
@@ -168,13 +170,13 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 				event := events[i]
 
 				fd := int(event.Fd)
-				logger.Debugf("Received event for fd=%d\n", fd)
 
-				if fd != s.userFaultFDInt {
+				stateFd := int(s.userFaultFD.Fd())
+
+				if fd != stateFd && stateFd != -1 {
 					logger.Fatalf("Received event from unknown fd")
 				}
 
-				log.Debug("Reading from uffd")
 				goMsg := make([]byte, sizeOfUFFDMsg())
 				if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
 					if !errors.Is(err, syscall.EBADF) {
@@ -183,33 +185,27 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 					break
 				}
 
-				if event := uint8(goMsg[0]); event != uffdPageFault() {
-					log.Debugf("Event type %d", event)
-				}
-
 				address := binary.LittleEndian.Uint64(goMsg[16:])
 
-				s.startAddressOnce.Do(
-					func() {
-						logger.Debug("Received page fault to start address")
-						s.startAddress = address
-					})
-
-				s.servePageFault(fd, address)
-				logger.Debugf("Finished serving page fault\n")
+				if err := s.servePageFault(fd, address); err != nil {
+					log.Fatalf("Failed to serve page fault")
+				}
 			}
 		}
 	}
 }
 
-func (s *SnapshotState) servePageFault(fd int, address uint64) {
-	offset := address - s.startAddress
+func (s *SnapshotState) servePageFault(fd int, address uint64) error {
+	s.startAddressOnce.Do(
+		func() {
+			s.startAddress = address
+		})
 
-	log.Debugf("Serving offset: %d", offset)
+	offset := address - s.startAddress
 
 	src := uint64(uintptr(unsafe.Pointer(&s.guestMem[offset])))
 	dst := uint64(int64(address) & ^(int64(pageSize) - 1))
 	mode := uint64(0)
 
-	installRegion(fd, src, dst, mode, 1)
+	return installRegion(fd, src, dst, mode, 1)
 }
