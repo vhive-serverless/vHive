@@ -1,7 +1,7 @@
 package manager
 
 /*
-#include "header.h"
+#include "user_page_faults.h"
 */
 import "C"
 
@@ -67,7 +67,7 @@ func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
-	logger.Debug("Registering VM with the memory manager")
+	logger.Debug("Registering the VM with the memory manager")
 
 	if _, ok := m.inactive[vmID]; ok {
 		logger.Error("VM already registered the memory manager")
@@ -105,7 +105,7 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 	return nil
 }
 
-// Activate Receives a file descriptor by sockAddr from the hypervisor
+// Activate Creates an epoller to serve page faults for the VM
 // userFaultFDFile is for testing only
 func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err error) {
 	m.Lock()
@@ -161,11 +161,6 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		return err
 	}
 
-	if err := syscall.SetNonblock(fdInt, true); err != nil {
-		logger.Error("Failed to make FD nonblocking")
-		return err
-	}
-
 	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_ADD, fdInt, &event); err != nil {
 		logger.Error("Failed to subscribe VM")
 		return err
@@ -178,7 +173,7 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 	return nil
 }
 
-// Deactivate Receives a file descriptor by sockAddr from the hypervisor
+// Deactivate Removes the epoller which serves page faults for the VM
 func (m *MemoryManager) Deactivate(vmID string) error {
 	m.Lock()
 	defer m.Unlock()

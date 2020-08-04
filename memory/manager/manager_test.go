@@ -13,14 +13,9 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	NumParallel = 10
 )
 
 func TestSingleClient(t *testing.T) {
@@ -79,12 +74,11 @@ func TestSingleClient(t *testing.T) {
 
 	err = manager.DeregisterVM(vmID)
 	require.NoError(t, err, "Failed to deregister vm")
-
-	time.Sleep(2 * time.Second)
-
 }
 
 func TestParallelClients(t *testing.T) {
+	numParallel := 10
+
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -99,7 +93,7 @@ func TestParallelClients(t *testing.T) {
 
 	clients := make(map[int]*upfClient)
 
-	for i := 0; i < NumParallel; i++ {
+	for i := 0; i < numParallel; i++ {
 		vmID := fmt.Sprintf("%d", i)
 		guestMemoryPath := "/tmp/guest_mem_" + vmID
 
@@ -125,7 +119,7 @@ func TestParallelClients(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < NumParallel; i++ {
+	for i := 0; i < numParallel; i++ {
 		c := clients[i]
 		stateCfg := SnapshotStateCfg{
 			VMID:              c.vmID,
