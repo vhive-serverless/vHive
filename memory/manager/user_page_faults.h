@@ -2,27 +2,13 @@
 
 #include <sys/types.h>
 #include <linux/userfaultfd.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <sys/ioctl.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <fcntl.h>
-#include <signal.h>
-#include <poll.h>
-#include <string.h>
-#include <sys/mman.h>
 #include <sys/syscall.h>
-
-
-uint64_t start_addr = 0ULL;
-unsigned long long start_addr_u64 = 0ULL;
-char* src_start = NULL;
-unsigned long long src_start_u64 = 0ULL;
-char* src_start_ws = NULL;
-unsigned long long src_start_ws_u64 = 0ULL;
-int page_size = 4096;
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 // constants for use from Go
 int const_UFFDIO_WAKE = UFFDIO_WAKE;
