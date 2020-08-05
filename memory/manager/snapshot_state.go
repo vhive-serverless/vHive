@@ -43,6 +43,9 @@ type SnapshotState struct {
 	isReplayWorkingSet bool
 	// prefetch the VMM state to the host memory
 	isPrefetchVMMState bool
+	// to indicate whether the instance has even been activated. this is to
+	// get around cases where offload is called for the first time
+	isEverActivated bool
 
 	isWSCopy     bool
 	isReplayDone bool
