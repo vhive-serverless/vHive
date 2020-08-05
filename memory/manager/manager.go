@@ -148,6 +148,7 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		state.userFaultFD = userFaultFDFile
 	}
 
+	state.isEverActivated = true
 	state.startAddressOnce = new(sync.Once)
 	state.quitCh = make(chan int)
 
@@ -191,7 +192,10 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		ok    bool
 	)
 
-	if _, ok := m.inactive[vmID]; ok {
+	if state, ok := m.inactive[vmID]; ok {
+		if !state.isEverActivated {
+			return nil
+		}
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
