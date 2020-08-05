@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 )
 
 // Record A tuple with an address and a timestamp
