@@ -148,6 +148,9 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		state.userFaultFD = userFaultFDFile
 	}
 
+	state.startAddressOnce = new(sync.Once)
+	state.quitCh = make(chan int)
+
 	fdInt = int(state.userFaultFD.Fd())
 
 	m.activate(vmID, fdInt, state)
@@ -277,4 +280,8 @@ func registerForUpf(startAddress []byte, len uint64) int {
 
 func sizeOfUFFDMsg() int {
 	return C.sizeof_struct_uffd_msg
+}
+
+func uffdPageFault() uint8 {
+	return uint8(C.const_UFFD_EVENT_PAGEFAULT)
 }

@@ -56,14 +56,11 @@ type SnapshotState struct {
 // NewSnapshotState Initializes a snapshot state
 func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	s := new(SnapshotState)
-	s.startAddressOnce = new(sync.Once)
 	s.SnapshotStateCfg = cfg
 
 	s.createDir()
 
 	s.trace = initTrace(s.getTraceFile())
-
-	s.quitCh = make(chan int)
 
 	return s
 }
@@ -184,6 +181,10 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 						log.Fatalf("Read uffd_msg failed: %v", err)
 					}
 					break
+				}
+
+				if event := uint8(goMsg[0]); event != uffdPageFault() {
+					log.Fatal("Received wrong event type")
 				}
 
 				address := binary.LittleEndian.Uint64(goMsg[16:])
