@@ -14,11 +14,13 @@ import (
 	"fmt"
 	"sync"
 
+	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSingleClient(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	var (
@@ -78,6 +80,7 @@ func TestParallelClients(t *testing.T) {
 	numParallel := 10
 
 	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	var (
