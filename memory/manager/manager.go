@@ -18,15 +18,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	defaultMemManagerBaseDir = "/root/fccd-mem_manager"
-	pageSize                 = 4096
-)
-
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
 	RecordReplayModeEnabled bool
-	MemManagerBaseDir       string
 }
 
 // MemoryManager Serves page faults coming from VMs
@@ -48,12 +42,6 @@ func NewMemoryManager(cfg MemoryManagerCfg) *MemoryManager {
 	m.activeVMFD = make(map[string]int)
 
 	m.MemoryManagerCfg = cfg
-	if m.MemManagerBaseDir == "" {
-		m.MemManagerBaseDir = defaultMemManagerBaseDir
-	}
-	if err := os.MkdirAll(m.MemManagerBaseDir, 0777); err != nil {
-		log.Fatal("Failed to create mem manager base dir", err)
-	}
 
 	return m
 }
@@ -250,7 +238,7 @@ func installRegion(fd int, src, dst, mode, len uint64) error {
 		copy: 0,
 		src:  C.ulonglong(src),
 		dst:  C.ulonglong(dst),
-		len:  C.ulonglong(pageSize * len),
+		len:  C.ulonglong(uint64(os.Getpagesize()) * len),
 	}
 
 	err := ioctl(uintptr(fd), int(C.const_UFFDIO_COPY), unsafe.Pointer(&cUC))

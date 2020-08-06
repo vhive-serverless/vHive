@@ -24,13 +24,12 @@ func TestSingleClient(t *testing.T) {
 		FullTimestamp:   true,
 	})
 	var (
-		uffd              int
-		region            []byte
-		regionSize        int    = 4 * pageSize
-		uffdFileName      string = "/tmp/uffd_file.file"
-		guestMemoryPath          = "/tmp/guest_mem"
-		memManagerBaseDir string = "/tmp/manager"
-		vmID              string = "1"
+		uffd            int
+		region          []byte
+		regionSize      int    = 4 * os.Getpagesize()
+		uffdFileName    string = "/tmp/uffd_file.file"
+		guestMemoryPath        = "/tmp/guest_mem"
+		vmID            string = "1"
 	)
 
 	log.SetLevel(log.DebugLevel)
@@ -48,16 +47,14 @@ func TestSingleClient(t *testing.T) {
 
 	uffdFile := os.NewFile(uintptr(uffd), uffdFileName)
 
-	managerCfg := MemoryManagerCfg{
-		MemManagerBaseDir: memManagerBaseDir,
-	}
+	managerCfg := MemoryManagerCfg{}
 	manager := NewMemoryManager(managerCfg)
 
 	stateCfg := SnapshotStateCfg{
-		VMID:              vmID,
-		GuestMemPath:      guestMemoryPath,
-		MemManagerBaseDir: manager.MemManagerBaseDir,
-		GuestMemSize:      regionSize,
+		VMID:         vmID,
+		BaseDir:      "/tmp/snap_base",
+		GuestMemPath: guestMemoryPath,
+		GuestMemSize: regionSize,
 	}
 
 	err = manager.RegisterVM(stateCfg)
@@ -84,9 +81,8 @@ func TestParallelClients(t *testing.T) {
 		FullTimestamp:   true,
 	})
 	var (
-		regionSize        int    = 4 * pageSize
-		memManagerBaseDir string = "/tmp/manager"
-		err               error
+		regionSize int = 4 * os.Getpagesize()
+		err        error
 	)
 
 	log.SetLevel(log.DebugLevel)
@@ -112,9 +108,7 @@ func TestParallelClients(t *testing.T) {
 		clients[i] = initClient(uffd, region, uffdFileName, guestMemoryPath, vmID, uffdFile)
 	}
 
-	managerCfg := MemoryManagerCfg{
-		MemManagerBaseDir: memManagerBaseDir,
-	}
+	managerCfg := MemoryManagerCfg{}
 	manager := NewMemoryManager(managerCfg)
 
 	var wg sync.WaitGroup
@@ -122,10 +116,10 @@ func TestParallelClients(t *testing.T) {
 	for i := 0; i < numParallel; i++ {
 		c := clients[i]
 		stateCfg := SnapshotStateCfg{
-			VMID:              c.vmID,
-			GuestMemPath:      c.guestMemoryPath,
-			MemManagerBaseDir: manager.MemManagerBaseDir,
-			GuestMemSize:      regionSize,
+			VMID:         c.vmID,
+			BaseDir:      "/tmp/snap_base",
+			GuestMemPath: c.guestMemoryPath,
+			GuestMemSize: regionSize,
 		}
 
 		wg.Add(1)
@@ -156,9 +150,9 @@ func TestParallelClients(t *testing.T) {
 
 func prepareGuestMemoryFile(guestFileName string, size int) {
 	toWrite := make([]byte, size)
-	pages := size / pageSize
+	pages := size / os.Getpagesize()
 	for i := 0; i < pages; i++ {
-		for j := pageSize * i; j < (i+1)*pageSize; j++ {
+		for j := os.Getpagesize() * i; j < (i+1)*os.Getpagesize(); j++ {
 			toWrite[j] = byte(48 + i)
 		}
 	}
@@ -170,10 +164,10 @@ func prepareGuestMemoryFile(guestFileName string, size int) {
 }
 
 func validateGuestMemory(guestMem []byte) error {
-	pages := len(guestMem) / pageSize
+	pages := len(guestMem) / os.Getpagesize()
 	for i := 0; i < pages; i++ {
 		log.Debugf("Validating page %d's contents...\n", i)
-		j := pageSize * i
+		j := os.Getpagesize() * i
 		if guestMem[j] != byte(48+i) {
 			return errors.New("Incorrect guest memory")
 		}
