@@ -62,7 +62,12 @@ func TestMain(m *testing.M) {
 	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
 
-	orch = ctriface.NewOrchestrator("devmapper", ctriface.WithTestModeOn(true), ctriface.WithSnapshots(*isSnapshotsEnabledTest), ctriface.WithUPF(*isUPFEnabledTest))
+	orch = ctriface.NewOrchestrator(
+		"devmapper",
+		ctriface.WithTestModeOn(true),
+		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
+		ctriface.WithUPF(*isUPFEnabledTest),
+	)
 
 	ret := m.Run()
 

@@ -2,9 +2,6 @@ module github.com/ustiugov/fccd-orchestrator/memory/manager
 
 go 1.14
 
-// Workaround for github.com/containerd/containerd issue #3031
-replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
-
 require (
 	github.com/Microsoft/hcsshim v0.8.9 // indirect
 	github.com/containerd/containerd v1.3.6
@@ -28,3 +25,6 @@ require (
 	golang.org/x/sys v0.0.0-20200805065543-0cf7623e9dbd
 	google.golang.org/grpc v1.31.0 // indirect
 )
+
+// Workaround for github.com/containerd/containerd issue #3031
+replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
