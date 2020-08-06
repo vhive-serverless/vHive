@@ -102,7 +102,7 @@ func main() {
 		*snapshotter,
 		ctriface.WithTestModeOn(testModeOn),
 		ctriface.WithSnapshots(*isSnapshotsEnabled),
-		ctriface.WithUPFEnabled(*isUPFEnabled),
+		ctriface.WithUPF(*isUPFEnabled),
 	)
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
