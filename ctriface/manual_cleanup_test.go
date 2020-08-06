@@ -7,12 +7,14 @@ import (
 	"sync"
 	"testing"
 	"time"
-
+	"flag"
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
+
+var isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 
 func TestSnapLoad(t *testing.T) {
 	// Need to clean up manually after this test because StopVM does not
@@ -31,7 +33,7 @@ func TestSnapLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	vmID := "1"
 
@@ -77,7 +79,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	vmID := "3"
 
@@ -138,7 +140,7 @@ func TestParallelSnapLoad(t *testing.T) {
 	vmIDBase := 6
 	imageName := "ustiugov/helloworld:runner_workload"
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	// Pull image
 	_, err := orch.getImage(ctx, imageName)
@@ -197,7 +199,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	vmIDBase := 11
 	imageName := "ustiugov/helloworld:runner_workload"
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	// Pull image
 	_, err := orch.getImage(ctx, imageName)
