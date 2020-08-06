@@ -74,7 +74,7 @@ func TestSingleClient(t *testing.T) {
 }
 
 func TestParallelClients(t *testing.T) {
-	numParallel := 10
+	numParallel := 1000
 
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
