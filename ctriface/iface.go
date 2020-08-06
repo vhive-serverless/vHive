@@ -304,17 +304,21 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 	vm.FuncClient = &funcClient
 	startVMMetric.MetricMap[metrics.ConnectFuncClient] = metrics.ToUS(time.Since(tStart))
 
+	if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
+		logger.Error("Failed to create VM base dir")
+		return "failed to create VM base dir", startVMMetric, err
+	}
 	if o.GetUPFEnabled() {
 		logger.Debug("Registering VM with the memory manager")
 
 		stateCfg := manager.SnapshotStateCfg{
-			VMID:              vmID,
-			GuestMemPath:      o.getMemoryFile(vmID),
-			MemManagerBaseDir: o.memoryManager.MemManagerBaseDir,
-			GuestMemSize:      int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsRecordMode:      o.isReplayMode,
-			VMMStatePath:      o.getSnapshotFile(vmID),
-			InstanceSockAddr:  resp.UPFSockPath,
+			VMID:             vmID,
+			GuestMemPath:     o.getMemoryFile(vmID),
+			BaseDir:          o.getVMBaseDir(vmID),
+			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			IsRecordMode:     o.isReplayMode,
+			VMMStatePath:     o.getSnapshotFile(vmID),
+			InstanceSockAddr: resp.UPFSockPath,
 		}
 		o.memoryManager.RegisterVM(stateCfg)
 	}
@@ -685,9 +689,13 @@ func (o *Orchestrator) StopSingleVMOnly(ctx context.Context, vmID string) (strin
 }
 
 func (o *Orchestrator) getSnapshotFile(vmID string) string {
-	return filepath.Join(o.snapshotsDir, "snap_file_"+vmID)
+	return filepath.Join(o.getVMBaseDir(vmID), "snap_file")
 }
 
 func (o *Orchestrator) getMemoryFile(vmID string) string {
-	return filepath.Join(o.snapshotsDir, "mem_file_"+vmID)
+	return filepath.Join(o.getVMBaseDir(vmID), "mem_file")
+}
+
+func (o *Orchestrator) getVMBaseDir(vmID string) string {
+	return filepath.Join(o.snapshotsDir, vmID)
 }
