@@ -50,9 +50,10 @@ var (
 	orch     *ctriface.Orchestrator
 	funcPool *FuncPool
 
-	isSaveMemory    *bool
-	servedThreshold *uint64
-	pinnedFuncNum   *int
+	isSaveMemory       *bool
+	isSnapshotsEnabled *bool
+	servedThreshold    *uint64
+	pinnedFuncNum      *int
 )
 
 func main() {
@@ -64,6 +65,7 @@ func main() {
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
+	isSnapshotsEnabled = flag.Bool("snapshots", false, "Enable snapshots")
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 
@@ -94,7 +96,7 @@ func main() {
 
 	testModeOn := false
 
-	orch = ctriface.NewOrchestrator(*snapshotter, ctriface.WithTestModeOn(testModeOn), ctriface.WithSnapshots(true))
+	orch = ctriface.NewOrchestrator(*snapshotter, ctriface.WithTestModeOn(testModeOn), ctriface.WithSnapshots(*isSnapshotsEnabled))
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 

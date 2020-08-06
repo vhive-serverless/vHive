@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"strconv"
 	"sync"
@@ -40,6 +41,9 @@ const (
 	isSaveMemoryConst = true
 )
 
+var isUPFEnabledTest = flag.Bool("upfTest", false, "Set UPF enabled")
+var isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Set Snapshots Enabled")
+
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
 
@@ -53,23 +57,16 @@ func TestMain(m *testing.M) {
 
 	log.SetLevel(log.InfoLevel)
 
-	var envSetting = os.Getenv("GOORCHSNAPSHOTS")
-	if envSetting == "" {
-		envSetting = "false"
-	}
+	flag.Parse()
 
-	log.Infof("Orchestrator snapshots enabled: %s", envSetting)
+	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
+	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
 
-	envBool, err := strconv.ParseBool(envSetting)
-	if err != nil {
-		log.Panic("Invalid snapshots mode environment variable")
-	}
-
-	orch = ctriface.NewOrchestrator("devmapper", ctriface.WithTestModeOn(true), ctriface.WithSnapshots(envBool))
+	orch = ctriface.NewOrchestrator("devmapper", ctriface.WithTestModeOn(true), ctriface.WithSnapshots(*isSnapshotsEnabledTest), ctriface.WithUPF(*isUPFEnabledTest))
 
 	ret := m.Run()
 
-	err = orch.StopActiveVMs()
+	err := orch.StopActiveVMs()
 	if err != nil {
 		log.Printf("Failed to stop VMs, err: %v\n", err)
 	}
