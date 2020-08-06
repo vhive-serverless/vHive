@@ -71,8 +71,8 @@ func main() {
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 
-	if isUPFEnabled && !isSnapshotsEnabled {
-		log.Error("User-level page faults not supported without snapshots")
+	if *isUPFEnabled && !*isSnapshotsEnabled {
+		log.Error("User-level page faults are not supported without snapshots")
 		return
 	}
 
