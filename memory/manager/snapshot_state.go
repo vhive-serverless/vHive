@@ -22,7 +22,7 @@ import (
 type SnapshotStateCfg struct {
 	VMID                                         string
 	VMMStatePath, GuestMemPath, InstanceSockAddr string
-	MemManagerBaseDir                            string // base directory where the memory manager stores data
+	BaseDir                                      string // base directory for the instance
 	IsRecordMode                                 bool
 	GuestMemSize                                 int
 }
@@ -33,7 +33,6 @@ type SnapshotState struct {
 	SnapshotStateCfg
 	startAddressOnce *sync.Once // to check if start address has been initialized
 	startAddress     uint64
-	baseDir          string
 	userFaultFD      *os.File
 	trace            *Trace
 	epfd             int
@@ -60,8 +59,6 @@ type SnapshotState struct {
 func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	s := new(SnapshotState)
 	s.SnapshotStateCfg = cfg
-
-	s.createDir()
 
 	s.trace = initTrace(s.getTraceFile())
 
@@ -100,16 +97,8 @@ func (s *SnapshotState) getUFFD() error {
 	}
 }
 
-func (s *SnapshotState) createDir() {
-	path := filepath.Join(s.MemManagerBaseDir, s.VMID)
-	if err := os.MkdirAll(path, 0777); err != nil {
-		log.Fatalf("Failed to create snapshot state dir for VM %s", s.VMID)
-	}
-	s.baseDir = path
-}
-
 func (s *SnapshotState) getTraceFile() string {
-	return filepath.Join(s.baseDir, "trace_"+s.VMID)
+	return filepath.Join(s.BaseDir, "trace")
 }
 
 func (s *SnapshotState) mapGuestMemory() error {
@@ -209,7 +198,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	offset := address - s.startAddress
 
 	src := uint64(uintptr(unsafe.Pointer(&s.guestMem[offset])))
-	dst := uint64(int64(address) & ^(int64(pageSize) - 1))
+	dst := uint64(int64(address) & ^(int64(os.Getpagesize()) - 1))
 	mode := uint64(0)
 
 	return installRegion(fd, src, dst, mode, 1)
