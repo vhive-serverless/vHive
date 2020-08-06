@@ -27,9 +27,7 @@ type MemoryManagerCfg struct {
 type MemoryManager struct {
 	sync.Mutex
 	MemoryManagerCfg
-	inactive      map[string]*SnapshotState
-	activeFdState map[int]*SnapshotState // indexed by FD
-	activeVMFD    map[string]int         // Indexed by vmID
+	instances map[string]*SnapshotState // Indexed by vmID
 }
 
 // NewMemoryManager Initializes a new memory manager
@@ -37,10 +35,7 @@ func NewMemoryManager(cfg MemoryManagerCfg) *MemoryManager {
 	log.Debug("Initializing the memory manager")
 
 	m := new(MemoryManager)
-	m.inactive = make(map[string]*SnapshotState)
-	m.activeFdState = make(map[int]*SnapshotState)
-	m.activeVMFD = make(map[string]int)
-
+	m.instances = make(map[string]*SnapshotState)
 	m.MemoryManagerCfg = cfg
 
 	return m
@@ -57,19 +52,14 @@ func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
 
 	logger.Debug("Registering the VM with the memory manager")
 
-	if _, ok := m.inactive[vmID]; ok {
-		logger.Error("VM already registered the memory manager")
-		return errors.New("VM exists in the memory manager")
-	}
-
-	if _, ok := m.activeVMFD[vmID]; ok {
-		logger.Error("VM already active in the memory manager")
-		return errors.New("VM already active in the memory manager")
+	if _, ok := m.instances[vmID]; ok {
+		logger.Error("VM already registered with the memory manager")
+		return errors.New("VM already registered with the memory manager")
 	}
 
 	state := NewSnapshotState(cfg)
 
-	m.inactive[vmID] = state
+	m.instances[vmID] = state
 
 	return nil
 }
@@ -83,12 +73,12 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 
 	logger.Debug("Deregistering VM from the memory manager")
 
-	if _, ok := m.inactive[vmID]; !ok {
-		logger.Error("VM is not register or is still active in the memory manager")
-		return errors.New("VM is not register or is still active in the memory manager")
+	if _, ok := m.instances[vmID]; !ok {
+		logger.Error("VM is not registered with the memory manager")
+		return errors.New("VM is not registered with the memory manager")
 	}
 
-	delete(m.inactive, vmID)
+	delete(m.instances, vmID)
 
 	return nil
 }
@@ -101,7 +91,7 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
-	logger.Debug("Adding instance to the memory manager")
+	logger.Debug("Activating instance in the memory manager")
 
 	var (
 		event   syscall.EpollEvent
@@ -111,16 +101,18 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		readyCh chan int = make(chan int)
 	)
 
-	state, ok = m.inactive[vmID]
+	state, ok = m.instances[vmID]
 	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
 
-	if _, ok = m.activeVMFD[vmID]; ok {
-		logger.Error("VM exists in the memory manager")
-		return errors.New("VM exists in the memory manager")
+	if state.isActive {
+		logger.Error("VM already active")
+		return errors.New("VM already active")
 	}
+	state.isActive = true
+	state.isEverActivated = true
 
 	if err := state.mapGuestMemory(); err != nil {
 		logger.Error("Failed to map guest memory")
@@ -136,13 +128,10 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		state.userFaultFD = userFaultFDFile
 	}
 
-	state.isEverActivated = true
 	state.startAddressOnce = new(sync.Once)
 	state.quitCh = make(chan int)
 
 	fdInt = int(state.userFaultFD.Fd())
-
-	m.activate(vmID, fdInt, state)
 
 	event.Events = syscall.EPOLLIN
 	event.Fd = int32(fdInt)
@@ -172,33 +161,28 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
-	logger.Debug("Removing instance from the memory manager")
+	logger.Debug("Deactivating instance from the memory manager")
 
 	var (
 		state *SnapshotState
-		fdInt int
 		ok    bool
 	)
 
-	if state, ok := m.inactive[vmID]; ok {
-		if !state.isEverActivated {
-			return nil
-		}
+	state, ok = m.instances[vmID]
+	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
 
-	fdInt, ok = m.activeVMFD[vmID]
-	if !ok {
-		logger.Error("Failed to find fd")
-		return errors.New("Failed to find fd")
+	if !state.isEverActivated {
+		return nil
 	}
 
-	state, ok = m.activeFdState[fdInt]
-	if !ok {
-		logger.Error("Failed to find snapshot state")
-		return errors.New("Failed to find snapshot state")
+	if !state.isActive {
+		logger.Error("VM not activated")
+		return errors.New("VM not activated")
 	}
+	state.isActive = false
 
 	close(state.quitCh)
 
@@ -209,21 +193,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	state.userFaultFD.Close()
 
-	m.deactivate(vmID, state)
-
 	return nil
-}
-
-func (m *MemoryManager) activate(vmID string, fd int, state *SnapshotState) {
-	delete(m.inactive, vmID)
-	m.activeVMFD[vmID] = fd
-	m.activeFdState[fd] = state
-}
-
-func (m *MemoryManager) deactivate(vmID string, state *SnapshotState) {
-	delete(m.activeFdState, m.activeVMFD[vmID])
-	delete(m.activeVMFD, vmID)
-	m.inactive[vmID] = state
 }
 
 // FetchState Fetches the working set file (or the whole guest memory) and/or the VMM state file
