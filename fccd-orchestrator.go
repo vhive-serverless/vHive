@@ -66,10 +66,15 @@ func main() {
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
-	isSnapshotsEnabled = flag.Bool("snapshots", false, "Enable snapshots")
-	isUPFEnabled = flag.Bool("upf", false, "Enable UPF")
+	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
+	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
+
+	if isUPFEnabled && !isSnapshotsEnabled {
+		log.Error("User-level page faults not supported without snapshots")
+		return
+	}
 
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
