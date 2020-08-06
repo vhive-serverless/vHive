@@ -104,7 +104,7 @@ func (s *SnapshotState) getTraceFile() string {
 }
 
 func (s *SnapshotState) mapGuestMemory() error {
-	fd, err := os.OpenFile(s.GuestMemPath, os.O_RDONLY, 0777)
+	fd, err := os.OpenFile(s.GuestMemPath, os.O_RDONLY, 0444)
 	if err != nil {
 		log.Errorf("Failed to open guest memory file: %v", err)
 		return err
