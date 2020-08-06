@@ -26,7 +26,7 @@ func TestPauseSnapResume(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
@@ -69,7 +69,7 @@ func TestStartStopSerial(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	vmID := "5"
 
@@ -97,7 +97,7 @@ func TestPauseResumeSerial(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	vmID := "6"
 
@@ -132,7 +132,7 @@ func TestStartStopParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	{
 		var vmGroup sync.WaitGroup
@@ -181,7 +181,7 @@ func TestPauseResumeParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	{
 		var vmGroup sync.WaitGroup
