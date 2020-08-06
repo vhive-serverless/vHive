@@ -51,9 +51,9 @@ import (
 	_ "google.golang.org/grpc/status" //tmp
 
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
+	"github.com/ustiugov/fccd-orchestrator/memory/manager"
 	"github.com/ustiugov/fccd-orchestrator/metrics"
 	"github.com/ustiugov/fccd-orchestrator/misc"
-	"github.com/ustiugov/fccd-orchestrator/memory/manager"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 
@@ -76,7 +76,7 @@ type Orchestrator struct {
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
-	isReplayMode bool
+	isReplayMode     bool
 	snapshotsDir     string
 
 	memoryManager *manager.MemoryManager
@@ -102,7 +102,7 @@ func NewOrchestrator(snapshotter string, opts ...OrchestratorOption) *Orchestrat
 		}
 	}
 
-	if err := os.MkdirAll(o.snapshotsDir, 0666); err != nil {
+	if err := os.MkdirAll(o.snapshotsDir, 0777); err != nil {
 		log.Panicf("Failed to create snapshots dir %s", o.snapshotsDir)
 	}
 
@@ -312,13 +312,12 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 			GuestMemPath:      o.getMemoryFile(vmID),
 			MemManagerBaseDir: o.memoryManager.MemManagerBaseDir,
 			GuestMemSize:      int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsRecordMode: o.isReplayMode,
-			VMMStatePath : o.getSnapshotFile(vmID),
-			InstanceSockAddr : resp.UPFSockPath,
+			IsRecordMode:      o.isReplayMode,
+			VMMStatePath:      o.getSnapshotFile(vmID),
+			InstanceSockAddr:  resp.UPFSockPath,
 		}
 		o.memoryManager.RegisterVM(stateCfg)
 	}
-	
 
 	logger.Debug("Successfully started a VM")
 
@@ -578,12 +577,12 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) (string,
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *metrics.Metric, error) {
 	var (
-		loadSnapshotMetric *metrics.Metric = metrics.NewMetric()
-		tStart             time.Time
-		snapPath string = o.getSnapshotFile(vmID)
-		memPath  string = o.getMemoryFile(vmID)
+		loadSnapshotMetric      *metrics.Metric = metrics.NewMetric()
+		tStart                  time.Time
+		snapPath                string = o.getSnapshotFile(vmID)
+		memPath                 string = o.getMemoryFile(vmID)
 		loadErr, addInstanceErr error
-		loadDone chan int = make(chan int)
+		loadDone                chan int = make(chan int)
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -615,7 +614,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 	}
 
 	<-loadDone
-	
+
 	if loadErr != nil || addInstanceErr != nil {
 		multierr := multierror.Of(loadErr, addInstanceErr)
 		return "Failed to load snapshot of VM " + vmID, loadSnapshotMetric, multierr
@@ -640,7 +639,7 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) (string, error)
 		if err := o.memoryManager.Deactivate(vmID); err != nil {
 			logger.Error("Failed to deactivate VM in the memory manager")
 			return "", err
-		}	
+		}
 	}
 
 	return "VM " + vmID + " offloaded successfully", nil

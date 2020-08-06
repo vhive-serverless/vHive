@@ -2,16 +2,16 @@ package ctriface
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"sync"
-	"testing"
-	"time"
 	"flag"
+	"fmt"
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"os"
+	"sync"
+	"testing"
+	"time"
 )
 
 var isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
