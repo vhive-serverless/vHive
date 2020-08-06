@@ -2,12 +2,12 @@ package ctriface
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"sync"
 	"testing"
 	"time"
-	"flag"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
