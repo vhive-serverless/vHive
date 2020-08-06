@@ -41,8 +41,8 @@ const (
 	isSaveMemoryConst = true
 )
 
-var isUPFEnabledTest = flag.Bool("upfTest", false, "Set UPF enabled")
-var isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Set Snapshots Enabled")
+var isUPFEnabledTest = flag.Bool("upfTest", false, "Enable user-level page faults guest memory management")
+var isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
 
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
