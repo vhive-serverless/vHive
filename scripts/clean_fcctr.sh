@@ -13,16 +13,12 @@ sudo iptables -t nat -F
 echo Deleting veth* devices created by CNI
 cat /proc/net/dev | grep veth | cut -d" " -f1| cut -d":" -f1 | while read in; do sudo ip link delete "$in"; done
 
-for i in `seq 0 28`; do sudo ip link delete ${i}_tap; done
-for i in `seq 0 28`; do sudo ip link delete ${i}_0_tap; done
-for i in `seq 100 105`; do sudo ip link delete ${i}_0_tap; done
-sudo ip link delete 200_0_tap
-sudo ip link delete 200_1_tap
-sudo ip link delete 200_2_tap
+ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
+ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 sudo ip link delete br0
 sudo ip link delete br1
-sudo ip link delete plr_fnc_0_tap
-sudo ip link delete not_cld_0_tap
+
+for i in `seq 0 100`; do sudo ip link delete ${i}_0_tap  2>1  1>/dev/null; done
 
 echo Cleaning in /var/lib/cni/ non-network
 for d in `find /var/lib/cni/ -mindepth 1 -maxdepth 1  -type d | grep -v networks`; do
