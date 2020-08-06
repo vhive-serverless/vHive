@@ -45,6 +45,8 @@ type SnapshotState struct {
 	// to indicate whether the instance has even been activated. this is to
 	// get around cases where offload is called for the first time
 	isEverActivated bool
+	// for sanity checking on deactivate/activate
+	isActive bool
 
 	isWSCopy     bool
 	isReplayDone bool
@@ -145,9 +147,9 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 			logger.Debug("Handler received a signal to quit")
 			return
 		default:
-			nevents, e := syscall.EpollWait(s.epfd, events[:], -1)
-			if e != nil {
-				logger.Fatalf("epoll_wait: %v", e)
+			nevents, err := syscall.EpollWait(s.epfd, events[:], -1)
+			if err != nil {
+				logger.Fatalf("epoll_wait: %v", err)
 				break
 			}
 
