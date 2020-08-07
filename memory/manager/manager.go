@@ -9,13 +9,14 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"golang.org/x/sys/unix"
-	"gonum.org/v1/gonum/stat"
 	"os"
 	"strconv"
 	"sync"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
+	"gonum.org/v1/gonum/stat"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -249,16 +250,17 @@ func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath strin
 	reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
 	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
 
-	nums := []float64{
-		totalMean,
-		totalStd,
-		reusedMean,
-		reusedStd,
-		uniqueMean,
-		uniqueStd,
+	stats := []string{
+		functionName,
+		strconv.Itoa(int(totalMean)),
+		fmt.Sprintf("%.1f", totalStd),
+		strconv.Itoa(int(reusedMean)),
+		fmt.Sprintf("%.1f", reusedStd),
+		strconv.Itoa(int(uniqueMean)),
+		fmt.Sprintf("%.1f", uniqueStd),
 	}
 
-	csvFile, err := os.Create(metricsOutFilePath)
+	csvFile, err := os.OpenFile(metricsOutFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Error("Failed to create csv file for writing stats")
 		return err
@@ -268,21 +270,9 @@ func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath strin
 	writer := csv.NewWriter(csvFile)
 	defer writer.Flush()
 
-	err = writer.Write([]string{
-		functionName,
-	})
-	if err != nil {
+	if err := writer.Write(stats); err != nil {
 		log.Fatalf("Failed to write to csv file")
 		return err
-	}
-
-	for _, num := range nums {
-		err := writer.Write([]string{
-			strconv.FormatFloat(num, 'E', -1, 64)})
-		if err != nil {
-			log.Fatalf("Failed to write to csv file")
-			return err
-		}
 	}
 
 	return nil

@@ -309,6 +309,57 @@ func TestBenchParallelServeNoCache(t *testing.T) {
 	}
 }
 
+func TestBenchUPFStats(t *testing.T) {
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+		isSyncOffload bool = true
+	)
+
+	images := getAllImages()
+	benchCount := 10
+	vmID := 0
+
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+
+	for funcName, imageName := range images {
+		vmIDString := strconv.Itoa(vmID)
+
+		// Pull image
+		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+		// -----------------------------------------------------------------------
+
+		// Record
+		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
+
+		message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+
+		// Replay and gather stats
+		for i := 0; i < benchCount; i++ {
+			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+			require.NoError(t, err, "Function returned error, "+message)
+		}
+
+		vmID++
+
+		outFileName := "/tmp/upfStat.csv"
+		err = funcPool.DumpUPFStats(vmIDString, imageName, funcName, outFileName)
+		require.NoError(t, err, "Failed to dump stats for"+funcName)
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ////////////////////////// Auxialiary functions below /////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -396,56 +447,5 @@ func appendMemFootprint(outFileName string, memFootprint float64) {
 	defer f.Close()
 	if _, err := f.WriteString(fmt.Sprintf("MemFootprint\t%12.1f\n", memFootprint)); err != nil {
 		log.Println(err)
-	}
-}
-
-func TestBenchUPFStats(t *testing.T) {
-	var (
-		servedTh      uint64
-		pinnedFuncNum int
-		isSyncOffload bool = true
-	)
-
-	images := getAllImages()
-	benchCount := 10
-	vmID := 0
-
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
-
-	for funcName, imageName := range images {
-		vmIDString := strconv.Itoa(vmID)
-
-		// Pull image
-		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-		// -----------------------------------------------------------------------
-
-		// Record
-		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
-
-		message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-
-		// Replay and gather stats
-		for i := 0; i < benchCount; i++ {
-			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-			require.NoError(t, err, "Function returned error")
-			require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-			require.NoError(t, err, "Function returned error, "+message)
-		}
-
-		vmID++
-
-		outFileName := "/tmp/upfStat_" + funcName + ".csv"
-		err = funcPool.DumpUPFStats(vmIDString, imageName, funcName, outFileName)
-		require.NoError(t, err, "Failed to dump stats for"+funcName)
 	}
 }
