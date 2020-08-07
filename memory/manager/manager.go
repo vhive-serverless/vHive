@@ -175,24 +175,20 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		ok    bool
 	)
 
-	logger.Debug("Checking presence")
 	state, ok = m.instances[vmID]
 	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
-	logger.Debug("Checking ever active")
 	if !state.isEverActivated {
 		return nil
 	}
-	logger.Debug("Checking active")
 	if !state.isActive {
 		logger.Error("VM not activated")
 		return errors.New("VM not activated")
 	}
 
 	state.quitCh <- 0
-	logger.Debug("Munmappings")
 	if err := state.unmapGuestMemory(); err != nil {
 		logger.Error("Failed to munmap guest memory")
 		return err
@@ -211,7 +207,6 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 	state.isRecordDone = true
 	state.isActive = false
 
-	logger.Debug("Deactivated")
 	return nil
 }
 
