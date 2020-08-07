@@ -252,11 +252,12 @@ func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath strin
 
 	stats := []string{
 		functionName,
-		strconv.Itoa(int(totalMean)),
+		strconv.Itoa(len(state.trace.trace)), // number of records (i.e., offsets)
+		strconv.Itoa(int(totalMean)),         // number of pages served
 		fmt.Sprintf("%.1f", totalStd),
-		strconv.Itoa(int(reusedMean)),
+		strconv.Itoa(int(reusedMean)), // number of pages found in the trace
 		fmt.Sprintf("%.1f", reusedStd),
-		strconv.Itoa(int(uniqueMean)),
+		strconv.Itoa(int(uniqueMean)), // number of pages not found in the trace
 		fmt.Sprintf("%.1f", uniqueStd),
 	}
 
