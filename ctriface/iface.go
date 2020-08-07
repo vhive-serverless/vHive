@@ -634,16 +634,16 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) (string, error)
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-	if _, err := o.fcClient.Offload(ctx, &proto.OffloadRequest{VMID: vmID}); err != nil {
-		logger.Warn("failed to offload the VM: ", err)
-		return "Offloading VM " + vmID + " failed", err
-	}
-
 	if o.GetUPFEnabled() {
 		if err := o.memoryManager.Deactivate(vmID); err != nil {
 			logger.Error("Failed to deactivate VM in the memory manager")
 			return "", err
 		}
+	}
+
+	if _, err := o.fcClient.Offload(ctx, &proto.OffloadRequest{VMID: vmID}); err != nil {
+		logger.Warn("failed to offload the VM: ", err)
+		return "Offloading VM " + vmID + " failed", err
 	}
 
 	return "VM " + vmID + " offloaded successfully", nil
