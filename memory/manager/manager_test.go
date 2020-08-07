@@ -5,16 +5,16 @@ import (
 
 	"io/ioutil"
 
-	"errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/sys/unix"
-	"testing"
+
+	"errors"
 )
 
+/*
 func TestSingleClient(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
 	})
 	var (
 		uffd            int
@@ -62,14 +62,10 @@ func TestSingleClient(t *testing.T) {
 	err = manager.Deactivate(vmID)
 	require.NoError(t, err, "Failed to remove intance")
 
-	err = manager.GetVMStats(vmID, "asd", "/tmp/stat.csv")
-	require.NoError(t, err, "Failed to get stats")
-
 	err = manager.DeregisterVM(vmID)
 	require.NoError(t, err, "Failed to deregister vm")
 }
 
-/*
 func TestParallelClients(t *testing.T) {
 	numParallel := 1000
 
