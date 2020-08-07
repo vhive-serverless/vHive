@@ -78,6 +78,7 @@ type Orchestrator struct {
 	isUPFEnabled     bool
 	isReplayMode     bool
 	snapshotsDir     string
+	isMetricsMode    bool
 
 	memoryManager *manager.MemoryManager
 }
@@ -110,6 +111,7 @@ func NewOrchestrator(snapshotter string, opts ...OrchestratorOption) *Orchestrat
 		// TODO: ADD memory manager directory as an option as well
 		managerCfg := manager.MemoryManagerCfg{
 			RecordReplayModeEnabled: o.isReplayMode,
+			MetricsModeOn:           o.isMetricsMode,
 		}
 		o.memoryManager = manager.NewMemoryManager(managerCfg)
 	}

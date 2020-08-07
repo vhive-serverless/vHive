@@ -64,3 +64,10 @@ func WithReplayMode(isReplayMode bool) OrchestratorOption {
 		o.isReplayMode = isReplayMode
 	}
 }
+
+// WithMetricsMode Sets the metrics mode
+func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.isMetricsMode = isMetricsMode
+	}
+}
