@@ -124,7 +124,7 @@ func (t *Trace) containsRecord(rec Record) bool {
 		if rec.offset == trRec.offset {
 			return true
 		}
-		if rec.offset > trRec.offset {
+		if rec.offset < trRec.offset {
 			return false
 		}
 	}
