@@ -216,8 +216,8 @@ func (m *MemoryManager) FetchState(vmID string) (err error) {
 	return nil
 }
 
-// GetVMStats Saves the per VM stats
-func (m *MemoryManager) GetVMStats(vmID, functionName, outFilePath string) (err error) {
+// DumpVMStats Saves the per VM stats
+func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath string) (err error) {
 	m.Lock()
 	defer m.Unlock()
 
@@ -236,7 +236,7 @@ func (m *MemoryManager) GetVMStats(vmID, functionName, outFilePath string) (err 
 		return errors.New("Cannot get stats while VM is active")
 	}
 
-	if !m.MetricsModeOn || state.metricsModeOn {
+	if !m.MetricsModeOn || !state.metricsModeOn {
 		logger.Error("Metrics mode is not on")
 		return errors.New("Metrics mode is not on")
 	}
@@ -252,7 +252,7 @@ func (m *MemoryManager) GetVMStats(vmID, functionName, outFilePath string) (err 
 		reusedStd,
 	}
 
-	csvFile, err := os.Create(outFilePath)
+	csvFile, err := os.Create(metricsOutFilePath)
 	if err != nil {
 		log.Error("Failed to create csv file for writing stats")
 		return err
