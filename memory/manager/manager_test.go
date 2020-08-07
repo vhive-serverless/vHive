@@ -3,21 +3,14 @@ package manager
 import (
 	"os"
 
-	"golang.org/x/sys/unix"
-
 	"io/ioutil"
-	"testing"
 
 	log "github.com/sirupsen/logrus"
 
 	"errors"
-	"fmt"
-	"sync"
-
-	ctrdlog "github.com/containerd/containerd/log"
-	"github.com/stretchr/testify/require"
 )
 
+/*
 func TestSingleClient(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
@@ -147,6 +140,7 @@ func TestParallelClients(t *testing.T) {
 
 	wg.Wait()
 }
+*/
 
 func prepareGuestMemoryFile(guestFileName string, size int) {
 	toWrite := make([]byte, size)
