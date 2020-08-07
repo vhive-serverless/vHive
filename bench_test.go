@@ -445,6 +445,7 @@ func TestBenchUPFStats(t *testing.T) {
 		vmID++
 
 		outFileName := "/tmp/upfStat_" + funcName + ".csv"
-		funcPool.DumpUPFStats(vmIDString, imageName, funcName, outFileName)
+		err = funcPool.DumpUPFStats(vmIDString, imageName, funcName, outFileName)
+		require.NoError(t, err, "Failed to dump stats for"+funcName)
 	}
 }
