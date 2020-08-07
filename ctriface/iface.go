@@ -506,12 +506,12 @@ func (o *Orchestrator) GetUPFEnabled() bool {
 	return o.isUPFEnabled
 }
 
-// GetUPFStats Stores the memory manager's VM stats
-func (o *Orchestrator) GetUPFStats(vmID, functionName, outFilePath string) error {
+// DumpUPFStats Stores the memory manager's VM stats
+func (o *Orchestrator) DumpUPFStats(vmID, functionName, metricsOutFilePath string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received GetUPFStats")
+	logger.Debug("Orchestrator received DumpUPFStats")
 
-	if err := o.memoryManager.GetVMStats(vmID, functionName, outFilePath); err != nil {
+	if err := o.memoryManager.DumpVMStats(vmID, functionName, metricsOutFilePath); err != nil {
 		logger.Error("Failed to get VM UPF stats")
 		return err
 	}
