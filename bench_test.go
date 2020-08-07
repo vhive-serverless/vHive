@@ -324,7 +324,7 @@ func TestBenchUPFStats(t *testing.T) {
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	outFileName := "/tmp/upfStat.csv"
-	csvFile, err := os.OpenFile(outFileName, os.O_CREATE|os.O_WRONLY, 0644)
+	csvFile, err := os.Create(outFileName)
 	require.NoError(t, err, "Failed to open stat file")
 
 	writer := csv.NewWriter(csvFile)
