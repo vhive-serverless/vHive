@@ -4,14 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	ctrdlog "github.com/containerd/containerd/log"
-	"github.com/containerd/containerd/namespaces"
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	ctrdlog "github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/namespaces"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 var isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
