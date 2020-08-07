@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"os/exec"
@@ -322,6 +323,20 @@ func TestBenchUPFStats(t *testing.T) {
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
+	outFileName := "/tmp/upfStat.csv"
+	csvFile, err := os.OpenFile(outFileName, os.O_CREATE|os.O_WRONLY, 0644)
+	require.NoError(t, err, "Failed to open stat file")
+
+	writer := csv.NewWriter(csvFile)
+	statHeader := []string{"FuncName", "Recorded", "Served", "StdDev", "Reused", "StdDev", "Unique", "StdDev"}
+
+	err = writer.Write(statHeader)
+	require.NoError(t, err, "Failed to open stat file")
+
+	writer.Flush()
+
+	csvFile.Close()
+
 	for funcName, imageName := range images {
 		vmIDString := strconv.Itoa(vmID)
 
@@ -354,7 +369,6 @@ func TestBenchUPFStats(t *testing.T) {
 
 		vmID++
 
-		outFileName := "/tmp/upfStat.csv"
 		err = funcPool.DumpUPFStats(vmIDString, imageName, funcName, outFileName)
 		require.NoError(t, err, "Failed to dump stats for"+funcName)
 	}
