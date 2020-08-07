@@ -53,6 +53,7 @@ var (
 	isSaveMemory       *bool
 	isSnapshotsEnabled *bool
 	isUPFEnabled       *bool
+	isMetricsMode      *bool
 	servedThreshold    *uint64
 	pinnedFuncNum      *int
 )
@@ -68,6 +69,7 @@ func main() {
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
 	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
 	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
+	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 
@@ -108,6 +110,7 @@ func main() {
 		ctriface.WithTestModeOn(testModeOn),
 		ctriface.WithSnapshots(*isSnapshotsEnabled),
 		ctriface.WithUPF(*isUPFEnabled),
+		ctriface.WithMetricsMode(*isMetricsMode),
 	)
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
