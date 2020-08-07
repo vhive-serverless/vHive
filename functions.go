@@ -137,11 +137,11 @@ func (p *FuncPool) RemoveInstance(fID, imageName string, isSync bool) (string, e
 	return f.RemoveInstance(isSync)
 }
 
-// GetUPFStats Stores the VM UPF stats in a csv file
-func (p *FuncPool) GetUPFStats(fID, functionName, outFilePath string) error {
+// DumpUPFStats Stores the VM UPF stats in a csv file
+func (p *FuncPool) DumpUPFStats(fID, imageName, functionName, metricsOutFilePath string) error {
 	f := p.getFunction(fID, imageName)
 
-	return f.GetUPFStats(functionName, outFilePath)
+	return f.DumpUPFStats(functionName, metricsOutFilePath)
 }
 
 //////////////////////////////// Function type //////////////////////////////////////////////
@@ -381,9 +381,9 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 	return r, err
 }
 
-// GetUPFStats Stores the VM UPF stats in a csv file
-func (f *Function) GetUPFStats(functionName, outFilePath string) error {
-	return orch.GetUPFStats(f.vmID, functionName, outFilePath)
+// DumpUPFStats Stores the VM UPF stats in a csv file
+func (f *Function) DumpUPFStats(functionName, metricsOutFilePath string) error {
+	return orch.DumpUPFStats(f.vmID, functionName, metricsOutFilePath)
 }
 
 // CreateInstanceSnapshot Creates a snapshot of the instance
