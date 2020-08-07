@@ -184,7 +184,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 	}
 	state.isActive = false
 
-	close(state.quitCh)
+	state.quitCh <- 0
 
 	if err := state.unmapGuestMemory(); err != nil {
 		logger.Error("Failed to munmap guest memory")
