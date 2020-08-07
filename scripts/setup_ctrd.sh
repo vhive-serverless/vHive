@@ -42,7 +42,7 @@ err=""; \
     && echo "WARNING: you are running in a virtual machine. Firecracker is not well tested under nested virtualization."; \
     [ -z "$err" ] && echo "Your system looks ready for Firecracker!" || echo -e "$err"
 
-git clone --recurse-submodules https://github.com/firecracker-microvm/firecracker-containerd
+git clone -b upf_master --recurse-submodules https://github.com/ustiugov/firecracker-containerd
 
 echo Configure firecracker-containerd
 pushd firecracker-containerd > /dev/null
@@ -84,15 +84,9 @@ sudo tee /etc/containerd/firecracker-runtime.json <<EOF
   "firecracker_binary_path": "/usr/local/bin/firecracker",
   "cpu_template": "T2",
   "log_fifo": "fc-logs.fifo",
-  "log_level": "debug",
+  "log_levels": ["debug"],
   "metrics_fifo": "fc-metrics.fifo",
-  "kernel_args": "console=ttyS0 noapic reboot=k panic=1 pci=off nomodules ro systemd.journald.forward_to_console systemd.unit=firecracker.target init=/sbin/overlay-init",
-  "default_network_interfaces": [{
-    "CNIConfig": {
-      "NetworkName": "fcnet",
-      "InterfaceName": "veth0"
-    }
-  }]
+  "kernel_args": "console=ttyS0 noapic reboot=k panic=1 pci=off nomodules ro systemd.journald.forward_to_console systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 }
 EOF
 popd > /dev/null

@@ -7,7 +7,12 @@ go:
   - 1.14.x
 
 env:
+  global:
   - GO111MODULE=on GOPRIVATE=github.com/ustiugov/fccd-orchestrator
+  jobs:
+  - TEST=test-subdirs
+  - TEST=test
+  - TEST=test-man
 
 before_script:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.25.0
@@ -16,10 +21,4 @@ before_script:
 script:
   - go build ./... 
   - golangci-lint run ./...
-  - make test
-    #  - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/memory/manager
-    #  - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/misc
-    #  - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/metrics
-    #  - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/taps
-    #  - make test-subdirs
-    #  - make test-man
+  - make $TEST
