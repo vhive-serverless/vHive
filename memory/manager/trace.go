@@ -22,8 +22,9 @@ type Trace struct {
 	sync.Mutex
 	traceFileName string
 
-	trace   []Record
-	regions map[uint64]int
+	containedOffsets map[uint64]int
+	trace            []Record
+	regions          map[uint64]int
 }
 
 func initTrace(traceFileName string) *Trace {
@@ -31,6 +32,7 @@ func initTrace(traceFileName string) *Trace {
 
 	t.traceFileName = traceFileName
 	t.regions = make(map[uint64]int)
+	t.containedOffsets = make(map[uint64]int)
 	t.trace = make([]Record, 0)
 
 	return t
@@ -42,6 +44,7 @@ func (t *Trace) AppendRecord(r Record) {
 	defer t.Unlock()
 
 	t.trace = append(t.trace, r)
+	t.containedOffsets[r.offset] = 0
 }
 
 // WriteTrace Writes all the records to a file
@@ -118,18 +121,10 @@ func (t *Trace) sortTrace() {
 }
 
 // Search trace for the record with the same offset
-// Assumes sorted trace
 func (t *Trace) containsRecord(rec Record) bool {
-	for _, trRec := range t.trace {
-		if rec.offset == trRec.offset {
-			return true
-		}
-		if rec.offset < trRec.offset {
-			return false
-		}
-	}
+	_, ok := t.containedOffsets[rec.offset]
 
-	return false
+	return ok
 }
 
 // processRegions
