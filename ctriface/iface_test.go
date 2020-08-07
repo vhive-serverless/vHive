@@ -158,6 +158,12 @@ func TestStartStopParallel(t *testing.T) {
 		WithLazyMode(*isLazyMode),
 	)
 
+	imageName := "ustiugov/helloworld:runner_workload"
+
+	// Pull image
+	_, err := orch.getImage(ctx, imageName)
+	require.NoError(t, err, "Failed to pull image "+imageName)
+
 	{
 		var vmGroup sync.WaitGroup
 		for i := 0; i < vmNum; i++ {
@@ -165,7 +171,7 @@ func TestStartStopParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+				message, _, err := orch.StartVM(ctx, vmID, imageName)
 				require.NoError(t, err, "Failed to start VM, "+message)
 			}(i)
 		}
@@ -212,6 +218,12 @@ func TestPauseResumeParallel(t *testing.T) {
 		WithLazyMode(*isLazyMode),
 	)
 
+	imageName := "ustiugov/helloworld:runner_workload"
+
+	// Pull image
+	_, err := orch.getImage(ctx, imageName)
+	require.NoError(t, err, "Failed to pull image "+imageName)
+
 	{
 		var vmGroup sync.WaitGroup
 		for i := 0; i < vmNum; i++ {
@@ -219,7 +231,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+				message, _, err := orch.StartVM(ctx, vmID, imageName)
 				require.NoError(t, err, "Failed to start VM, "+message)
 			}(i)
 		}
