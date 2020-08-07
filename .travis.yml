@@ -18,4 +18,4 @@ script:
   - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/misc
   - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/metrics
   - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/taps
-  - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/memory/manager
+    #  - sudo -E env "PATH=$PATH" go test -v github.com/ustiugov/fccd-orchestrator/memory/manager
