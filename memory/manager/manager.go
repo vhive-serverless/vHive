@@ -199,7 +199,11 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	if state.metricsModeOn && state.isRecordDone {
 		state.totalPFServed = append(state.totalPFServed, float64(state.servedNum))
-		state.uniquePFServed = append(state.uniquePFServed, float64(state.uniqueNum)/float64(state.servedNum))
+		state.uniquePFServed = append(state.uniquePFServed, float64(state.uniqueNum))
+		state.reusedPFServed = append(
+			state.reusedPFServed,
+			float64(state.servedNum-state.uniqueNum),
+		)
 	}
 
 	state.userFaultFD.Close()
@@ -242,14 +246,16 @@ func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath strin
 	}
 
 	totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
-	reusedMean := stat.GeometricMean(state.uniquePFServed, nil)
-	reusedStd := stat.StdDev(state.uniquePFServed, nil)
+	reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
+	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
 
 	nums := []float64{
 		totalMean,
 		totalStd,
 		reusedMean,
 		reusedStd,
+		uniqueMean,
+		uniqueStd,
 	}
 
 	csvFile, err := os.Create(metricsOutFilePath)

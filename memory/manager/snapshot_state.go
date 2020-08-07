@@ -64,6 +64,7 @@ type SnapshotState struct {
 	// Stats
 	totalPFServed  []float64
 	uniquePFServed []float64
+	reusedPFServed []float64
 }
 
 // NewSnapshotState Initializes a snapshot state
@@ -76,6 +77,7 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	if s.metricsModeOn {
 		s.totalPFServed = make([]float64, 0)
 		s.uniquePFServed = make([]float64, 0)
+		s.reusedPFServed = make([]float64, 0)
 	}
 
 	return s
