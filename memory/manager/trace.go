@@ -67,8 +67,6 @@ func (t *Trace) WriteTrace() {
 			log.Fatalf("Failed to write trace: %v", err)
 		}
 	}
-
-	t.processRegions()
 }
 
 // readTrace Reads all the records from a CSV file
@@ -85,36 +83,58 @@ func (t *Trace) readTrace() {
 	}
 
 	for _, line := range lines {
-		offset, err := strconv.ParseUint(line[0], 16, 64)
-		if err != nil {
-			log.Fatalf("Failed to convert string to offset: %v", err)
-		}
-		timestamp, err := strconv.ParseInt(line[1], 10, 64)
-		if err != nil {
-			log.Fatalf("Failed to convert string to timestamp: %v", err)
-		}
-		servedNum, err := strconv.Atoi(line[2])
-		if err != nil {
-			log.Fatalf("Failed to convert string to servedNum: %v", err)
-		}
-
-		rec := Record{
-			offset:    offset,
-			timestamp: timestamp,
-			servedNum: servedNum,
-		}
+		rec := readRecord(line)
 		t.AppendRecord(rec)
 	}
+}
 
-	t.processRegions()
+// readRecord Parses a record from a line
+func readRecord(line []string) Record {
+	offset, err := strconv.ParseUint(line[0], 16, 64)
+	if err != nil {
+		log.Fatalf("Failed to convert string to offset: %v", err)
+	}
+	timestamp, err := strconv.ParseInt(line[1], 10, 64)
+	if err != nil {
+		log.Fatalf("Failed to convert string to timestamp: %v", err)
+	}
+	servedNum, err := strconv.Atoi(line[2])
+	if err != nil {
+		log.Fatalf("Failed to convert string to servedNum: %v", err)
+	}
+
+	rec := Record{
+		offset:    offset,
+		timestamp: timestamp,
+		servedNum: servedNum,
+	}
+	return rec
+}
+
+func (t *Trace) sortTrace() {
+	sort.Slice(t.trace, func(i, j int) bool {
+		return t.trace[i].offset < t.trace[j].offset
+	})
+}
+
+// Search trace for the record with the same offset
+// Assumes sorted trace
+func (t *Trace) containsRecord(rec Record) bool {
+	for _, trRec := range t.trace {
+		if rec.offset == trRec.offset {
+			return true
+		}
+		if rec.offset > trRec.offset {
+			return false
+		}
+	}
+
+	return false
 }
 
 // processRegions
 func (t *Trace) processRegions() {
-
-	sort.Slice(t.trace, func(i, j int) bool {
-		return t.trace[i].offset < t.trace[j].offset
-	})
+	t.sortTrace()
 
 	var last, regionStart uint64
 	for _, rec := range t.trace {

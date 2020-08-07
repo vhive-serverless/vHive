@@ -23,8 +23,10 @@ type SnapshotStateCfg struct {
 	VMID                                         string
 	VMMStatePath, GuestMemPath, InstanceSockAddr string
 	BaseDir                                      string // base directory for the instance
+	MetricsPath                                  string // path to csv file where the metrics should be stored
 	IsRecordMode                                 bool
 	GuestMemSize                                 int
+	metricsModeOn                                bool
 }
 
 // SnapshotState Stores the state of the snapshot
@@ -48,13 +50,20 @@ type SnapshotState struct {
 	// for sanity checking on deactivate/activate
 	isActive bool
 
-	isWSCopy     bool
+	isRecordDone bool
 	isReplayDone bool
 
+	isWSCopy bool
+
 	servedNum int
+	uniqueNum int
 
 	guestMem   []byte
 	workingSet []byte
+
+	// Stats
+	totalPFServed  []float64
+	uniquePFServed []float64
 }
 
 // NewSnapshotState Initializes a snapshot state
@@ -63,6 +72,11 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	s.SnapshotStateCfg = cfg
 
 	s.trace = initTrace(s.getTraceFile())
+
+	if s.metricsModeOn {
+		s.totalPFServed = make([]float64, 0)
+		s.uniquePFServed = make([]float64, 0)
+	}
 
 	return s
 }
@@ -139,7 +153,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	defer syscall.Close(s.epfd)
 
-	close(readyCh)
+	readyCh <- 0
 
 	for {
 		select {
@@ -202,6 +216,23 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	src := uint64(uintptr(unsafe.Pointer(&s.guestMem[offset])))
 	dst := uint64(int64(address) & ^(int64(os.Getpagesize()) - 1))
 	mode := uint64(0)
+
+	if s.metricsModeOn {
+		rec := Record{
+			offset:    offset,
+			servedNum: s.servedNum,
+		}
+
+		if s.isRecordDone {
+			if !s.trace.containsRecord(rec) {
+				s.uniqueNum++
+			}
+		} else {
+			s.trace.AppendRecord(rec)
+		}
+
+		s.servedNum++
+	}
 
 	return installRegion(fd, src, dst, mode, 1)
 }
