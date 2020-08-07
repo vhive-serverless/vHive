@@ -6,14 +6,16 @@ package manager
 import "C"
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"golang.org/x/sys/unix"
+	"gonum.org/v1/gonum/stat"
 	"os"
+	"strconv"
 	"sync"
 	"syscall"
 	"unsafe"
-
-	"golang.org/x/sys/unix"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -21,6 +23,7 @@ import (
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
 	RecordReplayModeEnabled bool
+	MetricsModeOn           bool
 }
 
 // MemoryManager Serves page faults coming from VMs
@@ -57,6 +60,7 @@ func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
 		return errors.New("VM already registered with the memory manager")
 	}
 
+	cfg.metricsModeOn = m.MetricsModeOn
 	state := NewSnapshotState(cfg)
 
 	m.instances[vmID] = state
@@ -111,8 +115,6 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		logger.Error("VM already active")
 		return errors.New("VM already active")
 	}
-	state.isActive = true
-	state.isEverActivated = true
 
 	if err := state.mapGuestMemory(); err != nil {
 		logger.Error("Failed to map guest memory")
@@ -128,7 +130,11 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		state.userFaultFD = userFaultFDFile
 	}
 
+	state.isActive = true
+	state.isEverActivated = true
 	state.startAddressOnce = new(sync.Once)
+	state.servedNum = 0
+	state.uniqueNum = 0
 	state.quitCh = make(chan int)
 
 	fdInt = int(state.userFaultFD.Fd())
@@ -168,37 +174,111 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		ok    bool
 	)
 
+	logger.Debug("Checking presence")
 	state, ok = m.instances[vmID]
 	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
-
+	logger.Debug("Checking ever active")
 	if !state.isEverActivated {
 		return nil
 	}
-
+	logger.Debug("Checking active")
 	if !state.isActive {
 		logger.Error("VM not activated")
 		return errors.New("VM not activated")
 	}
-	state.isActive = false
 
 	state.quitCh <- 0
-
+	logger.Debug("Munmappings")
 	if err := state.unmapGuestMemory(); err != nil {
 		logger.Error("Failed to munmap guest memory")
 		return err
 	}
 
-	state.userFaultFD.Close()
+	if state.metricsModeOn && state.isRecordDone {
+		state.totalPFServed = append(state.totalPFServed, float64(state.servedNum))
+		state.uniquePFServed = append(state.uniquePFServed, float64(state.uniqueNum)/float64(state.servedNum))
+	}
 
+	state.userFaultFD.Close()
+	state.isRecordDone = true
+	state.isActive = false
+
+	logger.Debug("Deactivated")
 	return nil
 }
 
 // FetchState Fetches the working set file (or the whole guest memory) and/or the VMM state file
 func (m *MemoryManager) FetchState(vmID string) (err error) {
 	// NOT IMPLEMENTED
+	return nil
+}
+
+// GetVMStats Saves the per VM stats
+func (m *MemoryManager) GetVMStats(vmID, functionName, outFilePath string) (err error) {
+	m.Lock()
+	defer m.Unlock()
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Gathering stats")
+
+	state, ok := m.instances[vmID]
+	if !ok {
+		logger.Error("VM not registered with the memory manager")
+		return errors.New("VM not registered with the memory manager")
+	}
+
+	if state.isActive {
+		logger.Error("Cannot get stats while VM is active")
+		return errors.New("Cannot get stats while VM is active")
+	}
+
+	if !m.MetricsModeOn || state.metricsModeOn {
+		logger.Error("Metrics mode is not on")
+		return errors.New("Metrics mode is not on")
+	}
+
+	totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
+	reusedMean := stat.GeometricMean(state.uniquePFServed, nil)
+	reusedStd := stat.StdDev(state.uniquePFServed, nil)
+
+	nums := []float64{
+		totalMean,
+		totalStd,
+		reusedMean,
+		reusedStd,
+	}
+
+	csvFile, err := os.Create(outFilePath)
+	if err != nil {
+		log.Error("Failed to create csv file for writing stats")
+		return err
+	}
+	defer csvFile.Close()
+
+	writer := csv.NewWriter(csvFile)
+	defer writer.Flush()
+
+	err = writer.Write([]string{
+		functionName,
+	})
+	if err != nil {
+		log.Fatalf("Failed to write to csv file")
+		return err
+	}
+
+	for _, num := range nums {
+		err := writer.Write([]string{
+			strconv.FormatFloat(num, 'E', -1, 64)})
+		if err != nil {
+			log.Fatalf("Failed to write to csv file")
+			return err
+		}
+	}
+
 	return nil
 }
 

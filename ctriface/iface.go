@@ -506,6 +506,18 @@ func (o *Orchestrator) GetUPFEnabled() bool {
 	return o.isUPFEnabled
 }
 
+// GetUPFStats Stores the memory manager's VM stats
+func (o *Orchestrator) GetUPFStats(vmID, functionName, outFilePath string) error {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received GetUPFStats")
+
+	if err := o.memoryManager.GetVMStats(vmID, functionName, outFilePath); err != nil {
+		logger.Error("Failed to get VM UPF stats")
+		return err
+	}
+	return nil
+}
+
 // PauseVM Pauses a VM
 func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
