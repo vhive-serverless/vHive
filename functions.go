@@ -271,6 +271,16 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 			logger.Panic("Not able to parse error returned ", err)
 		}
 	}
+
+	if orch.GetSnapshotsEnabled() {
+		f.OnceCreateSnapInstance.Do(
+			func() {
+				logger.Debug("First time offloading, need to create a snapshot first")
+				f.CreateInstanceSnapshot()
+				f.isSnapshotReady = true
+			})
+	}
+
 	f.RUnlock()
 
 	if !f.isPinnedInMem && syncID == 0 {
@@ -399,7 +409,13 @@ func (f *Function) CreateInstanceSnapshot() {
 	if err != nil {
 		log.Panic(message, err)
 	}
+
 	message, err = orch.CreateSnapshot(ctx, f.vmID)
+	if err != nil {
+		log.Panic(message, err)
+	}
+
+	message, _, err = orch.ResumeVM(ctx, f.vmID)
 	if err != nil {
 		log.Panic(message, err)
 	}
@@ -408,13 +424,6 @@ func (f *Function) CreateInstanceSnapshot() {
 // OffloadInstance Offloads the instance
 func (f *Function) OffloadInstance() {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
-
-	f.OnceCreateSnapInstance.Do(
-		func() {
-			logger.Debug("First time offloading, need to create a snapshot first")
-			f.CreateInstanceSnapshot()
-			f.isSnapshotReady = true
-		})
 
 	logger.Debug("Offloading instance")
 

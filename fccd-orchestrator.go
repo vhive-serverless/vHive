@@ -162,11 +162,11 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 	imageName := in.GetImage()
 	log.WithFields(log.Fields{"fID": fID, "image": imageName}).Info("Received direct StartVM")
 
-	message, err := funcPool.AddInstance(fID, imageName)
 	tProfile := "not supported anymore"
-	//message, tProfile, err := orch.StartVM(ctx, fID, imageName)
-	if err != nil { // does not return error
-		return &pb.StartVMResp{Message: message, Profile: tProfile}, err
+
+	_, _, err := funcPool.Serve(ctx, fID, imageName, "record")
+	if err != nil {
+		return &pb.StartVMResp{Message: "First serve failed", Profile: tProfile}, err
 	}
 
 	return &pb.StartVMResp{Message: "started VM instance for a function " + fID, Profile: tProfile}, nil
