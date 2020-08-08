@@ -631,6 +631,14 @@ github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200807223246-24cb7
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200807223246-24cb76768b84/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200807230001-66f21a98f3d6 h1:a6a5bGZAnLWwkdmWZmDqOB2OKcfLlf6WhEMIAQgnbvM=
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200807230001-66f21a98f3d6/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808183253-fb3a345e83fb h1:EaimUCxbkvlRs3GrRkhlZxgewRwx5wdb1MQ2WmUrK2E=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808183253-fb3a345e83fb/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808185223-3bb47917da0b h1:7SSJ5eP0qgDzN8fBCyIuU28rkLwmAPnlU8zHQGfR6lk=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808185223-3bb47917da0b/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808204714-b09d4011cf2e h1:VUMUG+7oIfPmzNdIlHNJSdgk0RgplssrX8CD5iqFrak=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808204714-b09d4011cf2e/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808205738-131f5495a25c h1:HaAFbALmE8CLsBki31qYa+rH4vmQtLHUGuuqesyXBd0=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808205738-131f5495a25c/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200722141002-55dbdeb43861 h1:rC47RJSLGILLDcXJ87gPnDZ/3DlfYcSWnAge3z8kQq8=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200722141002-55dbdeb43861/go.mod h1:veO20AvWGKpDk3iD0IWJpfEnvF8PJVMK38n3SOWKKR0=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200723085111-a9d697412510 h1:2F3Bp/P7C2UMKU+vakjEW/++E2yCntucHKNiRxcxQOE=

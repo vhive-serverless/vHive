@@ -318,8 +318,9 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 			GuestMemPath:     o.getMemoryFile(vmID),
 			BaseDir:          o.getVMBaseDir(vmID),
 			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsRecordMode:     o.isReplayMode,
+			IsRecordMode:     o.isReplayMode, // FIXME names should match
 			VMMStatePath:     o.getSnapshotFile(vmID),
+			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: resp.UPFSockPath,
 		}
 		o.memoryManager.RegisterVM(stateCfg)
@@ -712,6 +713,10 @@ func (o *Orchestrator) getSnapshotFile(vmID string) string {
 
 func (o *Orchestrator) getMemoryFile(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "mem_file")
+}
+
+func (o *Orchestrator) getWorkingSetFile(vmID string) string {
+	return filepath.Join(o.getVMBaseDir(vmID), "working_set_pages")
 }
 
 func (o *Orchestrator) getVMBaseDir(vmID string) string {
