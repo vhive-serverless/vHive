@@ -16,6 +16,8 @@ protobuf:
 clean:
 	rm proto/orchestrator.pb.go
 
+test-all: test-subdirs test-orch
+
 test-orch: test test-man
 
 test:
