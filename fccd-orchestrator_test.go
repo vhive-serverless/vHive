@@ -41,9 +41,11 @@ const (
 	isSaveMemoryConst = true
 )
 
-var isUPFEnabledTest = flag.Bool("upfTest", false, "Enable user-level page faults guest memory management")
-var isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
-var isMetricsModeTest = flag.Bool("metricsTest", false, "Calculate UPF metrics")
+var (
+	isUPFEnabledTest       = flag.Bool("upfTest", false, "Enable user-level page faults guest memory management")
+	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
+	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
+)
 
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
