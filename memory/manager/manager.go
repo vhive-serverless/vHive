@@ -1,10 +1,5 @@
 package manager
 
-/*
-#include "user_page_faults.h"
-*/
-import "C"
-
 import (
 	"encoding/csv"
 	"errors"
@@ -13,9 +8,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
-	"unsafe"
 
-	"golang.org/x/sys/unix"
 	"gonum.org/v1/gonum/stat"
 
 	log "github.com/sirupsen/logrus"
@@ -133,7 +126,7 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 
 	state.isActive = true
 	state.isEverActivated = true
-	state.startAddressOnce = new(sync.Once)
+	state.FirstPageFaultOnce = new(sync.Once)
 	state.servedNum = 0
 	state.uniqueNum = 0
 	state.quitCh = make(chan int)
@@ -204,15 +197,13 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 	}
 
 	state.userFaultFD.Close()
+	if !state.isRecordDone {
+		state.trace.PrepareReplay(state.GuestMemPath, state.WorkingSetPath)
+	}
+
 	state.isRecordDone = true
 	state.isActive = false
 
-	return nil
-}
-
-// FetchState Fetches the working set file (or the whole guest memory) and/or the VMM state file
-func (m *MemoryManager) FetchState(vmID string) (err error) {
-	// NOT IMPLEMENTED
 	return nil
 }
 
@@ -272,50 +263,4 @@ func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath strin
 	}
 
 	return nil
-}
-
-func installRegion(fd int, src, dst, mode, len uint64) error {
-	cUC := C.struct_uffdio_copy{
-		mode: C.ulonglong(mode),
-		copy: 0,
-		src:  C.ulonglong(src),
-		dst:  C.ulonglong(dst),
-		len:  C.ulonglong(uint64(os.Getpagesize()) * len),
-	}
-
-	err := ioctl(uintptr(fd), int(C.const_UFFDIO_COPY), unsafe.Pointer(&cUC))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
-	_, _, errno := unix.Syscall(
-		unix.SYS_IOCTL,
-		fd,
-		uintptr(request),
-		// Note that the conversion from unsafe.Pointer to uintptr _must_
-		// occur in the call expression.  See the package unsafe documentation
-		// for more details.
-		uintptr(argp),
-	)
-	if errno != 0 {
-		return os.NewSyscallError("ioctl", fmt.Errorf("%d", int(errno)))
-	}
-
-	return nil
-}
-
-func registerForUpf(startAddress []byte, len uint64) int {
-	return int(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
-}
-
-func sizeOfUFFDMsg() int {
-	return C.sizeof_struct_uffd_msg
-}
-
-func uffdPageFault() uint8 {
-	return uint8(C.const_UFFD_EVENT_PAGEFAULT)
 }
