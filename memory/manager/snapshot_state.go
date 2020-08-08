@@ -319,7 +319,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	if !s.isRecordDone {
 		s.trace.AppendRecord(rec)
 	} else {
-		log.Info("Serving a page that is missing from the working set")
+		log.Debug("Serving a page that is missing from the working set")
 	}
 
 	if s.metricsModeOn {
@@ -336,7 +336,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 }
 
 func (s *SnapshotState) installWorkingSetPages(fd int) {
-	log.Info("Installing the working set pages")
+	log.Debug("Installing the working set pages")
 	// TODO: parallel (goroutines) vs serial, by region vs by page
 
 	// build a list of sorted regions (probably, it's better to make trace.regions an array instead of a map FIXME)
@@ -351,6 +351,9 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 		wg        sync.WaitGroup
 	)
 
+	concurrency := 10
+	sem := make(chan bool, concurrency) // channel-based semaphore to limit IOCTLs in-flight
+
 	for _, offset := range keys {
 		regLength := s.trace.regions[offset]
 		regAddress := s.startAddress + offset
@@ -359,14 +362,21 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 		dst := regAddress
 
 		wg.Add(1)
+		sem <- true
 
 		go func(fd int, src, dst, len uint64) {
 			defer wg.Done()
 
 			installRegion(fd, src, dst, mode, len)
+
+			<-sem
 		}(fd, src, dst, uint64(regLength))
 
 		srcOffset += uint64(regLength) * 4096
+	}
+
+	for i := 0; i < cap(sem); i++ {
+		sem <- true
 	}
 
 	wg.Wait()
