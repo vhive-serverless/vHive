@@ -114,12 +114,6 @@ func readRecord(line []string) Record {
 	return rec
 }
 
-func (t *Trace) sortTrace() {
-	sort.Slice(t.trace, func(i, j int) bool {
-		return t.trace[i].offset < t.trace[j].offset
-	})
-}
-
 // Search trace for the record with the same offset
 func (t *Trace) containsRecord(rec Record) bool {
 	_, ok := t.containedOffsets[rec.offset]
@@ -127,10 +121,17 @@ func (t *Trace) containsRecord(rec Record) bool {
 	return ok
 }
 
-// processRegions
-func (t *Trace) processRegions() {
-	t.sortTrace()
+// PrepareReplay Prepares the trace, the regions map, and the working set file for replay
+// Must be called when record is done (i.e., it is not concurrency-safe vs. AppendRecord)
+func (t *Trace) PrepareReplay(GuestMemPath, WorkingSetPath string) {
+	log.Info("Preparing replay structures")
 
+	// sort trace records in the ascending order by offset
+	sort.Slice(t.trace, func(i, j int) bool {
+		return t.trace[i].offset < t.trace[j].offset
+	})
+
+	// build the map of contiguous regions from the trace records
 	var last, regionStart uint64
 	for _, rec := range t.trace {
 		if rec.offset != last+uint64(os.Getpagesize()) {
@@ -142,15 +143,19 @@ func (t *Trace) processRegions() {
 
 		last = rec.offset
 	}
+
+	t.writeWorkingSetPagesToFile(GuestMemPath, WorkingSetPath)
 }
 
-func (t *Trace) writeWorkingSetPagesToFile(guestMemFileName, wsCopyFileName string) {
+func (t *Trace) writeWorkingSetPagesToFile(guestMemFileName, WorkingSetPath string) {
+	log.Info("Writing the working set pages to a disk")
+
 	fSrc, err := os.Open(guestMemFileName)
 	if err != nil {
 		log.Fatalf("Failed to open guest memory file for reading")
 	}
 	defer fSrc.Close()
-	fDst, err := os.Create(wsCopyFileName)
+	fDst, err := os.Create(WorkingSetPath)
 	if err != nil {
 		log.Fatalf("Failed to open ws file for writing")
 	}
