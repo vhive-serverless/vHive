@@ -56,7 +56,7 @@ func TestBenchmarkStart(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	images := getAllImages()
 	benchCount := 10
@@ -107,7 +107,7 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	images := getAllImages()
 	benchCount := 10
@@ -185,7 +185,7 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true))
+	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	images := getAllImages()
 	benchCount := 10

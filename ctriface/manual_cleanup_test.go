@@ -2,7 +2,6 @@ package ctriface
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"sync"
@@ -14,8 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
-
-var isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 
 func TestSnapLoad(t *testing.T) {
 	// Need to clean up manually after this test because StopVM does not
