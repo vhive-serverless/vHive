@@ -124,7 +124,7 @@ func (t *Trace) containsRecord(rec Record) bool {
 // PrepareReplay Prepares the trace, the regions map, and the working set file for replay
 // Must be called when record is done (i.e., it is not concurrency-safe vs. AppendRecord)
 func (t *Trace) PrepareReplay(GuestMemPath, WorkingSetPath string) {
-	log.Info("Preparing replay structures")
+	log.Debug("Preparing replay structures")
 
 	// sort trace records in the ascending order by offset
 	sort.Slice(t.trace, func(i, j int) bool {
@@ -148,7 +148,7 @@ func (t *Trace) PrepareReplay(GuestMemPath, WorkingSetPath string) {
 }
 
 func (t *Trace) writeWorkingSetPagesToFile(guestMemFileName, WorkingSetPath string) {
-	log.Info("Writing the working set pages to a disk")
+	log.Debug("Writing the working set pages to a disk")
 
 	fSrc, err := os.Open(guestMemFileName)
 	if err != nil {
