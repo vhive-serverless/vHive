@@ -348,11 +348,13 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 
 	var (
 		srcOffset uint64
-		wg        sync.WaitGroup
+		//wg        sync.WaitGroup
 	)
 
-	concurrency := 10
-	sem := make(chan bool, concurrency) // channel-based semaphore to limit IOCTLs in-flight
+	/*
+		concurrency := 10
+		sem := make(chan bool, concurrency) // channel-based semaphore to limit IOCTLs in-flight
+	*/
 
 	for _, offset := range keys {
 		regLength := s.trace.regions[offset]
@@ -361,25 +363,32 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 		src := uint64(uintptr(unsafe.Pointer(&s.workingSet[srcOffset])))
 		dst := regAddress
 
-		wg.Add(1)
-		sem <- true
+		// BUG: concurrency of 10-100 goroutines caused some OS kernel process (kworker) to hang
+		/*
+			wg.Add(1)
+			sem <- true
 
-		go func(fd int, src, dst, len uint64) {
-			defer wg.Done()
+			go func(fd int, src, dst, len uint64) {
+				defer wg.Done()
 
-			installRegion(fd, src, dst, mode, len)
+				installRegion(fd, src, dst, mode, len)
 
-			<-sem
-		}(fd, src, dst, uint64(regLength))
+				<-sem
+			}(fd, src, dst, uint64(regLength))
+		*/
+
+		installRegion(fd, src, dst, mode, uint64(regLength))
 
 		srcOffset += uint64(regLength) * 4096
 	}
 
-	for i := 0; i < cap(sem); i++ {
-		sem <- true
-	}
+	/*
+		for i := 0; i < cap(sem); i++ {
+			sem <- true
+		}
 
-	wg.Wait()
+		wg.Wait()
+	*/
 
 	wake(fd, s.startAddress, s.GuestMemSize)
 }
