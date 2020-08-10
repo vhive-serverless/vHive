@@ -33,6 +33,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -65,7 +66,7 @@ func TestBenchmarkServeWithCache(t *testing.T) {
 		serveStats := make([]*metrics.Metric, benchCount)
 
 		// Pull image
-		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, replay_response!")
 
@@ -74,7 +75,7 @@ func TestBenchmarkServeWithCache(t *testing.T) {
 		// -----------------------------------------------------------------------
 
 		// Warm up loadsnapshot
-		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, replay_response!")
 
@@ -128,18 +129,18 @@ func TestBenchmarkServeNoCache(t *testing.T) {
 		serveStats := make([]*metrics.Metric, benchCount)
 
 		// Pull image
-		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, replay_response!")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
 
 		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
 		// -----------------------------------------------------------------------
 
 		// Warm up loadsnapshot
-		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, replay_response!")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
 
 		message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
@@ -194,7 +195,7 @@ func TestBenchParallelServeWithCache(t *testing.T) {
 			vmIDString := strconv.Itoa(vmID + i)
 
 			// Pull image and create VM
-			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, replay_response!")
 
@@ -203,7 +204,7 @@ func TestBenchParallelServeWithCache(t *testing.T) {
 			// -----------------------------------------------------------------------
 
 			// Warm up loadsnapshot
-			resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, replay_response!")
 
@@ -252,7 +253,7 @@ func TestBenchParallelServeNoCache(t *testing.T) {
 	)
 
 	images := getAllImages()
-	parallel := 4
+	parallel := 10
 	vmID := 0
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
@@ -263,45 +264,89 @@ func TestBenchParallelServeNoCache(t *testing.T) {
 
 		serveMetrics := make([]*metrics.Metric, parallel)
 
-		for i := 0; i < parallel; i++ {
-			vmIDString := strconv.Itoa(vmID + i)
+		// Pull image (and create the first VM)
+		resp, _, err := funcPool.Serve(context.Background(), "0_0", imageName, "record")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
 
-			// Pull image and create VM
-			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-			require.NoError(t, err, "Function returned error")
-			require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-			require.NoError(t, err, "Function returned error, "+message)
-		}
-
-		var vmGroup sync.WaitGroup
-		start := make(chan struct{})
-
-		dropPageCache()
+		var startVMGroup sync.WaitGroup
+		concurrency := 2
+		sem := make(chan bool, concurrency)
 
 		for i := 0; i < parallel; i++ {
 			vmIDString := strconv.Itoa(vmID + i)
 
-			vmGroup.Add(1)
+			startVMGroup.Add(1)
 
-			go func(i int) {
-				<-start
-				defer vmGroup.Done()
+			sem <- true
 
-				resp, metric, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			go func(vmIDString string) {
+				defer startVMGroup.Done()
+				defer func() { <-sem }()
+
+				// Pull image and create VM
+				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 				require.NoError(t, err, "Function returned error")
-				require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-				serveMetrics[i] = metric
+				require.Equal(t, resp.Payload, "Hello, record_response!")
 
 				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 				require.NoError(t, err, "Function returned error, "+message)
-			}(i)
+
+				resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, record_response!")
+
+				message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+				require.NoError(t, err, "Function returned error, "+message)
+			}(vmIDString)
 		}
 
-		close(start)
-		vmGroup.Wait()
+		for i := 0; i < cap(sem); i++ {
+			sem <- true
+		}
+
+		startVMGroup.Wait()
+		time.Sleep(10 * time.Second)
+
+		for k := 0; k < 5; k++ {
+			var vmGroup sync.WaitGroup
+			//start := make(chan struct{})
+
+			dropPageCache()
+
+			tStart := time.Now()
+			for i := 0; i < parallel; i++ {
+				vmIDString := strconv.Itoa(vmID + i)
+
+				vmGroup.Add(1)
+
+				go func(i int) {
+					//<-start
+					defer vmGroup.Done()
+
+					resp, metric, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+					require.NoError(t, err, "Function returned error")
+					require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+					serveMetrics[i] = metric
+
+				}(i)
+			}
+
+			//close(start)
+			vmGroup.Wait()
+
+			duration := time.Since(tStart).Milliseconds()
+
+			for i := 0; i < parallel; i++ {
+				vmIDString := strconv.Itoa(vmID + i)
+				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+				require.NoError(t, err, "Function returned error, "+message)
+			}
+			time.Sleep(10 * time.Second)
+
+			log.Printf("Started %d instances in %d milliseconds", parallel, duration)
+		}
 
 		vmID += parallel
 
@@ -341,9 +386,9 @@ func TestBenchUPFStats(t *testing.T) {
 		vmIDString := strconv.Itoa(vmID)
 
 		// Pull image
-		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, replay_response!")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
 
 		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
@@ -400,15 +445,17 @@ func getOutFile(name string) string {
 
 func getAllImages() map[string]string {
 	return map[string]string{
-		"helloworld":   "ustiugov/helloworld:var_workload",
-		"chameleon":    "ustiugov/chameleon:var_workload",
-		"pyaes":        "ustiugov/pyaes:var_workload",
-		"image_rotate": "ustiugov/image_rotate:var_workload",
-		"json_serdes":  "ustiugov/json_serdes:var_workload",
-		"lr_serving":   "ustiugov/lr_serving:var_workload",
-		"cnn_serving":  "ustiugov/cnn_serving:var_workload",
-		"rnn_serving":  "ustiugov/rnn_serving:var_workload",
-		"lr_training":  "ustiugov/lr_training:var_workload",
+		"helloworld": "ustiugov/helloworld:var_workload",
+		/*
+			"chameleon":    "ustiugov/chameleon:var_workload",
+			"pyaes":        "ustiugov/pyaes:var_workload",
+			"image_rotate": "ustiugov/image_rotate:var_workload",
+			"json_serdes":  "ustiugov/json_serdes:var_workload",
+			"lr_serving":   "ustiugov/lr_serving:var_workload",
+			"cnn_serving":  "ustiugov/cnn_serving:var_workload",
+			"rnn_serving":  "ustiugov/rnn_serving:var_workload",
+			"lr_training":  "ustiugov/lr_training:var_workload",
+		*/
 	}
 }
 
