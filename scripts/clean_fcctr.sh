@@ -18,7 +18,7 @@ ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link dele
 sudo ip link delete br0
 sudo ip link delete br1
 
-for i in `seq 0 100`; do sudo ip link delete ${i}_0_tap  2>1  1>/dev/null; done
+for i in `seq 0 100`; do sudo ip link delete ${i}_0_tap  1>/dev/null 2>&1; done
 
 echo Cleaning in /var/lib/cni/ non-network
 for d in `find /var/lib/cni/ -mindepth 1 -maxdepth 1  -type d | grep -v networks`; do

@@ -10,10 +10,9 @@ require (
 	github.com/containerd/containerd v1.3.6
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200807233251-072255cb60fd
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200810115453-f31da0abbb02
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200803195925-0629e1cf4599
 	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200803195925-0629e1cf4599
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200803195925-0629e1cf4599 // indirect
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200803195925-0629e1cf4599
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.31.0

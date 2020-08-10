@@ -425,7 +425,6 @@ func (f *Function) OffloadInstance() {
 	if err != nil {
 		log.Panic(message, err)
 	}
-	time.Sleep(300 * time.Millisecond) // FIXME: Need to check when resources are freed up instead of sleeping
 }
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it

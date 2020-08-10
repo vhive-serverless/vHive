@@ -133,8 +133,6 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 		message, err = orch.Offload(ctx, vmIDString)
 		require.NoError(t, err, "Failed to offload VM, "+message)
 
-		time.Sleep(300 * time.Millisecond)
-
 		message, _, err = orch.LoadSnapshot(ctx, vmIDString)
 		require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
@@ -143,8 +141,6 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 
 		message, err = orch.Offload(ctx, vmIDString)
 		require.NoError(t, err, "Failed to offload VM, "+message)
-
-		time.Sleep(300 * time.Millisecond)
 
 		for i := 0; i < benchCount; i++ {
 			message, loadMetric, err := orch.LoadSnapshot(ctx, vmIDString)
@@ -159,7 +155,6 @@ func TestBenchmarkLoadResumeWithCache(t *testing.T) {
 			message, err = orch.Offload(ctx, vmIDString)
 			require.NoError(t, err, "Failed to offload VM, "+message)
 
-			time.Sleep(300 * time.Millisecond)
 		}
 
 		outFileName := "load_" + funcName + "_cache.txt"
@@ -216,8 +211,6 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 		message, err = orch.Offload(ctx, vmIDString)
 		require.NoError(t, err, "Failed to offload VM, "+message)
 
-		time.Sleep(300 * time.Millisecond)
-
 		message, _, err = orch.LoadSnapshot(ctx, vmIDString)
 		require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
@@ -226,8 +219,6 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 
 		message, err = orch.Offload(ctx, vmIDString)
 		require.NoError(t, err, "Failed to offload VM, "+message)
-
-		time.Sleep(300 * time.Millisecond)
 
 		for i := 0; i < benchCount; i++ {
 			dropPageCache()
@@ -244,7 +235,6 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 			message, err = orch.Offload(ctx, vmIDString)
 			require.NoError(t, err, "Failed to offload VM, "+message)
 
-			time.Sleep(300 * time.Millisecond)
 		}
 
 		outFileName := "load_" + funcName + "_nocache.txt"
