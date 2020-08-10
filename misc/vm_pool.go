@@ -86,6 +86,26 @@ func (p *VMPool) Free(vmID string) error {
 	return nil
 }
 
+// ReloadTap Sets the tap for the VM down and then up
+func (p *VMPool) ReloadTap(vmID string) error {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Reloading tap")
+
+	_, isPresent := p.vmMap.Load(vmID)
+	if !isPresent {
+		log.WithFields(log.Fields{"vmID": vmID}).Panic("ReloadTap: VM does not exist in the map")
+		return NonExistErr("ReloadTap: VM does not exist when reloading its tap")
+	}
+
+	if err := p.tapManager.ReloadTap(vmID + "_tap"); err != nil {
+		logger.Error("Could not reload tap")
+		return err
+	}
+
+	return nil
+}
+
 // GetVMMap Returns a copy of vmMap as a regular concurrency-unsafe map
 func (p *VMPool) GetVMMap() map[string]*VM {
 	m := make(map[string]*VM)

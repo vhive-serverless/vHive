@@ -330,6 +330,8 @@ github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714121618-b03bf5c0e06e h1
 github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714121618-b03bf5c0e06e/go.mod h1:yN9TMsFK41a/Xycej4RWPXuLM2MPKbyGKjlAez8gok8=
 github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714124456-347054937ceb h1:7Su4JCVrwhbiyCrhEfaPPm8PiSuUSKwDMvZ9XeSWQg4=
 github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200714124456-347054937ceb/go.mod h1:yN9TMsFK41a/Xycej4RWPXuLM2MPKbyGKjlAez8gok8=
+github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810082036-3c1be4135285 h1:5XJp3r0/Ni9peA4cPZSytwJquT6hwxyM5IVHJlyTfdU=
+github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810082036-3c1be4135285/go.mod h1:yN9TMsFK41a/Xycej4RWPXuLM2MPKbyGKjlAez8gok8=
 github.com/vektah/gqlparser v1.1.2/go.mod h1:1ycwN7Ij5njmMkPPAOaRFY4rET2Enx7IkVv3vaXspKw=
 github.com/vishvananda/netlink v0.0.0-20181108222139-023a6dafdcdf/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netlink v1.1.0 h1:1iyaYNBLmP6L0220aDnYQpo1QEV4t4hJ+xEEhhJH8j0=
