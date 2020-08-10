@@ -106,6 +106,32 @@ func (p *VMPool) ReloadTap(vmID string) error {
 	return nil
 }
 
+// RecreateTap Deletes and creates the tap for a VM
+func (p *VMPool) RecreateTap(vmID string) error {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Recreating tap")
+
+	_, isPresent := p.vmMap.Load(vmID)
+	if !isPresent {
+		log.WithFields(log.Fields{"vmID": vmID}).Panic("RecreateTap: VM does not exist in the map")
+		return NonExistErr("RecreateTap: VM does not exist when recreating its tap")
+	}
+
+	if err := p.tapManager.RemoveTap(vmID + "_tap"); err != nil {
+		logger.Error("Failed to delete tap")
+		return err
+	}
+
+	_, err := p.tapManager.AddTap(vmID + "_tap")
+	if err != nil {
+		logger.Error("Failed to add tap")
+		return err
+	}
+
+	return nil
+}
+
 // GetVMMap Returns a copy of vmMap as a regular concurrency-unsafe map
 func (p *VMPool) GetVMMap() map[string]*VM {
 	m := make(map[string]*VM)

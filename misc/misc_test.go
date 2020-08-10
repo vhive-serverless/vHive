@@ -129,3 +129,37 @@ func TestReloadParallel(t *testing.T) {
 
 	vmPool.RemoveBridges()
 }
+
+func TestRecreateParallel(t *testing.T) {
+	vmNum := 50
+
+	vmPool := NewVMPool()
+
+	var vmGroup sync.WaitGroup
+	for i := 0; i < vmNum; i++ {
+		vmGroup.Add(1)
+		go func(i int) {
+			defer vmGroup.Done()
+			vmID := fmt.Sprintf("test_%d", i)
+			_, err := vmPool.Allocate(vmID)
+			require.NoError(t, err, "Failed to allocate VM")
+			err = vmPool.RecreateTap(vmID)
+			require.NoError(t, err, "Failed to recreate tap")
+		}(i)
+	}
+	vmGroup.Wait()
+
+	var vmGroupFree sync.WaitGroup
+	for i := 0; i < vmNum; i++ {
+		vmGroupFree.Add(1)
+		go func(i int) {
+			defer vmGroupFree.Done()
+			vmID := fmt.Sprintf("test_%d", i)
+			err := vmPool.Free(vmID)
+			require.NoError(t, err, "Failed to free a VM")
+		}(i)
+	}
+	vmGroupFree.Wait()
+
+	vmPool.RemoveBridges()
+}
