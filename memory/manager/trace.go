@@ -121,9 +121,9 @@ func (t *Trace) containsRecord(rec Record) bool {
 	return ok
 }
 
-// PrepareReplay Prepares the trace, the regions map, and the working set file for replay
+// ProcessRecord Prepares the trace, the regions map, and the working set file for replay
 // Must be called when record is done (i.e., it is not concurrency-safe vs. AppendRecord)
-func (t *Trace) PrepareReplay(GuestMemPath, WorkingSetPath string) {
+func (t *Trace) ProcessRecord(GuestMemPath, WorkingSetPath string) {
 	log.Debug("Preparing replay structures")
 
 	// sort trace records in the ascending order by offset

@@ -44,7 +44,7 @@ type SnapshotStateCfg struct {
 // of the VM.
 type SnapshotState struct {
 	SnapshotStateCfg
-	FirstPageFaultOnce *sync.Once // to initialize the start virtual address and replay
+	firstPageFaultOnce *sync.Once // to initialize the start virtual address and replay
 	startAddress       uint64
 	userFaultFD        *os.File
 	trace              *Trace
@@ -61,7 +61,7 @@ type SnapshotState struct {
 	// for sanity checking on deactivate/activate
 	isActive bool
 
-	isRecordDone bool
+	isRecordReady bool
 
 	isWSCopy bool
 
@@ -231,7 +231,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 	readyCh <- 0
 
 	// if s.isReplayWorkingSet {
-	if s.isRecordDone {
+	if s.isRecordReady {
 		s.fetchState()
 	}
 	// }
@@ -289,12 +289,12 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	var workingSetInstalled bool
 
-	s.FirstPageFaultOnce.Do(
+	s.firstPageFaultOnce.Do(
 		func() {
 			s.startAddress = address
 
 			// if s.isReplayWorkingSet
-			if s.isRecordDone {
+			if s.isRecordReady {
 				s.installWorkingSetPages(fd)
 				workingSetInstalled = true
 			}
@@ -316,14 +316,14 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		servedNum: s.servedNum,
 	}
 
-	if !s.isRecordDone {
+	if !s.isRecordReady {
 		s.trace.AppendRecord(rec)
 	} else {
 		log.Debug("Serving a page that is missing from the working set")
 	}
 
 	if s.metricsModeOn {
-		if s.isRecordDone {
+		if s.isRecordReady {
 			if !s.trace.containsRecord(rec) {
 				s.uniqueNum++
 			}
