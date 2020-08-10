@@ -126,7 +126,7 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 
 	state.isActive = true
 	state.isEverActivated = true
-	state.FirstPageFaultOnce = new(sync.Once)
+	state.firstPageFaultOnce = new(sync.Once)
 	state.servedNum = 0
 	state.uniqueNum = 0
 	state.quitCh = make(chan int)
@@ -187,7 +187,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		return err
 	}
 
-	if state.metricsModeOn && state.isRecordDone {
+	if state.metricsModeOn && state.isRecordReady {
 		state.totalPFServed = append(state.totalPFServed, float64(state.servedNum))
 		state.uniquePFServed = append(state.uniquePFServed, float64(state.uniqueNum))
 		state.reusedPFServed = append(
@@ -197,11 +197,11 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 	}
 
 	state.userFaultFD.Close()
-	if !state.isRecordDone {
-		state.trace.PrepareReplay(state.GuestMemPath, state.WorkingSetPath)
+	if !state.isRecordReady {
+		state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath)
 	}
 
-	state.isRecordDone = true
+	state.isRecordReady = true
 	state.isActive = false
 
 	return nil
@@ -238,8 +238,9 @@ func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath strin
 
 	stats := []string{
 		functionName,
-		strconv.Itoa(len(state.trace.trace)), // number of records (i.e., offsets)
-		strconv.Itoa(int(totalMean)),         // number of pages served
+		strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
+		strconv.Itoa(len(state.trace.regions)), // number of contiguous regions in the trace
+		strconv.Itoa(int(totalMean)),           // number of pages served
 		fmt.Sprintf("%.1f", totalStd),
 		strconv.Itoa(int(reusedMean)), // number of pages found in the trace
 		fmt.Sprintf("%.1f", reusedStd),
