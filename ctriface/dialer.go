@@ -71,7 +71,7 @@ func timeoutDialer(address string, timeout time.Duration) (net.Conn, error) {
 			default:
 				c, err := net.DialTimeout("tcp", address, timeout)
 				if isConnRefused(err) {
-					<-time.After(10 * time.Millisecond)
+					<-time.After(1 * time.Millisecond)
 					continue
 				}
 				synC <- &dialResult{c, err}
