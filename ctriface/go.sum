@@ -647,6 +647,8 @@ github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808214050-f8e9f
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808214050-f8e9f52e7897/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808214413-8e8228d3f652 h1:u/vrKqx8exJEGSgCN6yenF4BXVC2D9jvfqWzWUIxpLg=
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200808214413-8e8228d3f652/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200810140602-69714d943976 h1:cOApuzCOr08fkWo/bLIWjdsEWQptTRpqKmSYvfNPCeM=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200810140602-69714d943976/go.mod h1:xfUe/OzRfVjB8iX4mUXirP4rLj6aQUvYtTxKkDfvzLM=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200722141002-55dbdeb43861 h1:rC47RJSLGILLDcXJ87gPnDZ/3DlfYcSWnAge3z8kQq8=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200722141002-55dbdeb43861/go.mod h1:veO20AvWGKpDk3iD0IWJpfEnvF8PJVMK38n3SOWKKR0=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200723085111-a9d697412510 h1:2F3Bp/P7C2UMKU+vakjEW/++E2yCntucHKNiRxcxQOE=
@@ -748,6 +750,10 @@ github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810082036-3c1be4135285 h1
 github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810082036-3c1be4135285/go.mod h1:yN9TMsFK41a/Xycej4RWPXuLM2MPKbyGKjlAez8gok8=
 github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810131438-c33d4fc5646a h1:BT0CSQryOUDx6GIoEW36rDMLyLxjFLAk91SxZu5saUM=
 github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810131438-c33d4fc5646a/go.mod h1:yN9TMsFK41a/Xycej4RWPXuLM2MPKbyGKjlAez8gok8=
+github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810131801-3a513c9ee959 h1:u0epC7CQVnfo9E9rNQouHA0bnfpbvWKOjF4KsAr/vNU=
+github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810131801-3a513c9ee959/go.mod h1:yN9TMsFK41a/Xycej4RWPXuLM2MPKbyGKjlAez8gok8=
+github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810140602-69714d943976 h1:k31rZfzd/UBq/RvsJgDGuRYH3S05f/53trTJKQy8CzY=
+github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810140602-69714d943976/go.mod h1:yN9TMsFK41a/Xycej4RWPXuLM2MPKbyGKjlAez8gok8=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200617123207-cff37815af4e h1:5aqGKekpTIwAmZKDSvyT5wzSJJtDnJfhS7PRUiNd9lw=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200617123207-cff37815af4e/go.mod h1:348NgoXqABsXbb2M0gaEnawDfLQd5xhjeA+HpS0TSzU=
 github.com/ustiugov/firecracker-containerd v0.0.0-20200617162450-2164fef218a8 h1:f603tIhZSwbElZdSngNGZbhyh09H8Bn0EJ72FteOL9Q=
