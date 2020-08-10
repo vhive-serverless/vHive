@@ -27,6 +27,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -109,11 +110,27 @@ func TestReloadParallel(t *testing.T) {
 			vmID := fmt.Sprintf("test_%d", i)
 			_, err := vmPool.Allocate(vmID)
 			require.NoError(t, err, "Failed to allocate VM")
-			err = vmPool.ReloadTap(vmID)
-			require.NoError(t, err, "Failed to reload tap")
 		}(i)
 	}
 	vmGroup.Wait()
+
+	var vmGroupReload sync.WaitGroup
+
+	tStart := time.Now()
+
+	for i := 0; i < vmNum; i++ {
+		vmGroupReload.Add(1)
+		go func(i int) {
+			defer vmGroupReload.Done()
+			vmID := fmt.Sprintf("test_%d", i)
+			err := vmPool.ReloadTap(vmID)
+			require.NoError(t, err, "Failed to reload tap")
+		}(i)
+	}
+	vmGroupReload.Wait()
+
+	tElapsed := time.Since(tStart)
+	log.Infof("Reloaded %d taps in %d ms", vmNum, tElapsed.Milliseconds())
 
 	var vmGroupFree sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -131,7 +148,7 @@ func TestReloadParallel(t *testing.T) {
 }
 
 func TestRecreateParallel(t *testing.T) {
-	vmNum := 50
+	vmNum := 100
 
 	vmPool := NewVMPool()
 
@@ -143,11 +160,27 @@ func TestRecreateParallel(t *testing.T) {
 			vmID := fmt.Sprintf("test_%d", i)
 			_, err := vmPool.Allocate(vmID)
 			require.NoError(t, err, "Failed to allocate VM")
-			err = vmPool.RecreateTap(vmID)
-			require.NoError(t, err, "Failed to recreate tap")
 		}(i)
 	}
 	vmGroup.Wait()
+
+	var vmGroupRecreate sync.WaitGroup
+
+	tStart := time.Now()
+
+	for i := 0; i < vmNum; i++ {
+		vmGroupRecreate.Add(1)
+		go func(i int) {
+			defer vmGroupRecreate.Done()
+			vmID := fmt.Sprintf("test_%d", i)
+			err := vmPool.RecreateTap(vmID)
+			require.NoError(t, err, "Failed to recreate tap")
+		}(i)
+	}
+	vmGroupRecreate.Wait()
+
+	tElapsed := time.Since(tStart)
+	log.Infof("Recreated %d taps in %d ms", vmNum, tElapsed.Milliseconds())
 
 	var vmGroupFree sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
