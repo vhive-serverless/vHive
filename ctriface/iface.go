@@ -196,6 +196,7 @@ func (o *Orchestrator) getFuncClient(ctx context.Context, vm *misc.VM, logger *l
 	conn, err := grpc.DialContext(ctxx, vm.Ni.PrimaryAddress+":50051", gopts...)
 	vm.Conn = conn
 	if err != nil {
+		logger.Error(err)
 		if errCleanup := o.cleanup(ctx, vm, true, true, true, true); errCleanup != nil {
 			logger.Warn("Cleanup failed: ", errCleanup)
 		}
