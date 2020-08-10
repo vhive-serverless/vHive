@@ -177,7 +177,7 @@ func (o *Orchestrator) getFuncClient(ctx context.Context, vm *misc.VM, logger *l
 	logger.Debug("getFuncClient: Calling function's gRPC server")
 
 	backoffConfig := backoff.DefaultConfig
-	backoffConfig.MaxDelay = 3 * time.Second
+	backoffConfig.MaxDelay = 5 * time.Second
 	connParams := grpc.ConnectParams{
 		Backoff: backoffConfig,
 	}
@@ -191,7 +191,7 @@ func (o *Orchestrator) getFuncClient(ctx context.Context, vm *misc.VM, logger *l
 	}
 
 	//  This timeout must be large enough for all functions to start up (e.g., ML training takes few seconds)
-	ctxx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(ctxx, vm.Ni.PrimaryAddress+":50051", gopts...)
 	vm.Conn = conn
