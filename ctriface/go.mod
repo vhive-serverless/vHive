@@ -15,9 +15,10 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200717125634-528c6e9f9cc9
-	github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200810113409-0e33bcb3d88c
+	github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200810131438-c33d4fc5646a
 	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200803195925-0629e1cf4599
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200810091951-d5f2b2f54d78
+	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810131438-c33d4fc5646a // indirect
 	google.golang.org/grpc v1.31.0
 
 )
