@@ -44,8 +44,6 @@ func TestStartSnapStop(t *testing.T) {
 	message, err = orch.Offload(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM, "+message)
 
-	time.Sleep(300 * time.Millisecond)
-
 	message, _, err = orch.LoadSnapshot(ctx, vmID)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 

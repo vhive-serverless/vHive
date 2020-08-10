@@ -17,8 +17,7 @@ require (
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200717125634-528c6e9f9cc9
 	github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200807230001-66f21a98f3d6
 	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200803195925-0629e1cf4599
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200803195925-0629e1cf4599
-	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200717125634-528c6e9f9cc9
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20200810091951-d5f2b2f54d78
 	google.golang.org/grpc v1.31.0
 
 )

@@ -28,7 +28,7 @@ func TestSnapLoad(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
@@ -52,8 +52,6 @@ func TestSnapLoad(t *testing.T) {
 
 	message, err = orch.Offload(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM, "+message)
-
-	time.Sleep(300 * time.Millisecond)
 
 	message, _, err = orch.LoadSnapshot(ctx, vmID)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
@@ -96,8 +94,6 @@ func TestSnapLoadMultiple(t *testing.T) {
 	message, err = orch.Offload(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM, "+message)
 
-	time.Sleep(300 * time.Millisecond)
-
 	message, _, err = orch.LoadSnapshot(ctx, vmID)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
 
@@ -106,8 +102,6 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	message, err = orch.Offload(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM, "+message)
-
-	time.Sleep(300 * time.Millisecond)
 
 	message, _, err = orch.LoadSnapshot(ctx, vmID)
 	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
@@ -165,8 +159,6 @@ func TestParallelSnapLoad(t *testing.T) {
 
 			message, err = orch.Offload(ctx, vmID)
 			require.NoError(t, err, "Failed to offload VM, "+vmID+", "+message)
-
-			time.Sleep(300 * time.Millisecond)
 
 			message, _, err = orch.LoadSnapshot(ctx, vmID)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID+", "+message)
@@ -261,8 +253,6 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 		}
 		vmGroup.Wait()
 	}
-
-	time.Sleep(300 * time.Millisecond)
 
 	{
 		var vmGroup sync.WaitGroup
