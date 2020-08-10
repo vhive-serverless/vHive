@@ -58,6 +58,7 @@ func TestCreateRemoveTaps(t *testing.T) {
 	tapsNum := []int{100, 1100}
 
 	tm := NewTapManager()
+	defer tm.RemoveBridges()
 
 	for _, n := range tapsNum {
 		var wg sync.WaitGroup
@@ -78,14 +79,13 @@ func TestCreateRemoveTaps(t *testing.T) {
 		}
 		wg.Wait()
 	}
-
-	tm.RemoveBridges()
 }
 
 func TestCreateRemoveExtra(t *testing.T) {
 	tapsNum := 2001
 
 	tm := NewTapManager()
+	defer tm.RemoveBridges()
 
 	for i := 0; i < tapsNum; i++ {
 		_, err := tm.AddTap(fmt.Sprintf("tap_%d", i))
@@ -100,6 +100,21 @@ func TestCreateRemoveExtra(t *testing.T) {
 		tm.RemoveTap(fmt.Sprintf("tap_%d", i))
 
 	}
+}
 
-	tm.RemoveBridges()
+func TestTapReload(t *testing.T) {
+	tm := NewTapManager()
+	defer tm.RemoveBridges()
+
+	tapName := "rel_tap"
+
+	_, err := tm.AddTap(tapName)
+	require.NoError(t, err, "Failed to create tap")
+
+	err = tm.ReloadTap(tapName)
+	require.NoError(t, err, "Failed to reload tap")
+
+	err = tm.RemoveTap(tapName)
+	require.NoError(t, err, "Failed to remove tap")
+
 }

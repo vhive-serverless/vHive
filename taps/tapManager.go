@@ -174,6 +174,31 @@ func (tm *TapManager) RemoveTap(tapName string) error {
 	return nil
 }
 
+// ReloadTap Sets the tap down and then up
+func (tm *TapManager) ReloadTap(tapName string) error {
+	logger := log.WithFields(log.Fields{"tap": tapName})
+
+	logger.Debug("Reloading tap")
+
+	tap, err := netlink.LinkByName(tapName)
+	if err != nil {
+		logger.Warn("Could not find tap")
+		return nil
+	}
+
+	if err := netlink.LinkSetDown(tap); err != nil {
+		logger.Error("Tap could not be set down")
+		return err
+	}
+
+	if err := netlink.LinkSetUp(tap); err != nil {
+		logger.Error("Tap could not be set up")
+		return err
+	}
+
+	return nil
+}
+
 // RemoveBridges Removes the bridges created by the tap manager
 func (tm *TapManager) RemoveBridges() {
 	log.Info("Removing bridges")
