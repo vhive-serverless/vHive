@@ -328,7 +328,7 @@ func TestBenchUPFStats(t *testing.T) {
 	require.NoError(t, err, "Failed to open stat file")
 
 	writer := csv.NewWriter(csvFile)
-	statHeader := []string{"FuncName", "Recorded", "Served", "StdDev", "Reused", "StdDev", "Unique", "StdDev"}
+	statHeader := []string{"FuncName", "RecPages", "RecRegions", "Served", "StdDev", "Reused", "StdDev", "Unique", "StdDev"}
 
 	err = writer.Write(statHeader)
 	require.NoError(t, err, "Failed to open stat file")
