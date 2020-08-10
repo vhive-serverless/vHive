@@ -616,14 +616,14 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 		EnableUserPF:     o.GetUPFEnabled(),
 	}
 
+	tStart = time.Now()
+
 	go func() {
 		defer close(loadDone)
 
-		tStart = time.Now()
 		if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
 		}
-		loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
 	}()
 
 	if o.GetUPFEnabled() {
@@ -633,6 +633,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 	}
 
 	<-loadDone
+
+	loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
 
 	if loadErr != nil || addInstanceErr != nil {
 		multierr := multierror.Of(loadErr, addInstanceErr)
