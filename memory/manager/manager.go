@@ -84,9 +84,6 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 // Activate Creates an epoller to serve page faults for the VM
 // userFaultFDFile is for testing only
 func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err error) {
-	m.Lock()
-	defer m.Unlock()
-
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Activating instance in the memory manager")
@@ -99,11 +96,15 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		readyCh chan int = make(chan int)
 	)
 
+	m.Lock()
+
 	state, ok = m.instances[vmID]
 	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
+
+	m.Unlock()
 
 	if state.isActive {
 		logger.Error("VM already active")
@@ -156,9 +157,6 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 
 // Deactivate Removes the epoller which serves page faults for the VM
 func (m *MemoryManager) Deactivate(vmID string) error {
-	m.Lock()
-	defer m.Unlock()
-
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Deactivating instance from the memory manager")
@@ -168,14 +166,20 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		ok    bool
 	)
 
+	m.Lock()
+
 	state, ok = m.instances[vmID]
 	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
+
+	m.Unlock()
+
 	if !state.isEverActivated {
 		return nil
 	}
+
 	if !state.isActive {
 		logger.Error("VM not activated")
 		return errors.New("VM not activated")
@@ -209,18 +213,19 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 // DumpVMStats Saves the per VM stats
 func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath string) (err error) {
-	m.Lock()
-	defer m.Unlock()
-
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Gathering stats")
+
+	m.Lock()
 
 	state, ok := m.instances[vmID]
 	if !ok {
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
+
+	m.Unlock()
 
 	if state.isActive {
 		logger.Error("Cannot get stats while VM is active")
