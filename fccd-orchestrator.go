@@ -53,6 +53,7 @@ var (
 	isSaveMemory       *bool
 	isSnapshotsEnabled *bool
 	isUPFEnabled       *bool
+	isLazyMode         *bool
 	isMetricsMode      *bool
 	servedThreshold    *uint64
 	pinnedFuncNum      *int
@@ -72,9 +73,15 @@ func main() {
 	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
+	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 
 	if *isUPFEnabled && !*isSnapshotsEnabled {
 		log.Error("User-level page faults are not supported without snapshots")
+		return
+	}
+
+	if !*isUPFEnabled && *isLazyMode {
+		log.Error("Lazy page fault serving mode is not supported without user-level page faults")
 		return
 	}
 
@@ -111,6 +118,7 @@ func main() {
 		ctriface.WithSnapshots(*isSnapshotsEnabled),
 		ctriface.WithUPF(*isUPFEnabled),
 		ctriface.WithMetricsMode(*isMetricsMode),
+		ctriface.WithLazyMode(*isLazyMode),
 	)
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
