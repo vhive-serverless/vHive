@@ -35,7 +35,7 @@ type SnapshotStateCfg struct {
 	InstanceSockAddr string
 	BaseDir          string // base directory for the instance
 	MetricsPath      string // path to csv file where the metrics should be stored
-	IsRecordMode     bool
+	IsLazyMode     bool
 	GuestMemSize     int
 	metricsModeOn    bool
 }
@@ -231,7 +231,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 	readyCh <- 0
 
 	// if s.isReplayWorkingSet {
-	if s.isRecordReady {
+	if s.isRecordReady && !s.IsLazyMode {
 		s.fetchState()
 	}
 	// }
@@ -294,7 +294,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 			s.startAddress = address
 
 			// if s.isReplayWorkingSet
-			if s.isRecordReady {
+			if s.isRecordReady && !s.IsLazyMode {
 				s.installWorkingSetPages(fd)
 				workingSetInstalled = true
 			}
