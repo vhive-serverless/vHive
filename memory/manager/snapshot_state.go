@@ -35,7 +35,7 @@ type SnapshotStateCfg struct {
 	InstanceSockAddr string
 	BaseDir          string // base directory for the instance
 	MetricsPath      string // path to csv file where the metrics should be stored
-	IsLazyMode     bool
+	IsLazyMode       bool
 	GuestMemSize     int
 	metricsModeOn    bool
 }
@@ -390,7 +390,8 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 		wg.Wait()
 	*/
 
-	wake(fd, s.startAddress, s.GuestMemSize)
+	// working set installation happens on the first page fault that is always at startAddress
+	wake(fd, s.startAddress, os.Getpagesize())
 }
 
 func installRegion(fd int, src, dst, mode, len uint64) error {
