@@ -45,6 +45,7 @@ var (
 	isUPFEnabledTest       = flag.Bool("upfTest", false, "Enable user-level page faults guest memory management")
 	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
 	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
+	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
 )
 
 func TestMain(m *testing.M) {
@@ -64,6 +65,7 @@ func TestMain(m *testing.M) {
 
 	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
+	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
 	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
 
 	orch = ctriface.NewOrchestrator(
@@ -72,6 +74,7 @@ func TestMain(m *testing.M) {
 		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
 		ctriface.WithUPF(*isUPFEnabledTest),
 		ctriface.WithMetricsMode(*isMetricsModeTest),
+		ctriface.WithLazyMode(*isLazyModeTest),
 	)
 
 	ret := m.Run()
