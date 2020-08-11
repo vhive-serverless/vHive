@@ -3,6 +3,7 @@ EXTRATESTFILES:=iface_test.go iface.go dialer.go orch_options.go
 MANUALTESTFILES:=manual_cleanup_test.go iface.go dialer.go orch_options.go
 BENCHFILES:=bench_test.go iface.go dialer.go orch_options.go
 WITHUPF:=-upf
+WITHLAZY:=-lazy
 GOBENCH:=-v -timeout 1500s
 CTRDLOGDIR:=/tmp/ctrd-logs
 
@@ -18,6 +19,9 @@ test-man:
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_man.out 2>$(CTRDLOGDIR)/ctriface_log_upf_man.err &
 	sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS) -args $(WITHUPF)
+	./../scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_lazy_man.out 2>$(CTRDLOGDIR)/ctriface_log_lazy_man.err &
+	sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS) -args $(WITHUPF) $(WITHLAZY)
 	./../scripts/clean_fcctr.sh
 
 bench:
