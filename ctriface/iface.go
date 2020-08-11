@@ -649,6 +649,18 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) (string, error)
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
+	vm, err := o.vmPool.GetVM(vmID)
+        if err != nil {
+                if _, ok := err.(*misc.NonExistErr); ok {
+                        logger.Panic("Offload: VM does not exist")
+                        return "VM does not exist", nil
+                }
+                logger.Panic("Offload: GetVM() failed for an unknown reason")
+
+        }
+
+	vm.Conn.Close()
+
 	if o.GetUPFEnabled() {
 		if err := o.memoryManager.Deactivate(vmID); err != nil {
 			logger.Error("Failed to deactivate VM in the memory manager")
