@@ -96,14 +96,43 @@ func TestBenchParallelServe(t *testing.T) {
 
 				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 				require.NoError(t, err, "Function returned error, "+message)
+			}(vmIDString)
+		}
+
+		for i := 0; i < cap(sem); i++ {
+			sem <- true
+		}
+		sem = make(chan bool, concurrency)
+		startVMGroup.Wait()
+		log.Info("All snapshots created")
+		time.Sleep(10 * time.Second)
+
+		var recordVMGroup sync.WaitGroup
+
+		for i := 0; i < parallel; i++ {
+			vmIDString := strconv.Itoa(vmID + i)
+			log.Infof("Recording VM %s", vmIDString)
+
+			recordVMGroup.Add(1)
+
+			sem <- true
+
+			go func(vmIDString string) {
+				log.Infof("Starting recording GO routine for VM %s", vmIDString)
+				defer recordVMGroup.Done()
+				defer func() { <-sem }()
 
 				// Record
-				resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
+				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 				require.NoError(t, err, "Function returned error")
 				require.Equal(t, resp.Payload, "Hello, record_response!")
 
-				message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+				log.Infof("Served VM %s", vmIDString)
+
+				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 				require.NoError(t, err, "Function returned error, "+message)
+
+				log.Infof("VM %s record done.", vmIDString)
 			}(vmIDString)
 		}
 
@@ -111,7 +140,8 @@ func TestBenchParallelServe(t *testing.T) {
 			sem <- true
 		}
 
-		startVMGroup.Wait()
+		log.Info("All records done")
+		recordVMGroup.Wait()
 		time.Sleep(10 * time.Second)
 
 		for k := 0; k < 5; k++ {
