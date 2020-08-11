@@ -47,6 +47,7 @@ const (
 
 var isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 var parallelNum = flag.Int("parallel", 1, "Number of parallel instances to start")
+var iterNum = flag.Int("iter", 1, "Number of iterations to run")
 
 func TestBenchParallelServe(t *testing.T) {
 	log.Infof("With cache: %t", *isWithCache)
@@ -105,7 +106,7 @@ func TestBenchParallelServe(t *testing.T) {
 		sem = make(chan bool, concurrency)
 		startVMGroup.Wait()
 		log.Info("All snapshots created")
-		time.Sleep(10 * time.Second)
+		//time.Sleep(10 * time.Second)
 
 		var recordVMGroup sync.WaitGroup
 
@@ -142,11 +143,10 @@ func TestBenchParallelServe(t *testing.T) {
 
 		log.Info("All records done")
 		recordVMGroup.Wait()
-		time.Sleep(10 * time.Second)
+		//time.Sleep(10 * time.Second)
 
-		for k := 0; k < 5; k++ {
+		for k := 0; k < *iterNum; k++ {
 			var vmGroup sync.WaitGroup
-			//start := make(chan struct{})
 
 			if !*isWithCache {
 				dropPageCache()
@@ -159,7 +159,6 @@ func TestBenchParallelServe(t *testing.T) {
 				vmGroup.Add(1)
 
 				go func(i int) {
-					//<-start
 					defer vmGroup.Done()
 
 					resp, metric, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
@@ -171,7 +170,6 @@ func TestBenchParallelServe(t *testing.T) {
 				}(i)
 			}
 
-			//close(start)
 			vmGroup.Wait()
 
 			duration := time.Since(tStart).Milliseconds()
@@ -181,7 +179,7 @@ func TestBenchParallelServe(t *testing.T) {
 				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 				require.NoError(t, err, "Function returned error, "+message)
 			}
-			time.Sleep(10 * time.Second)
+			//time.Sleep(10 * time.Second)
 
 			log.Printf("Started %d instances in %d milliseconds", parallel, duration)
 		}
