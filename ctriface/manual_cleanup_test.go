@@ -15,7 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
+// TODO: Make it impossible to use lazy mode without UPF
+var (
+	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
+	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
+)
 
 func TestSnapLoad(t *testing.T) {
 	// Need to clean up manually after this test because StopVM does not
@@ -34,7 +38,12 @@ func TestSnapLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	vmID := "1"
 
@@ -78,7 +87,12 @@ func TestSnapLoadMultiple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	vmID := "3"
 
@@ -135,7 +149,12 @@ func TestParallelSnapLoad(t *testing.T) {
 	vmIDBase := 6
 	imageName := "ustiugov/helloworld:runner_workload"
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	// Pull image
 	_, err := orch.getImage(ctx, imageName)
@@ -192,7 +211,12 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	vmIDBase := 11
 	imageName := "ustiugov/helloworld:runner_workload"
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	// Pull image
 	_, err := orch.getImage(ctx, imageName)

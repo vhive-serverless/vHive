@@ -15,7 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
+// TODO: Make it impossible to use lazy mode without UPF
+var (
+	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
+	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
+)
 
 func TestPauseSnapResume(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
@@ -32,7 +36,12 @@ func TestPauseSnapResume(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	vmID := "4"
 
@@ -69,7 +78,12 @@ func TestStartStopSerial(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	vmID := "5"
 
@@ -97,7 +111,12 @@ func TestPauseResumeSerial(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	vmID := "6"
 
@@ -132,7 +151,12 @@ func TestStartStopParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	{
 		var vmGroup sync.WaitGroup
@@ -181,7 +205,12 @@ func TestPauseResumeParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
-	orch := NewOrchestrator("devmapper", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
 
 	{
 		var vmGroup sync.WaitGroup

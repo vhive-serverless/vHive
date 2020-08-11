@@ -76,7 +76,7 @@ type Orchestrator struct {
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
-	isReplayMode     bool
+	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
 
@@ -108,10 +108,8 @@ func NewOrchestrator(snapshotter string, opts ...OrchestratorOption) *Orchestrat
 	}
 
 	if o.GetUPFEnabled() {
-		// TODO: ADD memory manager directory as an option as well
 		managerCfg := manager.MemoryManagerCfg{
-			RecordReplayModeEnabled: o.isReplayMode,
-			MetricsModeOn:           o.isMetricsMode,
+			MetricsModeOn: o.isMetricsMode,
 		}
 		o.memoryManager = manager.NewMemoryManager(managerCfg)
 	}
@@ -318,7 +316,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (str
 			GuestMemPath:     o.getMemoryFile(vmID),
 			BaseDir:          o.getVMBaseDir(vmID),
 			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsRecordMode:     o.isReplayMode, // FIXME names should match
+			IsLazyMode:       o.isLazyMode,
 			VMMStatePath:     o.getSnapshotFile(vmID),
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: resp.UPFSockPath,
