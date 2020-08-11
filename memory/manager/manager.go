@@ -16,7 +16,6 @@ import (
 
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
-	RecordReplayModeEnabled bool
 	MetricsModeOn           bool
 }
 
@@ -201,7 +200,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 	}
 
 	state.userFaultFD.Close()
-	if !state.isRecordReady {
+	if !state.isRecordReady && !state.IsLazyMode {
 		state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath)
 	}
 
