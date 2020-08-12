@@ -27,7 +27,6 @@ import (
 	"os"
 	"sync"
 	"testing"
-	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -114,33 +113,6 @@ func TestTapReload(t *testing.T) {
 
 	err = tm.ReloadTap(tapName)
 	require.NoError(t, err, "Failed to reload tap")
-
-	err = tm.RemoveTap(tapName)
-	require.NoError(t, err, "Failed to remove tap")
-}
-
-func TestTapConfig(t *testing.T) {
-	tm := NewTapManager()
-	defer tm.RemoveBridges()
-
-	tapName := "cfg_tap"
-
-	ni, err := tm.AddTap(tapName)
-	require.NoError(t, err, "Failed to create tap 1st time")
-
-	fmt.Printf("first time %v\n", ni)
-
-	time.Sleep(100 * time.Second)
-
-	err = tm.RemoveTap(tapName)
-	require.NoError(t, err, "Failed to remove tap")
-
-	ni, err = tm.AddTap(tapName)
-	require.NoError(t, err, "Failed to create tap 2nd time")
-
-	fmt.Printf("second time %v\n", ni)
-
-	time.Sleep(10 * time.Second)
 
 	err = tm.RemoveTap(tapName)
 	require.NoError(t, err, "Failed to remove tap")
