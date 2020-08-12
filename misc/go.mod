@@ -20,7 +20,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200714124456-347054937ceb
-	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200810082036-3c1be4135285
+	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20200812104301-d65487c79ae0
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.30.0
