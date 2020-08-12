@@ -53,6 +53,7 @@ func NewTapManager() *TapManager {
 
 	tm.numBridges = NumBridges
 	tm.TapCountsPerBridge = make([]int64, NumBridges)
+	tm.createdTaps = make(map[string]*NetworkInterface)
 
 	log.Info("Registering bridges for tap manager")
 
@@ -99,15 +100,67 @@ func createBridge(bridgeName, gatewayAddr string) {
 
 // AddTap Creates a new tap and returns the corresponding network interface
 func (tm *TapManager) AddTap(tapName string) (*NetworkInterface, error) {
+	tm.Lock()
+
+	if ni, ok := tm.createdTaps[tapName]; ok {
+		defer tm.Unlock()
+		return ni, tm.reconnectTap(tapName, ni)
+	}
+
+	tm.Unlock()
+
 	for i := 0; i < tm.numBridges; i++ {
 		tapsInBridge := atomic.AddInt64(&tm.TapCountsPerBridge[i], 1)
 		if tapsInBridge-1 < TapsPerBridge {
 			// Create a tap with this bridge
-			return tm.addTap(tapName, i, int(tapsInBridge-1))
+			ni, err := tm.addTap(tapName, i, int(tapsInBridge-1))
+			if err == nil {
+				tm.Lock()
+				tm.createdTaps[tapName] = ni
+				tm.Unlock()
+			}
+
+			return ni, err
 		}
 	}
 	log.Error("No space for creating taps")
 	return nil, errors.New("No space for creating taps")
+}
+
+// Reconnects a single tap with the same network interface that it was
+// create with previously
+func (tm *TapManager) reconnectTap(tapName string, ni *NetworkInterface) error {
+	logger := log.WithFields(log.Fields{"tap": tapName, "bridge": ni.BridgeName})
+
+	la := netlink.NewLinkAttrs()
+	la.Name = tapName
+
+	logger.Debug("Reconnecting tap")
+
+	tap := &netlink.Tuntap{LinkAttrs: la, Mode: netlink.TUNTAP_MODE_TAP}
+
+	if err := netlink.LinkAdd(tap); err != nil {
+		logger.Error("Tap could not be reconnected")
+		return err
+	}
+
+	br, err := netlink.LinkByName(ni.BridgeName)
+	if err != nil {
+		logger.Error("Could not reconnect tap, because corresponding bridge does not exist")
+		return err
+	}
+
+	if err := netlink.LinkSetMaster(tap, br); err != nil {
+		logger.Error("Master could not be set")
+		return err
+	}
+
+	if err := netlink.LinkSetUp(tap); err != nil {
+		logger.Error("Tap could not be enabled")
+		return err
+	}
+
+	return nil
 }
 
 // Creates a single tap and connects it to the corresponding bridge
@@ -146,6 +199,7 @@ func (tm *TapManager) addTap(tapName string, bridgeID, currentNumTaps int) (*Net
 
 	macIndex := bridgeID*TapsPerBridge + currentNumTaps
 	return &NetworkInterface{
+		BridgeName:     bridgeName,
 		MacAddress:     fmt.Sprintf("02:FC:00:00:%02X:%02X", macIndex/256, macIndex%256),
 		PrimaryAddress: getPrimaryAddress(currentNumTaps, bridgeID),
 		HostDevName:    tapName,
@@ -158,7 +212,7 @@ func (tm *TapManager) addTap(tapName string, bridgeID, currentNumTaps int) (*Net
 func (tm *TapManager) RemoveTap(tapName string) error {
 	logger := log.WithFields(log.Fields{"tap": tapName})
 
-	logger.Debug("Deleting tap")
+	logger.Debug("Removing tap")
 
 	tap, err := netlink.LinkByName(tapName)
 	if err != nil {
@@ -167,7 +221,7 @@ func (tm *TapManager) RemoveTap(tapName string) error {
 	}
 
 	if err := netlink.LinkDel(tap); err != nil {
-		logger.Error("Tap could not be deleted")
+		logger.Error("Tap could not be removed")
 		return err
 	}
 

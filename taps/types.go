@@ -22,6 +22,10 @@
 
 package taps
 
+import (
+	"sync"
+)
+
 const (
 	// Subnet Number of bits in the subnet mask
 	Subnet = "/10"
@@ -33,12 +37,15 @@ const (
 
 // TapManager A Tap Manager
 type TapManager struct {
+	sync.Mutex
 	numBridges         int
 	TapCountsPerBridge []int64
+	createdTaps        map[string]*NetworkInterface
 }
 
 // NetworkInterface Network interface type, NI names are generated based on expected tap names
 type NetworkInterface struct {
+	BridgeName     string
 	MacAddress     string
 	HostDevName    string
 	PrimaryAddress string
