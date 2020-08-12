@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 func contextDialer(ctx context.Context, address string) (net.Conn, error) {
@@ -75,11 +74,13 @@ func timeoutDialer(address string, timeout time.Duration) (net.Conn, error) {
 					<-time.After(1 * time.Millisecond)
 					continue
 				}
-				if err != nil {
-					log.Debug("Reconnecting after an error")
-					<-time.After(1 * time.Millisecond)
-					continue
-				}
+				/*
+					if err != nil {
+						log.Debug("Reconnecting after an error")
+						<-time.After(1 * time.Millisecond)
+						continue
+					}
+				*/
 
 				synC <- &dialResult{c, err}
 				return
