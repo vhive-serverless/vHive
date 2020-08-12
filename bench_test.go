@@ -26,12 +26,10 @@ import (
 	"context"
 	"encoding/csv"
 	"flag"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -281,68 +279,14 @@ func getOutFile(name string) string {
 
 func getAllImages() map[string]string {
 	return map[string]string{
-		"helloworld": "ustiugov/helloworld:var_workload",
-		/*
-			"chameleon":    "ustiugov/chameleon:var_workload",
-			"pyaes":        "ustiugov/pyaes:var_workload",
-			"image_rotate": "ustiugov/image_rotate:var_workload",
-			"json_serdes":  "ustiugov/json_serdes:var_workload",
-			"lr_serving":   "ustiugov/lr_serving:var_workload",
-			"cnn_serving":  "ustiugov/cnn_serving:var_workload",
-			"rnn_serving":  "ustiugov/rnn_serving:var_workload",
-			"lr_training":  "ustiugov/lr_training:var_workload",
-		*/
-	}
-}
-
-// getFirecrackerPid Assumes that only one Firecracker process is running
-func getFirecrackerPid() ([]byte, error) {
-	pidBytes, err := exec.Command("pidof", "firecracker").Output()
-	if err != nil {
-		log.Warnf("Failed to get Firecracker PID: %v", err)
-	}
-
-	return pidBytes, err
-}
-
-func getMemFootprint() (float64, error) {
-	pidBytes, err := getFirecrackerPid()
-	if err != nil {
-		return 0, err
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(strings.Split(string(pidBytes), "\n")[0]))
-	if err != nil {
-		log.Warnf("Pid conversion failed: %v", err)
-	}
-
-	cmd := exec.Command("ps", "-o", "rss", "-p", strconv.Itoa(pid))
-
-	out, err := cmd.Output()
-	if err != nil {
-		log.Warnf("Failed to run ps command: %v", err)
-	}
-
-	infoArr := strings.Split(string(out), "\n")[1]
-	stats := strings.Fields(infoArr)
-
-	rss, err := strconv.ParseFloat(stats[0], 64)
-	if err != nil {
-		log.Warnf("Error in conversion when computing rss: %v", err)
-		return 0, err
-	}
-
-	rss *= 1024
-
-	return rss, nil
-}
-
-func appendMemFootprint(outFileName string, memFootprint float64) {
-	f, err := os.OpenFile(outFileName, os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Println(err)
-	}
-	defer f.Close()
-	if _, err := f.WriteString(fmt.Sprintf("MemFootprint\t%12.1f\n", memFootprint)); err != nil {
-		log.Println(err)
+		"helloworld":   "ustiugov/helloworld:var_workload",
+		//"chameleon":    "ustiugov/chameleon:var_workload",
+		//"pyaes":        "ustiugov/pyaes:var_workload",
+		//"image_rotate": "ustiugov/image_rotate:var_workload",
+		//"json_serdes":  "ustiugov/json_serdes:var_workload",
+		//"lr_serving":   "ustiugov/lr_serving:var_workload",
+		//"cnn_serving":  "ustiugov/cnn_serving:var_workload",
+		//"rnn_serving":  "ustiugov/rnn_serving:var_workload",
+		//"lr_training":  "ustiugov/lr_training:var_workload",
 	}
 }
