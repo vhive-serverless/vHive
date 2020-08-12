@@ -30,6 +30,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/vishvananda/netlink"
+	"net"
 )
 
 // getGatewayAddr Creates the gateway address (first address in pool)
@@ -150,6 +151,17 @@ func (tm *TapManager) reconnectTap(tapName string, ni *NetworkInterface) error {
 		return err
 	}
 
+	hwAddr, err := net.ParseMAC(ni.MacAddress)
+	if err != nil {
+		logger.Error("Could not parse MAC")
+		return err
+	}
+
+	if err := netlink.LinkSetHardwareAddr(tap, hwAddr); err != nil {
+		logger.Error("Could not set MAC address")
+		return err
+	}
+
 	if err := netlink.LinkSetMaster(tap, br); err != nil {
 		logger.Error("Master could not be set")
 		return err
@@ -192,15 +204,28 @@ func (tm *TapManager) addTap(tapName string, bridgeID, currentNumTaps int) (*Net
 		return nil, err
 	}
 
+	macIndex := bridgeID*TapsPerBridge + currentNumTaps
+	macAddress := fmt.Sprintf("02:FC:00:00:%02X:%02X", macIndex/256, macIndex%256)
+
+	hwAddr, err := net.ParseMAC(macAddress)
+	if err != nil {
+		logger.Error("Could not parse MAC")
+		return nil, err
+	}
+
+	if err := netlink.LinkSetHardwareAddr(tap, hwAddr); err != nil {
+		logger.Error("Could not set MAC address")
+		return nil, err
+	}
+
 	if err := netlink.LinkSetUp(tap); err != nil {
 		logger.Error("Tap could not be enabled")
 		return nil, err
 	}
 
-	macIndex := bridgeID*TapsPerBridge + currentNumTaps
 	return &NetworkInterface{
 		BridgeName:     bridgeName,
-		MacAddress:     fmt.Sprintf("02:FC:00:00:%02X:%02X", macIndex/256, macIndex%256),
+		MacAddress:     macAddress,
 		PrimaryAddress: getPrimaryAddress(currentNumTaps, bridgeID),
 		HostDevName:    tapName,
 		Subnet:         Subnet,
