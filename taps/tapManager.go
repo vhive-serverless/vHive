@@ -104,7 +104,7 @@ func (tm *TapManager) AddTap(tapName string) (*NetworkInterface, error) {
 	tm.Lock()
 
 	if ni, ok := tm.createdTaps[tapName]; ok {
-		defer tm.Unlock()
+		tm.Unlock()
 		return ni, tm.reconnectTap(tapName, ni)
 	}
 
