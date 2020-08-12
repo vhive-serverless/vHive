@@ -673,13 +673,11 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) (string, error)
 		return "Offloading VM " + vmID + " failed", err
 	}
 
-	/*
-		if err := o.vmPool.RecreateTap(vmID); err != nil {
-			logger.Error("Failed to recreate tap upon offloading")
-			return "Offloading VM " + vmID + " failed", err
-		}
-	*/
-	time.Sleep(300 * time.Millisecond)
+	if err := o.vmPool.RecreateTap(vmID); err != nil {
+		logger.Error("Failed to recreate tap upon offloading")
+		return "Offloading VM " + vmID + " failed", err
+	}
+
 	return "VM " + vmID + " offloaded successfully", nil
 }
 
