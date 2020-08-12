@@ -16,7 +16,7 @@ import (
 
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
-	MetricsModeOn           bool
+	MetricsModeOn bool
 }
 
 // MemoryManager Serves page faults coming from VMs
