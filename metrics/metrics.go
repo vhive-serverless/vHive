@@ -23,12 +23,14 @@
 package metrics
 
 import (
-	"bufio"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"gonum.org/v1/gonum/stat"
 )
 
@@ -99,29 +101,21 @@ func (m *Metric) PrintAll() {
 }
 
 // PrintMeanStd prints the mean and standard
-//deviation of each component of Metric
-func PrintMeanStd(resultsPath string, metricsList ...*Metric) {
+// deviation of each component of Metric
+func PrintMeanStd(resultsPath, funcName string, metricsList ...*Metric) error {
 	var (
-		mean, std float64
-		f         *os.File
-		err       error
-		agg       map[string][]float64 = make(map[string][]float64)
-		totals    []float64            = make([]float64, 0, len(metricsList))
-		keys      []string             = make([]string, 0, 1)
+		mean, std   float64
+		f           *os.File
+		err         error
+		agg         map[string][]float64 = make(map[string][]float64)
+		totals      []float64            = make([]float64, 0, len(metricsList))
+		keys        []string             = make([]string, 0)
+		forPrinting []string             = make([]string, 0)
+		header                           = []string{"FuncName"}
 	)
 
 	if len(metricsList) == 0 {
-		return
-	}
-
-	if resultsPath == "" {
-		f = os.Stdout
-	} else {
-		f, err = os.OpenFile(resultsPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
+		return nil
 	}
 
 	for k := range metricsList[0].MetricMap {
@@ -129,6 +123,11 @@ func PrintMeanStd(resultsPath string, metricsList ...*Metric) {
 		agg[k] = make([]float64, 0, len(metricsList))
 	}
 	sort.Strings(keys)
+
+	for _, key := range keys {
+		header = append(header, key, "StdDev")
+	}
+	header = append(header, "Total", "StdDev")
 
 	for _, m := range metricsList {
 		totals = append(totals, m.Total())
@@ -138,20 +137,52 @@ func PrintMeanStd(resultsPath string, metricsList ...*Metric) {
 		}
 	}
 
-	w := bufio.NewWriter(f)
+	if resultsPath == "" {
+		f = os.Stdout
+	} else {
+		f, err = os.OpenFile(resultsPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Error("Failed to open metrics output file")
+			return err
+		}
+		defer f.Close()
+	}
 
-	fmt.Fprintf(w, "Stats\tMean(us)\tStdDev(us)\n")
+	w := csv.NewWriter(f)
+	defer w.Flush()
+
+	fileInfo, err := f.Stat()
+	if err != nil {
+		log.Error("Failed to stat output file")
+		return err
+	}
+
+	if fileInfo.Size() == 0 {
+		if err := w.Write(header); err != nil {
+			log.Error("Failed to write header to csv file")
+			return err
+		}
+	}
+
+	forPrinting = append(forPrinting, funcName)
 
 	for _, k := range keys {
 		v := agg[k]
 		mean, std = stat.MeanStdDev(v, nil)
-		fmt.Fprintf(w, "%s\t%12.1f\t%12.1f\n", k, mean, std)
-		w.Flush()
+		forPrinting = append(forPrinting, strconv.Itoa(int(mean)))
+		forPrinting = append(forPrinting, fmt.Sprintf("%.1f", std))
 	}
 
 	mean, std = stat.MeanStdDev(totals, nil)
-	fmt.Fprintf(w, "Total\t%12.1f\t%12.1f\n", mean, std)
-	w.Flush()
+	forPrinting = append(forPrinting, strconv.Itoa(int(mean)))
+	forPrinting = append(forPrinting, fmt.Sprintf("%.1f", std))
+
+	if err := w.Write(forPrinting); err != nil {
+		log.Error("Failed to write to csv file")
+		return err
+	}
+
+	return nil
 }
 
 // ToUS Converts Duration to microseconds
