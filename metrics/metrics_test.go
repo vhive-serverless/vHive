@@ -38,5 +38,6 @@ func TestMetrics(t *testing.T) {
 	s2.MetricMap[GetImage] = 40.0
 	s2.MetricMap[TaskStart] = 25.0
 
-	PrintMeanStd("", s1, s2)
+	err := PrintMeanStd("placeholder", "placeholderFunc", s1, s2)
+	require.NoError(t, err, "Failed to print mean and std dev")
 }
