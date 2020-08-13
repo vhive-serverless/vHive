@@ -288,19 +288,19 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 
 	fileInfo, err := csvFile.Stat()
 	if err != nil {
-		log.Error("Failed to stat csv file")
+		log.Error("Failed to stat csv file " + err)
 		return err
 	}
 
 	if fileInfo.Size() == 0 {
 		if err := writer.Write(statHeader); err != nil {
-			log.Error("Failed to write header to csv file")
+			log.Error("Failed to write header to csv file " + err)
 			return err
 		}
 	}
 
 	if err := writer.Write(stats); err != nil {
-		log.Error("Failed to write to csv file")
+		log.Error("Failed to write to csv file " + err)
 		return err
 	}
 

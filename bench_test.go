@@ -24,7 +24,6 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"flag"
 	"os"
 	"os/exec"
@@ -36,16 +35,14 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	"github.com/ustiugov/fccd-orchestrator/metrics"
 )
 
-const (
-	benchDir = "bench_results"
+var (
+	isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	parallelNum = flag.Int("parallel", 1, "Number of parallel instances to start")
+	iterNum     = flag.Int("iter", 1, "Number of iterations to run")
+	benchDir    = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
 )
-
-var isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
-var parallelNum = flag.Int("parallel", 1, "Number of parallel instances to start")
-var iterNum = flag.Int("iter", 1, "Number of iterations to run")
 
 func TestBenchParallelServe(t *testing.T) {
 	log.Infof("With cache: %t", *isWithCache)
@@ -64,10 +61,7 @@ func TestBenchParallelServe(t *testing.T) {
 
 	createResultsDir()
 
-	for funcName, imageName := range images {
-
-		serveMetrics := make([]*metrics.Metric, parallel)
-
+	for _, imageName := range images {
 		// Pull image
 		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 		require.NoError(t, err, "Function returned error")
@@ -159,12 +153,9 @@ func TestBenchParallelServe(t *testing.T) {
 				go func(i int) {
 					defer vmGroup.Done()
 
-					resp, metric, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+					resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 					require.NoError(t, err, "Function returned error")
 					require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-					serveMetrics[i] = metric
-
 				}(i)
 			}
 
@@ -183,9 +174,6 @@ func TestBenchParallelServe(t *testing.T) {
 		}
 
 		vmID += parallel
-
-		outFileName := "serve_" + funcName + "_par_nocache.txt"
-		metrics.PrintMeanStd(getOutFile(outFileName), serveMetrics...)
 	}
 }
 
@@ -202,24 +190,12 @@ func TestBenchUPFStats(t *testing.T) {
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	outFileName := "/tmp/upfStat.csv"
-	csvFile, err := os.Create(outFileName)
-	require.NoError(t, err, "Failed to open stat file")
-
-	writer := csv.NewWriter(csvFile)
-	statHeader := []string{"FuncName", "RecPages", "RecRegions", "Served", "StdDev", "Reused", "StdDev", "Unique", "StdDev"}
-
-	err = writer.Write(statHeader)
-	require.NoError(t, err, "Failed to open stat file")
-
-	writer.Flush()
-
-	csvFile.Close()
+	createResultsDir()
 
 	for funcName, imageName := range images {
 		vmIDString := strconv.Itoa(vmID)
 
-		// Pull image
+		// Pull image and create snapshot
 		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, record_response!")
@@ -238,6 +214,10 @@ func TestBenchUPFStats(t *testing.T) {
 
 		// Replay and gather stats
 		for i := 0; i < benchCount; i++ {
+			if !*isWithCache {
+				dropPageCache()
+			}
+
 			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, replay_response!")
@@ -248,8 +228,11 @@ func TestBenchUPFStats(t *testing.T) {
 
 		vmID++
 
-		err = funcPool.DumpUPFStats(vmIDString, imageName, funcName, outFileName)
-		require.NoError(t, err, "Failed to dump stats for"+funcName)
+		err = funcPool.DumpUPFPageStats(vmIDString, imageName, funcName, getOutFile("pageStats.csv"))
+		require.NoError(t, err, "Failed to dump page stats for"+funcName)
+
+		err = funcPool.DumpUPFLatencyStats(vmIDString, imageName, funcName, getOutFile("latencyStats.csv"))
+		require.NoError(t, err, "Failed to dump latency stats for"+funcName)
 	}
 }
 
@@ -268,18 +251,18 @@ func dropPageCache() {
 }
 
 func createResultsDir() {
-	if err := os.MkdirAll(benchDir, 0777); err != nil {
+	if err := os.MkdirAll(*benchDir, 0777); err != nil {
 		log.Fatalf("Failed to create results dir: %v", err)
 	}
 }
 
 func getOutFile(name string) string {
-	return filepath.Join(benchDir, name)
+	return filepath.Join(*benchDir, name)
 }
 
 func getAllImages() map[string]string {
 	return map[string]string{
-		"helloworld":   "ustiugov/helloworld:var_workload",
+		"helloworld": "ustiugov/helloworld:var_workload",
 		//"chameleon":    "ustiugov/chameleon:var_workload",
 		//"pyaes":        "ustiugov/pyaes:var_workload",
 		//"image_rotate": "ustiugov/image_rotate:var_workload",
