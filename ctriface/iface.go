@@ -507,16 +507,20 @@ func (o *Orchestrator) GetUPFEnabled() bool {
 	return o.isUPFEnabled
 }
 
-// DumpUPFStats Stores the memory manager's VM stats
-func (o *Orchestrator) DumpUPFStats(vmID, functionName, metricsOutFilePath string) error {
+// DumpUPFPageStats Dumps the memory manager's stats about number of unique/reused pages
+func (o *Orchestrator) DumpUPFPageStats(vmID, functionName, metricsOutFilePath string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received DumpUPFStats")
+	logger.Debug("Orchestrator received DumpUPFPageStats")
 
-	if err := o.memoryManager.DumpVMStats(vmID, functionName, metricsOutFilePath); err != nil {
-		logger.Error("Failed to get VM UPF stats")
-		return err
-	}
-	return nil
+	return o.memoryManager.DumpUPFPageStats(vmID, functionName, metricsOutFilePath)
+}
+
+// DumpUPFLatencyStats Dumps the memory manager's latency stats
+func (o *Orchestrator) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath string) error {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received DumpUPFPageStats")
+
+	return o.memoryManager.DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath)
 }
 
 // PauseVM Pauses a VM
