@@ -23,6 +23,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	"github.com/ustiugov/fccd-orchestrator/metrics"
+
 	"unsafe"
 )
 
@@ -65,9 +67,6 @@ type SnapshotState struct {
 
 	isWSCopy bool
 
-	servedNum int
-	uniqueNum int
-
 	guestMem   []byte
 	workingSet []byte
 
@@ -75,6 +74,11 @@ type SnapshotState struct {
 	totalPFServed  []float64
 	uniquePFServed []float64
 	reusedPFServed []float64
+	latencyMetrics []*metrics.Metric
+
+	servedNum     int
+	uniqueNum     int
+	currentMetric *metrics.Metric
 }
 
 // NewSnapshotState Initializes a snapshot state
@@ -87,6 +91,7 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 		s.totalPFServed = make([]float64, 0)
 		s.uniquePFServed = make([]float64, 0)
 		s.reusedPFServed = make([]float64, 0)
+		s.latencyMetrics = make([]*metrics.Metric, 0)
 	}
 
 	return s
@@ -222,6 +227,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	var (
 		events [1]syscall.EpollEvent
+		tStart time.Time
 	)
 
 	logger.Debug("Starting polling loop")
@@ -232,7 +238,14 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	// if s.isReplayWorkingSet {
 	if s.isRecordReady && !s.IsLazyMode {
-		s.fetchState()
+		if s.metricsModeOn {
+			tStart = time.Now()
+			s.fetchState()
+			s.currentMetric.MetricMap["FetchState"] = metrics.ToUS(time.Since(tStart))
+		} else {
+			s.fetchState()
+		}
+
 	}
 	// }
 
@@ -287,7 +300,11 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 }
 
 func (s *SnapshotState) servePageFault(fd int, address uint64) error {
-	var workingSetInstalled bool
+	var (
+		tStart              time.Time
+		serveUnique         string = "ServeUnique"
+		workingSetInstalled bool
+	)
 
 	s.firstPageFaultOnce.Do(
 		func() {
@@ -295,7 +312,15 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 
 			// if s.isReplayWorkingSet
 			if s.isRecordReady && !s.IsLazyMode {
-				s.installWorkingSetPages(fd)
+				if s.metricsModeOn {
+					tStart = time.Now()
+					s.installWorkingSetPages(fd)
+					s.currentMetric.MetricMap["InstallWS"] = metrics.ToUS(time.Since(tStart))
+					s.currentMetric.MetricMap[serveUnique] = float64(0)
+				} else {
+					s.installWorkingSetPages(fd)
+				}
+
 				workingSetInstalled = true
 			}
 			// }
@@ -330,9 +355,17 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		}
 
 		s.servedNum++
+
+		tStart = time.Now()
 	}
 
-	return installRegion(fd, src, dst, mode, 1)
+	err := installRegion(fd, src, dst, mode, 1)
+
+	if s.metricsModeOn {
+		s.currentMetric.MetricMap[serveUnique] += metrics.ToUS(time.Since(tStart))
+	}
+
+	return err
 }
 
 func (s *SnapshotState) installWorkingSetPages(fd int) {
