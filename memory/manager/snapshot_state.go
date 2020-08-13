@@ -240,12 +240,11 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 	if s.isRecordReady && !s.IsLazyMode {
 		if s.metricsModeOn {
 			tStart = time.Now()
-			s.fetchState()
-			s.currentMetric.MetricMap["FetchState"] = metrics.ToUS(time.Since(tStart))
-		} else {
-			s.fetchState()
 		}
-
+		s.fetchState()
+		if s.metricsModeOn {
+			s.currentMetric.MetricMap["FetchState"] = metrics.ToUS(time.Since(tStart))
+		}
 	}
 	// }
 
@@ -302,7 +301,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	var (
 		tStart              time.Time
-		serveUnique         string = "ServeUnique"
+		serveUnique         = "ServeUnique"
 		workingSetInstalled bool
 	)
 
@@ -314,11 +313,10 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 			if s.isRecordReady && !s.IsLazyMode {
 				if s.metricsModeOn {
 					tStart = time.Now()
-					s.installWorkingSetPages(fd)
+				}
+				s.installWorkingSetPages(fd)
+				if s.metricsModeOn {
 					s.currentMetric.MetricMap["InstallWS"] = metrics.ToUS(time.Since(tStart))
-					s.currentMetric.MetricMap[serveUnique] = float64(0)
-				} else {
-					s.installWorkingSetPages(fd)
 				}
 
 				workingSetInstalled = true
