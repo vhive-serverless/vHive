@@ -128,11 +128,11 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 	state.isActive = true
 	state.isEverActivated = true
 	state.firstPageFaultOnce = new(sync.Once)
-	state.servedNum = 0
 	state.quitCh = make(chan int)
 
 	if state.metricsModeOn {
 		state.uniqueNum = 0
+		state.servedNum = 0
 		state.currentMetric = metrics.NewMetric()
 	}
 
