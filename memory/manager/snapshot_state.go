@@ -243,7 +243,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 		}
 		s.fetchState()
 		if s.metricsModeOn {
-			s.currentMetric.MetricMap["FetchState"] = metrics.ToUS(time.Since(tStart))
+			s.currentMetric.MetricMap[fetchStateMetric] = metrics.ToUS(time.Since(tStart))
 		}
 	}
 	// }
@@ -301,7 +301,6 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	var (
 		tStart              time.Time
-		serveUnique         = "ServeUnique"
 		workingSetInstalled bool
 	)
 
@@ -316,7 +315,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 				}
 				s.installWorkingSetPages(fd)
 				if s.metricsModeOn {
-					s.currentMetric.MetricMap["InstallWS"] = metrics.ToUS(time.Since(tStart))
+					s.currentMetric.MetricMap[installWSMetric] = metrics.ToUS(time.Since(tStart))
 				}
 
 				workingSetInstalled = true
@@ -360,7 +359,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	err := installRegion(fd, src, dst, mode, 1)
 
 	if s.metricsModeOn {
-		s.currentMetric.MetricMap[serveUnique] += metrics.ToUS(time.Since(tStart))
+		s.currentMetric.MetricMap[serveUniqueMetric] += metrics.ToUS(time.Since(tStart))
 	}
 
 	return err
