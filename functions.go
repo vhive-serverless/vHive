@@ -137,11 +137,18 @@ func (p *FuncPool) RemoveInstance(fID, imageName string, isSync bool) (string, e
 	return f.RemoveInstance(isSync)
 }
 
-// DumpUPFStats Stores the VM UPF stats in a csv file
-func (p *FuncPool) DumpUPFStats(fID, imageName, functionName, metricsOutFilePath string) error {
+// DumpUPFPageStats Dumps the memory manager's stats for a function about the number of the unique pages and the number of the pages that are reused across invocations
+func (p *FuncPool) DumpUPFPageStats(fID, imageName, functionName, metricsOutFilePath string) error {
 	f := p.getFunction(fID, imageName)
 
-	return f.DumpUPFStats(functionName, metricsOutFilePath)
+	return f.DumpUPFPageStats(functionName, metricsOutFilePath)
+}
+
+// DumpUPFLatencyStats Dumps the memory manager's stats for a function about number of unique/reused pages
+func (p *FuncPool) DumpUPFLatencyStats(fID, imageName, functionName, latencyOutFilePath string) error {
+	f := p.getFunction(fID, imageName)
+
+	return f.DumpUPFLatencyStats(functionName, latencyOutFilePath)
 }
 
 //////////////////////////////// Function type //////////////////////////////////////////////
@@ -391,9 +398,14 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 	return r, err
 }
 
-// DumpUPFStats Stores the VM UPF stats in a csv file
-func (f *Function) DumpUPFStats(functionName, metricsOutFilePath string) error {
-	return orch.DumpUPFStats(f.vmID, functionName, metricsOutFilePath)
+// DumpUPFPageStats Dumps the memory manager's stats about the number of the unique pages and the number of the pages that are reused across invocations
+func (f *Function) DumpUPFPageStats(functionName, metricsOutFilePath string) error {
+	return orch.DumpUPFPageStats(f.vmID, functionName, metricsOutFilePath)
+}
+
+// DumpUPFLatencyStats Dumps the memory manager's latency stats
+func (f *Function) DumpUPFLatencyStats(functionName, latencyOutFilePath string) error {
+	return orch.DumpUPFLatencyStats(f.vmID, functionName, latencyOutFilePath)
 }
 
 // CreateInstanceSnapshot Creates a snapshot of the instance
