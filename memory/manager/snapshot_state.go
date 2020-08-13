@@ -358,6 +358,9 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 
 	err := installRegion(fd, src, dst, mode, 1)
 
+	// FIXME: serveUniqueMetric currently counts all pages for lazy mode
+	// Needs to be made to count only unique in this mode or latency
+	// stats should be disabled in lazy mode
 	if s.metricsModeOn {
 		s.currentMetric.MetricMap[serveUniqueMetric] += metrics.ToUS(time.Since(tStart))
 	}
