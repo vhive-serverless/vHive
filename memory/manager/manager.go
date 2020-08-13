@@ -15,6 +15,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	serveUniqueMetric = "ServeUnique"
+	installWSMetric   = "InstallWS"
+	fetchStateMetric  = "FetchState"
+)
+
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
 	MetricsModeOn bool
@@ -217,10 +223,22 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 }
 
 // DumpVMStats Saves the per VM stats
-func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath string) (err error) {
+func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath string) (err error) {
+	var statHeader = []string{
+		"FuncName",
+		"RecPages",
+		"RecRegions",
+		"Served",
+		"StdDev",
+		"Reused",
+		"StdDev",
+		"Unique",
+		"StdDev",
+	}
+
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
-	logger.Debug("Gathering stats")
+	logger.Debug("Dumping stats about number of page faults")
 
 	m.Lock()
 
@@ -268,10 +286,53 @@ func (m *MemoryManager) DumpVMStats(vmID, functionName, metricsOutFilePath strin
 	writer := csv.NewWriter(csvFile)
 	defer writer.Flush()
 
+	fileInfo, err := csvFile.Stat()
+	if err != nil {
+		log.Error("Failed to stat csv file")
+		return err
+	}
+
+	if fileInfo.Size() == 0 {
+		if err := writer.Write(statHeader); err != nil {
+			log.Error("Failed to write header to csv file")
+			return err
+		}
+	}
+
 	if err := writer.Write(stats); err != nil {
-		log.Fatalf("Failed to write to csv file")
+		log.Error("Failed to write to csv file")
 		return err
 	}
 
 	return nil
+}
+
+// DumpLatencyStats Dumps latency stats collected for the VM
+func (m *MemoryManager) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath string) (err error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Dumping stats about latency of UPFs")
+
+	m.Lock()
+
+	state, ok := m.instances[vmID]
+	if !ok {
+		logger.Error("VM not registered with the memory manager")
+		return errors.New("VM not registered with the memory manager")
+	}
+
+	m.Unlock()
+
+	if state.isActive {
+		logger.Error("Cannot get stats while VM is active")
+		return errors.New("Cannot get stats while VM is active")
+	}
+
+	if !m.MetricsModeOn || !state.metricsModeOn {
+		logger.Error("Metrics mode is not on")
+		return errors.New("Metrics mode is not on")
+	}
+
+	return metrics.PrintMeanStd(latencyOutFilePath, functionName, state.latencyMetrics...)
+
 }
