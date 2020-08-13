@@ -9,6 +9,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/ustiugov/fccd-orchestrator/metrics"
 	"gonum.org/v1/gonum/stat"
 
 	log "github.com/sirupsen/logrus"
@@ -128,8 +129,12 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 	state.isEverActivated = true
 	state.firstPageFaultOnce = new(sync.Once)
 	state.servedNum = 0
-	state.uniqueNum = 0
 	state.quitCh = make(chan int)
+
+	if state.metricsModeOn {
+		state.uniqueNum = 0
+		state.currentMetric = metrics.NewMetric()
+	}
 
 	fdInt = int(state.userFaultFD.Fd())
 
@@ -197,6 +202,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 			state.reusedPFServed,
 			float64(state.servedNum-state.uniqueNum),
 		)
+		state.latencyMetrics = append(state.latencyMetrics, state.currentMetric)
 	}
 
 	state.userFaultFD.Close()
