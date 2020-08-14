@@ -76,7 +76,7 @@ type SnapshotState struct {
 	reusedPFServed []float64
 	latencyMetrics []*metrics.Metric
 
-	servedNum     int
+	replayedNum   int // only valid for lazy serving
 	uniqueNum     int
 	currentMetric *metrics.Metric
 }
@@ -302,6 +302,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	var (
 		tStart              time.Time
 		workingSetInstalled bool
+		isMeasured          bool
 	)
 
 	s.firstPageFaultOnce.Do(
@@ -334,8 +335,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	mode := uint64(0)
 
 	rec := Record{
-		offset:    offset,
-		servedNum: s.servedNum,
+		offset: offset,
 	}
 
 	if !s.isRecordReady {
@@ -346,22 +346,27 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 
 	if s.metricsModeOn {
 		if s.isRecordReady {
-			if !s.trace.containsRecord(rec) {
+			if s.IsLazyMode {
+				if !s.trace.containsRecord(rec) {
+					s.uniqueNum++
+					isMeasured = true
+				}
+				s.replayedNum++
+			} else {
 				s.uniqueNum++
+				isMeasured = true
 			}
+
 		}
 
-		s.servedNum++
-
-		tStart = time.Now()
+		if isMeasured {
+			tStart = time.Now()
+		}
 	}
 
 	err := installRegion(fd, src, dst, mode, 1)
 
-	// FIXME: serveUniqueMetric currently counts all pages for lazy mode
-	// Needs to be made to count only unique in this mode or latency
-	// stats should be disabled in lazy mode
-	if s.metricsModeOn {
+	if s.metricsModeOn && isMeasured {
 		s.currentMetric.MetricMap[serveUniqueMetric] += metrics.ToUS(time.Since(tStart))
 	}
 

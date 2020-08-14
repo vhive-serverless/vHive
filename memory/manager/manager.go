@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	serveUniqueMetric = "ServeUnique"
-	installWSMetric   = "InstallWS"
-	fetchStateMetric  = "FetchState"
+	serveUniqueMetric = "3 ServeUnique"
+	installWSMetric   = "2 InstallWS"
+	fetchStateMetric  = "1 FetchState"
 )
 
 // MemoryManagerCfg Global config of the manager
@@ -138,7 +138,7 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 
 	if state.metricsModeOn {
 		state.uniqueNum = 0
-		state.servedNum = 0
+		state.replayedNum = 0
 		state.currentMetric = metrics.NewMetric()
 	}
 
@@ -202,12 +202,16 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 	}
 
 	if state.metricsModeOn && state.isRecordReady {
-		state.totalPFServed = append(state.totalPFServed, float64(state.servedNum))
 		state.uniquePFServed = append(state.uniquePFServed, float64(state.uniqueNum))
-		state.reusedPFServed = append(
-			state.reusedPFServed,
-			float64(state.servedNum-state.uniqueNum),
-		)
+
+		if state.IsLazyMode {
+			state.totalPFServed = append(state.totalPFServed, float64(state.replayedNum))
+			state.reusedPFServed = append(
+				state.reusedPFServed,
+				float64(state.replayedNum-state.uniqueNum),
+			)
+		}
+
 		state.latencyMetrics = append(state.latencyMetrics, state.currentMetric)
 	}
 
@@ -224,17 +228,10 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 // DumpVMStats Saves the per VM stats
 func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath string) (err error) {
-	var statHeader = []string{
-		"FuncName",
-		"RecPages",
-		"RecRegions",
-		"Served",
-		"StdDev",
-		"Reused",
-		"StdDev",
-		"Unique",
-		"StdDev",
-	}
+	var (
+		statHeader []string
+		stats      []string
+	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -260,20 +257,35 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 		return errors.New("Metrics mode is not on")
 	}
 
-	totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
-	reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
 	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
 
-	stats := []string{
-		functionName,
-		strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
-		strconv.Itoa(len(state.trace.regions)), // number of contiguous regions in the trace
-		strconv.Itoa(int(totalMean)),           // number of pages served
-		fmt.Sprintf("%.1f", totalStd),
-		strconv.Itoa(int(reusedMean)), // number of pages found in the trace
-		fmt.Sprintf("%.1f", reusedStd),
-		strconv.Itoa(int(uniqueMean)), // number of pages not found in the trace
-		fmt.Sprintf("%.1f", uniqueStd),
+	if state.IsLazyMode {
+		statHeader = getLazyHeader()
+
+		totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
+		reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
+
+		stats = []string{
+			functionName,
+			strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
+			strconv.Itoa(len(state.trace.regions)), // number of contiguous regions in the trace
+			strconv.Itoa(int(totalMean)),           // number of pages served
+			fmt.Sprintf("%.1f", totalStd),
+			strconv.Itoa(int(reusedMean)), // number of pages found in the trace
+			fmt.Sprintf("%.1f", reusedStd),
+			strconv.Itoa(int(uniqueMean)), // number of pages not found in the trace
+			fmt.Sprintf("%.1f", uniqueStd),
+		}
+	} else {
+		statHeader = getRecRepHeader()
+
+		stats = []string{
+			functionName,
+			strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
+			strconv.Itoa(len(state.trace.regions)), // number of contiguous regions in the trace
+			strconv.Itoa(int(uniqueMean)),          // number of pages not found in the trace
+			fmt.Sprintf("%.1f", uniqueStd),
+		}
 	}
 
 	csvFile, err := os.OpenFile(metricsOutFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -288,19 +300,19 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 
 	fileInfo, err := csvFile.Stat()
 	if err != nil {
-		log.Error("Failed to stat csv file " + err)
+		log.Errorf("Failed to stat csv file: %v", err)
 		return err
 	}
 
 	if fileInfo.Size() == 0 {
 		if err := writer.Write(statHeader); err != nil {
-			log.Error("Failed to write header to csv file " + err)
+			log.Errorf("Failed to write header to csv file: %v", err)
 			return err
 		}
 	}
 
 	if err := writer.Write(stats); err != nil {
-		log.Error("Failed to write to csv file " + err)
+		log.Errorf("Failed to write to csv file: %v ", err)
 		return err
 	}
 
@@ -335,4 +347,28 @@ func (m *MemoryManager) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePa
 
 	return metrics.PrintMeanStd(latencyOutFilePath, functionName, state.latencyMetrics...)
 
+}
+
+func getLazyHeader() []string {
+	return []string{
+		"FuncName",
+		"RecPages",
+		"RecRegions",
+		"RepPages",
+		"StdDev",
+		"Reused",
+		"StdDev",
+		"Unique",
+		"StdDev",
+	}
+}
+
+func getRecRepHeader() []string {
+	return []string{
+		"FuncName",
+		"RecPages",
+		"RecRegions",
+		"Unique",
+		"StdDev",
+	}
 }

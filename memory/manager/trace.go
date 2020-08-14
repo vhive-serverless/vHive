@@ -10,11 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Record A tuple with an address and a timestamp
+// Record A tuple with an address
 type Record struct {
-	offset    uint64
-	timestamp int64
-	servedNum int
+	offset uint64
 }
 
 // Trace Contains records
@@ -63,9 +61,7 @@ func (t *Trace) WriteTrace() {
 
 	for _, rec := range t.trace {
 		err := writer.Write([]string{
-			strconv.FormatUint(rec.offset, 16),
-			strconv.FormatInt(rec.timestamp, 10),
-			strconv.Itoa(rec.servedNum)})
+			strconv.FormatUint(rec.offset, 16)})
 		if err != nil {
 			log.Fatalf("Failed to write trace: %v", err)
 		}
@@ -97,19 +93,9 @@ func readRecord(line []string) Record {
 	if err != nil {
 		log.Fatalf("Failed to convert string to offset: %v", err)
 	}
-	timestamp, err := strconv.ParseInt(line[1], 10, 64)
-	if err != nil {
-		log.Fatalf("Failed to convert string to timestamp: %v", err)
-	}
-	servedNum, err := strconv.Atoi(line[2])
-	if err != nil {
-		log.Fatalf("Failed to convert string to servedNum: %v", err)
-	}
 
 	rec := Record{
-		offset:    offset,
-		timestamp: timestamp,
-		servedNum: servedNum,
+		offset: offset,
 	}
 	return rec
 }
