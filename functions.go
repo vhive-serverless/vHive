@@ -137,7 +137,8 @@ func (p *FuncPool) RemoveInstance(fID, imageName string, isSync bool) (string, e
 	return f.RemoveInstance(isSync)
 }
 
-// DumpUPFPageStats Dumps the memory manager's stats for a function about the number of the unique pages and the number of the pages that are reused across invocations
+// DumpUPFPageStats Dumps the memory manager's stats for a function about the number of
+// the unique pages and the number of the pages that are reused across invocations
 func (p *FuncPool) DumpUPFPageStats(fID, imageName, functionName, metricsOutFilePath string) error {
 	f := p.getFunction(fID, imageName)
 
@@ -398,7 +399,8 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 	return r, err
 }
 
-// DumpUPFPageStats Dumps the memory manager's stats about the number of the unique pages and the number of the pages that are reused across invocations
+// DumpUPFPageStats Dumps the memory manager's stats about the number of
+// the unique pages and the number of the pages that are reused across invocations
 func (f *Function) DumpUPFPageStats(functionName, metricsOutFilePath string) error {
 	return orch.DumpUPFPageStats(f.vmID, functionName, metricsOutFilePath)
 }
