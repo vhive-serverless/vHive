@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	serveUniqueMetric = "3 ServeUnique"
-	installWSMetric   = "2 InstallWS"
-	fetchStateMetric  = "1 FetchState"
+	serveUniqueMetric = "ServeUnique"
+	installWSMetric   = "InstallWS"
+	fetchStateMetric  = "FetchState"
 )
 
 // MemoryManagerCfg Global config of the manager
