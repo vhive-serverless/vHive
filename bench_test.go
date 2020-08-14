@@ -139,6 +139,7 @@ func TestBenchParallelServe(t *testing.T) {
 
 		for k := 0; k < *iterNum; k++ {
 			var vmGroup sync.WaitGroup
+			semLoad := make(chan bool, 10)
 
 			if !*isWithCache {
 				dropPageCache()
@@ -148,10 +149,13 @@ func TestBenchParallelServe(t *testing.T) {
 			for i := 0; i < parallel; i++ {
 				vmIDString := strconv.Itoa(vmID + i)
 
+				semLoad <- true
+
 				vmGroup.Add(1)
 
 				go func(i int) {
 					defer vmGroup.Done()
+					defer func() { <-semLoad }()
 
 					resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 					require.NoError(t, err, "Function returned error")
@@ -159,6 +163,9 @@ func TestBenchParallelServe(t *testing.T) {
 				}(i)
 			}
 
+			for i := 0; i < cap(semLoad); i++ {
+				semLoad <- true
+			}
 			vmGroup.Wait()
 
 			duration := time.Since(tStart).Milliseconds()
