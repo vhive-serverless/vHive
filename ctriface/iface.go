@@ -507,7 +507,8 @@ func (o *Orchestrator) GetUPFEnabled() bool {
 	return o.isUPFEnabled
 }
 
-// DumpUPFPageStats Dumps the memory manager's stats about the number of the unique pages and the number of the pages that are reused across invocations
+// DumpUPFPageStats Dumps the memory manager's stats about the number of
+// the unique pages and the number of the pages that are reused across invocations
 func (o *Orchestrator) DumpUPFPageStats(vmID, functionName, metricsOutFilePath string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received DumpUPFPageStats")
