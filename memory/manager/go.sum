@@ -126,6 +126,8 @@ github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200812154705-d5dc53e49664
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200812154705-d5dc53e49664/go.mod h1:kqi59gkrrgkSH4W9PH85SL00/kLZysF4NlmmpZFLs58=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200813130719-8977ae6026c2 h1:KlYDVk6vW/XEvBc7BnDMY/kHYgClZlMV2ELrlMv/ZgM=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200813130719-8977ae6026c2/go.mod h1:4eWjym+7yP5mIXYPxDWQMTxnPvAqTd1XrqGBQogi0hg=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200817125613-5cadb740de09 h1:ySFYp0B4Sb54sgKBiD4Q01MO+nQ4mrjG5sz++6Lm+Kw=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200817125613-5cadb740de09/go.mod h1:4eWjym+7yP5mIXYPxDWQMTxnPvAqTd1XrqGBQogi0hg=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.opencensus.io v0.22.0 h1:C9hSCOW830chIVkdja34wa6Ky+IzWllkUinR+BtRZd4=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
