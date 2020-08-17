@@ -302,7 +302,6 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	var (
 		tStart              time.Time
 		workingSetInstalled bool
-		isMeasured          bool
 	)
 
 	s.firstPageFaultOnce.Do(
@@ -349,24 +348,20 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 			if s.IsLazyMode {
 				if !s.trace.containsRecord(rec) {
 					s.uniqueNum++
-					isMeasured = true
 				}
 				s.replayedNum++
 			} else {
 				s.uniqueNum++
-				isMeasured = true
 			}
 
 		}
 
-		if isMeasured {
-			tStart = time.Now()
-		}
+		tStart = time.Now()
 	}
 
 	err := installRegion(fd, src, dst, mode, 1)
 
-	if s.metricsModeOn && isMeasured {
+	if s.metricsModeOn {
 		s.currentMetric.MetricMap[serveUniqueMetric] += metrics.ToUS(time.Since(tStart))
 	}
 
