@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/ustiugov/fccd-orchestrator/metrics"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -278,5 +279,68 @@ func getAllImages() map[string]string {
 		//"cnn_serving":  "ustiugov/cnn_serving:var_workload",
 		//"rnn_serving":  "ustiugov/rnn_serving:var_workload",
 		//"lr_training":  "ustiugov/lr_training:var_workload",
+	}
+}
+
+func TestBenchServe(t *testing.T) {
+	log.Infof("With cache: %t", *isWithCache)
+
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+		isSyncOffload bool = true
+	)
+
+	images := getAllImages()
+	vmID := 0
+
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+
+	createResultsDir()
+
+	for funcName, imageName := range images {
+		// Pull image
+		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
+
+		vmIDString := strconv.Itoa(vmID)
+
+		// Create VM (and snapshot)
+		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
+
+		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+
+		// Record
+		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
+
+		message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+
+		serveMetrics := make([]*metrics.Metric, *iterNum)
+
+		for k := 0; k < *iterNum; k++ {
+			if !*isWithCache {
+				dropPageCache()
+			}
+
+			resp, met, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			serveMetrics[k] = met
+
+			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+			require.NoError(t, err, "Function returned error, "+message)
+		}
+
+		vmID++
+		err = metrics.PrintMeanStd(getOutFile("serve.txt"), funcName, serveMetrics...)
+		require.NoError(t, err, "Printing stats returned error")
 	}
 }
