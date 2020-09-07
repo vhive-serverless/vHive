@@ -56,8 +56,6 @@ import (
 	"github.com/ustiugov/fccd-orchestrator/misc"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
-
-	"github.com/go-multierror/multierror"
 )
 
 const (
@@ -525,6 +523,14 @@ func (o *Orchestrator) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePat
 	return o.memoryManager.DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath)
 }
 
+// GetUPFLatencyStats Returns the memory manager's latency stats
+func (o *Orchestrator) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received DumpUPFPageStats")
+
+	return o.memoryManager.GetUPFLatencyStats(vmID)
+}
+
 // PauseVM Pauses a VM
 func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -600,12 +606,12 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) (string,
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *metrics.Metric, error) {
 	var (
-		loadSnapshotMetric      *metrics.Metric = metrics.NewMetric()
-		tStart                  time.Time
-		snapPath                string = o.getSnapshotFile(vmID)
-		memPath                 string = o.getMemoryFile(vmID)
-		loadErr, addInstanceErr error
-		loadDone                chan int = make(chan int)
+		loadSnapshotMetric *metrics.Metric = metrics.NewMetric()
+		tStart             time.Time
+		snapPath           string = o.getSnapshotFile(vmID)
+		memPath            string = o.getMemoryFile(vmID)
+		activateDone       chan error
+		activateErr        error
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -620,29 +626,25 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 		EnableUserPF:     o.GetUPFEnabled(),
 	}
 
-	tStart = time.Now()
-
-	go func() {
-		defer close(loadDone)
-
-		if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
-			logger.Error("Failed to load snapshot of the VM: ", loadErr)
-		}
-	}()
-
 	if o.GetUPFEnabled() {
-		if addInstanceErr = o.memoryManager.Activate(vmID, nil); addInstanceErr != nil {
-			logger.Warn("Failed to activate VM in the memory manager", addInstanceErr)
+		if err := o.memoryManager.Activate(vmID, activateDone); err != nil {
+			logger.Error("Failed to activate VM in the memory manager", err)
+			return "", nil, err
 		}
 	}
 
-	<-loadDone
+	tStart = time.Now()
+
+	if _, err := o.fcClient.LoadSnapshot(ctx, req); err != nil {
+		logger.Error("Failed to load snapshot of the VM: ", err)
+		return "", nil, err
+	}
 
 	loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
 
-	if loadErr != nil || addInstanceErr != nil {
-		multierr := multierror.Of(loadErr, addInstanceErr)
-		return "Failed to load snapshot of VM " + vmID, loadSnapshotMetric, multierr
+	activateErr = <-activateDone
+	if activateErr != nil {
+		return "", nil, activateErr
 	}
 
 	return "Snapshot of VM " + vmID + " loaded successfully", loadSnapshotMetric, nil
