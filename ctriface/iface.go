@@ -642,9 +642,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 
 	loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
 
-	activateErr = <-activateDone
-	if activateErr != nil {
-		return "", nil, activateErr
+	if o.GetUPFEnabled() {
+		activateErr = <-activateDone
+		if activateErr != nil {
+			return "", nil, activateErr
+		}
 	}
 
 	return "Snapshot of VM " + vmID + " loaded successfully", loadSnapshotMetric, nil
