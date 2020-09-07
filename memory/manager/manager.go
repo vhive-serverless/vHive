@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/ustiugov/fccd-orchestrator/metrics"
 	"gonum.org/v1/gonum/stat"
@@ -88,18 +89,15 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 }
 
 // Activate Creates an epoller to serve page faults for the VM
-// userFaultFDFile is for testing only
-func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err error) {
+func (m *MemoryManager) Activate(vmID string, doneCh chan error) (err error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Activating instance in the memory manager")
 
 	var (
-		event   syscall.EpollEvent
-		fdInt   int
-		ok      bool
-		state   *SnapshotState
-		readyCh chan int = make(chan int)
+		ok     bool
+		state  *SnapshotState
+		tStart time.Time
 	)
 
 	m.Lock()
@@ -117,18 +115,42 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 		return errors.New("VM already active")
 	}
 
-	if err := state.mapGuestMemory(); err != nil {
-		logger.Error("Failed to map guest memory")
-		return err
+	if state.isRecordReady && !state.IsLazyMode {
+		if state.metricsModeOn {
+			tStart = time.Now()
+		}
+		state.fetchState()
+		if state.metricsModeOn {
+			state.currentMetric.MetricMap[fetchStateMetric] = metrics.ToUS(time.Since(tStart))
+		}
 	}
 
-	if userFaultFDFile == nil {
-		if err := state.getUFFD(); err != nil {
-			logger.Error("Failed to get uffd")
-			return err
-		}
-	} else {
-		state.userFaultFD = userFaultFDFile
+	go activateAsync(state, doneCh)
+
+	return nil
+}
+
+// The asynchronous functionality of Activate
+func activateAsync(state *SnapshotState, doneCh chan error) {
+	logger := log.WithFields(log.Fields{"vmID": state.VMID})
+
+	var (
+		err     error
+		event   syscall.EpollEvent
+		fdInt   int
+		readyCh chan int = make(chan int)
+	)
+
+	if err := state.mapGuestMemory(); err != nil {
+		logger.Error("Failed to map guest memory")
+		doneCh <- err
+		return
+	}
+
+	if err := state.getUFFD(); err != nil {
+		logger.Error("Failed to get uffd")
+		doneCh <- err
+		return
 	}
 
 	state.isActive = true
@@ -150,19 +172,20 @@ func (m *MemoryManager) Activate(vmID string, userFaultFDFile *os.File) (err err
 	state.epfd, err = syscall.EpollCreate1(0)
 	if err != nil {
 		logger.Error("Failed to create epoller")
-		return err
+		doneCh <- err
+		return
 	}
 
 	if err := syscall.EpollCtl(state.epfd, syscall.EPOLL_CTL_ADD, fdInt, &event); err != nil {
 		logger.Error("Failed to subscribe VM")
-		return err
+		doneCh <- err
+		return
 	}
 
 	go state.pollUserPageFaults(readyCh)
 
 	<-readyCh
-
-	return nil
+	doneCh <- nil
 }
 
 // Deactivate Removes the epoller which serves page faults for the VM
@@ -347,6 +370,35 @@ func (m *MemoryManager) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePa
 
 	return metrics.PrintMeanStd(latencyOutFilePath, functionName, state.latencyMetrics...)
 
+}
+
+// GetUPFLatencyStats Returns the gathered metrics for the VM
+func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("returning stats about latency of UPFs")
+
+	m.Lock()
+
+	state, ok := m.instances[vmID]
+	if !ok {
+		logger.Error("VM not registered with the memory manager")
+		return nil, errors.New("VM not registered with the memory manager")
+	}
+
+	m.Unlock()
+
+	if state.isActive {
+		logger.Error("Cannot get stats while VM is active")
+		return nil, errors.New("Cannot get stats while VM is active")
+	}
+
+	if !m.MetricsModeOn || !state.metricsModeOn {
+		logger.Error("Metrics mode is not on")
+		return nil, errors.New("Metrics mode is not on")
+	}
+
+	return state.latencyMetrics, nil
 }
 
 func getLazyHeader() []string {
