@@ -676,6 +676,8 @@ github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200817140853-c8c7c876996
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200817140853-c8c7c8769962/go.mod h1:2t/y8e5/xyZj/2JU0WZOWxkpYcpTT9PsJc3J38jtqEg=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200907130526-5a093468a5f0 h1:XUT17RQb2igfXjNzeBOlEoJ7Afa6EHu1yTv8uuVcp+I=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200907130526-5a093468a5f0/go.mod h1:Hwxoiq7Y4mhxuguKj1W5u1izWL6AyK3uip9gGSABea4=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200907145705-20986286ce29 h1:tTHeD3HpaeoLedLa2b7i7aJMagH+KX2ad7VCcnBNdYM=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200907145705-20986286ce29/go.mod h1:Hwxoiq7Y4mhxuguKj1W5u1izWL6AyK3uip9gGSABea4=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710144657-9fbec6857e48/go.mod h1:5dhCs/XynpQoQcrhd/YgUBjGahhNpTknQUcC1kHRCaA=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710145415-bb09d1a68889/go.mod h1:5dhCs/XynpQoQcrhd/YgUBjGahhNpTknQUcC1kHRCaA=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710150633-096cac68bd72 h1:r67pqykSYWZHFYfIKuT44PTXFJWu5lJcatkV16d3vKU=
