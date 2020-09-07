@@ -25,7 +25,6 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/ustiugov/fccd-orchestrator/metrics"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +32,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ustiugov/fccd-orchestrator/metrics"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -52,6 +53,8 @@ func TestBenchParallelServe(t *testing.T) {
 		servedTh      uint64
 		pinnedFuncNum int
 		isSyncOffload bool = true
+		serveMetrics       = make([]*metrics.Metric, *parallelNum)
+		upfMetrics         = make([]*metrics.Metric, *parallelNum)
 	)
 
 	images := getAllImages()
@@ -62,7 +65,7 @@ func TestBenchParallelServe(t *testing.T) {
 
 	createResultsDir()
 
-	for _, imageName := range images {
+	for funcName, imageName := range images {
 		// Pull image
 		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 		require.NoError(t, err, "Function returned error")
@@ -99,20 +102,19 @@ func TestBenchParallelServe(t *testing.T) {
 		sem = make(chan bool, concurrency)
 		startVMGroup.Wait()
 		log.Info("All snapshots created")
-		//time.Sleep(10 * time.Second)
 
 		var recordVMGroup sync.WaitGroup
 
 		for i := 0; i < parallel; i++ {
 			vmIDString := strconv.Itoa(vmID + i)
-			log.Infof("Recording VM %s", vmIDString)
+			//log.Infof("Recording VM %s", vmIDString)
 
 			recordVMGroup.Add(1)
 
 			sem <- true
 
 			go func(vmIDString string) {
-				log.Infof("Starting recording GO routine for VM %s", vmIDString)
+				//log.Infof("Starting recording GO routine for VM %s", vmIDString)
 				defer recordVMGroup.Done()
 				defer func() { <-sem }()
 
@@ -121,12 +123,12 @@ func TestBenchParallelServe(t *testing.T) {
 				require.NoError(t, err, "Function returned error")
 				require.Equal(t, resp.Payload, "Hello, record_response!")
 
-				log.Infof("Served VM %s", vmIDString)
+				//log.Infof("Served VM %s", vmIDString)
 
 				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 				require.NoError(t, err, "Function returned error, "+message)
 
-				log.Infof("VM %s record done.", vmIDString)
+				//log.Infof("VM %s record done.", vmIDString)
 			}(vmIDString)
 		}
 
@@ -136,11 +138,10 @@ func TestBenchParallelServe(t *testing.T) {
 
 		log.Info("All records done")
 		recordVMGroup.Wait()
-		//time.Sleep(10 * time.Second)
 
 		for k := 0; k < *iterNum; k++ {
 			var vmGroup sync.WaitGroup
-			semLoad := make(chan bool, 10)
+			semLoad := make(chan bool, 1000)
 
 			if !*isWithCache {
 				dropPageCache()
@@ -158,9 +159,11 @@ func TestBenchParallelServe(t *testing.T) {
 					defer vmGroup.Done()
 					defer func() { <-semLoad }()
 
-					resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+					resp, metr, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 					require.NoError(t, err, "Function returned error")
 					require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+					serveMetrics[i] = metr
 				}(i)
 			}
 
@@ -175,8 +178,27 @@ func TestBenchParallelServe(t *testing.T) {
 				vmIDString := strconv.Itoa(vmID + i)
 				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 				require.NoError(t, err, "Function returned error, "+message)
+
+				if *isUPFEnabledTest {
+					memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "_0")
+					require.NoError(t, err, "Failed to ge tupf metrics")
+					require.Equal(t, len(memManagerMetrics), 1, "wrong length")
+					upfMetrics[i] = memManagerMetrics[0]
+				}
 			}
-			//time.Sleep(10 * time.Second)
+
+			if *isUPFEnabledTest {
+				for i, metr := range serveMetrics {
+					for k, v := range upfMetrics[i].MetricMap {
+						metr.MetricMap[k] = v
+					}
+				}
+			}
+			for _, metr := range serveMetrics {
+				metrics.PrintMeanStd(getOutFile("parallelServe.csv"), funcName, metr)
+			}
+
+			metrics.PrintMeanStd(getOutFile("parallelServe.csv"), funcName, serveMetrics...)
 
 			log.Printf("Started %d instances in %d milliseconds", parallel, duration)
 		}
@@ -339,7 +361,25 @@ func TestBenchServe(t *testing.T) {
 			require.NoError(t, err, "Function returned error, "+message)
 		}
 
+		// FUSE
+		memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "_0")
+		require.NoError(t, err, "Failed to dump get stats for "+funcName)
+		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
+
+		for i, metr := range serveMetrics {
+			for k, v := range memManagerMetrics[i].MetricMap {
+				metr.MetricMap[k] = v
+			}
+		}
+
+		// ##########################
+
 		vmID++
+
+		for _, metr := range serveMetrics {
+			metrics.PrintMeanStd(getOutFile("serve.txt"), funcName, metr)
+		}
+
 		err = metrics.PrintMeanStd(getOutFile("serve.txt"), funcName, serveMetrics...)
 		require.NoError(t, err, "Printing stats returned error")
 	}
