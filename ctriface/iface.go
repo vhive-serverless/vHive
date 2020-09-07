@@ -610,7 +610,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 		tStart             time.Time
 		snapPath           string = o.getSnapshotFile(vmID)
 		memPath            string = o.getMemoryFile(vmID)
-		activateDone       chan error
+		activateDone       chan error = make(chan error)
 		activateErr        error
 	)
 
