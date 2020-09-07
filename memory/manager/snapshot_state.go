@@ -53,8 +53,6 @@ type SnapshotState struct {
 	epfd               int
 	quitCh             chan int
 
-	// install the whole working set in the guest memory
-	isReplayWorkingSet bool
 	// prefetch the VMM state to the host memory
 	isPrefetchVMMState bool
 	// to indicate whether the instance has even been activated. this is to
@@ -225,28 +223,13 @@ func (s *SnapshotState) fetchState() {
 func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 	logger := log.WithFields(log.Fields{"vmID": s.VMID})
 
-	var (
-		events [1]syscall.EpollEvent
-		tStart time.Time
-	)
+	var events [1]syscall.EpollEvent
 
 	logger.Debug("Starting polling loop")
 
 	defer syscall.Close(s.epfd)
 
 	readyCh <- 0
-
-	// if s.isReplayWorkingSet {
-	if s.isRecordReady && !s.IsLazyMode {
-		if s.metricsModeOn {
-			tStart = time.Now()
-		}
-		s.fetchState()
-		if s.metricsModeOn {
-			s.currentMetric.MetricMap[fetchStateMetric] = metrics.ToUS(time.Since(tStart))
-		}
-	}
-	// }
 
 	for {
 		select {
@@ -308,7 +291,6 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		func() {
 			s.startAddress = address
 
-			// if s.isReplayWorkingSet
 			if s.isRecordReady && !s.IsLazyMode {
 				if s.metricsModeOn {
 					tStart = time.Now()
@@ -320,7 +302,6 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 
 				workingSetInstalled = true
 			}
-			// }
 		})
 
 	if workingSetInstalled {
@@ -370,7 +351,6 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 
 func (s *SnapshotState) installWorkingSetPages(fd int) {
 	log.Debug("Installing the working set pages")
-	// TODO: parallel (goroutines) vs serial, by region vs by page
 
 	// build a list of sorted regions (probably, it's better to make trace.regions an array instead of a map FIXME)
 	keys := make([]uint64, 0)
