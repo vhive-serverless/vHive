@@ -241,11 +241,17 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 
 	f.OnceAddInstance.Do(
 		func() {
+			var metr *metrics.Metric
 			isColdStart = true
 			logger.Debug("Function is inactive, starting the instance...")
 			tStart = time.Now()
-			f.AddInstance()
+			metr = f.AddInstance()
 			serveMetric.MetricMap[metrics.AddInstance] = metrics.ToUS(time.Since(tStart))
+			if metr != nil {
+				for k, v := range metr.MetricMap {
+					serveMetric.MetricMap[k] = v
+				}
+			}
 		})
 
 	f.RLock()
@@ -329,7 +335,7 @@ func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 
 // AddInstance Starts a VM, waits till it is ready.
 // Note: this function is called from sync.Once construct
-func (f *Function) AddInstance() {
+func (f *Function) AddInstance() *metrics.Metric {
 	f.Lock()
 	defer f.Unlock()
 
@@ -337,11 +343,13 @@ func (f *Function) AddInstance() {
 
 	logger.Debug("Adding instance")
 
+	var metr *metrics.Metric = nil
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	defer cancel()
 
 	if f.isSnapshotReady {
-		f.LoadInstance()
+		metr = f.LoadInstance()
 	} else {
 		message, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
 		if err != nil {
@@ -352,6 +360,8 @@ func (f *Function) AddInstance() {
 	}
 
 	f.stats.IncStarted(f.fID)
+
+	return metr
 }
 
 // RemoveInstanceAsync Stops an instance (VM) of the function.
@@ -452,7 +462,7 @@ func (f *Function) OffloadInstance() {
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
 // The tap, the shim and the vmID remain the same
-func (f *Function) LoadInstance() {
+func (f *Function) LoadInstance() *metrics.Metric {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Loading instance")
@@ -460,15 +470,21 @@ func (f *Function) LoadInstance() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
-	message, _, err := orch.LoadSnapshot(ctx, f.vmID)
+	message, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID)
 	if err != nil {
 		log.Panic(message, err)
 	}
 
-	message, _, err = orch.ResumeVM(ctx, f.vmID)
+	message, resumeMetr, err := orch.ResumeVM(ctx, f.vmID)
 	if err != nil {
 		log.Panic(message, err)
 	}
+
+	for k, v := range resumeMetr.MetricMap {
+		loadMetr.MetricMap[k] = v
+	}
+
+	return loadMetr
 }
 
 // GetStatServed Returns the served counter value
