@@ -195,10 +195,12 @@ func TestBenchParallelServe(t *testing.T) {
 				}
 			}
 			for _, metr := range serveMetrics {
-				metrics.PrintMeanStd(getOutFile("parallelServe.csv"), funcName, metr)
+				err := metrics.PrintMeanStd(getOutFile("parallelServe.csv"), funcName, metr)
+				require.NoError(t, err, "Failed to dump stats")
 			}
 
-			metrics.PrintMeanStd(getOutFile("parallelServe.csv"), funcName, serveMetrics...)
+			err = metrics.PrintMeanStd(getOutFile("parallelServe.csv"), funcName, serveMetrics...)
+			require.NoError(t, err, "Failed to dump stats")
 
 			log.Printf("Started %d instances in %d milliseconds", parallel, duration)
 		}
@@ -376,10 +378,13 @@ func TestBenchServe(t *testing.T) {
 
 		vmID++
 
+		// Print individual
 		for _, metr := range serveMetrics {
-			metrics.PrintMeanStd(getOutFile("serve.txt"), funcName, metr)
+			err := metrics.PrintMeanStd(getOutFile("serve.txt"), funcName, metr)
+			require.NoError(t, err, "Failed to dump stats")
 		}
 
+		// Print aggregate
 		err = metrics.PrintMeanStd(getOutFile("serve.txt"), funcName, serveMetrics...)
 		require.NoError(t, err, "Printing stats returned error")
 	}
