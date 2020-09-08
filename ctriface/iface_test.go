@@ -146,7 +146,7 @@ func TestStartStopParallel(t *testing.T) {
 
 	log.SetLevel(log.InfoLevel)
 
-	testTimeout := 120 * time.Second
+	testTimeout := 520 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
