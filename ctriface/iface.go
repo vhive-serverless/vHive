@@ -533,7 +533,7 @@ func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) (string, error)
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
 	if _, err := o.fcClient.PauseVM(ctx, &proto.PauseVMRequest{VMID: vmID}); err != nil {
-		logger.Warn("failed to pause the VM: ", err)
+		logger.Error("failed to pause the VM: ", err)
 		return "Pausing VM " + vmID + " failed", err
 	}
 
@@ -554,7 +554,7 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, *metr
 
 	tStart = time.Now()
 	if _, err := o.fcClient.ResumeVM(ctx, &proto.ResumeVMRequest{VMID: vmID}); err != nil {
-		logger.Warn("failed to pause the VM: ", err)
+		logger.Error("failed to resume the VM: ", err)
 		return "Resuming VM " + vmID + " failed", resumeVMMetric, err
 	}
 	resumeVMMetric.MetricMap[metrics.FcResume] = metrics.ToUS(time.Since(tStart))
