@@ -47,7 +47,7 @@ func TestParallelServe(t *testing.T) {
 	require.Equal(t, resp.Payload, "Hello, world!")
 	// -----------------------------------------------------
 
-	vmNum := 2
+	vmNum := 3
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
