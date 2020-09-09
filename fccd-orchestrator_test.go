@@ -59,7 +59,7 @@ func TestMain(m *testing.M) {
 
 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
 	flag.Parse()
 
