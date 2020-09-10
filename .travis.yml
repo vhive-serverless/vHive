@@ -8,7 +8,8 @@ go:
 
 env:
   global:
-  - GO111MODULE=on GOPRIVATE=github.com/ustiugov/fccd-orchestrator
+  - GO111MODULE=on
+  - GOPRIVATE=github.com/ustiugov/fccd-orchestrator
   jobs:
   - TEST=test-subdirs
   - TEST=test

@@ -58,6 +58,10 @@ test-skip:
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS_NORACE) -run TestParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
 	./scripts/clean_fcctr.sh
 
+test-skip-all:
+	$(MAKE) test-skip
+	$(MAKE) -C ctriface test-skip
+
 log-clean:
 	sudo rm -rf $(CTRDLOGDIR)
 

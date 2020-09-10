@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Make it impossible to use lazy mode without UPF
-
 func TestSnapLoad(t *testing.T) {
 	// Need to clean up manually after this test because StopVM does not
 	// work for stopping machiens which are loaded from snapshots yet

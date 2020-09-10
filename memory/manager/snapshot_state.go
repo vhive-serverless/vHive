@@ -99,7 +99,7 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 
 func (s *SnapshotState) getUFFD() error {
 	var d net.Dialer
-	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
 	for {
