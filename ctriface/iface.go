@@ -152,9 +152,8 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
 	return &proto.CreateVMRequest{
-		VMID:           vm.ID,
-		TimeoutSeconds: 150,
-		KernelArgs:     kernelArgs,
+		VMID:       vm.ID,
+		KernelArgs: kernelArgs,
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
 			VcpuCount:  1,
 			MemSizeMib: 256,

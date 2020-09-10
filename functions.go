@@ -416,7 +416,7 @@ func (f *Function) CreateInstanceSnapshot() {
 
 	logger.Debug("Creating instance snapshot")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	message, err := orch.PauseVM(ctx, f.vmID)
@@ -441,7 +441,7 @@ func (f *Function) OffloadInstance() {
 
 	logger.Debug("Offloading instance")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	message, err := orch.Offload(ctx, f.vmID)
@@ -457,7 +457,7 @@ func (f *Function) LoadInstance() {
 
 	logger.Debug("Loading instance")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	message, _, err := orch.LoadSnapshot(ctx, f.vmID)

@@ -207,7 +207,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	vmNum := 3
+	vmNum := 10
 	vmIDBase := 11
 	imageName := "ustiugov/helloworld:runner_workload"
 
