@@ -47,7 +47,7 @@ func TestParallelServe(t *testing.T) {
 	require.Equal(t, resp.Payload, "Hello, world!")
 	// -----------------------------------------------------
 
-	vmNum := 5
+	vmNum := 3
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -56,7 +56,7 @@ func TestParallelServe(t *testing.T) {
 			defer vmGroup.Done()
 			fID := strconv.Itoa(100 + i)
 
-			resp, _, err := funcPool.Serve(context.Backgrounssh -p 22 plamenpp@hp108.utah.cloudlab.usd(), fID, imageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
 			require.NoError(t, err, "Function returned error on 1st run")
 			require.Equal(t, resp.Payload, "Hello, world!")
 
