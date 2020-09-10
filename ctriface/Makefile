@@ -15,13 +15,19 @@ test:
 
 test-man:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_noupf_man.out 2>$(CTRDLOGDIR)/ctriface_log_noupf_man.err &
-	sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoadMultiple
+	#sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS)
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_man.out 2>$(CTRDLOGDIR)/ctriface_log_upf_man.err &
-	sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS) -args $(WITHUPF)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(WITHUPF)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoadMultiple -args $(WITHUPF)
+	#sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS) -args $(WITHUPF)
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_lazy_man.out 2>$(CTRDLOGDIR)/ctriface_log_lazy_man.err &
-	sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS) -args $(WITHUPF) $(WITHLAZY)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(WITHUPF) $(WITHLAZY)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoadMultiple -args $(WITHUPF) $(WITHLAZY)
+	#sudo env "PATH=$(PATH)" go test $(MANUALTESTFILES) $(EXTRAGOARGS) -args $(WITHUPF) $(WITHLAZY)
 	./../scripts/clean_fcctr.sh
 
 bench:
