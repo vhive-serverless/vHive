@@ -457,7 +457,7 @@ func (f *Function) LoadInstance() {
 
 	logger.Debug("Loading instance")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
 
 	message, _, err := orch.LoadSnapshot(ctx, f.vmID)
