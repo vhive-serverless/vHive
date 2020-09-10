@@ -2,7 +2,6 @@ package ctriface
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"sync"
@@ -16,10 +15,6 @@ import (
 )
 
 // TODO: Make it impossible to use lazy mode without UPF
-var (
-	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
-	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
-)
 
 func TestSnapLoad(t *testing.T) {
 	// Need to clean up manually after this test because StopVM does not
