@@ -89,6 +89,7 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 }
 
 // Activate Creates an epoller to serve page faults for the VM
+// doneCh is used to indicate that all associated goroutines have completed
 func (m *MemoryManager) Activate(vmID string, doneCh chan error) (err error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -119,19 +120,23 @@ func (m *MemoryManager) Activate(vmID string, doneCh chan error) (err error) {
 		if state.metricsModeOn {
 			tStart = time.Now()
 		}
-		state.fetchState()
+		if err := state.fetchState(); err != nil {
+			return err
+		}
 		if state.metricsModeOn {
 			state.currentMetric.MetricMap[fetchStateMetric] = metrics.ToUS(time.Since(tStart))
 		}
 	}
 
-	go activateAsync(state, doneCh)
+	go activateRest(state, doneCh)
 
 	return nil
 }
 
-// The asynchronous functionality of Activate
-func activateAsync(state *SnapshotState, doneCh chan error) {
+// The remaining functionality of Activate
+// It is done asynchronously because getUFFD relies on executing
+// loadSnapshot simultaneously
+func activateRest(state *SnapshotState, doneCh chan error) {
 	logger := log.WithFields(log.Fields{"vmID": state.VMID})
 
 	var (

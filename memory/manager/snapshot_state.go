@@ -53,8 +53,6 @@ type SnapshotState struct {
 	epfd               int
 	quitCh             chan int
 
-	// prefetch the VMM state to the host memory
-	isPrefetchVMMState bool
 	// to indicate whether the instance has even been activated. this is to
 	// get around cases where offload is called for the first time
 	isEverActivated bool
@@ -62,8 +60,6 @@ type SnapshotState struct {
 	isActive bool
 
 	isRecordReady bool
-
-	isWSCopy bool
 
 	guestMem   []byte
 	workingSet []byte
@@ -166,21 +162,24 @@ func alignment(block []byte, alignSize int) int {
 
 // AlignedBlock returns []byte of size BlockSize aligned to a multiple
 // of alignSize in memory (must be power of two)
-func AlignedBlock(BlockSize int) []byte {
+func AlignedBlock(blockSize int) []byte {
 	alignSize := os.Getpagesize() // must be multiple of the filesystem block size
 
-	block := make([]byte, BlockSize+alignSize)
-	if alignSize == 0 {
-		return block
+	if blockSize == 0 {
+		return nil
 	}
+
+	block := make([]byte, blockSize+alignSize)
+
 	a := alignment(block, alignSize)
 	offset := 0
 	if a != 0 {
 		offset = alignSize - a
 	}
-	block = block[offset : offset+BlockSize]
-	// Can't check alignment of a zero sized block
-	if BlockSize != 0 {
+	block = block[offset : offset+blockSize]
+
+	// Check
+	if blockSize != 0 {
 		a = alignment(block, alignSize)
 		if a != 0 {
 			log.Fatal("Failed to align block")
@@ -189,13 +188,12 @@ func AlignedBlock(BlockSize int) []byte {
 	return block
 }
 
-// fetchState Fetches the working set file (or the whole guest memory) and/or the VMM state file
-func (s *SnapshotState) fetchState() {
-	// if s.isPrefetchVMMState {
+// fetchState Fetches the working set file (or the whole guest memory) and the VMM state file
+func (s *SnapshotState) fetchState() error {
 	if _, err := ioutil.ReadFile(s.VMMStatePath); err != nil {
 		log.Errorf("Failed to fetch VMM state: %v\n", err)
+		return err
 	}
-	//}
 
 	size := len(s.trace.trace) * os.Getpagesize()
 
@@ -203,21 +201,23 @@ func (s *SnapshotState) fetchState() {
 	f, err := os.OpenFile(s.WorkingSetPath, os.O_RDONLY|syscall.O_DIRECT, 0600)
 	if err != nil {
 		log.Errorf("Failed to open the working set file for direct-io: %v\n", err)
+		return err
 	}
 
 	s.workingSet = AlignedBlock(size) // direct io requires aligned buffer
 
 	if n, err := f.Read(s.workingSet); n != size || err != nil {
 		log.Errorf("Reading working set file failed: %v\n", err)
+		return err
 	}
 
-	//trace.wsFetched = true
 	log.Debug("Fetched the entire working set")
 	if err := f.Close(); err != nil {
 		log.Errorf("Failed to close the working set file: %v\n", err)
+		return err
 	}
 
-	// return nil FIXME: add error checks in this function
+	return nil
 }
 
 func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
@@ -352,7 +352,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 func (s *SnapshotState) installWorkingSetPages(fd int) {
 	log.Debug("Installing the working set pages")
 
-	// build a list of sorted regions (probably, it's better to make trace.regions an array instead of a map FIXME)
+	// build a list of sorted regions
 	keys := make([]uint64, 0)
 	for k := range s.trace.regions {
 		keys = append(keys, k)
@@ -361,13 +361,7 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 
 	var (
 		srcOffset uint64
-		//wg        sync.WaitGroup
 	)
-
-	/*
-		concurrency := 10
-		sem := make(chan bool, concurrency) // channel-based semaphore to limit IOCTLs in-flight
-	*/
 
 	for _, offset := range keys {
 		regLength := s.trace.regions[offset]
@@ -376,34 +370,11 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 		src := uint64(uintptr(unsafe.Pointer(&s.workingSet[srcOffset])))
 		dst := regAddress
 
-		// BUG: concurrency of 10-100 goroutines caused some OS kernel process (kworker) to hang
-		/*
-			wg.Add(1)
-			sem <- true
-
-			go func(fd int, src, dst, len uint64) {
-				defer wg.Done()
-
-				installRegion(fd, src, dst, mode, len)
-
-				<-sem
-			}(fd, src, dst, uint64(regLength))
-		*/
-
 		installRegion(fd, src, dst, mode, uint64(regLength))
 
 		srcOffset += uint64(regLength) * 4096
 	}
 
-	/*
-		for i := 0; i < cap(sem); i++ {
-			sem <- true
-		}
-
-		wg.Wait()
-	*/
-
-	// working set installation happens on the first page fault that is always at startAddress
 	wake(fd, s.startAddress, os.Getpagesize())
 }
 
