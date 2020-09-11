@@ -32,6 +32,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-multierror/multierror"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
@@ -605,10 +606,10 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) (string,
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *metrics.Metric, error) {
 	var (
-		loadSnapshotMetric *metrics.Metric = metrics.NewMetric()
-		tStart             time.Time
-		activateDone       chan error = make(chan error)
-		activateErr        error
+		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
+		tStart               time.Time
+		loadErr, activateErr error
+		loadDone             = make(chan int)
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -624,26 +625,32 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 	}
 
 	if o.GetUPFEnabled() {
-		if err := o.memoryManager.Activate(vmID, activateDone); err != nil {
-			logger.Error("Failed to activate VM in the memory manager", err)
-			return "", nil, err
-		}
+		o.memoryManager.FetchState(vmID)
 	}
 
 	tStart = time.Now()
 
-	if _, err := o.fcClient.LoadSnapshot(ctx, req); err != nil {
-		logger.Error("Failed to load snapshot of the VM: ", err)
-		return "", nil, err
+	go func() {
+		defer close(loadDone)
+
+		if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
+			logger.Error("Failed to load snapshot of the VM: ", loadErr)
+		}
+	}()
+
+	if o.GetUPFEnabled() {
+		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
+			logger.Warn("Failed to activate VM in the memory manager", activateErr)
+		}
 	}
+
+	<-loadDone
 
 	loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
 
-	if o.GetUPFEnabled() {
-		activateErr = <-activateDone
-		if activateErr != nil {
-			return "", nil, activateErr
-		}
+	if loadErr != nil || activateErr != nil {
+		multierr := multierror.Of(loadErr, activateErr)
+		return "Failed to load snapshot of VM " + vmID, loadSnapshotMetric, multierr
 	}
 
 	return "Snapshot of VM " + vmID + " loaded successfully", loadSnapshotMetric, nil
