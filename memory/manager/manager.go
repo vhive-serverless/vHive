@@ -162,11 +162,6 @@ func (m *MemoryManager) FetchState(vmID string) error {
 
 	m.Unlock()
 
-	if !state.isActive {
-		logger.Error("VM not active")
-		return errors.New("VM not active")
-	}
-
 	if state.isRecordReady && !state.IsLazyMode {
 		if state.metricsModeOn {
 			tStart = time.Now()
