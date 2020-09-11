@@ -583,17 +583,16 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (string, *metr
 
 // CreateSnapshot Creates a snapshot of a VM
 func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) (string, error) {
-	var (
-		snapPath string = o.getSnapshotFile(vmID)
-		memPath  string = o.getMemoryFile(vmID)
-	)
-
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received CreateSnapshot")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-	req := &proto.CreateSnapshotRequest{VMID: vmID, SnapshotFilePath: snapPath, MemFilePath: memPath}
+	req := &proto.CreateSnapshotRequest{
+		VMID:             vmID,
+		SnapshotFilePath: o.getSnapshotFile(vmID),
+		MemFilePath:      o.getMemoryFile(vmID),
+	}
 
 	if _, err := o.fcClient.CreateSnapshot(ctx, req); err != nil {
 		logger.Warn("failed to create snapshot of the VM: ", err)
@@ -608,8 +607,6 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 	var (
 		loadSnapshotMetric *metrics.Metric = metrics.NewMetric()
 		tStart             time.Time
-		snapPath           string = o.getSnapshotFile(vmID)
-		memPath            string = o.getMemoryFile(vmID)
 		activateDone       chan error = make(chan error)
 		activateErr        error
 	)
@@ -621,8 +618,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (string, *
 
 	req := &proto.LoadSnapshotRequest{
 		VMID:             vmID,
-		SnapshotFilePath: snapPath,
-		MemFilePath:      memPath,
+		SnapshotFilePath: o.getSnapshotFile(vmID),
+		MemFilePath:      o.getMemoryFile(vmID),
 		EnableUserPF:     o.GetUPFEnabled(),
 	}
 
