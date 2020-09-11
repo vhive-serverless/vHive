@@ -46,6 +46,8 @@ var (
 	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
 	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
 	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
+	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
 )
 
 func TestMain(m *testing.M) {
@@ -67,6 +69,7 @@ func TestMain(m *testing.M) {
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
 	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
 	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
+	log.Infof("Drop cache: %t", !*isWithCache)
 
 	orch = ctriface.NewOrchestrator(
 		"devmapper",
