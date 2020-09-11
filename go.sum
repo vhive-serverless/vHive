@@ -489,6 +489,7 @@ github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271/go.mod h1:AZpEONHx3
 github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a/go.mod h1:qNTQ5P5JnDBl6z3cMAg/SywNDC5ABu5ApDIw6lUbRmI=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/objx v0.2.0 h1:Hbg2NidpLE8veEBkEZTL3CvlkUIVzuU9jDplZO54c48=
 github.com/stretchr/objx v0.2.0/go.mod h1:qt09Ya8vawLte6SNmTgCsAVtYtaKzEcn8ATUoHMkEqE=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
@@ -680,6 +681,8 @@ github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200907145705-20986286ce2
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200907145705-20986286ce29/go.mod h1:Hwxoiq7Y4mhxuguKj1W5u1izWL6AyK3uip9gGSABea4=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200907151647-989e569ee694 h1:w/2jYDV4tlhdZrkE1YSc/z4+hNwfS/wbd2GwlyOnwHU=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200907151647-989e569ee694/go.mod h1:Hwxoiq7Y4mhxuguKj1W5u1izWL6AyK3uip9gGSABea4=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200911161728-2f1a36329828 h1:EnXSLCnPDm4TIFzzLrmWXuop1/m+wBbpSw+K5nLFaLY=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200911161728-2f1a36329828/go.mod h1:m0RsCdgkMWg5lgSgdYSB9bA+gjZoxF8ClfHIQCiwDPU=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710144657-9fbec6857e48/go.mod h1:5dhCs/XynpQoQcrhd/YgUBjGahhNpTknQUcC1kHRCaA=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710145415-bb09d1a68889/go.mod h1:5dhCs/XynpQoQcrhd/YgUBjGahhNpTknQUcC1kHRCaA=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710150633-096cac68bd72 h1:r67pqykSYWZHFYfIKuT44PTXFJWu5lJcatkV16d3vKU=
@@ -753,6 +756,8 @@ github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200817132440-33411
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200817132440-33411fced6d9/go.mod h1:z9MOOiCwF2QK0G11ey25aYocAw3hjgl+/J7id6+YvLQ=
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200907124953-09c75d84d0ae h1:jJtS3yEU1Nnjcgbgt/m4QyCepbBBmbdaN3BMUDzBjyk=
 github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200907124953-09c75d84d0ae/go.mod h1:z9MOOiCwF2QK0G11ey25aYocAw3hjgl+/J7id6+YvLQ=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200911161559-49661b012b71 h1:LKwtMWJP8MnCjO8OPdP/1te/W0NPn3Eakt+Xg6RX0go=
+github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200911161559-49661b012b71/go.mod h1:a5uCBh4T42IyqiitebbTRrsJJg7ktIX1zQZDY8GpSMs=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200723085111-a9d697412510 h1:2F3Bp/P7C2UMKU+vakjEW/++E2yCntucHKNiRxcxQOE=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200723085111-a9d697412510/go.mod h1:NOrYF6usVkdr6gpXAP7pk7jp1MlAXlrZQuUEOVhRuV8=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200723105930-96d5e1cb279b h1:0ukOv2nUQqj14TLHf5MkVyvbyiV6AxwUSI7PQQnVdKQ=
@@ -781,6 +786,7 @@ github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200817125613-5cadb740de09
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200817132440-33411fced6d9/go.mod h1:4eWjym+7yP5mIXYPxDWQMTxnPvAqTd1XrqGBQogi0hg=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200817134038-06ab255d20f3 h1:HwsgzO7dHj9nk2dvr5slxtRad1SDV8rDzhzMdrqpS1g=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200817134038-06ab255d20f3/go.mod h1:4eWjym+7yP5mIXYPxDWQMTxnPvAqTd1XrqGBQogi0hg=
+github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200907081336-fae0d2f696c4 h1:uLaQas7lpektz5sG/CETCogyJD5VfC8my6753MRQrFY=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200907081336-fae0d2f696c4/go.mod h1:4eWjym+7yP5mIXYPxDWQMTxnPvAqTd1XrqGBQogi0hg=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200907084949-9faf6b643907 h1:1a8DzKpR+SFp7w4T6u7jl3lKZxeaUTCc+BhrdRfmWWI=
 github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200907084949-9faf6b643907/go.mod h1:4eWjym+7yP5mIXYPxDWQMTxnPvAqTd1XrqGBQogi0hg=
