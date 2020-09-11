@@ -93,12 +93,11 @@ func TestBenchmarkStart(t *testing.T) {
 	orch.Cleanup()
 }
 
-func TestBenchmarkLoadResumeNoCache(t *testing.T) {
+func TestBenchmarkLoadResume(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
 	log.SetOutput(os.Stdout)
 
@@ -121,7 +120,6 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 		loadMetrics := make([]*metrics.Metric, benchCount)
 		resumeMetrics := make([]*metrics.Metric, benchCount)
 
-		// Pull image and prepare snapshot
 		message, _, err := orch.StartVM(ctx, vmIDString, imageName)
 		require.NoError(t, err, "Failed to start VM, "+message)
 
@@ -160,17 +158,24 @@ func TestBenchmarkLoadResumeNoCache(t *testing.T) {
 
 		}
 
-		outFileName := "load.txt"
-		metrics.PrintMeanStd(getOutFile(outFileName), funcName, loadMetrics...)
+		fuseMetrics(loadMetrics, resumeMetrics)
 
-		outFileName = "resume.txt"
-		metrics.PrintMeanStd(getOutFile(outFileName), funcName, resumeMetrics...)
+		outFileName := "loadResume.txt"
+		metrics.PrintMeanStd(getOutFile(outFileName), funcName, loadMetrics...)
 
 		vmID++
 
 	}
 
 	orch.Cleanup()
+}
+
+func fuseMetrics(dst, src []*metrics.Metric) {
+	for i, metr := range src {
+		for k, v := range metr.MetricMap {
+			dst[i].MetricMap[k] = v
+		}
+	}
 }
 
 func dropPageCache() {
