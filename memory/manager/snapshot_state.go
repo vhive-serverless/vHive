@@ -91,6 +91,19 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	return s
 }
 
+func (s *SnapshotState) setupStateOnActivate() {
+	s.isActive = true
+	s.isEverActivated = true
+	s.firstPageFaultOnce = new(sync.Once)
+	s.quitCh = make(chan int)
+
+	if s.metricsModeOn {
+		s.uniqueNum = 0
+		s.replayedNum = 0
+		s.currentMetric = metrics.NewMetric()
+	}
+}
+
 func (s *SnapshotState) getUFFD() error {
 	var d net.Dialer
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -120,6 +133,22 @@ func (s *SnapshotState) getUFFD() error {
 		s.userFaultFD = fs[0]
 
 		return nil
+	}
+}
+
+func (s *SnapshotState) processMetrics() {
+	if s.metricsModeOn && s.isRecordReady {
+		s.uniquePFServed = append(s.uniquePFServed, float64(s.uniqueNum))
+
+		if s.IsLazyMode {
+			s.totalPFServed = append(s.totalPFServed, float64(s.replayedNum))
+			s.reusedPFServed = append(
+				s.reusedPFServed,
+				float64(s.replayedNum-s.uniqueNum),
+			)
+		}
+
+		s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
 	}
 }
 
@@ -225,6 +254,8 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	var events [1]syscall.EpollEvent
 
+	s.registerEpoller()
+
 	logger.Debug("Starting polling loop")
 
 	defer syscall.Close(s.epfd)
@@ -279,6 +310,39 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 			}
 		}
 	}
+}
+
+func (s *SnapshotState) registerEpoller() error {
+	logger := log.WithFields(log.Fields{"vmID": s.VMID})
+
+	var (
+		err   error
+		event syscall.EpollEvent
+		fdInt int
+	)
+
+	fdInt = int(s.userFaultFD.Fd())
+
+	event.Events = syscall.EPOLLIN
+	event.Fd = int32(fdInt)
+
+	s.epfd, err = syscall.EpollCreate1(0)
+	if err != nil {
+		logger.Errorf("Failed to create epoller %v", err)
+		return err
+	}
+
+	if err := syscall.EpollCtl(
+		s.epfd,
+		syscall.EPOLL_CTL_ADD,
+		fdInt,
+		&event,
+	); err != nil {
+		logger.Errorf("Failed to subscribe VM %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func (s *SnapshotState) servePageFault(fd int, address uint64) error {
