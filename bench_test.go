@@ -240,15 +240,18 @@ func TestBenchServe(t *testing.T) {
 		}
 
 		// FUSE
-		memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "_0")
-		require.NoError(t, err, "Failed to dump get stats for "+funcName)
-		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
+		if orch.GetUPFEnabled() {
+			memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "_0")
+			require.NoError(t, err, "Failed to dump get stats for "+funcName)
+			require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
 
-		for i, metr := range serveMetrics {
-			for k, v := range memManagerMetrics[i].MetricMap {
-				metr.MetricMap[k] = v
+			for i, metr := range serveMetrics {
+				for k, v := range memManagerMetrics[i].MetricMap {
+					metr.MetricMap[k] = v
+				}
 			}
 		}
+
 		// ##########################
 
 		vmID++
