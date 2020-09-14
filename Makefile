@@ -79,9 +79,9 @@ bench:
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHLAZY) -benchDirTest configLazy -metricsTest
 	./scripts/clean_fcctr.sh
 
-
-
-
+test-man-bench:
+	$(MAKE) test-man
+	$(MAKE) bench
 
 test-skip-all:
 	$(MAKE) test-skip
