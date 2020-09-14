@@ -255,65 +255,13 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 		return errors.New("Metrics mode is not on")
 	}
 
-	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
-
 	if state.IsLazyMode {
-		statHeader = getLazyHeader()
-
-		totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
-		reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
-
-		stats = []string{
-			functionName,
-			strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
-			strconv.Itoa(int(totalMean)),           // number of pages served
-			fmt.Sprintf("%.1f", totalStd),
-			strconv.Itoa(int(reusedMean)), // number of pages found in the trace
-			fmt.Sprintf("%.1f", reusedStd),
-			strconv.Itoa(int(uniqueMean)), // number of pages not found in the trace
-			fmt.Sprintf("%.1f", uniqueStd),
-		}
+		statHeader, stats = getLazyHeaderStats(state, functionName)
 	} else {
-		statHeader = getRecRepHeader()
-
-		stats = []string{
-			functionName,
-			strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
-			strconv.Itoa(len(state.trace.regions)), // number of contiguous regions in the trace
-			strconv.Itoa(int(uniqueMean)),          // number of pages not found in the trace
-			fmt.Sprintf("%.1f", uniqueStd),
-		}
+		statHeader, stats = getRecRepHeaderStats(state, functionName)
 	}
 
-	csvFile, err := os.OpenFile(metricsOutFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Error("Failed to create csv file for writing stats")
-		return err
-	}
-	defer csvFile.Close()
-
-	writer := csv.NewWriter(csvFile)
-	defer writer.Flush()
-
-	fileInfo, err := csvFile.Stat()
-	if err != nil {
-		log.Errorf("Failed to stat csv file: %v", err)
-		return err
-	}
-
-	if fileInfo.Size() == 0 {
-		if err := writer.Write(statHeader); err != nil {
-			log.Errorf("Failed to write header to csv file: %v", err)
-			return err
-		}
-	}
-
-	if err := writer.Write(stats); err != nil {
-		log.Errorf("Failed to write to csv file: %v ", err)
-		return err
-	}
-
-	return nil
+	return writeUPFPageStats(metricsOutFilePath, statHeader, stats)
 }
 
 // DumpLatencyStats Dumps latency stats collected for the VM
@@ -375,8 +323,8 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 	return state.latencyMetrics, nil
 }
 
-func getLazyHeader() []string {
-	return []string{
+func getLazyHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
+	header := []string{
 		"FuncName",
 		"RecPages",
 		"RepPages",
@@ -386,14 +334,75 @@ func getLazyHeader() []string {
 		"Unique",
 		"StdDev",
 	}
+
+	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
+	totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
+	reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
+
+	stats := []string{
+		functionName,
+		strconv.Itoa(len(state.trace.trace)), // number of records (i.e., offsets)
+		strconv.Itoa(int(totalMean)),         // number of pages served
+		fmt.Sprintf("%.1f", totalStd),
+		strconv.Itoa(int(reusedMean)), // number of pages found in the trace
+		fmt.Sprintf("%.1f", reusedStd),
+		strconv.Itoa(int(uniqueMean)), // number of pages not found in the trace
+		fmt.Sprintf("%.1f", uniqueStd),
+	}
+
+	return header, stats
 }
 
-func getRecRepHeader() []string {
-	return []string{
+func getRecRepHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
+	header := []string{
 		"FuncName",
 		"RecPages",
 		"RecRegions",
 		"Unique",
 		"StdDev",
 	}
+
+	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
+
+	stats := []string{
+		functionName,
+		strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
+		strconv.Itoa(len(state.trace.regions)), // number of contiguous regions in the trace
+		strconv.Itoa(int(uniqueMean)),          // number of pages not found in the trace
+		fmt.Sprintf("%.1f", uniqueStd),
+	}
+
+	return header, stats
+}
+
+func writeUPFPageStats(metricsOutFilePath string, statHeader, stats []string) error {
+	csvFile, err := os.OpenFile(metricsOutFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Error("Failed to create csv file for writing stats")
+		return err
+	}
+	defer csvFile.Close()
+
+	writer := csv.NewWriter(csvFile)
+	defer writer.Flush()
+
+	fileInfo, err := csvFile.Stat()
+	if err != nil {
+		log.Errorf("Failed to stat csv file: %v", err)
+		return err
+	}
+
+	if fileInfo.Size() == 0 {
+		if err := writer.Write(statHeader); err != nil {
+			log.Errorf("Failed to write header to csv file: %v", err)
+			return err
+		}
+	}
+
+	if err := writer.Write(stats); err != nil {
+		log.Errorf("Failed to write to csv file: %v ", err)
+		return err
+	}
+
+	return nil
 }
