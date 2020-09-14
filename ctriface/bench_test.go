@@ -142,7 +142,9 @@ func TestBenchmarkLoadResume(t *testing.T) {
 		require.NoError(t, err, "Failed to offload VM, "+message)
 
 		for i := 0; i < benchCount; i++ {
-			dropPageCache()
+			if !*isWithCache {
+				dropPageCache()
+			}
 
 			message, loadMetric, err := orch.LoadSnapshot(ctx, vmIDString)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+message)

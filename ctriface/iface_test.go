@@ -19,6 +19,7 @@ import (
 var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
+	isWithCache  = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 )
 
 func TestPauseSnapResume(t *testing.T) {
