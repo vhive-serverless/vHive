@@ -266,7 +266,6 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 		stats = []string{
 			functionName,
 			strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
-			strconv.Itoa(len(state.trace.regions)), // number of contiguous regions in the trace
 			strconv.Itoa(int(totalMean)),           // number of pages served
 			fmt.Sprintf("%.1f", totalStd),
 			strconv.Itoa(int(reusedMean)), // number of pages found in the trace
@@ -380,7 +379,6 @@ func getLazyHeader() []string {
 	return []string{
 		"FuncName",
 		"RecPages",
-		"RecRegions",
 		"RepPages",
 		"StdDev",
 		"Reused",

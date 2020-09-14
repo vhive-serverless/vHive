@@ -70,6 +70,7 @@ func TestMain(m *testing.M) {
 	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
 	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
 	log.Infof("Drop cache: %t", !*isWithCache)
+	log.Infof("Bench dir: %s", *benchDir)
 
 	orch = ctriface.NewOrchestrator(
 		"devmapper",
