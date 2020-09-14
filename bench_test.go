@@ -120,77 +120,20 @@ func TestBenchParallelServe(t *testing.T) {
 			}
 		}
 
-		fusePrintMetrics(t, serveMetrics, upfMetrics, isUPFEnabledTest, true, funcName)
+		fusePrintMetrics(t, serveMetrics, upfMetrics, isUPFEnabledTest, true, funcName, "parallelServe.csv")
 
 		vmID += parallel
 	}
 }
 
-func TestBenchUPFStats(t *testing.T) {
-	var (
-		servedTh      uint64
-		pinnedFuncNum int
-		isSyncOffload bool = true
-		images             = getAllImages()
-		benchCount         = 10
-		vmID               = 0
-	)
-
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
-
-	createResultsDir()
-
-	for funcName, imageName := range images {
-		vmIDString := strconv.Itoa(vmID)
-
-		// Pull image and create snapshot
-		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
-
-		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-		// -----------------------------------------------------------------------
-
-		// Record
-		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
-
-		message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-
-		// Replay and gather stats
-		for i := 0; i < benchCount; i++ {
-			if !*isWithCache {
-				dropPageCache()
-			}
-
-			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-			require.NoError(t, err, "Function returned error")
-			require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-			require.NoError(t, err, "Function returned error, "+message)
-		}
-
-		vmID++
-
-		err = funcPool.DumpUPFPageStats(vmIDString, imageName, funcName, getOutFile("pageStats.csv"))
-		require.NoError(t, err, "Failed to dump page stats for"+funcName)
-
-		err = funcPool.DumpUPFLatencyStats(vmIDString, imageName, funcName, getOutFile("latencyStats.csv"))
-		require.NoError(t, err, "Failed to dump latency stats for"+funcName)
-	}
-}
-
 func TestBenchServe(t *testing.T) {
 	var (
-		servedTh      uint64
-		pinnedFuncNum int
-		isSyncOffload bool = true
-		images             = getAllImages()
-		vmID               = 0
+		servedTh          uint64
+		pinnedFuncNum     int
+		isSyncOffload     bool = true
+		images                 = getAllImages()
+		vmID                   = 0
+		memManagerMetrics []*metrics.Metric
 	)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
@@ -205,21 +148,9 @@ func TestBenchServe(t *testing.T) {
 
 		vmIDString := strconv.Itoa(vmID)
 
-		// Create VM (and snapshot)
-		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
+		createSnapshots(t, 1, vmID, imageName, isSyncOffload)
 
-		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-
-		// Record
-		resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
-
-		message, err = funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
+		createRecords(t, 1, vmID, imageName, isSyncOffload)
 
 		// Measure
 		serveMetrics := make([]*metrics.Metric, *iterNum)
@@ -241,38 +172,26 @@ func TestBenchServe(t *testing.T) {
 
 		// FUSE
 		if orch.GetUPFEnabled() {
-			memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "_0")
+			// Page stats
+			err = funcPool.DumpUPFPageStats(vmIDString, imageName, funcName, getOutFile("pageStats.csv"))
+			require.NoError(t, err, "Failed to dump page stats for"+funcName)
+
+			memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "_0")
 			require.NoError(t, err, "Failed to dump get stats for "+funcName)
 			require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
-
-			for i, metr := range serveMetrics {
-				for k, v := range memManagerMetrics[i].MetricMap {
-					metr.MetricMap[k] = v
-				}
-			}
 		}
 
-		// ##########################
+		fusePrintMetrics(t, serveMetrics, memManagerMetrics, isUPFEnabledTest, true, funcName, "serve.csv")
 
 		vmID++
-
-		// Print individual
-		for _, metr := range serveMetrics {
-			err := metrics.PrintMeanStd(getOutFile("serve.txt"), funcName, metr)
-			require.NoError(t, err, "Failed to dump stats")
-		}
-
-		// Print aggregate
-		err = metrics.PrintMeanStd(getOutFile("serve.txt"), funcName, serveMetrics...)
-		require.NoError(t, err, "Printing stats returned error")
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ////////////////////////// Auxialiary functions below /////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-func fusePrintMetrics(t *testing.T, serveMetrics, upfMetrics []*metrics.Metric, isUPFEnabledTest *bool, printIndiv bool, funcName string) {
-	outFileName := getOutFile(funcName + "parallelServe.csv")
+func fusePrintMetrics(t *testing.T, serveMetrics, upfMetrics []*metrics.Metric, isUPFEnabledTest *bool, printIndiv bool, funcName, outfile string) {
+	outFileName := getOutFile(outfile)
 
 	if *isUPFEnabledTest {
 		for i, metr := range serveMetrics {
