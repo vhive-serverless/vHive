@@ -16,7 +16,15 @@ Note 2: When orchestrator panics, it leaves taps and bridges that need to be cle
 
 ## Testing
 
-The orchestrator includes both unit/module tests and end-2-end tests. 
+The orchestrator includes both unit/module tests and end-2-end tests. Most test are automatically run on Travis.
+However, a few parallel tests do not work on Travis and need to be run locally.
+**Before merging any code, make sure ALL such tests pass on 
+your local machine!** To run these tests:
+```
+make test-skip-all
+```
+### Running remaining tests locally
+You can still run the tests which are supported on Travis on your local machine.
 
 To run the unit tests:
 ```
@@ -27,5 +35,3 @@ To run the end-to-end tests:
 ```
 make test-orch
 ```
-
-**Before merging any code, make sure ALL tests pass on your local machine!** Travis testing TBD.
