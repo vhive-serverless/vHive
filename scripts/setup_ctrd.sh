@@ -42,7 +42,7 @@ err=""; \
     && echo "WARNING: you are running in a virtual machine. Firecracker is not well tested under nested virtualization."; \
     [ -z "$err" ] && echo "Your system looks ready for Firecracker!" || echo -e "$err"
 
-git clone -b upf_master --recurse-submodules https://github.com/ustiugov/firecracker-containerd
+git clone -b kill_shim --recurse-submodules https://github.com/ustiugov/firecracker-containerd
 
 echo Configure firecracker-containerd
 pushd firecracker-containerd > /dev/null
