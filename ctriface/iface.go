@@ -692,7 +692,6 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) (string, error)
 		return "Offloading VM " + vmID + " failed", err
 	}
 
-	time.Sleep(10 * time.Millisecond)
 	return "VM " + vmID + " offloaded successfully", nil
 }
 
