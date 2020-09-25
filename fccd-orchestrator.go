@@ -36,7 +36,6 @@ import (
 
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
-	pb "github.com/ustiugov/fccd-orchestrator/proto"
 	"google.golang.org/grpc"
 	criruntime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -128,10 +127,6 @@ func main() {
 	fwdServe()
 }
 
-type server struct {
-	pb.UnimplementedOrchestratorServer
-}
-
 type fwdServer struct {
 	hpb.UnimplementedFwdGreeterServer
 }
@@ -148,7 +143,6 @@ func orchServe() {
 	s := grpc.NewServer()
 	criruntime.RegisterImageServiceServer(s, &imageServer{})
 
-	//log.Println("Listening on port" + port)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
@@ -166,47 +160,6 @@ func fwdServe() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-}
-
-// StartVM, StopSingleVM and StopVMs are legacy functions that manage functions and VMs
-// Should be used only to bootstrap an experiment (e.g., quick parallel start of many functions)
-func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMResp, error) {
-	fID := in.GetId()
-	imageName := in.GetImage()
-	log.WithFields(log.Fields{"fID": fID, "image": imageName}).Info("Received direct StartVM")
-
-	tProfile := "not supported anymore"
-
-	_, _, err := funcPool.Serve(ctx, fID, imageName, "record")
-	if err != nil {
-		return &pb.StartVMResp{Message: "First serve failed", Profile: tProfile}, err
-	}
-
-	return &pb.StartVMResp{Message: "started VM instance for a function " + fID, Profile: tProfile}, nil
-}
-
-func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
-	fID := in.GetId()
-	isSync := true
-	log.WithFields(log.Fields{"fID": fID}).Info("Received direct StopVM")
-	message, err := funcPool.RemoveInstance(fID, "bogus imageName", isSync)
-	if err != nil {
-		log.Warn(message, err)
-	}
-
-	return &pb.Status{Message: message}, err
-}
-
-// Note: this function is to be used only before tearing down the whole orchestrator
-func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
-	log.Info("Received StopVMs")
-	err := orch.StopActiveVMs()
-	if err != nil {
-		log.Printf("Failed to stop VMs, err: %v\n", err)
-		return &pb.Status{Message: "Failed to stop VMs"}, err
-	}
-	os.Exit(0)
-	return &pb.Status{Message: "Stopped VMs"}, nil
 }
 
 func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.FwdHelloResp, error) {
