@@ -38,6 +38,7 @@ import (
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	pb "github.com/ustiugov/fccd-orchestrator/proto"
 	"google.golang.org/grpc"
+	criruntime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 const (
@@ -135,15 +136,19 @@ type fwdServer struct {
 	hpb.UnimplementedFwdGreeterServer
 }
 
+type imageServer struct {
+	criruntime.ImageServiceServer
+}
+
 func orchServe() {
-	lis, err := net.Listen("tcp", port)
+	lis, err := net.Listen("unix", "/users/plamenpp/fccd.sock")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterOrchestratorServer(s, &server{})
+	criruntime.RegisterImageServiceServer(s, &imageServer{})
 
-	log.Println("Listening on port" + port)
+	//log.Println("Listening on port" + port)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
@@ -214,4 +219,49 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 
 	resp, _, err := funcPool.Serve(ctx, fID, imageName, payload)
 	return resp, err
+}
+
+// ListImages Stub
+func (s *imageServer) ListImages(ctx context.Context, r *criruntime.ListImagesRequest) (*criruntime.ListImagesResponse, error) {
+	stubImages := []*criruntime.Image{
+		&criruntime.Image{Id: "stub1"},
+		&criruntime.Image{Id: "stub2"},
+	}
+	return &criruntime.ListImagesResponse{Images: stubImages}, nil
+}
+
+// ImageStatus Stub
+func (s *imageServer) ImageStatus(ctx context.Context, r *criruntime.ImageStatusRequest) (*criruntime.ImageStatusResponse, error) {
+	image := &criruntime.Image{
+		Id: r.GetImage().GetImage(),
+	}
+
+	return &criruntime.ImageStatusResponse{
+		Image: image,
+		Info:  map[string]string{"stubInfoKey": "stubInfoValue"},
+	}, nil
+}
+
+// PullImage Stub
+func (s *imageServer) PullImage(ctx context.Context, r *criruntime.PullImageRequest) (*criruntime.PullImageResponse, error) {
+	return &criruntime.PullImageResponse{ImageRef: r.GetImage().GetImage()}, nil
+}
+
+// RemoveImage Stub
+func (s *imageServer) RemoveImage(ctx context.Context, r *criruntime.RemoveImageRequest) (*criruntime.RemoveImageResponse, error) {
+	return &criruntime.RemoveImageResponse{}, nil
+}
+
+// ImageFsInfo Stub
+func (c *imageServer) ImageFsInfo(ctx context.Context, r *criruntime.ImageFsInfoRequest) (*criruntime.ImageFsInfoResponse, error) {
+	return &criruntime.ImageFsInfoResponse{
+		ImageFilesystems: []*criruntime.FilesystemUsage{
+			{
+				Timestamp:  int64(1337),
+				FsId:       &criruntime.FilesystemIdentifier{Mountpoint: "placeholder"},
+				UsedBytes:  &criruntime.UInt64Value{Value: uint64(1337)},
+				InodesUsed: &criruntime.UInt64Value{Value: uint64(1337)},
+			},
+		},
+	}, nil
 }
