@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,9 +31,11 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/containerd/containerd"
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 
+	imagestore "github.com/containerd/cri/pkg/store/image"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	"google.golang.org/grpc"
@@ -123,7 +125,9 @@ func main() {
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
-	go orchServe()
+	is := NewImageServer(orch.GetCtrdClient())
+	imageServe(is)
+	runtimeServe()
 	fwdServe()
 }
 
@@ -133,15 +137,43 @@ type fwdServer struct {
 
 type imageServer struct {
 	criruntime.ImageServiceServer
+	client     *containerd.Client
+	imageStore *imagestore.Store
 }
 
-func orchServe() {
-	lis, err := net.Listen("unix", "/users/plamenpp/fccd.sock")
+type runtimeServer struct {
+	criruntime.RuntimeServiceServer
+}
+
+func NewImageServer(client *containerd.Client) *imageServer {
+	is := &imageServer{
+		client:     client,
+		imageStore: imagestore.NewStore(client),
+	}
+
+	return is
+}
+
+func imageServe(is *imageServer) {
+	lis, err := net.Listen("unix", "/users/plamenpp/fccd-image.sock")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	criruntime.RegisterImageServiceServer(s, &imageServer{})
+	criruntime.RegisterImageServiceServer(s, is)
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+func runtimeServe() {
+	lis, err := net.Listen("unix", "/users/plamenpp/fccd-runtime.sock")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	criruntime.RegisterRuntimeServiceServer(s, &runtimeServer{})
 
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
@@ -195,11 +227,6 @@ func (s *imageServer) ImageStatus(ctx context.Context, r *criruntime.ImageStatus
 	}, nil
 }
 
-// PullImage Stub
-func (s *imageServer) PullImage(ctx context.Context, r *criruntime.PullImageRequest) (*criruntime.PullImageResponse, error) {
-	return &criruntime.PullImageResponse{ImageRef: r.GetImage().GetImage()}, nil
-}
-
 // RemoveImage Stub
 func (s *imageServer) RemoveImage(ctx context.Context, r *criruntime.RemoveImageRequest) (*criruntime.RemoveImageResponse, error) {
 	return &criruntime.RemoveImageResponse{}, nil
@@ -217,4 +244,52 @@ func (c *imageServer) ImageFsInfo(ctx context.Context, r *criruntime.ImageFsInfo
 			},
 		},
 	}, nil
+}
+
+// Version Stub
+func (c *runtimeServer) Version(ctx context.Context, r *criruntime.VersionRequest) (*criruntime.VersionResponse, error) {
+	return &criruntime.VersionResponse{
+		Version:           "n/a",
+		RuntimeName:       "fccd",
+		RuntimeVersion:    "0.0.0",
+		RuntimeApiVersion: "0.0.0",
+	}, nil
+}
+
+// RunPodSandbox Stub
+func (c *runtimeServer) RunPodSandbox(ctx context.Context, r *criruntime.RunPodSandboxRequest) (*criruntime.RunPodSandboxResponse, error) {
+	return &criruntime.RunPodSandboxResponse{PodSandboxId: "stub"}, nil
+}
+
+// StopPodSandbox Stub
+func (c *runtimeServer) StopPodSandbox(ctx context.Context, r *criruntime.StopPodSandboxRequest) (*criruntime.StopPodSandboxResponse, error) {
+	return &criruntime.StopPodSandboxResponse{}, nil
+}
+
+// RemovePodSandbox Stub
+func (c *runtimeServer) RemovePodSandbox(ctx context.Context, r *criruntime.RemovePodSandboxRequest) (*criruntime.RemovePodSandboxResponse, error) {
+	return &criruntime.RemovePodSandboxResponse{}, nil
+}
+
+// PodSandboxStatus Stub TODO: finish
+func (c *runtimeServer) PodSandboxStatus(ctx context.Context, r *criruntime.PodSandboxStatusRequest) (*criruntime.PodSandboxStatusResponse, error) {
+	return &criruntime.PodSandboxStatusResponse{
+		Status: nil,
+	}, nil
+}
+
+// ListPodSandbox Stub TODO: finish
+func (c *runtimeServer) ListPodSandbox(ctx context.Context, r *criruntime.ListPodSandboxRequest) (*criruntime.ListPodSandboxResponse, error) {
+	return nil, nil
+}
+
+// CreateContainer creates a new container in the given PodSandbox. TODO
+func (c *runtimeServer) CreateContainer(ctx context.Context, r *criruntime.CreateContainerRequest) (*criruntime.CreateContainerResponse, error) {
+	//config := r.GetConfig()
+	return nil, nil
+}
+
+// StartContainer starts the container. TODO
+func (c *runtimeServer) StartContainer(ctx context.Context, r *criruntime.StartContainerRequest) (*criruntime.StartContainerResponse, error) {
+	return nil, nil
 }
