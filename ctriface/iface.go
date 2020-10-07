@@ -129,6 +129,10 @@ func NewOrchestrator(snapshotter string, opts ...OrchestratorOption) *Orchestrat
 	return o
 }
 
+func (o *Orchestrator) GetCtrdClient() *containerd.Client {
+	return o.client
+}
+
 func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*containerd.Image, error) {
 	image, found := o.cachedImages[imageName]
 	if !found {
