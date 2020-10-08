@@ -35,3 +35,6 @@ To run the end-to-end tests:
 ```
 make test-orch
 ```
+
+## Developing on CloudLab
+The [CloudLab Wiki page](https://github.com/ustiugov/fccd-orchestrator/wiki/CloudLab-Guidelines) describes how to set up an experiment on CloudLab.
