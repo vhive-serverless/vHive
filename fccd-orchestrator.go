@@ -31,11 +31,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/containerd/containerd"
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 
-	imagestore "github.com/containerd/cri/pkg/store/image"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	"google.golang.org/grpc"
@@ -135,23 +133,8 @@ type fwdServer struct {
 	hpb.UnimplementedFwdGreeterServer
 }
 
-type imageServer struct {
-	criruntime.ImageServiceServer
-	client     *containerd.Client
-	imageStore *imagestore.Store
-}
-
 type runtimeServer struct {
 	criruntime.RuntimeServiceServer
-}
-
-func NewImageServer(client *containerd.Client) *imageServer {
-	is := &imageServer{
-		client:     client,
-		imageStore: imagestore.NewStore(client),
-	}
-
-	return is
 }
 
 func imageServe(is *imageServer) {
@@ -204,46 +187,6 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 
 	resp, _, err := funcPool.Serve(ctx, fID, imageName, payload)
 	return resp, err
-}
-
-// ListImages Stub
-func (s *imageServer) ListImages(ctx context.Context, r *criruntime.ListImagesRequest) (*criruntime.ListImagesResponse, error) {
-	stubImages := []*criruntime.Image{
-		&criruntime.Image{Id: "stub1"},
-		&criruntime.Image{Id: "stub2"},
-	}
-	return &criruntime.ListImagesResponse{Images: stubImages}, nil
-}
-
-// ImageStatus Stub
-func (s *imageServer) ImageStatus(ctx context.Context, r *criruntime.ImageStatusRequest) (*criruntime.ImageStatusResponse, error) {
-	image := &criruntime.Image{
-		Id: r.GetImage().GetImage(),
-	}
-
-	return &criruntime.ImageStatusResponse{
-		Image: image,
-		Info:  map[string]string{"stubInfoKey": "stubInfoValue"},
-	}, nil
-}
-
-// RemoveImage Stub
-func (s *imageServer) RemoveImage(ctx context.Context, r *criruntime.RemoveImageRequest) (*criruntime.RemoveImageResponse, error) {
-	return &criruntime.RemoveImageResponse{}, nil
-}
-
-// ImageFsInfo Stub
-func (c *imageServer) ImageFsInfo(ctx context.Context, r *criruntime.ImageFsInfoRequest) (*criruntime.ImageFsInfoResponse, error) {
-	return &criruntime.ImageFsInfoResponse{
-		ImageFilesystems: []*criruntime.FilesystemUsage{
-			{
-				Timestamp:  int64(1337),
-				FsId:       &criruntime.FilesystemIdentifier{Mountpoint: "placeholder"},
-				UsedBytes:  &criruntime.UInt64Value{Value: uint64(1337)},
-				InodesUsed: &criruntime.UInt64Value{Value: uint64(1337)},
-			},
-		},
-	}, nil
 }
 
 // Version Stub
