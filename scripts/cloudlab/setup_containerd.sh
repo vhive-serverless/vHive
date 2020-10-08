@@ -52,6 +52,4 @@ sudo tee /etc/containerd/firecracker-runtime.json <<EOF
 }
 EOF
 
-./$DIR/clean_fcctr.sh
-
 popd >> /dev/null
