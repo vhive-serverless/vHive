@@ -1,4 +1,4 @@
-SUBDIRS:=ctriface taps misc
+SUBDIRS:=ctriface taps misc cri
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
 EXTRATESTFILES:=fccd-orchestrator_test.go stats.go fccd-orchestrator.go functions.go
