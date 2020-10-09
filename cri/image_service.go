@@ -34,6 +34,7 @@ import (
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 	criruntime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -52,6 +53,11 @@ func NewImageService(client *containerd.Client, snapshotter string) *ImageServic
 		snapshotter: snapshotter,
 	}
 	return is
+}
+
+// RegisterImageService Register the image service with the gRPC server
+func RegisterImageService(server *grpc.Server, is *ImageService) {
+	criruntime.RegisterImageServiceServer(server, is)
 }
 
 // PullImage Pulls an image

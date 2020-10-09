@@ -38,6 +38,6 @@ require (
 	golang.org/x/net v0.0.0-20201009032441-dbdefad45b89 // indirect
 	golang.org/x/sync v0.0.0-20201008141435-b3e1573b7520 // indirect
 	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634 // indirect
-	google.golang.org/grpc v1.33.0 // indirect
+	google.golang.org/grpc v1.33.0
 	k8s.io/cri-api v0.0.0-00010101000000-000000000000
 )
