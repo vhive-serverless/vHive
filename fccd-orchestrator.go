@@ -34,10 +34,11 @@ import (
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 
+	fccdcri "github.com/ustiugov/fccd-orchestrator/cri"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
+	pb "github.com/ustiugov/fccd-orchestrator/proto"
 	"google.golang.org/grpc"
-	criruntime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 const (
@@ -123,41 +124,29 @@ func main() {
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
-	is := NewImageServer(orch.GetCtrdClient())
+	go orchServe()
+	is := fccdcri.NewImageService(orch.GetCtrdClient(), *snapshotter)
 	imageServe(is)
-	runtimeServe()
 	fwdServe()
+}
+
+type server struct {
+	pb.UnimplementedOrchestratorServer
 }
 
 type fwdServer struct {
 	hpb.UnimplementedFwdGreeterServer
 }
 
-type runtimeServer struct {
-	criruntime.RuntimeServiceServer
-}
-
-func imageServe(is *imageServer) {
-	lis, err := net.Listen("unix", "/users/plamenpp/fccd-image.sock")
+func orchServe() {
+	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	criruntime.RegisterImageServiceServer(s, is)
+	pb.RegisterOrchestratorServer(s, &server{})
 
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
-}
-
-func runtimeServe() {
-	lis, err := net.Listen("unix", "/users/plamenpp/fccd-runtime.sock")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-	criruntime.RegisterRuntimeServiceServer(s, &runtimeServer{})
-
+	log.Println("Listening on port" + port)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
@@ -177,6 +166,73 @@ func fwdServe() {
 	}
 }
 
+func imageServe(is *fccdcri.ImageService) {
+	lis, err := net.Listen("unix", "/users/plamenpp/fccd-image.sock")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	fccdcri.RegisterImageService(s, is)
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+/*func runtimeServe() {
+	lis, err := net.Listen("unix", "/users/plamenpp/fccd-runtime.sock")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	criruntime.RegisterRuntimeServiceServer(s, &runtimeServer{})
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}*/
+
+// StartVM, StopSingleVM and StopVMs are legacy functions that manage functions and VMs
+// Should be used only to bootstrap an experiment (e.g., quick parallel start of many functions)
+func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMResp, error) {
+	fID := in.GetId()
+	imageName := in.GetImage()
+	log.WithFields(log.Fields{"fID": fID, "image": imageName}).Info("Received direct StartVM")
+
+	tProfile := "not supported anymore"
+
+	_, _, err := funcPool.Serve(ctx, fID, imageName, "record")
+	if err != nil {
+		return &pb.StartVMResp{Message: "First serve failed", Profile: tProfile}, err
+	}
+
+	return &pb.StartVMResp{Message: "started VM instance for a function " + fID, Profile: tProfile}, nil
+}
+
+func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
+	fID := in.GetId()
+	isSync := true
+	log.WithFields(log.Fields{"fID": fID}).Info("Received direct StopVM")
+	message, err := funcPool.RemoveInstance(fID, "bogus imageName", isSync)
+	if err != nil {
+		log.Warn(message, err)
+	}
+
+	return &pb.Status{Message: message}, err
+}
+
+// Note: this function is to be used only before tearing down the whole orchestrator
+func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
+	log.Info("Received StopVMs")
+	err := orch.StopActiveVMs()
+	if err != nil {
+		log.Printf("Failed to stop VMs, err: %v\n", err)
+		return &pb.Status{Message: "Failed to stop VMs"}, err
+	}
+	os.Exit(0)
+	return &pb.Status{Message: "Stopped VMs"}, nil
+}
+
 func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.FwdHelloResp, error) {
 	fID := in.GetId()
 	imageName := in.GetImage()
@@ -187,52 +243,4 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 
 	resp, _, err := funcPool.Serve(ctx, fID, imageName, payload)
 	return resp, err
-}
-
-// Version Stub
-func (c *runtimeServer) Version(ctx context.Context, r *criruntime.VersionRequest) (*criruntime.VersionResponse, error) {
-	return &criruntime.VersionResponse{
-		Version:           "n/a",
-		RuntimeName:       "fccd",
-		RuntimeVersion:    "0.0.0",
-		RuntimeApiVersion: "0.0.0",
-	}, nil
-}
-
-// RunPodSandbox Stub
-func (c *runtimeServer) RunPodSandbox(ctx context.Context, r *criruntime.RunPodSandboxRequest) (*criruntime.RunPodSandboxResponse, error) {
-	return &criruntime.RunPodSandboxResponse{PodSandboxId: "stub"}, nil
-}
-
-// StopPodSandbox Stub
-func (c *runtimeServer) StopPodSandbox(ctx context.Context, r *criruntime.StopPodSandboxRequest) (*criruntime.StopPodSandboxResponse, error) {
-	return &criruntime.StopPodSandboxResponse{}, nil
-}
-
-// RemovePodSandbox Stub
-func (c *runtimeServer) RemovePodSandbox(ctx context.Context, r *criruntime.RemovePodSandboxRequest) (*criruntime.RemovePodSandboxResponse, error) {
-	return &criruntime.RemovePodSandboxResponse{}, nil
-}
-
-// PodSandboxStatus Stub TODO: finish
-func (c *runtimeServer) PodSandboxStatus(ctx context.Context, r *criruntime.PodSandboxStatusRequest) (*criruntime.PodSandboxStatusResponse, error) {
-	return &criruntime.PodSandboxStatusResponse{
-		Status: nil,
-	}, nil
-}
-
-// ListPodSandbox Stub TODO: finish
-func (c *runtimeServer) ListPodSandbox(ctx context.Context, r *criruntime.ListPodSandboxRequest) (*criruntime.ListPodSandboxResponse, error) {
-	return nil, nil
-}
-
-// CreateContainer creates a new container in the given PodSandbox. TODO
-func (c *runtimeServer) CreateContainer(ctx context.Context, r *criruntime.CreateContainerRequest) (*criruntime.CreateContainerResponse, error) {
-	//config := r.GetConfig()
-	return nil, nil
-}
-
-// StartContainer starts the container. TODO
-func (c *runtimeServer) StartContainer(ctx context.Context, r *criruntime.StartContainerRequest) (*criruntime.StartContainerResponse, error) {
-	return nil, nil
 }
