@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ import (
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 
+	fccdcri "github.com/ustiugov/fccd-orchestrator/cri"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	pb "github.com/ustiugov/fccd-orchestrator/proto"
@@ -123,6 +124,7 @@ func main() {
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
+	criServe()
 	go orchServe()
 	fwdServe()
 }
@@ -133,6 +135,28 @@ type server struct {
 
 type fwdServer struct {
 	hpb.UnimplementedFwdGreeterServer
+}
+
+func criServe() {
+	lis, err := net.Listen("unix", "/users/plamenpp/fccd-cri.sock")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+
+	criService, err := fccdcri.NewCriService(orch.GetCtrdClient())
+	if err != nil {
+		log.Fatalf("failed to create CRI service %v", err)
+	}
+
+	criService.Register(s)
+
+	criService.Run()
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
 
 func orchServe() {
