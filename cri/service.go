@@ -23,10 +23,18 @@
 package cri
 
 import (
+	"path/filepath"
+
 	"github.com/containerd/containerd"
 	criconfig "github.com/containerd/cri/pkg/config"
 	ctrdcri "github.com/containerd/cri/pkg/server"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+)
+
+const (
+	ctrdRoot  = "/var/lib/firecracker-containerd/containerd"
+	ctrdState = "/run/firecracker-containerd"
+	ctrdSock  = "/run/firecracker-containerd/containerd.sock"
 )
 
 type CriService struct {
@@ -35,7 +43,15 @@ type CriService struct {
 	ctrdCriService *ctrdcri.CRIService
 }
 
-func NewCriService(config criconfig.Config, client *containerd.Client) (*CriService, error) {
+func NewCriService(client *containerd.Client) (*CriService, error) {
+	config := criconfig.Config{
+		PluginConfig:       DefaultConfig(),
+		ContainerdRootDir:  filepath.Dir(ctrdRoot),
+		ContainerdEndpoint: ctrdSock,
+		RootDir:            ctrdRoot,
+		StateDir:           ctrdState,
+	}
+
 	cs := &CriService{}
 
 	ctrdCriService, err := ctrdcri.NewCRIService(config, client)
