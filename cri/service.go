@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/containerd"
 	criconfig "github.com/containerd/cri/pkg/config"
 	ctrdcri "github.com/containerd/cri/pkg/server"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -41,7 +42,7 @@ const (
 type CriService struct {
 	criapi.ImageServiceServer
 	criapi.RuntimeServiceServer
-	ctrdCriService *ctrdcri.CRIService
+	ctrdCriService ctrdcri.CRIService
 }
 
 func NewCriService(client *containerd.Client) (*CriService, error) {
@@ -60,12 +61,7 @@ func NewCriService(client *containerd.Client) (*CriService, error) {
 		return nil, err
 	}
 
-	err = ctrdCriService.Run()
-	if err != nil {
-		return nil, err
-	}
-
-	cs.ctrdCriService = &ctrdCriService
+	cs.ctrdCriService = ctrdCriService
 
 	return cs, nil
 }
@@ -73,6 +69,18 @@ func NewCriService(client *containerd.Client) (*CriService, error) {
 func (s *CriService) Register(server *grpc.Server) {
 	criapi.RegisterImageServiceServer(server, s)
 	criapi.RegisterRuntimeServiceServer(server, s)
+}
+
+func (s *CriService) Run() {
+	go func() {
+		if err := s.ctrdCriService.Run(); err != nil {
+			log.WithError(err).Fatal("Failed to run CRI service")
+		}
+	}()
+}
+
+func (s *CriService) Close() error {
+	return s.ctrdCriService.Close()
 }
 
 func DefaultConfig() criconfig.PluginConfig {
