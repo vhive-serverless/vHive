@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/containerd"
 	criconfig "github.com/containerd/cri/pkg/config"
 	ctrdcri "github.com/containerd/cri/pkg/server"
+	"google.golang.org/grpc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -67,6 +68,11 @@ func NewCriService(client *containerd.Client) (*CriService, error) {
 	cs.ctrdCriService = &ctrdCriService
 
 	return cs, nil
+}
+
+func (s *CriService) Register(server *grpc.Server) {
+	criapi.RegisterImageServiceServer(server, s)
+	criapi.RegisterRuntimeServiceServer(server, s)
 }
 
 func DefaultConfig() criconfig.PluginConfig {
