@@ -23,8 +23,35 @@
 package cri
 
 import (
+	"github.com/containerd/containerd"
 	criconfig "github.com/containerd/cri/pkg/config"
+	ctrdcri "github.com/containerd/cri/pkg/server"
+	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
+
+type CriService struct {
+	criapi.ImageServiceServer
+	criapi.RuntimeServiceServer
+	ctrdCriService *ctrdcri.CRIService
+}
+
+func NewCriService(config criconfig.Config, client *containerd.Client) (*CriService, error) {
+	cs := &CriService{}
+
+	ctrdCriService, err := ctrdcri.NewCRIService(config, client)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ctrdCriService.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	cs.ctrdCriService = &ctrdCriService
+
+	return cs, nil
+}
 
 func DefaultConfig() criconfig.PluginConfig {
 	return criconfig.PluginConfig{
