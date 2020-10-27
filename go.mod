@@ -17,10 +17,13 @@ require (
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200803195925-0629e1cf4599
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.31.0
+	k8s.io/cri-api v0.16.16-rc.0
 )
 
 // Workaround for github.com/containerd/containerd issue #3031
 replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
+
+replace k8s.io/kubernetes => k8s.io/kubernetes v1.16.6
 
 replace k8s.io/api => k8s.io/api v0.16.6
 
@@ -69,8 +72,6 @@ replace k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.16.6
 replace k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.16.6
 
 replace k8s.io/sample-controller => k8s.io/sample-controller v0.16.6
-
-replace github.com/containerd/cri => github.com/plamenmpetrov/cri v1.11.1-0.20200320165605-f864905c93b9
 
 replace github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20161114122254-48702e0da86b
 
