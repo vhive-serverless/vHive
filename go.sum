@@ -1134,7 +1134,12 @@ github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201015090937-fb50741402b
 =======
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201027114355-4aaab623e94e h1:mBpy81fBn7fZcnoYl5c85IIsmyWXoOQYgRq4e7Kk4YM=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201027114355-4aaab623e94e/go.mod h1:5FVJxceicLi5ex98MAVWyNa6fK2R0etUWUIx1FPIJ4o=
+<<<<<<< HEAD
 >>>>>>> connect to stock containerd
+=======
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201027122448-247ea43dd7ff h1:WuImOZGuKXhTf5lXaWH3dqfG38oRtHgJjVXzmYyRoFc=
+github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201027122448-247ea43dd7ff/go.mod h1:5FVJxceicLi5ex98MAVWyNa6fK2R0etUWUIx1FPIJ4o=
+>>>>>>> top level deps
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710144657-9fbec6857e48/go.mod h1:5dhCs/XynpQoQcrhd/YgUBjGahhNpTknQUcC1kHRCaA=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710145415-bb09d1a68889/go.mod h1:5dhCs/XynpQoQcrhd/YgUBjGahhNpTknQUcC1kHRCaA=
 github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200710150633-096cac68bd72 h1:r67pqykSYWZHFYfIKuT44PTXFJWu5lJcatkV16d3vKU=

@@ -2,8 +2,6 @@
 
 set -e
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
 
 sudo mkdir -p /var/lib/firecracker-containerd/runtime
 curl -fsSL -o /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin https://s3.amazonaws.com/spec.ccfc.min/img/hello/kernel/hello-vmlinux.bin
@@ -39,4 +37,3 @@ sudo tee /etc/containerd/firecracker-runtime.json <<EOF
 }
 EOF
 
-popd >> /dev/null
