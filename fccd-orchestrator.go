@@ -33,8 +33,6 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
-
-	fccdcri "github.com/ustiugov/fccd-orchestrator/cri"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	pb "github.com/ustiugov/fccd-orchestrator/proto"
@@ -58,6 +56,7 @@ var (
 	isMetricsMode      *bool
 	servedThreshold    *uint64
 	pinnedFuncNum      *int
+	criSock            *string
 )
 
 func main() {
@@ -75,6 +74,7 @@ func main() {
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
+	criSock = flag.String("criSock", "/users/plamenpp/fccd-cri.sock", "Socket address for CRI service")
 
 	if *isUPFEnabled && !*isSnapshotsEnabled {
 		log.Error("User-level page faults are not supported without snapshots")
@@ -124,8 +124,8 @@ func main() {
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
-	criServe()
-	go orchServe()
+	go criServe()
+	orchServe()
 	fwdServe()
 }
 
@@ -138,21 +138,19 @@ type fwdServer struct {
 }
 
 func criServe() {
-	lis, err := net.Listen("unix", "/users/plamenpp/fccd-cri.sock")
+	lis, err := net.Listen("unix", *criSock)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
 
-	criService, err := fccdcri.NewCriService(orch.GetCtrdClient())
+	criService, err := NewCriService(orch)
 	if err != nil {
 		log.Fatalf("failed to create CRI service %v", err)
 	}
 
 	criService.Register(s)
-
-	criService.Run()
 
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
