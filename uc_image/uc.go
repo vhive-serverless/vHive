@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	guestIPEnv   = "GUESTIP"
-	guestPortEnv = "GUESTPORT"
+	// GuestIPEnv is the env variable which holds the IP of the MicroVM
+	GuestIPEnv = "GUESTIP"
+	// GuestPortEnv is the env variable which hold the port of the container in the MicroVM
+	GuestPortEnv = "GUESTPORT"
 	defaultPort  = "50051"
 )
 
@@ -20,8 +22,8 @@ var (
 )
 
 func main() {
-	guestIP = os.Getenv(guestIPEnv)
-	guestPort = os.Getenv(guestPortEnv)
+	guestIP = os.Getenv(GuestIPEnv)
+	guestPort = os.Getenv(GuestPortEnv)
 
 	if guestIP == "" {
 		log.Fatal("Must provide guest IP")
