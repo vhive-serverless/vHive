@@ -1,8 +1,20 @@
 package ctriface
 
-/*
+import (
+	"context"
+	"os"
+	"testing"
+	"time"
+
+	ctrdlog "github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/namespaces"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+)
+
 func TestStartSnapStop(t *testing.T) {
 	// BROKEN BECAUSE StopVM does not work yet.
+	t.Skip("skipping failing test")
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -21,27 +33,26 @@ func TestStartSnapStop(t *testing.T) {
 
 	vmID := "2"
 
-	message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
-	require.NoError(t, err, "Failed to start VM, "+message)
+	_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+	require.NoError(t, err, "Failed to start VM")
 
-	message, err = orch.PauseVM(ctx, vmID)
-	require.NoError(t, err, "Failed to pause VM, "+message)
+	err = orch.PauseVM(ctx, vmID)
+	require.NoError(t, err, "Failed to pause VM")
 
-	message, err = orch.CreateSnapshot(ctx, vmID)
-	require.NoError(t, err, "Failed to create snapshot of VM, "+message)
+	err = orch.CreateSnapshot(ctx, vmID)
+	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	message, err = orch.Offload(ctx, vmID)
-	require.NoError(t, err, "Failed to offload VM, "+message)
+	err = orch.Offload(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM")
 
-	message, _, err = orch.LoadSnapshot(ctx, vmID)
-	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
+	_, err = orch.LoadSnapshot(ctx, vmID)
+	require.NoError(t, err, "Failed to load snapshot of VM")
 
-	message, _, err = orch.ResumeVM(ctx, vmID)
-	require.NoError(t, err, "Failed to resume VM, "+message)
+	_, err = orch.ResumeVM(ctx, vmID)
+	require.NoError(t, err, "Failed to resume VM")
 
-	message, err = orch.StopSingleVMOnly(ctx, vmID)
-	require.NoError(t, err, "Failed to stop VM, "+message)
+	err = orch.StopSingleVM(ctx, vmID)
+	require.NoError(t, err, "Failed to stop VM")
 
 	orch.Cleanup()
 }
-*/
