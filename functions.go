@@ -367,11 +367,10 @@ func (f *Function) AddInstance() *metrics.Metric {
 	}
 
 	funcClient, err := f.getFuncClient()
-        if err != nil {
-        	logger.Panic("Failed to acquire func client")
-        }
-        f.funcClient = &funcClient
-
+	if err != nil {
+		logger.Panic("Failed to acquire func client")
+	}
+	f.funcClient = &funcClient
 
 	f.stats.IncStarted(f.fID)
 
@@ -472,6 +471,7 @@ func (f *Function) OffloadInstance() {
 	if err != nil {
 		log.Panic(err)
 	}
+	f.conn.Close()
 }
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
@@ -514,6 +514,32 @@ func (f *Function) ZeroServedStat() {
 // getVMID Creates the vmID for the function
 func (f *Function) getVMID() string {
 	return fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
+}
+
+func (f *Function) getFuncClient() (hpb.GreeterClient, error) {
+	backoffConfig := backoff.DefaultConfig
+	backoffConfig.MaxDelay = 5 * time.Second
+	connParams := grpc.ConnectParams{
+		Backoff: backoffConfig,
+	}
+
+	gopts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithInsecure(),
+		grpc.FailOnNonTempDialError(true),
+		grpc.WithConnectParams(connParams),
+		grpc.WithContextDialer(contextDialer),
+	}
+
+	//  This timeout must be large enough for all functions to start up (e.g., ML training takes few seconds)
+	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctxx, f.guestIP+":50051", gopts...)
+	f.conn = conn
+	if err != nil {
+		return nil, err
+	}
+	return hpb.NewGreeterClient(conn), nil
 }
 
 func contextDialer(ctx context.Context, address string) (net.Conn, error) {
@@ -584,28 +610,3 @@ func timeoutDialer(address string, timeout time.Duration) (net.Conn, error) {
 	}
 }
 
-func (f *Function) getFuncClient() (hpb.GreeterClient, error) {
-	backoffConfig := backoff.DefaultConfig
-	backoffConfig.MaxDelay = 5 * time.Second
-	connParams := grpc.ConnectParams{
-		Backoff: backoffConfig,
-	}
-
-	gopts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithInsecure(),
-		grpc.FailOnNonTempDialError(true),
-		grpc.WithConnectParams(connParams),
-		grpc.WithContextDialer(contextDialer),
-	}
-
-	//  This timeout must be large enough for all functions to start up (e.g., ML training takes few seconds)
-	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctxx, f.guestIP+":50051", gopts...)
-	f.conn = conn
-	if err != nil {
-		return nil, err
-	}
-	return hpb.NewGreeterClient(conn), nil
-}
