@@ -26,15 +26,21 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"golang.org/x/sync/semaphore"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	"github.com/ustiugov/fccd-orchestrator/metrics"
@@ -169,6 +175,9 @@ type Function struct {
 	servedSyncCounter      int64
 	isSnapshotReady        bool // if ready, the orchestrator should load the instance rather than creating it
 	OnceCreateSnapInstance *sync.Once
+	funcClient             *hpb.GreeterClient
+	conn                   *grpc.ClientConn
+	guestIP                string
 }
 
 // NewFunction Initializes a function
@@ -247,6 +256,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 			tStart = time.Now()
 			metr = f.AddInstance()
 			serveMetric.MetricMap[metrics.AddInstance] = metrics.ToUS(time.Since(tStart))
+
 			if metr != nil {
 				for k, v := range metr.MetricMap {
 					serveMetric.MetricMap[k] = v
@@ -319,12 +329,7 @@ func (f *Function) fwdRPC(ctx context.Context, reqPayload string) (*hpb.HelloRep
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
-	funcClientPtr, err := orch.GetFuncClient(f.vmID)
-	if err != nil {
-		return &hpb.HelloReply{Message: "Failed to get function client"}, err
-	}
-
-	funcClient := *funcClientPtr
+	funcClient := *f.funcClient
 
 	logger.Debug("FwdRPC: Forwarding RPC to function instance")
 	resp, err := funcClient.SayHello(ctx, &hpb.HelloRequest{Name: reqPayload})
@@ -351,13 +356,22 @@ func (f *Function) AddInstance() *metrics.Metric {
 	if f.isSnapshotReady {
 		metr = f.LoadInstance()
 	} else {
-		message, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
+		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
+		f.guestIP = resp.GuestIP
 		if err != nil {
-			log.Panic(message, err)
+			log.Panic(err)
 		}
+
 		f.vmID = f.getVMID()
 		f.lastInstanceID++
 	}
+
+	funcClient, err := f.getFuncClient()
+        if err != nil {
+        	logger.Panic("Failed to acquire func client")
+        }
+        f.funcClient = &funcClient
+
 
 	f.stats.IncStarted(f.fID)
 
@@ -371,9 +385,9 @@ func (f *Function) RemoveInstanceAsync() {
 	logger.Debug("Removing instance (async)")
 
 	go func() {
-		message, err := orch.StopSingleVM(context.Background(), f.vmID)
+		err := orch.StopSingleVM(context.Background(), f.vmID)
 		if err != nil {
-			log.Warn(message, err)
+			log.Warn(err)
 		}
 	}()
 }
@@ -399,7 +413,7 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 		r = "Successfully offloaded instance " + f.vmID
 	} else {
 		if isSync {
-			r, err = orch.StopSingleVM(context.Background(), f.vmID)
+			err = orch.StopSingleVM(context.Background(), f.vmID)
 		} else {
 			f.RemoveInstanceAsync()
 			r = "Successfully removed (async) instance " + f.vmID
@@ -429,19 +443,19 @@ func (f *Function) CreateInstanceSnapshot() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	message, err := orch.PauseVM(ctx, f.vmID)
+	err := orch.PauseVM(ctx, f.vmID)
 	if err != nil {
-		log.Panic(message, err)
+		log.Panic(err)
 	}
 
-	message, err = orch.CreateSnapshot(ctx, f.vmID)
+	err = orch.CreateSnapshot(ctx, f.vmID)
 	if err != nil {
-		log.Panic(message, err)
+		log.Panic(err)
 	}
 
-	message, _, err = orch.ResumeVM(ctx, f.vmID)
+	_, err = orch.ResumeVM(ctx, f.vmID)
 	if err != nil {
-		log.Panic(message, err)
+		log.Panic(err)
 	}
 }
 
@@ -454,9 +468,9 @@ func (f *Function) OffloadInstance() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	message, err := orch.Offload(ctx, f.vmID)
+	err := orch.Offload(ctx, f.vmID)
 	if err != nil {
-		log.Panic(message, err)
+		log.Panic(err)
 	}
 }
 
@@ -470,14 +484,14 @@ func (f *Function) LoadInstance() *metrics.Metric {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
-	message, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID)
+	loadMetr, err := orch.LoadSnapshot(ctx, f.vmID)
 	if err != nil {
-		log.Panic(message, err)
+		log.Panic(err)
 	}
 
-	message, resumeMetr, err := orch.ResumeVM(ctx, f.vmID)
+	resumeMetr, err := orch.ResumeVM(ctx, f.vmID)
 	if err != nil {
-		log.Panic(message, err)
+		log.Panic(err)
 	}
 
 	for k, v := range resumeMetr.MetricMap {
@@ -500,4 +514,98 @@ func (f *Function) ZeroServedStat() {
 // getVMID Creates the vmID for the function
 func (f *Function) getVMID() string {
 	return fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
+}
+
+func contextDialer(ctx context.Context, address string) (net.Conn, error) {
+	if deadline, ok := ctx.Deadline(); ok {
+		return timeoutDialer(address, time.Until(deadline))
+	}
+	return timeoutDialer(address, 0)
+}
+
+func isConnRefused(err error) bool {
+	if err != nil {
+		if nerr, ok := err.(*net.OpError); ok {
+			if serr, ok := nerr.Err.(*os.SyscallError); ok {
+				if serr.Err == syscall.ECONNREFUSED {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+type dialResult struct {
+	c   net.Conn
+	err error
+}
+
+func timeoutDialer(address string, timeout time.Duration) (net.Conn, error) {
+	var (
+		stopC = make(chan struct{})
+		synC  = make(chan *dialResult)
+	)
+	go func() {
+		defer close(synC)
+		for {
+			select {
+			case <-stopC:
+				return
+			default:
+				c, err := net.DialTimeout("tcp", address, timeout)
+				if isConnRefused(err) {
+					<-time.After(1 * time.Millisecond)
+					continue
+				}
+				if err != nil {
+					log.Debug("Reconnecting after an error")
+					<-time.After(1 * time.Millisecond)
+					continue
+				}
+
+				synC <- &dialResult{c, err}
+				return
+			}
+		}
+	}()
+	select {
+	case dr := <-synC:
+		return dr.c, dr.err
+	case <-time.After(timeout):
+		close(stopC)
+		go func() {
+			dr := <-synC
+			if dr != nil && dr.c != nil {
+				dr.c.Close()
+			}
+		}()
+		return nil, errors.Errorf("dial %s: timeout", address)
+	}
+}
+
+func (f *Function) getFuncClient() (hpb.GreeterClient, error) {
+	backoffConfig := backoff.DefaultConfig
+	backoffConfig.MaxDelay = 5 * time.Second
+	connParams := grpc.ConnectParams{
+		Backoff: backoffConfig,
+	}
+
+	gopts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithInsecure(),
+		grpc.FailOnNonTempDialError(true),
+		grpc.WithConnectParams(connParams),
+		grpc.WithContextDialer(contextDialer),
+	}
+
+	//  This timeout must be large enough for all functions to start up (e.g., ML training takes few seconds)
+	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctxx, f.guestIP+":50051", gopts...)
+	f.conn = conn
+	if err != nil {
+		return nil, err
+	}
+	return hpb.NewGreeterClient(conn), nil
 }
