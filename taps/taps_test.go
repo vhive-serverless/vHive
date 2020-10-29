@@ -101,19 +101,3 @@ func TestCreateRemoveExtra(t *testing.T) {
 
 	}
 }
-
-func TestTapReload(t *testing.T) {
-	tm := NewTapManager()
-	defer tm.RemoveBridges()
-
-	tapName := "rel_tap"
-
-	_, err := tm.AddTap(tapName)
-	require.NoError(t, err, "Failed to create tap")
-
-	err = tm.ReloadTap(tapName)
-	require.NoError(t, err, "Failed to reload tap")
-
-	err = tm.RemoveTap(tapName)
-	require.NoError(t, err, "Failed to remove tap")
-}
