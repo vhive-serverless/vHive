@@ -75,12 +75,12 @@ func TestBenchmarkStart(t *testing.T) {
 		for i := 0; i < benchCount; i++ {
 			dropPageCache()
 
-			message, metric, err := orch.StartVM(ctx, vmIDString, imageName)
-			require.NoError(t, err, "Failed to start VM, "+message)
+			_, metric, err := orch.StartVM(ctx, vmIDString, imageName)
+			require.NoError(t, err, "Failed to start VM")
 			startMetrics[i] = metric
 
-			message, err = orch.StopSingleVM(ctx, vmIDString)
-			require.NoError(t, err, "Failed to stop VM, "+message)
+			err = orch.StopSingleVM(ctx, vmIDString)
+			require.NoError(t, err, "Failed to stop VM")
 		}
 
 		outFileName := "start.txt"
