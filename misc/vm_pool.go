@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	var err error
 	vm.Ni, err = p.tapManager.AddTap(vmID + "_tap")
 	if err != nil {
-		logger.Warn("Ni allocation failed, freeing VM from the pool")
+		logger.Warn("Ni allocation failed")
 		return nil, err
 	}
 
@@ -70,11 +70,9 @@ func (p *VMPool) Free(vmID string) error {
 
 	_, isPresent := p.vmMap.Load(vmID)
 	if !isPresent {
-		log.WithFields(log.Fields{"vmID": vmID}).Panic("Free (VM): VM does not exist in the map")
-		return NonExistErr("Free (VM): VM does not exist when freeing a VM from the pool")
+		logger.Warn("VM does not exist in the map")
+		return nil
 	}
-
-	logger.Debug("Free (VM): Freeing VM from the pool")
 
 	if err := p.tapManager.RemoveTap(vmID + "_tap"); err != nil {
 		logger.Error("Could not delete tap")
@@ -82,26 +80,6 @@ func (p *VMPool) Free(vmID string) error {
 	}
 
 	p.vmMap.Delete(vmID)
-
-	return nil
-}
-
-// ReloadTap Sets the tap for the VM down and then up
-func (p *VMPool) ReloadTap(vmID string) error {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-
-	logger.Debug("Reloading tap")
-
-	_, isPresent := p.vmMap.Load(vmID)
-	if !isPresent {
-		log.WithFields(log.Fields{"vmID": vmID}).Panic("ReloadTap: VM does not exist in the map")
-		return NonExistErr("ReloadTap: VM does not exist when reloading its tap")
-	}
-
-	if err := p.tapManager.ReloadTap(vmID + "_tap"); err != nil {
-		logger.Error("Could not reload tap")
-		return err
-	}
 
 	return nil
 }
@@ -147,7 +125,7 @@ func (p *VMPool) GetVMMap() map[string]*VM {
 func (p *VMPool) GetVM(vmID string) (*VM, error) {
 	vm, found := p.vmMap.Load(vmID)
 	if !found {
-		log.WithFields(log.Fields{"vmID": vmID}).Panic("VM is not in the VM map")
+		log.WithFields(log.Fields{"vmID": vmID}).Error("VM is not in the VM map")
 		return nil, NonExistErr("GetVM: VM is not in the VM map")
 	}
 
