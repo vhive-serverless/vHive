@@ -29,8 +29,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/vishvananda/netlink"
 	"net"
+
+	"github.com/vishvananda/netlink"
 )
 
 // getGatewayAddr Creates the gateway address (first address in pool)
@@ -247,31 +248,6 @@ func (tm *TapManager) RemoveTap(tapName string) error {
 
 	if err := netlink.LinkDel(tap); err != nil {
 		logger.Error("Tap could not be removed")
-		return err
-	}
-
-	return nil
-}
-
-// ReloadTap Sets the tap down and then up
-func (tm *TapManager) ReloadTap(tapName string) error {
-	logger := log.WithFields(log.Fields{"tap": tapName})
-
-	logger.Debug("Reloading tap")
-
-	tap, err := netlink.LinkByName(tapName)
-	if err != nil {
-		logger.Warn("Could not find tap")
-		return nil
-	}
-
-	if err := netlink.LinkSetDown(tap); err != nil {
-		logger.Error("Tap could not be set down")
-		return err
-	}
-
-	if err := netlink.LinkSetUp(tap); err != nil {
-		logger.Error("Tap could not be set up")
 		return err
 	}
 
