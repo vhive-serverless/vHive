@@ -40,26 +40,26 @@ func TestSnapLoad(t *testing.T) {
 
 	vmID := "1"
 
-	message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
-	require.NoError(t, err, "Failed to start VM, "+message)
+	_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+	require.NoError(t, err, "Failed to start VM")
 
-	message, err = orch.PauseVM(ctx, vmID)
-	require.NoError(t, err, "Failed to pause VM, "+message)
+	err = orch.PauseVM(ctx, vmID)
+	require.NoError(t, err, "Failed to pause VM")
 
-	message, err = orch.CreateSnapshot(ctx, vmID)
-	require.NoError(t, err, "Failed to create snapshot of VM, "+message)
+	err = orch.CreateSnapshot(ctx, vmID)
+	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	message, _, err = orch.ResumeVM(ctx, vmID)
-	require.NoError(t, err, "Failed to resume VM, "+message)
+	_, err = orch.ResumeVM(ctx, vmID)
+	require.NoError(t, err, "Failed to resume VM")
 
-	message, err = orch.Offload(ctx, vmID)
-	require.NoError(t, err, "Failed to offload VM, "+message)
+	err = orch.Offload(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM")
 
-	message, _, err = orch.LoadSnapshot(ctx, vmID)
-	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
+	_, err = orch.LoadSnapshot(ctx, vmID)
+	require.NoError(t, err, "Failed to load snapshot of VM")
 
-	message, _, err = orch.ResumeVM(ctx, vmID)
-	require.NoError(t, err, "Failed to resume VM, "+message)
+	_, err = orch.ResumeVM(ctx, vmID)
+	require.NoError(t, err, "Failed to resume VM")
 
 	orch.Cleanup()
 }
@@ -89,35 +89,35 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	vmID := "3"
 
-	message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
-	require.NoError(t, err, "Failed to start VM, "+message)
+	_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+	require.NoError(t, err, "Failed to start VM")
 
-	message, err = orch.PauseVM(ctx, vmID)
-	require.NoError(t, err, "Failed to pause VM, "+message)
+	err = orch.PauseVM(ctx, vmID)
+	require.NoError(t, err, "Failed to pause VM")
 
-	message, err = orch.CreateSnapshot(ctx, vmID)
-	require.NoError(t, err, "Failed to create snapshot of VM, "+message)
+	err = orch.CreateSnapshot(ctx, vmID)
+	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	message, err = orch.Offload(ctx, vmID)
-	require.NoError(t, err, "Failed to offload VM, "+message)
+	err = orch.Offload(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM")
 
-	message, _, err = orch.LoadSnapshot(ctx, vmID)
-	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
+	_, err = orch.LoadSnapshot(ctx, vmID)
+	require.NoError(t, err, "Failed to load snapshot of VM")
 
-	message, _, err = orch.ResumeVM(ctx, vmID)
-	require.NoError(t, err, "Failed to resume VM, "+message)
+	_, err = orch.ResumeVM(ctx, vmID)
+	require.NoError(t, err, "Failed to resume VM")
 
-	message, err = orch.Offload(ctx, vmID)
-	require.NoError(t, err, "Failed to offload VM, "+message)
+	err = orch.Offload(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM")
 
-	message, _, err = orch.LoadSnapshot(ctx, vmID)
-	require.NoError(t, err, "Failed to load snapshot of VM, "+message)
+	_, err = orch.LoadSnapshot(ctx, vmID)
+	require.NoError(t, err, "Failed to load snapshot of VM")
 
-	message, _, err = orch.ResumeVM(ctx, vmID)
-	require.NoError(t, err, "Failed to resume VM, "+message)
+	_, err = orch.ResumeVM(ctx, vmID)
+	require.NoError(t, err, "Failed to resume VM, ")
 
-	message, err = orch.Offload(ctx, vmID)
-	require.NoError(t, err, "Failed to offload VM, "+message)
+	err = orch.Offload(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM")
 
 	orch.Cleanup()
 }
@@ -160,23 +160,23 @@ func TestParallelSnapLoad(t *testing.T) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("%d", i+vmIDBase)
 
-			message, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
-			require.NoError(t, err, "Failed to start VM, "+vmID+", "+message)
+			_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+			require.NoError(t, err, "Failed to start VM, "+vmID)
 
-			message, err = orch.PauseVM(ctx, vmID)
-			require.NoError(t, err, "Failed to pause VM, "+vmID+", "+message)
+			err = orch.PauseVM(ctx, vmID)
+			require.NoError(t, err, "Failed to pause VM, "+vmID)
 
-			message, err = orch.CreateSnapshot(ctx, vmID)
-			require.NoError(t, err, "Failed to create snapshot of VM, "+vmID+", "+message)
+			err = orch.CreateSnapshot(ctx, vmID)
+			require.NoError(t, err, "Failed to create snapshot of VM, "+vmID)
 
-			message, err = orch.Offload(ctx, vmID)
-			require.NoError(t, err, "Failed to offload VM, "+vmID+", "+message)
+			err = orch.Offload(ctx, vmID)
+			require.NoError(t, err, "Failed to offload VM, "+vmID)
 
-			message, _, err = orch.LoadSnapshot(ctx, vmID)
-			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID+", "+message)
+			_, err = orch.LoadSnapshot(ctx, vmID)
+			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 
-			message, _, err = orch.ResumeVM(ctx, vmID)
-			require.NoError(t, err, "Failed to resume VM, "+vmID+", "+message)
+			_, err = orch.ResumeVM(ctx, vmID)
+			require.NoError(t, err, "Failed to resume VM, "+vmID)
 		}(i)
 	}
 	vmGroup.Wait()
@@ -222,8 +222,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				message, _, err := orch.StartVM(ctx, vmID, imageName)
-				require.NoError(t, err, "Failed to start VM, "+vmID+", "+message)
+				_, _, err := orch.StartVM(ctx, vmID, imageName)
+				require.NoError(t, err, "Failed to start VM, "+vmID)
 			}(i)
 		}
 		vmGroup.Wait()
@@ -236,8 +236,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				message, err := orch.PauseVM(ctx, vmID)
-				require.NoError(t, err, "Failed to pause VM, "+vmID+", "+message)
+				err := orch.PauseVM(ctx, vmID)
+				require.NoError(t, err, "Failed to pause VM, "+vmID)
 			}(i)
 		}
 		vmGroup.Wait()
@@ -250,8 +250,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				message, err := orch.CreateSnapshot(ctx, vmID)
-				require.NoError(t, err, "Failed to create snapshot of VM, "+vmID+", "+message)
+				err := orch.CreateSnapshot(ctx, vmID)
+				require.NoError(t, err, "Failed to create snapshot of VM, "+vmID)
 			}(i)
 		}
 		vmGroup.Wait()
@@ -264,8 +264,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				message, err := orch.Offload(ctx, vmID)
-				require.NoError(t, err, "Failed to offload VM, "+vmID+", "+message)
+				err := orch.Offload(ctx, vmID)
+				require.NoError(t, err, "Failed to offload VM, "+vmID)
 			}(i)
 		}
 		vmGroup.Wait()
@@ -278,8 +278,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				message, _, err := orch.LoadSnapshot(ctx, vmID)
-				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID+", "+message)
+				_, err := orch.LoadSnapshot(ctx, vmID)
+				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 			}(i)
 		}
 		vmGroup.Wait()
@@ -292,8 +292,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				message, _, err := orch.ResumeVM(ctx, vmID)
-				require.NoError(t, err, "Failed to resume VM, "+vmID+", "+message)
+				_, err := orch.ResumeVM(ctx, vmID)
+				require.NoError(t, err, "Failed to resume VM, "+vmID)
 			}(i)
 		}
 		vmGroup.Wait()

@@ -1,6 +1,6 @@
 EXTRAGOARGS:=-v -race -cover
-EXTRATESTFILES:=iface_test.go iface.go dialer.go orch_options.go
-BENCHFILES:=bench_test.go iface.go dialer.go orch_options.go
+EXTRATESTFILES:=iface_test.go iface.go dialer.go orch_options.go orch.go
+BENCHFILES:=bench_test.go iface.go dialer.go orch_options.go orch.go
 WITHUPF:=-upf
 WITHLAZY:=-lazy
 GOBENCH:=-v -timeout 1500s

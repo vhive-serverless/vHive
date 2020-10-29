@@ -1,17 +1,6 @@
 package ctriface
 
-import (
-	"context"
-	"os"
-	"testing"
-	"time"
-
-	ctrdlog "github.com/containerd/containerd/log"
-	"github.com/containerd/containerd/namespaces"
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 func TestStartSnapStop(t *testing.T) {
 	// BROKEN BECAUSE StopVM does not work yet.
 	log.SetFormatter(&log.TextFormatter{
@@ -55,3 +44,4 @@ func TestStartSnapStop(t *testing.T) {
 
 	orch.Cleanup()
 }
+*/
