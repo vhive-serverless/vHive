@@ -148,12 +148,6 @@ func (s *CriService) PortForward(ctx context.Context, r *criapi.PortForwardReque
 	return s.stockRuntimeClient.PortForward(ctx, r)
 }
 
-func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	// log.Infof("CreateContainer within sandbox %q for container %+v",
-	// 	r.GetPodSandboxId(), r.GetConfig().GetMetadata())
-	return s.stockRuntimeClient.CreateContainer(ctx, r)
-}
-
 func (s *CriService) StartContainer(ctx context.Context, r *criapi.StartContainerRequest) (*criapi.StartContainerResponse, error) {
 	// log.Infof("StartContainer for %q", r.GetContainerId())
 	return s.stockRuntimeClient.StartContainer(ctx, r)
