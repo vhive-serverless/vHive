@@ -35,6 +35,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
+	fccdcri "github.com/ustiugov/fccd-orchestrator/cri"
 	pb "github.com/ustiugov/fccd-orchestrator/proto"
 	"google.golang.org/grpc"
 )
@@ -74,7 +75,7 @@ func main() {
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
-	criSock = flag.String("criSock", "/users/plamenpp/fccd-cri.sock", "Socket address for CRI service")
+	criSock = flag.String("criSock", "/etc/firecracker-containerd/fccd-cri.sock", "Socket address for CRI service")
 
 	if *isUPFEnabled && !*isSnapshotsEnabled {
 		log.Error("User-level page faults are not supported without snapshots")
@@ -125,7 +126,7 @@ func main() {
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
 	go criServe()
-	orchServe()
+	go orchServe()
 	fwdServe()
 }
 
@@ -145,7 +146,7 @@ func criServe() {
 
 	s := grpc.NewServer()
 
-	criService, err := NewCriService(orch)
+	criService, err := fccdcri.NewCriService(orch)
 	if err != nil {
 		log.Fatalf("failed to create CRI service %v", err)
 	}
