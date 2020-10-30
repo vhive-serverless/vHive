@@ -25,7 +25,6 @@ package misc
 import (
 	log "github.com/sirupsen/logrus"
 
-	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	"github.com/ustiugov/fccd-orchestrator/taps"
 )
 
@@ -130,17 +129,6 @@ func (p *VMPool) GetVM(vmID string) (*VM, error) {
 	}
 
 	return vm.(*VM), nil
-}
-
-// GetFuncClient Returns the client to the function
-func (p *VMPool) GetFuncClient(vmID string) (*hpb.GreeterClient, error) {
-	vm, found := p.vmMap.Load(vmID)
-	if !found {
-		log.WithFields(log.Fields{"vmID": vmID}).Panic("GetFuncClient: VM is not in the VM map")
-		return nil, NonExistErr("GetFuncClient: VM is not in the VM map")
-	}
-
-	return vm.(*VM).FuncClient, nil
 }
 
 // RemoveBridges Removes the bridges created by the tap manager

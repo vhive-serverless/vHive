@@ -26,22 +26,18 @@ import (
 	"sync"
 
 	"github.com/containerd/containerd"
-	"google.golang.org/grpc"
 
-	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	"github.com/ustiugov/fccd-orchestrator/taps"
 )
 
 // VM type
 type VM struct {
-	ID         string
-	Image      *containerd.Image
-	Container  *containerd.Container
-	Task       *containerd.Task
-	TaskCh     <-chan containerd.ExitStatus
-	Ni         *taps.NetworkInterface
-	Conn       *grpc.ClientConn
-	FuncClient *hpb.GreeterClient
+	ID        string
+	Image     *containerd.Image
+	Container *containerd.Container
+	Task      *containerd.Task
+	TaskCh    <-chan containerd.ExitStatus
+	Ni        *taps.NetworkInterface
 }
 
 // VMPool Pool of active VMs (can be in several states though)
