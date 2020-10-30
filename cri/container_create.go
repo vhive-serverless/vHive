@@ -33,33 +33,37 @@ const (
 	userContainerName = "user-container"
 	guestIPEnv        = "GUESTIP"
 	guestPortEnv      = "GUESTPORT"
+	guestImageEnv     = "GUESTIMAGE"
 )
 
 func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	// log.Infof("CreateContainer within sandbox %q for container %+v",
 	// 	r.GetPodSandboxId(), r.GetConfig().GetMetadata())
-	var (
-		image = "crccheck/hello-world:latest"
-		port  = "8000"
-	)
-
 	config := r.GetConfig()
-
 	containerName := config.GetMetadata().GetName()
 	log.Debugf("received CreateContainer for %s.", containerName)
 
 	if containerName == userContainerName {
+		image := "crccheck/hello-world:latest"
+
+		// Get image name
+		envs := config.GetEnvs()
+		for _, kv := range envs {
+			if kv.GetKey() == guestImageEnv {
+				image = kv.GetValue()
+				break
+			}
+		}
+
 		startVMResp, vmID, err := s.coordinator.startVM(context.Background(), image)
 		if err != nil {
 			log.WithError(err).Error("failed to start VM")
 			return nil, err
 		}
 
-		// Add guest IP and guest port
-		envs := config.GetEnvs()
+		// Add guest IP
 		guestIPEnv := &criapi.KeyValue{Key: guestIPEnv, Value: startVMResp.GuestIP}
-		guestPortEnv := &criapi.KeyValue{Key: guestPortEnv, Value: port}
-		envs = append(envs, guestIPEnv, guestPortEnv)
+		envs = append(envs, guestIPEnv)
 		r.Config.Envs = envs
 
 		resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
