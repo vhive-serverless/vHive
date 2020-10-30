@@ -9,14 +9,15 @@ replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/ustiugov
 require (
 	github.com/containerd/containerd v1.3.6
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201029105850-29220ab0dbd1
+	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201030145928-fea526097704
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201030145928-fea526097704
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200803195925-0629e1cf4599
 	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200907081336-fae0d2f696c4
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200803195925-0629e1cf4599
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	google.golang.org/grpc v1.31.0
+	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.16.16-rc.0
 )
 
