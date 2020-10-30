@@ -59,10 +59,6 @@ replace k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.16.6
 
 replace k8s.io/sample-controller => k8s.io/sample-controller v0.16.6
 
-replace github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20161114122254-48702e0da86b
-
-replace github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
-
 require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
