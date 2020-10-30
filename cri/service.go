@@ -48,6 +48,7 @@ type CriService struct {
 	orch               *ctriface.Orchestrator
 	stockRuntimeClient criapi.RuntimeServiceClient
 	stockImageClient   criapi.ImageServiceClient
+	coordinator        *coordinator
 }
 
 func NewCriService(orch *ctriface.Orchestrator) (*CriService, error) {
@@ -71,6 +72,7 @@ func NewCriService(orch *ctriface.Orchestrator) (*CriService, error) {
 		orch:               orch,
 		stockRuntimeClient: stockRuntimeClient,
 		stockImageClient:   stockImageClient,
+		coordinator:        newCoordinator(orch),
 	}
 
 	return cs, nil
