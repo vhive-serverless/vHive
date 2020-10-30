@@ -65,6 +65,7 @@ replace github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20
 
 require (
 	github.com/sirupsen/logrus v1.7.0
+	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201029150828-d4e06bf2a814
 	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.0.0-00010101000000-000000000000

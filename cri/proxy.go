@@ -80,11 +80,6 @@ func (s *CriService) StopContainer(ctx context.Context, r *criapi.StopContainerR
 	return s.stockRuntimeClient.StopContainer(ctx, r)
 }
 
-func (s *CriService) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
-	// log.Infof("RemoveContainer for %q", r.GetContainerId())
-	return s.stockRuntimeClient.RemoveContainer(ctx, r)
-}
-
 func (s *CriService) ExecSync(ctx context.Context, r *criapi.ExecSyncRequest) (*criapi.ExecSyncResponse, error) {
 	// log.Infof("ExecSync for %q with command %+v and timeout %d (s)", r.GetContainerId(), r.GetCmd(), r.GetTimeout())
 	return s.stockRuntimeClient.ExecSync(ctx, r)

@@ -25,8 +25,6 @@ package cri
 import (
 	"context"
 
-	"github.com/ustiugov/fccd-orchestrator/ctriface"
-
 	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -41,30 +39,38 @@ func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContai
 	// log.Infof("CreateContainer within sandbox %q for container %+v",
 	// 	r.GetPodSandboxId(), r.GetConfig().GetMetadata())
 	var (
-		resp *ctriface.StartVMResponse
-		err  error
+		image = "crccheck/hello-world:latest"
+		port  = "8000"
 	)
 
 	config := r.GetConfig()
 
 	containerName := config.GetMetadata().GetName()
-	log.Infof("received CreateContainer for %s.", containerName)
-	if containerName == userContainerName {
-		// TODO: Start VM, get guestIP and pass to CreateContainerRequest
-		log.Info("UC request")
+	log.Debugf("received CreateContainer for %s.", containerName)
 
-		resp, _, err = s.orch.StartVM(context.Background(), "1", "crccheck/hello-world:latest")
+	if containerName == userContainerName {
+		startVMResp, vmID, err := s.coordinator.startVM(context.Background(), image)
 		if err != nil {
 			log.WithError(err).Error("failed to start VM")
 			return nil, err
 		}
-	}
 
-	envs := config.GetEnvs()
-	guestIPEnv := &criapi.KeyValue{Key: guestIPEnv, Value: resp.GuestIP}
-	guestPortEnv := &criapi.KeyValue{Key: guestPortEnv, Value: "8000"}
-	envs = append(envs, guestIPEnv, guestPortEnv)
-	r.Config.Envs = envs
+		// Add guest IP and guest port
+		envs := config.GetEnvs()
+		guestIPEnv := &criapi.KeyValue{Key: guestIPEnv, Value: startVMResp.GuestIP}
+		guestPortEnv := &criapi.KeyValue{Key: guestPortEnv, Value: port}
+		envs = append(envs, guestIPEnv, guestPortEnv)
+		r.Config.Envs = envs
+
+		resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
+		containerdID := resp.ContainerId
+		if err != nil {
+			log.WithError(err).Error("stock containerd failed to start UC")
+		} else {
+			s.coordinator.insertMapping(containerdID, vmID)
+		}
+		return resp, err
+	}
 
 	return s.stockRuntimeClient.CreateContainer(ctx, r)
 }
