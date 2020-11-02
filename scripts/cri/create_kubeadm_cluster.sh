@@ -2,11 +2,11 @@
 # Create kubelet service
 cat <<EOF > /etc/systemd/system/kubelet.service.d/0-containerd.conf
 [Service]                                                 
-Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///users/plamenpp/fccd-cri.sock"
+Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///etc/firecracker-containerd/fccd-cri.sock"
 EOF
 systemctl daemon-reload
 
-kubeadm init --ignore-preflight-errors=all --cri-socket /users/plamenpp/fccd-cri.sock --pod-network-cidr=192.168.0.0/16
+kubeadm init --ignore-preflight-errors=all --cri-socket /etc/firecracker-containerd/fccd-cri.sock --pod-network-cidr=192.168.0.0/16
 
 # Install Calico network add-on
 kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
