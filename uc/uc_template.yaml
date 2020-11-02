@@ -1,0 +1,14 @@
+apiVersion: serving.knative.dev/v1 # Current version of Knative
+kind: Service
+metadata:
+  name: f1 # The name of the app
+  namespace: default # The namespace the app will use
+spec:
+  template:
+    spec:
+      containers:
+        - image: vhiveease/uc-image # Reference to the image of the app
+          env:
+            - name: GUESTPORT # The environment variable printed out by the sample app
+              value: "50051"
+              
