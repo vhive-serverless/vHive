@@ -11,4 +11,5 @@ spec:
           env:
             - name: GUESTPORT # The environment variable printed out by the sample app
               value: "50051"
-              
+            - name: GUESTIMAGE
+              value: "ustiugov/helloworld:runner_workload"              
