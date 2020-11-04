@@ -89,15 +89,15 @@ func (c *coordinator) startVM(ctx context.Context, image string) (*ctriface.Star
 
 func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	c.Lock()
-	defer c.Unlock()
 
 	vmID, ok := c.activeVMs[containerID]
 	if !ok {
+		c.Unlock()
 		return nil
 	}
 
-	delete(c.activeVMs, containerID)
-	c.freeID(vmID)
+	c.free(containerID, vmID)
+	c.Unlock()
 
 	return c.orchStopVM(ctx, vmID)
 
@@ -133,12 +133,12 @@ func (c *coordinator) reserveID() int {
 	return id
 }
 
-func (c *coordinator) freeID(id string) {
-	i, err := strconv.Atoi(id)
+func (c *coordinator) free(containerID, vmID string) {
+	i, err := strconv.Atoi(vmID)
 	if err != nil {
 		log.Panic("provided non-int id")
 	}
-
+	delete(c.activeVMs, containerID)
 	c.availableIDs = append(c.availableIDs, i)
 }
 
