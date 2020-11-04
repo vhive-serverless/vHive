@@ -7,7 +7,10 @@ spec:
   template:
     spec:
       containers:
-        - image: vhiveease/uc-image # Reference to the image of the app
+        - image: plamenppetrov/uc-grpc # Reference to the image of the app
+          ports:
+            - name: h2c
+              containerPort: 8080
           env:
             - name: GUESTPORT # The environment variable printed out by the sample app
               value: "50051"
