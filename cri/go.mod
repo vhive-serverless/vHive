@@ -63,6 +63,8 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201029150828-d4e06bf2a814
+	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200717125634-528c6e9f9cc9
+	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.0.0-00010101000000-000000000000
 )
