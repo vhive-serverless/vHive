@@ -23,13 +23,13 @@
 package cri
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
-	"testing"
-
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -39,13 +39,28 @@ import (
 	"google.golang.org/grpc"
 )
 
-var functionURL string = "f1.default.192.168.1.240.xip.io:80"
+var (
+	coord         *coordinator
+	gatewayURL    = flag.String("gatewayURL", "192.168.1.240.xip.io", "URL of the gateway")
+	namespaceName = flag.String("namespace", "default", "name of namespace in which services exists")
+)
 
-func TestSingleCall(t *testing.T) {
+func TestMain(m *testing.M) {
+	coord = newCoordinator(nil, withoutOrchestrator())
+
+	flag.Parse()
+
+	ret := m.Run()
+	os.Exit(ret)
+}
+
+func TestSingleInvoke(t *testing.T) {
+	functionURL := getFuncURL("helloworld")
 	invoke(t, functionURL)
 }
 
-func TestParallelCall(t *testing.T) {
+func TestParallelInvoke(t *testing.T) {
+	functionURL := getFuncURL("helloworld")
 	n := 50
 	var wg sync.WaitGroup
 
@@ -59,9 +74,32 @@ func TestParallelCall(t *testing.T) {
 	wg.Wait()
 }
 
+func TestMutlipleFuncInvoke(t *testing.T) {
+	var wg sync.WaitGroup
+	funcs := []string{
+		"helloworld",
+		"pyaes",
+		"rnnserving",
+	}
+
+	for _, funcName := range funcs {
+		wg.Add(1)
+		functionURL := getFuncURL(funcName)
+
+		go func(functionURL string) {
+			defer wg.Done()
+			invoke(t, functionURL)
+		}(functionURL)
+	}
+
+	wg.Wait()
+}
+
 func TestBench(t *testing.T) {
-	dropPageCache()
 	start := time.Now()
+	functionURL := getFuncURL("helloworld")
+
+	dropPageCache()
 	invoke(t, functionURL)
 	end := time.Since(start)
 	fmt.Printf("First invocation took %d ms\n", end.Milliseconds())
@@ -74,14 +112,18 @@ func TestBench(t *testing.T) {
 }
 
 func invoke(t *testing.T, functionURL string) {
+	reqPayload := "record"
+	respPayload := "Hello, " + reqPayload + "!"
+
 	client, conn, err := getClient(functionURL)
 	require.NoError(t, err, "Failed to dial function URL")
 	defer conn.Close()
 	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*time.Second))
 	defer cancel()
 
-	_, err = client.SayHello(ctxFwd, &hpb.HelloRequest{Name: "record"})
+	resp, err := client.SayHello(ctxFwd, &hpb.HelloRequest{Name: reqPayload})
 	require.NoError(t, err, "Failed to get response from function")
+	require.Equal(t, respPayload, resp.Message, "Incorrect response payload")
 }
 
 func getClient(functionURL string) (hpb.GreeterClient, *grpc.ClientConn, error) {
@@ -100,4 +142,8 @@ func dropPageCache() {
 	if err := cmd.Run(); err != nil {
 		log.Fatalf("Failed to drop caches: %v", err)
 	}
+}
+
+func getFuncURL(funcName string) string {
+	return funcName + "." + *namespaceName + "." + *gatewayURL + ":80"
 }
