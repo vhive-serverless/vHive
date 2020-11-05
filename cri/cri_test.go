@@ -25,6 +25,7 @@ package cri
 import (
 	"testing"
 
+	"sync"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -34,18 +35,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+var functionURL string = "f1.default.192.168.1.240.xip.io:80"
+
 func TestSingleCall(t *testing.T) {
-	functionURL := "f1.default.192.168.1.240.xip.io:80"
-
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-
-	conn, err := grpc.Dial(functionURL, opts...)
+	client, conn, err := getClient(functionURL)
 	require.NoError(t, err, "Failed to dial function URL")
 	defer conn.Close()
-
-	client := hpb.NewGreeterClient(conn)
-
 	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*time.Second))
 	defer cancel()
 
@@ -53,3 +48,31 @@ func TestSingleCall(t *testing.T) {
 	require.NoError(t, err, "Failed to get response from function")
 }
 
+func TestParallelCall(t *testing.T) {
+	n := 5
+	var wg sync.WaitGroup
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			client, conn, err := getClient(functionURL)
+			require.NoError(t, err, "Failed to dial function URL")
+			defer conn.Close()
+			ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*time.Second))
+			defer cancel()
+
+			_, err = client.SayHello(ctxFwd, &hpb.HelloRequest{Name: "record"})
+			require.NoError(t, err, "Failed to get response from function")
+		}()
+	}
+	wg.Wait()
+}
+
+func getClient(functionURL string) (hpb.GreeterClient, *grpc.ClientConn, error) {
+	conn, err := grpc.Dial(functionURL, grpc.WithInsecure())
+	if err != nil {
+		return nil, nil, err
+	}
+	return hpb.NewGreeterClient(conn), conn, nil
+}
