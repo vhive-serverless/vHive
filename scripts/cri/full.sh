@@ -3,7 +3,11 @@ sudo apt-get update
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-apt-get install -y btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm
+apt-get install -y btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm git-lfs
+
+pushd $DIR
+git lfs pull
+pop
 
 wget -c https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
 sudo unzip protoc-3.11.4-linux-x86_64.zip -d /usr/local
