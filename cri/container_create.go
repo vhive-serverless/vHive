@@ -37,8 +37,9 @@ const (
 )
 
 func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	// log.Infof("CreateContainer within sandbox %q for container %+v",
-	// 	r.GetPodSandboxId(), r.GetConfig().GetMetadata())
+	log.Debugf("CreateContainer within sandbox %q for container %+v",
+		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
+
 	config := r.GetConfig()
 	containerName := config.GetMetadata().GetName()
 	log.Debugf("received CreateContainer for %s.", containerName)
