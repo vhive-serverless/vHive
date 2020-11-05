@@ -963,6 +963,8 @@ github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201030155706-81e51d7bb63a h1:
 github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201030155706-81e51d7bb63a/go.mod h1:w/S3Aw9YNPatJPDSBKZvjjaaK5w9xWurIOFIMTY4gDo=
 github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201104121943-18db9e853879 h1:rOFfgvCrTUPSUv//hgSAGa/TNM5Tw7CxB5MrPCHkSk0=
 github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201104121943-18db9e853879/go.mod h1:w/S3Aw9YNPatJPDSBKZvjjaaK5w9xWurIOFIMTY4gDo=
+github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201105084022-bd5209987140 h1:dvalzS54kMaT3vrnpMixEzZ5dL8LjjDd8AXAKxzgtkE=
+github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201105084022-bd5209987140/go.mod h1:Jh2FeS2rEnLidsWYLLGD0zs02QTZ7L9p5ObFaE14sxE=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200416161917-c9cd3cf6dbcf h1:/eSdcjyJ9rQmw3VQcfAKMKnRPI6DoXAztiNyOl1GN84=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200416161917-c9cd3cf6dbcf/go.mod h1:2x1L5ydHhOsleqG/GQ9MLWgjF1YQF91u5pe0TvKEjhI=
 github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20200417191122-72eef2f2433e h1:YkxEGHYR18sI1GahT6EfcSwyf422JBsrIi6HuE6gkjM=
