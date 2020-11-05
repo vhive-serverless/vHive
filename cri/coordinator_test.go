@@ -24,22 +24,12 @@ package cri
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-var coord *coordinator
-
-func TestMain(m *testing.M) {
-	coord = newCoordinator(nil, withoutOrchestrator())
-
-	ret := m.Run()
-	os.Exit(ret)
-}
 
 func TestStartStop(t *testing.T) {
 	containerID := "1"
