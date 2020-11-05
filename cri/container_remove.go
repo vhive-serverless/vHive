@@ -30,7 +30,7 @@ import (
 )
 
 func (s *CriService) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
-	// log.Infof("RemoveContainer for %q", r.GetContainerId())
+	log.Debugf("RemoveContainer for %q", r.GetContainerId())
 	containerID := r.GetContainerId()
 
 	go func() {
