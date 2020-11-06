@@ -74,10 +74,14 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 		startVMID     int
 		servedTh      uint64
 		isSyncOffload bool = true
-		metrFile           = "benchRPS.csv"
-		images             = getImages(t)
-		cores              = runtime.NumCPU()
-		metrics            = make([]map[string]float64, *maxVMNum / *vmIncrStep)
+		images             = getAllImages()
+		funcs              = mapToArray(images)
+		funcIdx            = 0
+		vmID               = 0
+		requestPerSec      = 1
+		concurrency        = 1
+		totalSeconds       = 5 // in second
+		// duration           = 30 * time.Second
 	)
 	log.SetLevel(log.InfoLevel)
 
@@ -239,173 +243,50 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			for i := 0; i < requestPerSec; i++ {
 				tStart := time.Now()
 				sem <- true
-				funcName := funcs[funcIdx]
-				imageName := images[funcName]
 
-				// pull image
-				resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+				go func() {
+					defer func() { <-sem }()
 
-		// it returns the metric before tail latency violation.
-		if latencies.tailLatency > threshold {
-			require.NotNil(t, pmuMetric, "The tail latency of first round is larger than the constraint")
-			return pmuMetric.MetricMap
-		}
+					funcName := funcs[funcIdx]
+					imageName := images[funcName]
 
-		pmuMetric = serveMetric
-	}
+					// pull image
+					resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 
-	return pmuMetric.MetricMap
-}
+					require.NoError(t, err, "Function returned error")
+					require.Equal(t, resp.Payload, "Hello, record_response!")
 
-// Goroutine function: serve VM, record real RPS and exection time
-func loadVM(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageName string, isSyncOffload bool, isProfile *bool, execTime, realRequests *int64) {
-	defer vmGroup.Done()
+					vmIDString := strconv.Itoa(vmID)
 
-	vmIDString := strconv.Itoa(vmID)
-	log.Debugf("VM %s: requestID %d", vmIDString, requestID)
-	tStart := time.Now()
-	resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-	require.Equal(t, resp.IsColdStart, false)
-	if err == nil {
-		if resp.Payload != "Hello, replay_response!" {
-			log.Debugf("Function returned invalid: %s", resp.Payload)
-		}
-		if *isProfile {
-			atomic.AddInt64(realRequests, 1)
-			atomic.AddInt64(execTime, time.Since(tStart).Milliseconds())
-			log.Debugf("VM %s: requestID %d completed in %d milliseconds", vmIDString, requestID, time.Since(tStart).Milliseconds())
-		}
-	} else {
-		log.Debugf("VM %s: Function returned error %v", vmIDString, err)
-	}
-}
+					createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
+					log.Info("Snapshots created")
 
-// Goroutine function: Control start and end of profiling
-func profileControl(vmNum int, isProfile *bool, profiler *profile.Profiler) {
-	time.Sleep(time.Duration(*warmUpTime) * time.Second)
-	*isProfile = true
-	profiler.SetWarmUpTime()
-	log.Debug("Profile started")
-	time.Sleep(time.Duration(*profileTime) * time.Second)
-	*isProfile = false
-	profiler.SetCoolDownTime()
-	log.Debug("Profile finished")
-}
+					createRecords(t, concurrency, vmID, imageName, isSyncOffload)
+					log.Info("Records done")
 
-type LatencyStat struct {
-	meanLatency float64
-	tailLatency float64
-}
+					if !*isWithCache {
+						dropPageCache()
+					}
 
-func latencyMeasurement(t *testing.T, vmID int, imageName string, isProfile *bool, latencyCh chan LatencyStat) {
-	var (
-		serviceTimes []float64
-		vmGroup      sync.WaitGroup
-		ticker       = time.NewTicker(500 * time.Millisecond)
-		vmIDString   = strconv.Itoa(vmID)
-	)
+					// serve
+					resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+					require.NoError(t, err, "Function returned error")
+					require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-	for {
-		if tickerT := <-ticker.C; *isProfile && !tickerT.IsZero() {
-			vmGroup.Add(1)
-			go func() {
-				defer vmGroup.Done()
-				tStart := time.Now()
-				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-				require.Equal(t, resp.IsColdStart, false)
-				if err != nil {
-					log.Debugf("VM %s: Function returned error %v", vmIDString, err)
-				} else if resp.Payload != "Hello, replay_response!" {
-					log.Debugf("Function returned invalid: %s", resp.Payload)
-				}
-				serviceTimes = append(serviceTimes, float64(time.Since(tStart).Milliseconds()))
-			}()
-		} else if !*isProfile && len(serviceTimes) > 0 {
-			vmGroup.Wait()
-			data := stats.LoadRawData(serviceTimes)
-			mean, err := stats.Mean(data)
-			require.NoError(t, err, "Compute mean returned error")
-			percentile, err := stats.Percentile(data, 90)
-			require.NoError(t, err, "Compute 90 percentile returned error")
-			latencyCh <- LatencyStat{
-				meanLatency: mean,
-				tailLatency: percentile,
-			}
-			return
-		}
-	}
-}
+					message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+					require.NoError(t, err, "Function returned error, "+message)
 
-// Tear down VMs
-func tearDownVMs(t *testing.T, images []string, vmNum int, isSyncOffload bool) {
-	for i := 0; i < vmNum; i++ {
-		log.Infof("Shutting down VM %d, images: %s", i, images[i%len(images)])
-		vmIDString := strconv.Itoa(i)
-		message, err := funcPool.RemoveInstance(vmIDString, images[i%len(images)], isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-	}
-}
+					funcIdx++
+					funcIdx %= len(funcs)
+					vmID++
 
-// Returns a list of image names
-func getImages(t *testing.T) []string {
-	var (
-		images = map[string]string{
-			"helloworld":   "vhiveease/helloworld:var_workload",
-			"chameleon":    "vhiveease/chameleon:var_workload",
-			"pyaes":        "vhiveease/pyaes:var_workload",
-			"image_rotate": "vhiveease/image_rotate:var_workload",
-			"json_serdes":  "vhiveease/json_serdes:var_workload",
-			"lr_serving":   "vhiveease/lr_serving:var_workload",
-			"cnn_serving":  "vhiveease/cnn_serving:var_workload",
-			"rnn_serving":  "vhiveease/rnn_serving:var_workload",
-		}
-		funcs  = strings.Split(*funcNames, ",")
-		result []string
-	)
+					log.Printf("Instance finished in %f seconds", time.Since(tStart).Seconds())
+					// wait for time interval
+					// timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
+					// require.GreaterOrEqual(t, timeLeft, 0)
 
-	for _, funcName := range funcs {
-		imageName, isPresent := images[funcName]
-		require.True(t, isPresent, "Function %s is not supported", funcName)
-		result = append(result, imageName)
-	}
-
-	return result
-}
-
-func dumpMetrics(t *testing.T, metrics []map[string]float64, outfile string) {
-	outFile := getOutFile(outfile)
-
-	f, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY, 0666)
-	require.NoError(t, err, "Failed opening file")
-	defer f.Close()
-
-	headerSet := make(map[string]bool)
-	for _, metric := range metrics {
-		for area := range metric {
-			headerSet[area] = true
-		}
-	}
-
-	var headers []string
-	for area := range headerSet {
-		headers = append(headers, area)
-	}
-
-	writer := csv.NewWriter(f)
-
-	err = writer.Write(headers)
-	require.NoError(t, err, "Failed writting file")
-	writer.Flush()
-
-	for _, metric := range metrics {
-		var data []string
-		for _, header := range headers {
-			value, isPresent := metric[header]
-			if isPresent {
-				vStr := strconv.FormatFloat(value, 'f', -1, 64)
-				data = append(data, vStr)
-			} else {
-				data = append(data, "")
+					// time.Sleep(time.Duration(timeLeft))
+				}()
 			}
 		}
 		err = writer.Write(data)
