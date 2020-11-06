@@ -44,7 +44,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		requestPerSec      = 1
 		concurrency        = 1
 		totalSeconds       = 5 // in second
-		duration           = 30 * time.Second
+		// duration           = 30 * time.Second
 	)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
@@ -60,44 +60,50 @@ func TestBenchRequestPerSecond(t *testing.T) {
 			for i := 0; i < requestPerSec; i++ {
 				tStart := time.Now()
 				sem <- true
-				funcName := funcs[funcIdx]
-				imageName := images[funcName]
 
-				// pull image
-				resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+				go func() {
+					defer func() { <-sem }()
 
-				require.NoError(t, err, "Function returned error")
-				require.Equal(t, resp.Payload, "Hello, record_response!")
+					funcName := funcs[funcIdx]
+					imageName := images[funcName]
 
-				vmIDString := strconv.Itoa(vmID)
+					// pull image
+					resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 
-				createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
-				log.Info("All snapshots created")
+					require.NoError(t, err, "Function returned error")
+					require.Equal(t, resp.Payload, "Hello, record_response!")
 
-				createRecords(t, concurrency, vmID, imageName, isSyncOffload)
-				log.Info("All records done")
+					vmIDString := strconv.Itoa(vmID)
 
-				if !*isWithCache {
-					dropPageCache()
-				}
+					createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
+					log.Info("Snapshots created")
 
-				// serve
-				resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-				require.NoError(t, err, "Function returned error")
-				require.Equal(t, resp.Payload, "Hello, replay_response!")
+					createRecords(t, concurrency, vmID, imageName, isSyncOffload)
+					log.Info("Records done")
 
-				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-				require.NoError(t, err, "Function returned error, "+message)
+					if !*isWithCache {
+						dropPageCache()
+					}
 
-				funcIdx++
-				funcIdx %= len(funcs)
-				vmID++
+					// serve
+					resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+					require.NoError(t, err, "Function returned error")
+					require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-				// wait for time interval
-				timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
-				require.GreaterOrEqual(t, timeLeft, 0)
+					message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+					require.NoError(t, err, "Function returned error, "+message)
 
-				time.Sleep(time.Duration(timeLeft))
+					funcIdx++
+					funcIdx %= len(funcs)
+					vmID++
+
+					log.Printf("Instance finished in %f seconds", time.Since(tStart).Seconds())
+					// wait for time interval
+					// timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
+					// require.GreaterOrEqual(t, timeLeft, 0)
+
+					// time.Sleep(time.Duration(timeLeft))
+				}()
 			}
 
 		}
