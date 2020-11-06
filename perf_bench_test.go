@@ -34,17 +34,17 @@ import (
 
 func TestBenchRequestPerSecond(t *testing.T) {
 	var (
-		servedTh      uint64
-		pinnedFuncNum int
-		isSyncOffload bool = true
-		images             = getAllImages()
-		funcs              = mapToArray(images)
-		funcIdx            = 0
-		vmID               = 0
-		requestPerSec      = 1
-		concurrency        = 1
-		totalSeconds       = 5 // in second
-		// duration           = 30 * time.Second
+		servedTh       uint64
+		pinnedFuncNum  int
+		isSyncOffload  bool = true
+		images              = getAllImages()
+		funcs               = mapToArray(images)
+		funcIdx             = 0
+		vmID                = 0
+		requestsPerSec      = 1
+		concurrency         = 1
+		totalSeconds        = 5 // in second
+		// duration           = time.Minute
 	)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
@@ -57,53 +57,54 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		select {
 		case <-ticker.C:
 			seconds++
-			for i := 0; i < requestPerSec; i++ {
-				tStart := time.Now()
+			for i := 0; i < requestsPerSec; i++ {
 				sem <- true
 
-				go func() {
-					defer func() { <-sem }()
+				funcName := funcs[funcIdx]
+				imageName := images[funcName]
 
-					funcName := funcs[funcIdx]
-					imageName := images[funcName]
+				// pull image
+				resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 
-					// pull image
-					resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, record_response!")
 
-					require.NoError(t, err, "Function returned error")
-					require.Equal(t, resp.Payload, "Hello, record_response!")
+				vmIDString := strconv.Itoa(vmID)
 
-					vmIDString := strconv.Itoa(vmID)
+				createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
+				log.Info("Snapshot created")
 
-					createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
-					log.Info("Snapshots created")
+				createRecords(t, concurrency, vmID, imageName, isSyncOffload)
+				log.Info("Record done")
 
-					createRecords(t, concurrency, vmID, imageName, isSyncOffload)
-					log.Info("Records done")
+				if !*isWithCache {
+					dropPageCache()
+				}
 
-					if !*isWithCache {
-						dropPageCache()
-					}
+				tStart := time.Now()
+
+				go func(start time.Time, vmIDString string, semaphore chan bool) {
+					defer func() { <-semaphore }()
 
 					// serve
-					resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+					resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 					require.NoError(t, err, "Function returned error")
 					require.Equal(t, resp.Payload, "Hello, replay_response!")
 
 					message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 					require.NoError(t, err, "Function returned error, "+message)
 
-					funcIdx++
-					funcIdx %= len(funcs)
-					vmID++
-
-					log.Printf("Instance finished in %f seconds", time.Since(tStart).Seconds())
+					log.Printf("Instance finished in %f seconds", time.Since(start).Seconds())
 					// wait for time interval
 					// timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
 					// require.GreaterOrEqual(t, timeLeft, 0)
 
 					// time.Sleep(time.Duration(timeLeft))
-				}()
+				}(tStart, vmIDString, sem)
+
+				funcIdx++
+				funcIdx %= len(funcs)
+				vmID++
 			}
 
 		}
