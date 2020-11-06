@@ -1,6 +1,10 @@
 // MIT License
 //
+<<<<<<< HEAD
 // Copyright (c) 2020 Yuchen Niu and EASE lab
+=======
+// Copyright (c) 2020 Yuchen Niu
+>>>>>>> skeleton of perf_bench_test
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,9 +28,7 @@ package main
 
 import (
 	"context"
-	"flag"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -34,117 +36,91 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts (default is false)")
-	vmNum           = flag.Int("vm", 2, "The number of VMs")
-	targetReqPerSec = flag.Int("requestPerSec", 2, "The target number of requests per second")
-	executionTime   = flag.Int("executionTime", 2, "The execution time of the benchmark in seconds")
-)
-
 func TestBenchRequestPerSecond(t *testing.T) {
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
-		vmID          int
 		isSyncOffload bool = true
-		images             = getImages()
-		funcs              = []string{}
-		timeInterval       = time.Duration(time.Second.Nanoseconds() / int64(*targetReqPerSec))
-		totalRequests      = *executionTime * *targetReqPerSec
+		images             = getAllImages()
+		funcs              = mapToArray(images)
+		funcIdx            = 0
+		vmID               = 0
+		requestPerSec      = 1
+		concurrency        = 1
+		totalSeconds       = 5 // in second
+		duration           = 30 * time.Second
 	)
-
-	log.SetLevel(log.InfoLevel)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	createResultsDir()
+	ticker := time.NewTicker(time.Second)
+	seconds := 0
+	sem := make(chan bool, concurrency)
 
-	// Pull images
-	for funcName, imageName := range images {
-		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
-
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
-
-		// For future use
-		// createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
-		// log.Info("Snapshot created")
-		// createRecords(t, concurrency, vmID, imageName, isSyncOffload)
-		// log.Info("Record done")
-
-		funcs = append(funcs, funcName)
-	}
-
-	// Boot VMs
-	for i := 0; i < *vmNum; i++ {
-		vmIDString := strconv.Itoa(i)
-		_, err := funcPool.AddInstance(vmIDString, images[funcs[i%len(funcs)]])
-		require.NoError(t, err, "Function returned error")
-	}
-
-	if !*isWithCache && *isColdStart {
-		log.Info("Profile cold start")
-		dropPageCache()
-	}
-
-	ticker := time.NewTicker(timeInterval)
-	var vmGroup sync.WaitGroup
-	done := make(chan bool, 1)
-
-	for totalRequests > 0 {
+	for seconds < totalSeconds {
 		select {
 		case <-ticker.C:
-			totalRequests--
-			vmGroup.Add(1)
+			seconds++
+			for i := 0; i < requestPerSec; i++ {
+				tStart := time.Now()
+				sem <- true
+				funcName := funcs[funcIdx]
+				imageName := images[funcName]
 
-			funcName := funcs[vmID%len(funcs)]
-			imageName := images[funcName]
-			vmIDString := strconv.Itoa(vmID)
+				// pull image
+				resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 
-			tStart := time.Now()
-			go serveVM(t, tStart, vmIDString, imageName, &vmGroup, isSyncOffload)
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, record_response!")
 
-			vmID = (vmID + 1) % *vmNum
-		case <-done:
-			ticker.Stop()
+				vmIDString := strconv.Itoa(vmID)
+
+				createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
+				log.Info("All snapshots created")
+
+				createRecords(t, concurrency, vmID, imageName, isSyncOffload)
+				log.Info("All records done")
+
+				if !*isWithCache {
+					dropPageCache()
+				}
+
+				// serve
+				resp, _, err = funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+				message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+				require.NoError(t, err, "Function returned error, "+message)
+
+				funcIdx++
+				funcIdx %= len(funcs)
+				vmID++
+
+				// wait for time interval
+				timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
+				require.GreaterOrEqual(t, timeLeft, 0)
+
+				time.Sleep(time.Duration(timeLeft))
+			}
+
 		}
 	}
 
-	done <- true
-	vmGroup.Wait()
+	ticker.Stop()
+	for i := 0; i < cap(sem); i++ {
+		sem <- true
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ////////////////////////// Auxialiary functions below /////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-func serveVM(t *testing.T, start time.Time, vmIDString, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool) {
-	defer vmGroup.Done()
-
-	resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-	require.NoError(t, err, "Function returned error")
-	require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-	if *isColdStart {
-		require.Equal(t, resp.IsColdStart, true)
-		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-	} else {
-		require.Equal(t, resp.IsColdStart, false)
+func mapToArray(m map[string]string) []string {
+	list := []string{}
+	for k := range m {
+		list = append(list, k)
 	}
 
-	log.Debugf("vmID %s: returned in %f seconds", vmIDString, time.Since(start).Seconds())
-}
-
-func getImages() map[string]string {
-	return map[string]string{
-		"helloworld": "vhiveease/helloworld:var_workload",
-		// "chameleon":    "vhiveease/chameleon:var_workload",
-		// "pyaes":        "vhiveease/pyaes:var_workload",
-		// "image_rotate": "vhiveease/image_rotate:var_workload",
-		// "json_serdes":  "vhiveease/json_serdes:var_workload",
-		// "lr_serving":   "vhiveease/lr_serving:var_workload",
-		// "cnn_serving":  "vhiveease/cnn_serving:var_workload",
-		// "rnn_serving":  "vhiveease/rnn_serving:var_workload",
-		// "lr_training":  "vhiveease/lr_training:var_workload",
-	}
+	return list
 }
