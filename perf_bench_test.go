@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Yuchen Niu
+// Copyright (c) 2020 Yuchen Niu and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,6 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -35,9 +34,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
-
-	"github.com/ease-lab/vhive/metrics"
 	"github.com/ease-lab/vhive/profile"
 	"github.com/montanaflynn/stats"
 	log "github.com/sirupsen/logrus"
@@ -125,7 +121,9 @@ func TestProfileSingleConfiguration(t *testing.T) {
 
 	checkInputValidation(t)
 
-	createResultsDir()
+	ticker := time.NewTicker(time.Second)
+	seconds := 0
+	sem := make(chan bool, concurrency)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
@@ -140,7 +138,6 @@ func TestProfileSingleConfiguration(t *testing.T) {
 	dumpMetrics(t, []map[string]float64{serveMetrics}, "benchRPS.csv")
 }
 
-// Pull a list of images
 func pullImages(t *testing.T, images []string) string {
 	for _, imageName := range images {
 		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
@@ -235,20 +232,19 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			serveMetric.MetricMap[rpsPerCore] /= float64(vmNum)
 		} else {
 			serveMetric.MetricMap[rpsPerCore] /= float64(cores)
-		}
-		result, err := profiler.GetResult()
-		profiledCores := profiler.GetCores()
-		log.Debugf("%d cores are recorded: %v", len(profiledCores), profiledCores)
-		require.NoError(t, err, "Stopping profiler returned error: %v", err)
-		for eventName, value := range result {
-			log.Debugf("%s: %f", eventName, value)
-			serveMetric.MetricMap[eventName] = value
-		}
-		log.Debugf("%s: %f", avgExecTime, serveMetric.MetricMap[avgExecTime])
-		log.Debugf("%s: %f", rpsPerCore, serveMetric.MetricMap[rpsPerCore])
-		profiler.PrintBottlenecks()
+	for seconds < totalSeconds {
+		select {
+		case <-ticker.C:
+			seconds++
+			for i := 0; i < requestPerSec; i++ {
+				tStart := time.Now()
+				sem <- true
+				funcName := funcs[funcIdx]
+				imageName := images[funcName]
 
-		// if tail latency violates the contraints that it should be less than 5x service time,
+				// pull image
+				resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+
 		// it returns the metric before tail latency violation.
 		if latencies.tailLatency > threshold {
 			require.NotNil(t, pmuMetric, "The tail latency of first round is larger than the constraint")
