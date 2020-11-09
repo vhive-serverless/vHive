@@ -74,7 +74,7 @@ func TestParallelInvoke(t *testing.T) {
 	wg.Wait()
 }
 
-func TestMutlipleFuncInvoke(t *testing.T) {
+func TestMultipleFuncInvoke(t *testing.T) {
 	var wg sync.WaitGroup
 	funcs := []string{
 		"helloworld",
@@ -113,7 +113,7 @@ func TestBench(t *testing.T) {
 
 func invoke(t *testing.T, functionURL string) {
 	reqPayload := "record"
-	respPayload := "Hello, " + reqPayload + "!"
+	respPayload := "Hello, " + reqPayload + "_response!"
 
 	client, conn, err := getClient(functionURL)
 	require.NoError(t, err, "Failed to dial function URL")
