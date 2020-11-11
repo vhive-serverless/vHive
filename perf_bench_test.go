@@ -47,8 +47,8 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		vmID                = 0
 		requestsPerSec      = 1
 		concurrency         = 1
-		totalSeconds        = 5 // in second
-		// duration           = time.Minute
+		totalSeconds        = 5
+		duration            = 30 * time.Second
 	)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
@@ -99,18 +99,18 @@ func TestBenchRequestPerSecond(t *testing.T) {
 					require.NoError(t, err, "Function returned error, "+message)
 
 					log.Printf("Instance finished in %f seconds", time.Since(start).Seconds())
-					// wait for time interval
-					// timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
-					// require.GreaterOrEqual(t, timeLeft, 0)
 
-					// time.Sleep(time.Duration(timeLeft))
+					// wait for time interval
+					timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
+					log.Printf("timeLeft: %f seconds", float64(timeLeft)*1e-9)
+
+					time.Sleep(time.Duration(timeLeft))
 				}(tStart, vmIDString, sem)
 
 				funcIdx++
 				funcIdx %= len(funcs)
 				vmID++
 			}
-
 		}
 	}
 
