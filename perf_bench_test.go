@@ -78,8 +78,8 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 		vmID                = 0
 		requestsPerSec      = 1
 		concurrency         = 1
-		totalSeconds        = 5 // in second
-		// duration           = time.Minute
+		totalSeconds        = 5
+		duration            = 30 * time.Second
 	)
 	log.SetLevel(log.InfoLevel)
 
@@ -276,39 +276,18 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 					require.NoError(t, err, "Function returned error, "+message)
 
 					log.Printf("Instance finished in %f seconds", time.Since(start).Seconds())
-					// wait for time interval
-					// timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
-					// require.GreaterOrEqual(t, timeLeft, 0)
 
-					// time.Sleep(time.Duration(timeLeft))
+					// wait for time interval
+					timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
+					log.Printf("timeLeft: %f seconds", float64(timeLeft)*1e-9)
+
+					time.Sleep(time.Duration(timeLeft))
 				}(tStart, vmIDString, sem)
 
 				funcIdx++
 				funcIdx %= len(funcs)
 				vmID++
 			}
-		}
-		err = writer.Write(data)
-		require.NoError(t, err, "Failed writting file")
-		writer.Flush()
-	}
-}
-
-// getCPUIntenseRPS returns the number of requests per second that stress CPU for each image.
-func getCPUIntenseRPS() int {
-	var (
-		sum, result int
-		values      []int
-		funcs       = strings.Split(*funcNames, ",")
-		reqsPerSec  = map[string]int{
-			"helloworld":   1000,
-			"chameleon":    66,
-			"pyaes":        1000,
-			"image_rotate": 600,
-			"json_serdes":  600,
-			"lr_serving":   5000,
-			"cnn_serving":  17,
-			"rnn_serving":  600,
 		}
 	)
 
