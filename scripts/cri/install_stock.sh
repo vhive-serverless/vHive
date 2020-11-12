@@ -11,6 +11,7 @@ tar -C /usr/local -xzf go1.15.2.linux-amd64.tar.gz
 
 export PATH=$PATH:/usr/local/go/bin
 echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile
+go env -w GOPRIVATE=github.com/ustiugov/*
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
 echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> /etc/profile
