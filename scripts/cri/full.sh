@@ -7,7 +7,7 @@ apt-get install -y btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 s
 
 pushd $DIR
 git lfs pull
-pop
+popd
 
 wget -c https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
 sudo unzip protoc-3.11.4-linux-x86_64.zip -d /usr/local

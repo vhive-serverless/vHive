@@ -96,4 +96,7 @@ $(SUBDIRS):
 
 test-subdirs: $(SUBDIRS)
 
+test-cri:
+	$(MAKE) -C cri test
+
 .PHONY: test-orch $(SUBDIRS) test-subdirs
