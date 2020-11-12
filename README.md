@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/ustiugov/fccd-orchestrator.svg?token=Dx4z7rB8qLcioVK5Dhsr&branch=master)](https://travis-ci.com/github/ustiugov/fccd-orchestrator)
+[![Build Status](https://travis-ci.com/ease-lab/vhive-orchestrator.svg?token=Dx4z7rB8qLcioVK5Dhsr&branch=master)](https://travis-ci.com/github/ease-lab/vhive-orchestrator)
 <br />
 
 # Usage notes
