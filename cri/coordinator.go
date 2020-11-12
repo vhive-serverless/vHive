@@ -91,16 +91,19 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	c.Lock()
 
 	vmID, ok := c.activeVMs[containerID]
+	c.Unlock()
 	if !ok {
-		c.Unlock()
 		return nil
 	}
 
+	err := c.orchStopVM(ctx, vmID)
+	if err != nil {
+		log.WithError(err).Error("coordinator failed to stop VM")
+		return err
+	}
+
 	c.free(containerID, vmID)
-	c.Unlock()
-
-	return c.orchStopVM(ctx, vmID)
-
+	return nil
 }
 
 func (c *coordinator) insertMapping(containerID, vmID string) error {
@@ -138,6 +141,10 @@ func (c *coordinator) free(containerID, vmID string) {
 	if err != nil {
 		log.Panic("provided non-int id")
 	}
+
+	c.Lock()
+	defer c.Unlock()
+
 	delete(c.activeVMs, containerID)
 	c.availableIDs = append(c.availableIDs, i)
 }
