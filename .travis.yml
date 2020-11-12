@@ -11,12 +11,13 @@ env:
   - GO111MODULE=on
   - GOPRIVATE=github.com/ustiugov/fccd-orchestrator
   jobs:
-  - TEST=test-subdirs
-  - TEST=test
-  - TEST=test-man-bench
+  - TEST=test-cri
+  #- TEST=test-subdirs
+  #- TEST=test
+  #- TEST=test-man-bench
 before_script:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.25.0
-  - source ./scripts/setup_ctrd.sh
+  - source ./scripts/travis/full.sh
 
 script:
   - go build ./... 
