@@ -39,6 +39,5 @@ func (s *CriService) RemoveContainer(ctx context.Context, r *criapi.RemoveContai
 		}
 	}()
 
-	s.coordinator.stopVM(ctx, containerID)
 	return s.stockRuntimeClient.RemoveContainer(ctx, r)
 }
