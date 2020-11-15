@@ -24,11 +24,7 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"flag"
-	"fmt"
-	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,39 +37,20 @@ import (
 )
 
 var (
-	// shared arguments
-	warmUpTime   = flag.Float64("warmUpTime", 5, "The warm up time before profiling in seconds")
-	coolDownTime = flag.Float64("coolDownTime", 1, "The cool down time after profiling in seconds")
-	profileTime  = flag.Float64("profileTime", 10, "The profiling time in seconds")
-	funcNames    = flag.String("funcNames", "helloworld", "Names of the functions to benchmark, separated by comma")
-	isBindSocket = flag.Bool("bindSocket", false, "Bind all VMs to socket 1")
-
-	vmNum     = flag.Int("vm", 2, "TestProfileSingleConfiguration: The number of VMs")
-	targetRPS = flag.Int("rps", 10, "TestProfileSingleConfiguration: The target requests per second")
-
-	vmIncrStep = flag.Int("vmIncrStep", 4, "TestProfileIncrementConfiguration: The increment VM number")
-	maxVMNum   = flag.Int("maxVMNum", 100, "TestProfileIncrementConfiguration: The maximum VM number")
-
-	// profiler arguments
-	profilerLevel    = flag.Int("l", 1, "Profile level (-l flag)")
-	profilerInterval = flag.Uint64("I", 500, "Print count deltas every N milliseconds (-I flag)")
-	profilerNodes    = flag.String("nodes", "", "Include or exclude nodes (with "+
-		"+ to add, "+
-		"-|^ to remove, "+
-		"comma separated list, wildcards allowed, "+
-		"add * to include all children/siblings, "+
-		"add /level to specify highest level node to match, "+
-		"add ^ to match related siblings and metrics, "+
-		"start with ! to only include specified nodes)")
+	isColdStart = flag.Bool("coldStart", false, "Profile cold starts")
 )
 
-func TestProfileIncrementConfiguration(t *testing.T) {
+func TestBenchRequestPerSecond(t *testing.T) {
+	// TODO:
+	// 1. Pulling images and creating snapshots, creating records must be outside of the measurement loop. In fact, the task was to profile warm invocations, not cold. Hence, snapshots, records are unnecessary at this point (but you can keep them for future).
+	// 2. Place remove instance and flush caches calls under a runtime argument profile_cold_starts that you need to add
+
 	var (
 		servedTh       uint64
 		pinnedFuncNum  int
 		isSyncOffload  bool = true
 		images              = getAllImages()
-		funcs               = mapToArray(images)
+		funcs               = []string{}
 		funcIdx             = 0
 		vmID                = 0
 		requestsPerSec      = 1
@@ -89,39 +66,27 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	plrfncPid := pullImages(t, images)
-	for vmNum := *vmIncrStep; vmNum <= *maxVMNum; vmNum += *vmIncrStep {
-		if vmNum < cores {
-			rps = calculateRPS(vmNum)
-		} else {
-			rps = calculateRPS(cores)
-		}
+	// pull image
+	for funcName, imageName := range images {
+		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 
-		log.Infof("vmNum: %d, Target RPS: %d", vmNum, rps)
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
 
-		bootVMs(t, images, startVMID, vmNum, plrfncPid)
-		metrics[idx] = loadAndProfile(t, images, vmNum, rps, isSyncOffload)
-		startVMID = vmNum
-		idx++
+		// For future use
+		// createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
+		// log.Info("Snapshot created")
+
+		// createRecords(t, concurrency, vmID, imageName, isSyncOffload)
+		// log.Info("Record done")
+
+		funcs = append(funcs, funcName)
 	}
 
-	dumpMetrics(t, metrics, metrFile)
-	profile.CSVPlotter(*vmIncrStep, *benchDir, metrFile)
-
-	tearDownVMs(t, images, startVMID, isSyncOffload)
-}
-
-func TestProfileSingleConfiguration(t *testing.T) {
-	var (
-		servedTh      uint64
-		pinnedFuncNum int
-		isSyncOffload bool = true
-		images             = getImages(t)
-	)
-
-	log.SetLevel(log.InfoLevel)
-
-	checkInputValidation(t)
+	if !*isWithCache && *isColdStart {
+		log.Info("Cold invoke")
+		dropPageCache()
+	}
 
 	ticker := time.NewTicker(time.Second)
 	seconds := 0
@@ -244,23 +209,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 				funcName := funcs[funcIdx]
 				imageName := images[funcName]
 
-				// pull image
-				resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
-
-				require.NoError(t, err, "Function returned error")
-				require.Equal(t, resp.Payload, "Hello, record_response!")
-
 				vmIDString := strconv.Itoa(vmID)
-
-				createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
-				log.Info("Snapshot created")
-
-				createRecords(t, concurrency, vmID, imageName, isSyncOffload)
-				log.Info("Record done")
-
-				if !*isWithCache {
-					dropPageCache()
-				}
 
 				tStart := time.Now()
 
@@ -272,10 +221,12 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 					require.NoError(t, err, "Function returned error")
 					require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-					message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-					require.NoError(t, err, "Function returned error, "+message)
+					if *isColdStart {
+						message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+						require.NoError(t, err, "Function returned error, "+message)
+					}
 
-					log.Printf("Instance finished in %f seconds", time.Since(start).Seconds())
+					log.Printf("Instance returned in %f seconds", time.Since(start).Seconds())
 
 					// wait for time interval
 					timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
@@ -329,106 +280,4 @@ func getUnloadServiceTime() float64 {
 func calculateRPS(vmNum int) int {
 	baseRPS := getCPUIntenseRPS()
 	return vmNum * baseRPS
-}
-
-func TestBindSocket(t *testing.T) {
-	var (
-		servedTh      uint64
-		pinnedFuncNum int
-		isSyncOffload bool = true
-		testImage          = []string{"vhiveease/helloworld:var_workload"}
-	)
-
-	type testCase struct {
-		vmNum    int
-		expected string
-	}
-
-	cases := []testCase{
-		{vmNum: 1, expected: "1"},
-		{vmNum: 32, expected: "1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63"},
-	}
-
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
-	plrfncPid := pullImages(t, testImage)
-
-	*isBindSocket = true
-
-	for _, tCase := range cases {
-		testName := fmt.Sprintf("vmNum=%d", tCase.vmNum)
-		t.Run(testName, func(t *testing.T) {
-			bootVMs(t, testImage, 0, tCase.vmNum, plrfncPid)
-
-			pidBytes, err := getFirecrackerPid()
-			require.NoError(t, err, "Cannot get Firecracker PID")
-			vmPidList := strings.Split(string(pidBytes), " ")
-
-			for _, vm := range vmPidList {
-				vm = strings.TrimSpace(vm)
-				if vm != plrfncPid {
-					cpuBytes, err := exec.Command("taskset", "-cp", vm).Output()
-					require.NoError(t, err, "Cannot get VM PID")
-					cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])
-					require.Equal(t, tCase.expected, cpuAffinity, "VM was not binded to socket 1")
-				}
-			}
-
-			tearDownVMs(t, testImage, tCase.vmNum, isSyncOffload)
-		})
-	}
-}
-
-func bindSocket(omittedPid string) error {
-	var (
-		core1Free = true
-		cores     = 32
-	)
-	pidBytes, err := getFirecrackerPid()
-	if err != nil {
-		return err
-	}
-
-	vmPidList := strings.Split(string(pidBytes), " ")
-	for _, vm := range vmPidList {
-		vm = strings.TrimSpace(vm)
-		if vm != omittedPid {
-			if cores > len(vmPidList) {
-				if core1Free {
-					log.Debugf("binding pid: %s to core 1", vm)
-					cmd := exec.Command("taskset", "--all-tasks", "-cp", "1", vm)
-					if err := cmd.Run(); err != nil {
-						return err
-					}
-					core1Free = false
-				} else {
-					log.Debugf("binding pid: %s", vm)
-					cmd := exec.Command("taskset", "--all-tasks", "-cp", "3-63:2", vm)
-					if err := cmd.Run(); err != nil {
-						return err
-					}
-				}
-			} else {
-				log.Debugf("binding pid: %s", vm)
-				cmd := exec.Command("taskset", "--all-tasks", "-cp", "1-63:2", vm)
-				if err := cmd.Run(); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func checkInputValidation(t *testing.T) {
-	require.Truef(t, *profileTime >= 0, "profile time = %f is less than 0s", *profileTime)
-	require.Truef(t, *warmUpTime >= 0, "warm up time = %f is less than 0s", *warmUpTime)
-	require.Truef(t, *coolDownTime >= 0, "cool down time = %f is less than 0s", *coolDownTime)
-	require.Truef(t, *profilerInterval >= 10, "profiler print interval = %d is less than 10ms", *profilerInterval)
-	require.Truef(t, *profilerLevel > 0, "profiler level = %d is less than 1", *profilerLevel)
-	require.Truef(t, *vmNum > 0, "VM number = %d is less than 1", *vmNum)
-	require.Truef(t, int64(float64(*targetRPS)*0.05) > 0, "requests per second = %d is less than 0", *targetRPS)
-	require.Truef(t, *vmIncrStep >= 0, "negative increment step of VM number = %d", *vmIncrStep)
-	require.Truef(t, *maxVMNum >= 0, "the maximum VM number = %d is less than 0", *maxVMNum)
-	require.Truef(t, *maxVMNum >= *vmIncrStep, "the maximum VM number = %d is less than the increment step = %d", *maxVMNum, *vmIncrStep)
 }
