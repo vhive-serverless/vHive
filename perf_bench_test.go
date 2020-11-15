@@ -42,9 +42,6 @@ var (
 )
 
 func TestBenchRequestPerSecond(t *testing.T) {
-	// TODO:
-	// 1. Pulling images and creating snapshots, creating records must be outside of the measurement loop. In fact, the task was to profile warm invocations, not cold. Hence, snapshots, records are unnecessary at this point (but you can keep them for future).
-	// 2. Place remove instance and flush caches calls under a runtime argument profile_cold_starts that you need to add
 
 	var (
 		servedTh       uint64
@@ -102,7 +99,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 				tStart := time.Now()
 
-				go func(start time.Time, vmIDString string, semaphore chan bool) {
+				go func(start time.Time, vmIDString, imageName string, semaphore chan bool) {
 					defer func() { <-semaphore }()
 
 					// serve
@@ -122,7 +119,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 					log.Printf("timeLeft: %f seconds", float64(timeLeft)*1e-9)
 
 					time.Sleep(time.Duration(timeLeft))
-				}(tStart, vmIDString, sem)
+				}(tStart, vmIDString, imageName, sem)
 
 				funcIdx++
 				funcIdx %= len(funcs)
