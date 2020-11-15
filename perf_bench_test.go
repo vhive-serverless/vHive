@@ -28,6 +28,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"strconv"
 	"testing"
 	"time"
@@ -36,13 +37,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	isColdStart = flag.Bool("coldStart", false, "Profile cold starts")
+)
+
 func TestBenchRequestPerSecond(t *testing.T) {
+	// TODO:
+	// 1. Pulling images and creating snapshots, creating records must be outside of the measurement loop. In fact, the task was to profile warm invocations, not cold. Hence, snapshots, records are unnecessary at this point (but you can keep them for future).
+	// 2. Place remove instance and flush caches calls under a runtime argument profile_cold_starts that you need to add
+
 	var (
 		servedTh       uint64
 		pinnedFuncNum  int
 		isSyncOffload  bool = true
 		images              = getAllImages()
-		funcs               = mapToArray(images)
+		funcs               = []string{}
 		funcIdx             = 0
 		vmID                = 0
 		requestsPerSec      = 1
@@ -52,6 +61,28 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+
+	// pull image
+	for funcName, imageName := range images {
+		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, record_response!")
+
+		// For future use
+		// createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
+		// log.Info("Snapshot created")
+
+		// createRecords(t, concurrency, vmID, imageName, isSyncOffload)
+		// log.Info("Record done")
+
+		funcs = append(funcs, funcName)
+	}
+
+	if !*isWithCache && *isColdStart {
+		log.Info("Cold invoke")
+		dropPageCache()
+	}
 
 	ticker := time.NewTicker(time.Second)
 	seconds := 0
@@ -67,23 +98,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 				funcName := funcs[funcIdx]
 				imageName := images[funcName]
 
-				// pull image
-				resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
-
-				require.NoError(t, err, "Function returned error")
-				require.Equal(t, resp.Payload, "Hello, record_response!")
-
 				vmIDString := strconv.Itoa(vmID)
-
-				createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
-				log.Info("Snapshot created")
-
-				createRecords(t, concurrency, vmID, imageName, isSyncOffload)
-				log.Info("Record done")
-
-				if !*isWithCache {
-					dropPageCache()
-				}
 
 				tStart := time.Now()
 
@@ -95,10 +110,12 @@ func TestBenchRequestPerSecond(t *testing.T) {
 					require.NoError(t, err, "Function returned error")
 					require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-					message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-					require.NoError(t, err, "Function returned error, "+message)
+					if *isColdStart {
+						message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+						require.NoError(t, err, "Function returned error, "+message)
+					}
 
-					log.Printf("Instance finished in %f seconds", time.Since(start).Seconds())
+					log.Printf("Instance returned in %f seconds", time.Since(start).Seconds())
 
 					// wait for time interval
 					timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
@@ -118,16 +135,4 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	for i := 0; i < cap(sem); i++ {
 		sem <- true
 	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-////////////////////////// Auxialiary functions below /////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-func mapToArray(m map[string]string) []string {
-	list := []string{}
-	for k := range m {
-		list = append(list, k)
-	}
-
-	return list
 }
