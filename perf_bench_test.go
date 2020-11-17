@@ -41,16 +41,16 @@ var (
 func TestBenchRequestPerSecond(t *testing.T) {
 
 	var (
-		servedTh       uint64
-		pinnedFuncNum  int
-		isSyncOffload  bool = true
-		images              = getImages()
-		funcs               = []string{}
-		vmID                = 0
-		concurrency         = 1
-		requestsPerSec      = 1
-		totalSeconds        = 5
-		duration            = 30 * time.Second
+		servedTh        uint64
+		pinnedFuncNum   int
+		isSyncOffload   bool = true
+		images               = getImages()
+		funcs                = []string{}
+		workQueues           = make([]chan bool, *vmNum) // Queue the request to wait for predecessor finish
+		vmID                 = 0
+		totalSeconds         = 5
+		targetReqPerSec      = 2
+		duration             = 30 * time.Second
 	)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
@@ -71,14 +71,13 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		funcs = append(funcs, funcName)
 	}
 
-	log.SetLevel(log.DebugLevel)
-
-	// Warm VMs
+	// warm VMs
 	for i := 0; i < *vmNum; i++ {
 		vmID += i
 		vmIDString := strconv.Itoa(vmID)
 		_, err := funcPool.AddInstance(vmIDString, images[funcs[vmID%len(funcs)]])
 		require.NoError(t, err, "Function returned error")
+		workQueues[vmID] = make(chan bool, 1)
 	}
 
 	if !*isWithCache && *isColdStart {
@@ -86,67 +85,70 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		dropPageCache()
 	}
 
-	ticker := time.NewTicker(time.Second)
-	seconds := 0
-	sem := make(chan bool, concurrency)
+	log.SetLevel(log.DebugLevel)
+
+	timeInterval := time.Second.Nanoseconds() / int64(targetReqPerSec)
+	ticker := time.NewTicker(time.Duration(timeInterval))
+	totalRequests := totalSeconds * targetReqPerSec
+	requests := 0
 	vmID = 0
 
-	for seconds < totalSeconds {
+	for requests < totalRequests {
 		select {
 		case <-ticker.C:
-			seconds++
-			for i := 0; i < requestsPerSec; i++ {
-				sem <- true
+			requests++
 
-				funcName := funcs[vmID%len(funcs)]
-				imageName := images[funcName]
+			funcName := funcs[vmID%len(funcs)]
+			imageName := images[funcName]
+
+			workQueues[vmID] <- true
+
+			tStart := time.Now()
+
+			go func(start time.Time, vmID int, imageName string) {
+				defer func() { <-workQueues[vmID] }()
 
 				vmIDString := strconv.Itoa(vmID)
 
-				tStart := time.Now()
+				// serve
+				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-				go func(start time.Time, vmIDString, imageName string, semaphore chan bool) {
-					defer func() { <-semaphore }()
+				if *isColdStart {
+					// if profile cold start, remove instance after serve returns
+					require.Equal(t, resp.IsColdStart, true)
+					message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+					require.NoError(t, err, "Function returned error, "+message)
+				} else {
+					require.Equal(t, resp.IsColdStart, false)
+				}
 
-					// serve
-					resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-					require.NoError(t, err, "Function returned error")
-					require.Equal(t, resp.Payload, "Hello, replay_response!")
+				log.Printf("Instance returned in %f seconds", time.Since(start).Seconds())
 
-					if *isColdStart {
-						// if profile cold start, remove instance after serve return
-						require.Equal(t, resp.IsColdStart, true)
-						message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-						require.NoError(t, err, "Function returned error, "+message)
-					} else {
-						require.Equal(t, resp.IsColdStart, false)
-					}
+				// wait for time interval
+				timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
+				log.Printf("timeLeft: %f seconds", float64(timeLeft)*1e-9)
 
-					log.Printf("Instance returned in %f seconds", time.Since(start).Seconds())
+				time.Sleep(time.Duration(timeLeft))
+			}(tStart, vmID, imageName)
 
-					// wait for time interval
-					timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
-					log.Printf("timeLeft: %f seconds", float64(timeLeft)*1e-9)
-
-					time.Sleep(time.Duration(timeLeft))
-				}(tStart, vmIDString, imageName, sem)
-
-				vmID++
-				vmID %= *vmNum
-			}
+			vmID++
+			vmID %= *vmNum
 		}
 	}
-
 	ticker.Stop()
-	for i := 0; i < cap(sem); i++ {
-		sem <- true
+
+	// wait for all functions to finish
+	for i := 0; i < *vmNum; i++ {
+		workQueues[i] <- true
 	}
 }
 
 func getImages() map[string]string {
 	return map[string]string{
 		"helloworld": "ustiugov/helloworld:var_workload",
-		//"chameleon":    "ustiugov/chameleon:var_workload",
+		// "chameleon":  "ustiugov/chameleon:var_workload",
 		//"pyaes":        "ustiugov/pyaes:var_workload",
 		//"image_rotate": "ustiugov/image_rotate:var_workload",
 		//"json_serdes":  "ustiugov/json_serdes:var_workload",
