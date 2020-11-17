@@ -35,6 +35,7 @@ import (
 
 var (
 	isColdStart = flag.Bool("coldStart", false, "Profile cold starts")
+	vmNum       = flag.Int("vm", 2, "The number of VMs")
 )
 
 func TestBenchRequestPerSecond(t *testing.T) {
@@ -43,19 +44,18 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		servedTh       uint64
 		pinnedFuncNum  int
 		isSyncOffload  bool = true
-		images              = getAllImages()
+		images              = getImages()
 		funcs               = []string{}
-		funcIdx             = 0
 		vmID                = 0
-		requestsPerSec      = 1
 		concurrency         = 1
+		requestsPerSec      = 1
 		totalSeconds        = 5
 		duration            = 30 * time.Second
 	)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	// pull image
+	// pull images
 	for funcName, imageName := range images {
 		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 
@@ -65,21 +65,31 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		// For future use
 		// createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
 		// log.Info("Snapshot created")
-
 		// createRecords(t, concurrency, vmID, imageName, isSyncOffload)
 		// log.Info("Record done")
 
 		funcs = append(funcs, funcName)
 	}
 
+	log.SetLevel(log.DebugLevel)
+
+	// Warm VMs
+	for i := 0; i < *vmNum; i++ {
+		vmID += i
+		vmIDString := strconv.Itoa(vmID)
+		_, err := funcPool.AddInstance(vmIDString, images[funcs[vmID%len(funcs)]])
+		require.NoError(t, err, "Function returned error")
+	}
+
 	if !*isWithCache && *isColdStart {
-		log.Info("Cold invoke")
+		log.Debug("Profile cold start")
 		dropPageCache()
 	}
 
 	ticker := time.NewTicker(time.Second)
 	seconds := 0
 	sem := make(chan bool, concurrency)
+	vmID = 0
 
 	for seconds < totalSeconds {
 		select {
@@ -88,7 +98,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 			for i := 0; i < requestsPerSec; i++ {
 				sem <- true
 
-				funcName := funcs[funcIdx]
+				funcName := funcs[vmID%len(funcs)]
 				imageName := images[funcName]
 
 				vmIDString := strconv.Itoa(vmID)
@@ -104,8 +114,12 @@ func TestBenchRequestPerSecond(t *testing.T) {
 					require.Equal(t, resp.Payload, "Hello, replay_response!")
 
 					if *isColdStart {
+						// if profile cold start, remove instance after serve return
+						require.Equal(t, resp.IsColdStart, true)
 						message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 						require.NoError(t, err, "Function returned error, "+message)
+					} else {
+						require.Equal(t, resp.IsColdStart, false)
 					}
 
 					log.Printf("Instance returned in %f seconds", time.Since(start).Seconds())
@@ -117,9 +131,8 @@ func TestBenchRequestPerSecond(t *testing.T) {
 					time.Sleep(time.Duration(timeLeft))
 				}(tStart, vmIDString, imageName, sem)
 
-				funcIdx++
-				funcIdx %= len(funcs)
 				vmID++
+				vmID %= *vmNum
 			}
 		}
 	}
@@ -127,5 +140,19 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	ticker.Stop()
 	for i := 0; i < cap(sem); i++ {
 		sem <- true
+	}
+}
+
+func getImages() map[string]string {
+	return map[string]string{
+		"helloworld": "ustiugov/helloworld:var_workload",
+		//"chameleon":    "ustiugov/chameleon:var_workload",
+		//"pyaes":        "ustiugov/pyaes:var_workload",
+		//"image_rotate": "ustiugov/image_rotate:var_workload",
+		//"json_serdes":  "ustiugov/json_serdes:var_workload",
+		//"lr_serving":   "ustiugov/lr_serving:var_workload",
+		//"cnn_serving":  "ustiugov/cnn_serving:var_workload",
+		//"rnn_serving":  "ustiugov/rnn_serving:var_workload",
+		//"lr_training":  "ustiugov/lr_training:var_workload",
 	}
 }
