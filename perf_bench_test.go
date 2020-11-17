@@ -44,16 +44,16 @@ var (
 func TestBenchRequestPerSecond(t *testing.T) {
 
 	var (
-		servedTh       uint64
-		pinnedFuncNum  int
-		isSyncOffload  bool = true
-		images              = getImages()
-		funcs               = []string{}
-		vmID                = 0
-		concurrency         = 1
-		requestsPerSec      = 1
-		totalSeconds        = 5
-		duration            = 30 * time.Second
+		servedTh        uint64
+		pinnedFuncNum   int
+		isSyncOffload   bool = true
+		images               = getImages()
+		funcs                = []string{}
+		workQueues           = make([]chan bool, *vmNum) // Queue the request to wait for predecessor finish
+		vmID                 = 0
+		totalSeconds         = 5
+		targetReqPerSec      = 2
+		duration             = 30 * time.Second
 	)
 	log.SetLevel(log.InfoLevel)
 
@@ -79,14 +79,13 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		funcs = append(funcs, funcName)
 	}
 
-	log.SetLevel(log.DebugLevel)
-
-	// Warm VMs
+	// warm VMs
 	for i := 0; i < *vmNum; i++ {
 		vmID += i
 		vmIDString := strconv.Itoa(vmID)
 		_, err := funcPool.AddInstance(vmIDString, images[funcs[vmID%len(funcs)]])
 		require.NoError(t, err, "Function returned error")
+		workQueues[vmID] = make(chan bool, 1)
 	}
 
 	if !*isWithCache && *isColdStart {
@@ -94,161 +93,56 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		dropPageCache()
 	}
 
-	ticker := time.NewTicker(time.Second)
-	seconds := 0
-	sem := make(chan bool, concurrency)
+	log.SetLevel(log.DebugLevel)
+
+	timeInterval := time.Second.Nanoseconds() / int64(targetReqPerSec)
+	ticker := time.NewTicker(time.Duration(timeInterval))
+	totalRequests := totalSeconds * targetReqPerSec
+	requests := 0
 	vmID = 0
 
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
-
-	plrfncPid := pullImages(t, images)
-
-	bootVMs(t, images, 0, *vmNum, plrfncPid)
-
-	serveMetrics := loadAndProfile(t, images, *vmNum, *targetRPS, isSyncOffload)
-
-	tearDownVMs(t, images, *vmNum, isSyncOffload)
-
-	dumpMetrics(t, []map[string]float64{serveMetrics}, "benchRPS.csv")
-}
-
-func pullImages(t *testing.T, images []string) string {
-	for _, imageName := range images {
-		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
-	}
-
-	pidBytes, err := getFirecrackerPid()
-	require.NoError(t, err, "Cannot get firecracker pid")
-	pid := strings.TrimSpace(strings.Split(string(pidBytes), "\n")[0])
-	return pid
-}
-
-// Boot a range of VMs with given images
-func bootVMs(t *testing.T, images []string, startVMID, endVMID int, omittedPid string) {
-	for i := startVMID; i < endVMID; i++ {
-		vmIDString := strconv.Itoa(i)
-		_, err := funcPool.AddInstance(vmIDString, images[i%len(images)])
-		require.NoError(t, err, "Function returned error")
-	}
-
-	if *isBindSocket {
-		log.Debugf("Binding socket 1")
-		err := bindSocket(omittedPid)
-		require.NoError(t, err, "Bind Socket returned error")
-	}
-}
-
-// Inject many requests per second to VMs and profile
-func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncOffload bool) map[string]float64 {
-	var (
-		pmuMetric      *metrics.Metric
-		vmGroup        sync.WaitGroup
-		isProfile      = false
-		cores          = runtime.NumCPU()
-		threshold      = 10 * getUnloadServiceTime() // for the constraint of tail latency
-		injectDuration = *warmUpTime + *profileTime + *coolDownTime
-	)
-
-	// the constants for metric names
-	const (
-		avgExecTime = "average-execution-time"
-		rpsPerCore  = "RPS-per-Core"
-	)
-
-	for step := 0.05; step < 1.05; step += 0.05 {
-		var (
-			vmID, requestID             int
-			invokExecTime, realRequests int64
-			serveMetric                 = metrics.NewMetric()
-			rps                         = step * float64(targetRPS)
-			timeInterval                = time.Duration(time.Second.Nanoseconds() / int64(rps))
-			ticker                      = time.NewTicker(timeInterval)
-			totalRequests               = injectDuration * rps
-			remainingRequests           = totalRequests
-			profiler                    = profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel, *profilerNodes, "profile", *isBindSocket)
-		)
-
-		log.Infof("Current RPS: %f", rps)
-
-		tStart := time.Now()
-		latencyCh := make(chan LatencyStat)
-		go latencyMeasurement(t, 0, images[1%len(images)], &isProfile, latencyCh)
-
-		err := profiler.Run()
-		require.NoError(t, err, "Run profiler returned error")
-		go profileControl(vmNum, &isProfile, profiler)
-
-		for remainingRequests > 0 {
-			if tickerT := <-ticker.C; !tickerT.IsZero() {
-				vmGroup.Add(1)
-				remainingRequests--
-
-				imageName := images[vmID%len(images)]
-
-				go loadVM(t, &vmGroup, vmID, requestID, imageName, isSyncOffload, &isProfile, &invokExecTime, &realRequests)
-				requestID++
-
-				vmID = (vmID + 1) % vmNum
-			}
-		}
-		ticker.Stop()
-		vmGroup.Wait()
-		log.Debugf("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
-		latencies := <-latencyCh
-		log.Debugf("Mean Latency: %f, Tail Latency: %f", latencies.meanLatency, latencies.tailLatency)
-
-		// Collect results
-		serveMetric.MetricMap[avgExecTime] = float64(invokExecTime) / float64(realRequests)
-		serveMetric.MetricMap[rpsPerCore] = float64(realRequests) / (profiler.GetCoolDownTime() - profiler.GetWarmUpTime())
-		if cores > vmNum {
-			serveMetric.MetricMap[rpsPerCore] /= float64(vmNum)
-		} else {
-			serveMetric.MetricMap[rpsPerCore] /= float64(cores)
-	for seconds < totalSeconds {
+	for requests < totalRequests {
 		select {
 		case <-ticker.C:
-			seconds++
-			for i := 0; i < requestsPerSec; i++ {
-				sem <- true
+			requests++
 
-				funcName := funcs[vmID%len(funcs)]
-				imageName := images[funcName]
+			funcName := funcs[vmID%len(funcs)]
+			imageName := images[funcName]
+
+			workQueues[vmID] <- true
+
+			tStart := time.Now()
+
+			go func(start time.Time, vmID int, imageName string) {
+				defer func() { <-workQueues[vmID] }()
 
 				vmIDString := strconv.Itoa(vmID)
 
-				tStart := time.Now()
+				// serve
+				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-				go func(start time.Time, vmIDString, imageName string, semaphore chan bool) {
-					defer func() { <-semaphore }()
+				if *isColdStart {
+					// if profile cold start, remove instance after serve returns
+					require.Equal(t, resp.IsColdStart, true)
+					message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+					require.NoError(t, err, "Function returned error, "+message)
+				} else {
+					require.Equal(t, resp.IsColdStart, false)
+				}
 
-					// serve
-					resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-					require.NoError(t, err, "Function returned error")
-					require.Equal(t, resp.Payload, "Hello, replay_response!")
+				log.Printf("Instance returned in %f seconds", time.Since(start).Seconds())
 
-					if *isColdStart {
-						// if profile cold start, remove instance after serve return
-						require.Equal(t, resp.IsColdStart, true)
-						message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-						require.NoError(t, err, "Function returned error, "+message)
-					} else {
-						require.Equal(t, resp.IsColdStart, false)
-					}
+				// wait for time interval
+				timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
+				log.Printf("timeLeft: %f seconds", float64(timeLeft)*1e-9)
 
-					log.Printf("Instance returned in %f seconds", time.Since(start).Seconds())
+				time.Sleep(time.Duration(timeLeft))
+			}(tStart, vmID, imageName)
 
-					// wait for time interval
-					timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
-					log.Printf("timeLeft: %f seconds", float64(timeLeft)*1e-9)
-
-					time.Sleep(time.Duration(timeLeft))
-				}(tStart, vmIDString, imageName, sem)
-
-				vmID++
-				vmID %= *vmNum
-			}
+			vmID++
+			vmID %= *vmNum
 		}
 	)
 
@@ -256,9 +150,11 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		values = append(values, reqsPerSec[funcName])
 		sum += reqsPerSec[funcName]
 	}
+	ticker.Stop()
 
-	for _, rps := range values {
-		result += rps * rps / sum
+	// wait for all functions to finish
+	for i := 0; i < *vmNum; i++ {
+		workQueues[i] <- true
 	}
 
 	return result
@@ -295,7 +191,7 @@ func calculateRPS(vmNum int) int {
 func getImages() map[string]string {
 	return map[string]string{
 		"helloworld": "ustiugov/helloworld:var_workload",
-		//"chameleon":    "ustiugov/chameleon:var_workload",
+		// "chameleon":  "ustiugov/chameleon:var_workload",
 		//"pyaes":        "ustiugov/pyaes:var_workload",
 		//"image_rotate": "ustiugov/image_rotate:var_workload",
 		//"json_serdes":  "ustiugov/json_serdes:var_workload",
