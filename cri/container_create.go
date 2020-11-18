@@ -45,8 +45,7 @@ func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContai
 	log.Debugf("received CreateContainer for %s.", containerName)
 
 	if containerName == userContainerName {
-		image := "ustiugov/helloworld:var_workload"
-
+		var image string
 		// Get image name
 		envs := config.GetEnvs()
 		for _, kv := range envs {

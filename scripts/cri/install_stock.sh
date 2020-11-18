@@ -1,7 +1,7 @@
 #!/bin/bash
-sudo apt-get update >> /dev/nul
+sudo apt-get update >> /dev/null
 
-sudo apt-get install -y btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
+sudo apt-get -y install btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
 
 wget -c https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
 sudo unzip protoc-3.11.4-linux-x86_64.zip -d /usr/local
@@ -28,8 +28,8 @@ containerd --version || echo "failed to build containerd"
 # Install k8s
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
 sudo sh -c "echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list"
-
-sudo apt install -y cri-tools ebtables ethtool kubeadm kubectl kubelet kubernetes-cni
+sudo apt update >> /dev/null
+sudo apt -y install cri-tools ebtables ethtool kubeadm kubectl kubelet kubernetes-cni
 
 # Install knative CLI
 git clone https://github.com/knative/client.git $HOME/client
