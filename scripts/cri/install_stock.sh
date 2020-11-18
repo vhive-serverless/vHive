@@ -1,20 +1,10 @@
 #!/bin/bash
-sudo apt-get update
+sudo apt-get update >> /dev/nul
 
-apt-get install -y btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm
+sudo apt-get install -y btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
 
 wget -c https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
 sudo unzip protoc-3.11.4-linux-x86_64.zip -d /usr/local
-
-wget https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.15.2.linux-amd64.tar.gz
-
-export PATH=$PATH:/usr/local/go/bin
-echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile
-go env -w GOPRIVATE=github.com/ustiugov/*
-
-export KUBECONFIG=/etc/kubernetes/admin.conf
-echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> /etc/profile
 
 # Build and install runc and containerd
 GOGITHUB=${HOME}/go/src/github.com/
@@ -27,36 +17,33 @@ git clone https://github.com/opencontainers/runc.git $RUNC_ROOT
 git clone -b cri_logging https://github.com/plamenmpetrov/containerd.git $CONTAINERD_ROOT
 
 cd $RUNC_ROOT
-make && make install
+make && sudo make install
 
 cd $CONTAINERD_ROOT
-make && make install
+make && sudo make install
 
 containerd --version || echo "failed to build containerd"
 
 
 # Install k8s
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
-apt update
-apt install -y cri-tools ebtables ethtool kubeadm kubectl kubelet kubernetes-cni
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+sudo sh -c "echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list"
 
-# Use containerd for crictl
-echo "runtime-endpoint: unix:///run/containerd/containerd.sock" > /etc/crictl.yaml
+sudo apt install -y cri-tools ebtables ethtool kubeadm kubectl kubelet kubernetes-cni
 
 # Install knative CLI
 git clone https://github.com/knative/client.git $HOME/client
 cd $HOME/client
 hack/build.sh -f
-mv kn /usr/local/bin
+sudo mv kn /usr/local/bin
 
 
 # Necessary for containerd as container runtime but not docker
-modprobe overlay
-modprobe br_netfilter
+sudo modprobe overlay
+sudo modprobe br_netfilter
 
 # Set up required sysctl params, these persist across reboots.
-cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+sudo tee /etc/sysctl.d/99-kubernetes-cri.conf <<EOF
 net.bridge.bridge-nf-call-iptables  = 1
 net.ipv4.ip_forward                 = 1
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -65,5 +52,5 @@ EOF
 sudo sysctl --system
 # ---------------------------------------------------------
 
-swapoff -a
-sysctl net.ipv4.ip_forward=1
+sudo swapoff -a
+sudo sysctl net.ipv4.ip_forward=1
