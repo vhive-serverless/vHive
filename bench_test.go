@@ -165,9 +165,10 @@ func TestBenchServe(t *testing.T) {
 			require.Equal(t, resp.Payload, "Hello, replay_response!")
 
 			serveMetrics[k] = met
-
+			time.Sleep(1 * time.Second)
 			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 			require.NoError(t, err, "Function returned error, "+message)
+			time.Sleep(5 * time.Second)
 		}
 
 		// FUSE
@@ -292,10 +293,14 @@ func getAllImages() map[string]string {
 		//"chameleon":    "ustiugov/chameleon:var_workload",
 		//"pyaes":        "ustiugov/pyaes:var_workload",
 		//"image_rotate": "ustiugov/image_rotate:var_workload",
+		//"image_rotate_s3": "ustiugov/image_rotate_s3:var_workload",
 		//"json_serdes":  "ustiugov/json_serdes:var_workload",
+		//"json_serdes_s3":  "ustiugov/json_serdes_s3:var_workload",
 		//"lr_serving":   "ustiugov/lr_serving:var_workload",
 		//"cnn_serving":  "ustiugov/cnn_serving:var_workload",
 		//"rnn_serving":  "ustiugov/rnn_serving:var_workload",
+		//"lr_training_s3":  "ustiugov/lr_training_s3:var_workload",
 		//"lr_training":  "ustiugov/lr_training:var_workload",
+		//"video_processing_s3": "ustiugov/video_processing_s3:var_workload",
 	}
 }
