@@ -17,7 +17,7 @@ env:
   #- TEST=test-man-bench
 before_script:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.25.0
-  - source ./scripts/travis/full.sh
+  - source ./scripts/travis/setup_node.sh
 
 script:
   - go build ./... 

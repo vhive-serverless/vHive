@@ -8,6 +8,10 @@ systemctl daemon-reload
 
 kubeadm init --ignore-preflight-errors=all --cri-socket /etc/firecracker-containerd/fccd-cri.sock --pod-network-cidr=192.168.0.0/16
 
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
 # Install Calico network add-on
 curl https://docs.projectcalico.org/manifests/canal.yaml -O
 kubectl apply -f canal.yaml
