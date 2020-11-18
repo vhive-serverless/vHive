@@ -36,8 +36,6 @@ func TestStartStop(t *testing.T) {
 	_, _, err := coord.startVM(context.Background(), containerID)
 	require.NoError(t, err, "could not start VM")
 
-	require.Equal(t, maxVMs-1, len(coord.availableIDs), "wrong number of available IDs")
-
 	err = coord.insertMapping(containerID, "1")
 	require.NoError(t, err, "could not insert mapping")
 
@@ -49,8 +47,6 @@ func TestStartStop(t *testing.T) {
 
 	present = coord.isActive(containerID)
 	require.False(t, present, "container is active")
-
-	require.Equal(t, maxVMs, len(coord.availableIDs), "wrong number of available IDs")
 }
 
 func TestParallelStartStop(t *testing.T) {
@@ -82,5 +78,4 @@ func TestParallelStartStop(t *testing.T) {
 	}
 
 	wg.Wait()
-	require.Equal(t, maxVMs, len(coord.availableIDs), "wrong number of available IDs")
 }

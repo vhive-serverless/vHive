@@ -27,19 +27,16 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/ustiugov/fccd-orchestrator/ctriface"
 )
 
-const (
-	maxVMs = 2000
-)
-
 type coordinator struct {
 	sync.Mutex
 	orch                *ctriface.Orchestrator
-	availableIDs        []int
+	nextID              uint64
 	activeVMs           map[string]string
 	withoutOrchestrator bool
 }
@@ -54,16 +51,9 @@ func withoutOrchestrator() coordinatorOption {
 }
 
 func newCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorOption) *coordinator {
-	availableIDs := make([]int, maxVMs, maxVMs)
-	for i := range availableIDs {
-		availableIDs[i] = i
-	}
-
 	c := &coordinator{
-		availableIDs:        availableIDs,
-		activeVMs:           make(map[string]string),
-		orch:                orch,
-		withoutOrchestrator: false,
+		activeVMs: make(map[string]string),
+		orch:      orch,
 	}
 
 	for _, opt := range opts {
@@ -74,10 +64,7 @@ func newCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorOption) *coo
 }
 
 func (c *coordinator) startVM(ctx context.Context, image string) (*ctriface.StartVMResponse, string, error) {
-	c.Lock()
-
-	vmID := strconv.Itoa(c.reserveID())
-	c.Unlock()
+	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
 
 	resp, err := c.orchStartVM(ctx, vmID, image)
 	if err != nil {
@@ -91,7 +78,9 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	c.Lock()
 
 	vmID, ok := c.activeVMs[containerID]
+	delete(c.activeVMs, containerID)
 	c.Unlock()
+
 	if !ok {
 		return nil
 	}
@@ -102,8 +91,15 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		return err
 	}
 
-	c.free(containerID, vmID)
 	return nil
+}
+
+func (c *coordinator) isActive(containerID string) bool {
+	c.Lock()
+	defer c.Unlock()
+
+	_, ok := c.activeVMs[containerID]
+	return ok
 }
 
 func (c *coordinator) insertMapping(containerID, vmID string) error {
@@ -119,34 +115,6 @@ func (c *coordinator) insertMapping(containerID, vmID string) error {
 
 	c.activeVMs[containerID] = vmID
 	return nil
-}
-
-func (c *coordinator) isActive(containerID string) bool {
-	c.Lock()
-	defer c.Unlock()
-
-	_, ok := c.activeVMs[containerID]
-	return ok
-}
-
-func (c *coordinator) reserveID() int {
-	id := c.availableIDs[0]
-	c.availableIDs = c.availableIDs[1:]
-
-	return id
-}
-
-func (c *coordinator) free(containerID, vmID string) {
-	i, err := strconv.Atoi(vmID)
-	if err != nil {
-		log.Panic("provided non-int id")
-	}
-
-	c.Lock()
-	defer c.Unlock()
-
-	delete(c.activeVMs, containerID)
-	c.availableIDs = append(c.availableIDs, i)
 }
 
 func (c *coordinator) orchStartVM(ctx context.Context, vmID, image string) (*ctriface.StartVMResponse, error) {
