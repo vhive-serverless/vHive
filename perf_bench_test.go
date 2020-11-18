@@ -26,9 +26,7 @@ import (
 	"context"
 	"flag"
 	"strconv"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"github.com/ease-lab/vhive/profile"
 	"github.com/montanaflynn/stats"
@@ -37,23 +35,22 @@ import (
 )
 
 var (
-	isColdStart = flag.Bool("coldStart", false, "Profile cold starts")
-	vmNum       = flag.Int("vm", 2, "The number of VMs")
+	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts")
+	vmNum           = flag.Int("vm", 2, "The number of VMs")
+	targetReqPerSec = flag.Int("requestPerSec", 2, "The target number of requests per second")
+	executionTime   = flag.Int("executionTime", 5, "The execution time of the benchmark in second")
 )
 
 func TestBenchRequestPerSecond(t *testing.T) {
-
 	var (
-		servedTh        uint64
-		pinnedFuncNum   int
-		isSyncOffload   bool = true
-		images               = getImages()
-		funcs                = []string{}
-		workQueues           = make([]chan bool, *vmNum) // Queue the request to wait for predecessor finish
-		vmID                 = 0
-		totalSeconds         = 5
-		targetReqPerSec      = 2
-		duration             = 30 * time.Second
+		servedTh      uint64
+		pinnedFuncNum int
+		isSyncOffload bool = true
+		images             = getImages()
+		funcs              = []string{}
+		timeInterval       = time.Duration(time.Second.Nanoseconds() / int64(*targetReqPerSec))
+		totalRequests      = *executionTime * *targetReqPerSec
+		vmID               = 0
 	)
 	log.SetLevel(log.InfoLevel)
 
@@ -81,11 +78,9 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 	// warm VMs
 	for i := 0; i < *vmNum; i++ {
-		vmID += i
-		vmIDString := strconv.Itoa(vmID)
-		_, err := funcPool.AddInstance(vmIDString, images[funcs[vmID%len(funcs)]])
+		vmIDString := strconv.Itoa(i)
+		_, err := funcPool.AddInstance(vmIDString, images[funcs[i%len(funcs)]])
 		require.NoError(t, err, "Function returned error")
-		workQueues[vmID] = make(chan bool, 1)
 	}
 
 	if !*isWithCache && *isColdStart {
@@ -95,11 +90,9 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 	log.SetLevel(log.DebugLevel)
 
-	timeInterval := time.Second.Nanoseconds() / int64(targetReqPerSec)
-	ticker := time.NewTicker(time.Duration(timeInterval))
-	totalRequests := totalSeconds * targetReqPerSec
+	ticker := time.NewTicker(timeInterval)
 	requests := 0
-	vmID = 0
+	var vmGroup sync.WaitGroup
 
 	for requests < totalRequests {
 		select {
@@ -109,12 +102,12 @@ func TestBenchRequestPerSecond(t *testing.T) {
 			funcName := funcs[vmID%len(funcs)]
 			imageName := images[funcName]
 
-			workQueues[vmID] <- true
+			vmGroup.Add(1)
 
 			tStart := time.Now()
 
 			go func(start time.Time, vmID int, imageName string) {
-				defer func() { <-workQueues[vmID] }()
+				defer vmGroup.Done()
 
 				vmIDString := strconv.Itoa(vmID)
 
@@ -132,17 +125,13 @@ func TestBenchRequestPerSecond(t *testing.T) {
 					require.Equal(t, resp.IsColdStart, false)
 				}
 
-				log.Printf("Instance returned in %f seconds", time.Since(start).Seconds())
+				log.Printf("vmID %d returned in %f seconds", vmID, time.Since(start).Seconds())
 
-				// wait for time interval
-				timeLeft := duration.Nanoseconds() - time.Since(tStart).Nanoseconds()
-				log.Printf("timeLeft: %f seconds", float64(timeLeft)*1e-9)
-
-				time.Sleep(time.Duration(timeLeft))
+				timeLeft := timeInterval.Seconds() - time.Since(tStart).Seconds()
+				log.Printf("vmID %d time left: %f seconds", vmID, timeLeft)
 			}(tStart, vmID, imageName)
 
-			vmID++
-			vmID %= *vmNum
+			vmID = (vmID + 1) % *vmNum
 		}
 	)
 
@@ -152,40 +141,8 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	}
 	ticker.Stop()
 
-	// wait for all functions to finish
-	for i := 0; i < *vmNum; i++ {
-		workQueues[i] <- true
-	}
-
-	return result
-}
-
-func getUnloadServiceTime() float64 {
-	var (
-		sum         float64
-		funcs       = strings.Split(*funcNames, ",")
-		serviceTime = map[string]float64{
-			"helloworld":   1,
-			"chameleon":    15,
-			"pyaes":        1,
-			"image_rotate": 26,
-			"json_serdes":  16,
-			"lr_serving":   3,
-			"cnn_serving":  60,
-			"rnn_serving":  26,
-		}
-	)
-
-	for _, funcName := range funcs {
-		sum += serviceTime[funcName]
-	}
-
-	return sum / float64(len(funcs))
-}
-
-func calculateRPS(vmNum int) int {
-	baseRPS := getCPUIntenseRPS()
-	return vmNum * baseRPS
+	// wait for all functions finish before exit
+	vmGroup.Wait()
 }
 
 func getImages() map[string]string {
