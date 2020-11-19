@@ -35,10 +35,10 @@ import (
 )
 
 var (
-	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts")
+	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts (default is false)")
 	vmNum           = flag.Int("vm", 2, "The number of VMs")
 	targetReqPerSec = flag.Int("requestPerSec", 2, "The target number of requests per second")
-	executionTime   = flag.Int("executionTime", 5, "The execution time of the benchmark in second")
+	executionTime   = flag.Int("executionTime", 5, "The execution time of the benchmark in seconds")
 )
 
 func TestBenchRequestPerSecond(t *testing.T) {
@@ -52,6 +52,8 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		totalRequests      = *executionTime * *targetReqPerSec
 		vmID               = 0
 	)
+
+	log.SetLevel(log.DebugLevel)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
@@ -83,68 +85,73 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		dropPageCache()
 	}
 
-	log.SetLevel(log.DebugLevel)
-
 	ticker := time.NewTicker(timeInterval)
-	requests := 0
 	var vmGroup sync.WaitGroup
+	var requestsQueue sync.WaitGroup
+	done := make(chan bool, 1)
 
-	for requests < totalRequests {
-		select {
-		case <-ticker.C:
-			requests++
+	requestsQueue.Add(totalRequests)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				requestsQueue.Done()
+				vmGroup.Add(1)
 
-			funcName := funcs[vmID%len(funcs)]
-			imageName := images[funcName]
+				funcName := funcs[vmID%len(funcs)]
+				imageName := images[funcName]
 
-			vmGroup.Add(1)
+				tStart := time.Now()
+				go serveVM(t, tStart, vmID, imageName, &vmGroup, isSyncOffload)
 
-			tStart := time.Now()
-
-			go func(start time.Time, vmID int, imageName string) {
-				defer vmGroup.Done()
-
-				vmIDString := strconv.Itoa(vmID)
-
-				// serve
-				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-				require.NoError(t, err, "Function returned error")
-				require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-				if *isColdStart {
-					// if profile cold start, remove instance after serve returns
-					require.Equal(t, resp.IsColdStart, true)
-					message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-					require.NoError(t, err, "Function returned error, "+message)
-				} else {
-					require.Equal(t, resp.IsColdStart, false)
-				}
-
-				log.Printf("vmID %d returned in %f seconds", vmID, time.Since(start).Seconds())
-
-				timeLeft := timeInterval.Seconds() - time.Since(tStart).Seconds()
-				log.Printf("vmID %d time left: %f seconds", vmID, timeLeft)
-			}(tStart, vmID, imageName)
-
-			vmID = (vmID + 1) % *vmNum
+				vmID = (vmID + 1) % *vmNum
+			case <-done:
+				ticker.Stop()
+				return
+			}
 		}
-	}
-	ticker.Stop()
+	}()
 
-	// wait for all functions finish before exit
+	requestsQueue.Wait()
+	done <- true
 	vmGroup.Wait()
+}
+
+///////////////////////////////////////////////////////////////////////////////
+////////////////////////// Auxialiary functions below /////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+func serveVM(t *testing.T, start time.Time, vmID int, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool) {
+	defer vmGroup.Done()
+
+	vmIDString := strconv.Itoa(vmID)
+
+	// serve
+	resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+	require.NoError(t, err, "Function returned error")
+	require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+	if *isColdStart {
+		// if profile cold start, remove instance after serve returns
+		require.Equal(t, resp.IsColdStart, true)
+		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+	} else {
+		require.Equal(t, resp.IsColdStart, false)
+	}
+
+	log.Infof("vmID %d returned in %f seconds", vmID, time.Since(start).Seconds())
 }
 
 func getImages() map[string]string {
 	return map[string]string{
 		"helloworld": "ustiugov/helloworld:var_workload",
-		// "chameleon":  "ustiugov/chameleon:var_workload",
-		//"pyaes":        "ustiugov/pyaes:var_workload",
-		//"image_rotate": "ustiugov/image_rotate:var_workload",
-		//"json_serdes":  "ustiugov/json_serdes:var_workload",
-		//"lr_serving":   "ustiugov/lr_serving:var_workload",
-		//"cnn_serving":  "ustiugov/cnn_serving:var_workload",
-		//"rnn_serving":  "ustiugov/rnn_serving:var_workload",
-		//"lr_training":  "ustiugov/lr_training:var_workload",
+		// "chameleon":    "ustiugov/chameleon:var_workload",
+		// "pyaes":        "ustiugov/pyaes:var_workload",
+		// "image_rotate": "ustiugov/image_rotate:var_workload",
+		// "json_serdes":  "ustiugov/json_serdes:var_workload",
+		// "lr_serving":   "ustiugov/lr_serving:var_workload",
+		// "cnn_serving":  "ustiugov/cnn_serving:var_workload",
+		// "rnn_serving":  "ustiugov/rnn_serving:var_workload",
+		// "lr_training":  "ustiugov/lr_training:var_workload",
 	}
 }
