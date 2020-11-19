@@ -99,4 +99,7 @@ test-subdirs: $(SUBDIRS)
 test-cri:
 	$(MAKE) -C cri test
 
+test-cri-travis:
+	$(MAKE) -C cri test-travis
+
 .PHONY: test-orch $(SUBDIRS) test-subdirs

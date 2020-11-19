@@ -11,7 +11,7 @@ env:
   - GO111MODULE=on
   - GOPRIVATE=github.com/ustiugov/fccd-orchestrator
   jobs:
-  - TEST=test-cri
+  - TEST=test-cri-travis
   #- TEST=test-subdirs
   #- TEST=test
   #- TEST=test-man-bench
