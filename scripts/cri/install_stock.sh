@@ -6,21 +6,12 @@ sudo apt-get -y install btrfs-tools pkg-config libseccomp-dev unzip tar libsecco
 wget -c https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
 sudo unzip protoc-3.11.4-linux-x86_64.zip -d /usr/local
 
-# Build and install runc and containerd
-GOGITHUB=${HOME}/go/src/github.com/
-RUNC_ROOT=${GOGITHUB}/opencontainers/runc
-CONTAINERD_ROOT=${GOGITHUB}/containerd/containerd
-mkdir -p $RUNC_ROOT
-mkdir -p $CONTAINERD_ROOT
+wget https://github.com/containerd/containerd/releases/download/v1.4.1/containerd-1.4.1-linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf containerd-1.4.1-linux-amd64.tar.gz
 
-git clone https://github.com/opencontainers/runc.git $RUNC_ROOT
-git clone -b cri_logging https://github.com/plamenmpetrov/containerd.git $CONTAINERD_ROOT
-
-cd $RUNC_ROOT
-make && sudo make install
-
-cd $CONTAINERD_ROOT
-make && sudo make install
+wget https://github.com/opencontainers/runc/releases/download/v1.0.0-rc92/runc.amd64
+mv runc.amd64 runc
+sudo install -D -m0755 runc /usr/local/sbin/runc
 
 containerd --version || echo "failed to build containerd"
 
