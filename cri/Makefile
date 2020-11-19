@@ -1,16 +1,12 @@
 EXTRAGOARGS:=-v -race -cover
-
+CTRDLOGDIR:=/tmp/ctrd-logs
 test:
-	CTRDLOG=$HOME/ctrdlog
-	mkdir -p $CTRDLOG
+	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
+	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
+	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
+	./../fccd-orchestrator 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
 
-	cd ..
-	go build ./...
-	containerd &
-	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/log.out 2>$(CTRDLOGDIR)/log.err &
-	./fccd-orchestrator &
-
-	./scripts/cri/create_one_node_cluster.sh
+	./../scripts/cri/create_one_node_cluster.sh
 
 	sleep 2m
 
@@ -20,7 +16,6 @@ test:
 
 	sleep 1m
 
-	cd cri
 	go test ./ $(EXTRAGOARGS)
 	./../scripts/clean_fcctr.sh
 
