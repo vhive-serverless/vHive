@@ -31,4 +31,6 @@ sudo sysctl -w net.ipv4.neigh.default.gc_thresh3=4096
 sudo sysctl -w net.ipv4.ip_local_port_range="32769 65535"
 sudo sysctl -w kernel.pid_max=4194303
 sudo sysctl -w kernel.threads-max=999999999
+sudo swapoff -a
+sudo sysctl net.ipv4.ip_forward=1
 sudo sysctl --system
