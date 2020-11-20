@@ -38,26 +38,28 @@ var (
 	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts (default is false)")
 	vmNum           = flag.Int("vm", 2, "The number of VMs")
 	targetReqPerSec = flag.Int("requestPerSec", 2, "The target number of requests per second")
-	executionTime   = flag.Int("executionTime", 5, "The execution time of the benchmark in seconds")
+	executionTime   = flag.Int("executionTime", 2, "The execution time of the benchmark in seconds")
 )
 
 func TestBenchRequestPerSecond(t *testing.T) {
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
+		vmID          int
 		isSyncOffload bool = true
 		images             = getImages()
 		funcs              = []string{}
 		timeInterval       = time.Duration(time.Second.Nanoseconds() / int64(*targetReqPerSec))
 		totalRequests      = *executionTime * *targetReqPerSec
-		vmID               = 0
 	)
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	// pull images
+	createResultsDir()
+
+	// Pull images
 	for funcName, imageName := range images {
 		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 
@@ -73,7 +75,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		funcs = append(funcs, funcName)
 	}
 
-	// warm VMs
+	// Boot VMs
 	for i := 0; i < *vmNum; i++ {
 		vmIDString := strconv.Itoa(i)
 		_, err := funcPool.AddInstance(vmIDString, images[funcs[i%len(funcs)]])
@@ -81,38 +83,33 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	}
 
 	if !*isWithCache && *isColdStart {
-		log.Debug("Profile cold start")
+		log.Info("Profile cold start")
 		dropPageCache()
 	}
 
 	ticker := time.NewTicker(timeInterval)
 	var vmGroup sync.WaitGroup
-	var requestsQueue sync.WaitGroup
 	done := make(chan bool, 1)
 
-	requestsQueue.Add(totalRequests)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				requestsQueue.Done()
-				vmGroup.Add(1)
+	for totalRequests > 0 {
+		select {
+		case <-ticker.C:
+			totalRequests--
+			vmGroup.Add(1)
 
-				funcName := funcs[vmID%len(funcs)]
-				imageName := images[funcName]
+			funcName := funcs[vmID%len(funcs)]
+			imageName := images[funcName]
+			vmIDString := strconv.Itoa(vmID)
 
-				tStart := time.Now()
-				go serveVM(t, tStart, vmID, imageName, &vmGroup, isSyncOffload)
+			tStart := time.Now()
+			go serveVM(t, tStart, vmIDString, imageName, &vmGroup, isSyncOffload)
 
-				vmID = (vmID + 1) % *vmNum
-			case <-done:
-				ticker.Stop()
-				return
-			}
+			vmID = (vmID + 1) % *vmNum
+		case <-done:
+			ticker.Stop()
 		}
-	}()
+	}
 
-	requestsQueue.Wait()
 	done <- true
 	vmGroup.Wait()
 }
@@ -120,12 +117,9 @@ func TestBenchRequestPerSecond(t *testing.T) {
 ///////////////////////////////////////////////////////////////////////////////
 ////////////////////////// Auxialiary functions below /////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-func serveVM(t *testing.T, start time.Time, vmID int, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool) {
+func serveVM(t *testing.T, start time.Time, vmIDString, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool) {
 	defer vmGroup.Done()
 
-	vmIDString := strconv.Itoa(vmID)
-
-	// serve
 	resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, replay_response!")
@@ -139,7 +133,7 @@ func serveVM(t *testing.T, start time.Time, vmID int, imageName string, vmGroup 
 		require.Equal(t, resp.IsColdStart, false)
 	}
 
-	log.Infof("vmID %d returned in %f seconds", vmID, time.Since(start).Seconds())
+	log.Infof("vmID %s: returned in %f seconds", vmIDString, time.Since(start).Seconds())
 }
 
 func getImages() map[string]string {
