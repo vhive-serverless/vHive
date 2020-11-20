@@ -14,7 +14,7 @@ test:
 	kubectl apply -f ../knative_workloads/pyaes.yaml
 	kubectl apply -f ../knative_workloads/rnn_serving.yaml
 
-	sleep 2m
+	sleep 1m
 
 	go test ./ $(EXTRAGOARGS)
 	./../scripts/clean_fcctr.sh

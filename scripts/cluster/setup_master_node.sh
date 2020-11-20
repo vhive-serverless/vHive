@@ -19,11 +19,11 @@ curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.6.11 TARGET_ARCH=x86_64
 
 
 # Install KNative in the cluster
-kubectl apply --filename https://github.com/knative/serving/releases/download/v0.17.0/serving-crds.yaml
-kubectl apply --filename https://github.com/knative/serving/releases/download/v0.17.0/serving-core.yaml
+kubectl apply --filename https://github.com/knative/serving/releases/download/v0.19.0/serving-crds.yaml
+kubectl apply --filename https://github.com/knative/serving/releases/download/v0.19.0/serving-core.yaml
 
 # magic DNS
-kubectl apply --filename https://github.com/knative/serving/releases/download/v0.18.0/serving-default-domain.yaml
+kubectl apply --filename https://github.com/knative/serving/releases/download/v0.19.0/serving-default-domain.yaml
 
-kubectl apply --filename https://github.com/knative/net-istio/releases/download/v0.18.0/release.yaml
+kubectl apply --filename https://github.com/knative/net-istio/releases/download/v0.19.0/release.yaml
 kubectl --namespace istio-system get service istio-ingressgateway
