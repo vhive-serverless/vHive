@@ -11,11 +11,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
-	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201119083205-87ce72c93e56
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201030145928-fea526097704
-	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200803195925-0629e1cf4599
-	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200907081336-fae0d2f696c4
-	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20200803195925-0629e1cf4599
+	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201120135927-438ab32ec4cf
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201120144936-437e526256c4
+	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
+	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201120135927-438ab32ec4cf
+	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20201120135927-438ab32ec4cf
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.16.16-rc.0
