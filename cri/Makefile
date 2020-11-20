@@ -6,7 +6,7 @@ test:
 	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
 	sudo ./../fccd-orchestrator 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
 
-	./../scripts/cri/create_one_node_cluster.sh
+	./../scripts/cluster/create_one_node_cluster.sh
 
 	sleep 2m
 
@@ -25,7 +25,7 @@ test-travis:
 	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
 	sudo ./../fccd-orchestrator 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
 
-	./../scripts/cri/create_one_node_cluster.sh
+	./../scripts/cluster/create_one_node_cluster.sh
 
 	sleep 2m
 
