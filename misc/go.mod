@@ -20,7 +20,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.5.1
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
-	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20201030143613-e90dfeb07626
+	github.com/ustiugov/fccd-orchestrator/taps v0.0.0-20201120135927-438ab32ec4cf
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.30.0
