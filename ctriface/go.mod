@@ -14,10 +14,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
-	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20200717125634-528c6e9f9cc9
-	github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20200914123148-9e197c4c055a
-	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20200907081336-fae0d2f696c4
-	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20201030144900-0da0ca04b744
+	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
+	github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20201120135927-438ab32ec4cf
+	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201120135927-438ab32ec4cf
+	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20201120144849-ac2c5007923b
 	google.golang.org/grpc v1.31.0
 
 )
