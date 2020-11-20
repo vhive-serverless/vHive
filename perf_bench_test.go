@@ -130,7 +130,6 @@ func serveVM(t *testing.T, start time.Time, vmIDString, imageName string, vmGrou
 	require.Equal(t, resp.Payload, "Hello, replay_response!")
 
 	if *isColdStart {
-		// if profile cold start, remove instance after serve returns
 		require.Equal(t, resp.IsColdStart, true)
 		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
@@ -138,7 +137,7 @@ func serveVM(t *testing.T, start time.Time, vmIDString, imageName string, vmGrou
 		require.Equal(t, resp.IsColdStart, false)
 	}
 
-	log.Infof("vmID %s: returned in %f seconds", vmIDString, time.Since(start).Seconds())
+	log.Debugf("vmID %s: returned in %f seconds", vmIDString, time.Since(start).Seconds())
 }
 
 func getImages() map[string]string {
