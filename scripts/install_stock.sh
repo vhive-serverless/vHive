@@ -41,7 +41,3 @@ net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
 sudo sysctl --system
-# ---------------------------------------------------------
-
-sudo swapoff -a
-sudo sysctl net.ipv4.ip_forward=1
