@@ -42,7 +42,8 @@ const (
 	maxMsgSize = 1024 * 1024 * 16
 )
 
-type CriService struct {
+// Service contains essential objects for host orchestration.
+type Service struct {
 	criapi.ImageServiceServer
 	criapi.RuntimeServiceServer
 	orch               *ctriface.Orchestrator
@@ -51,7 +52,8 @@ type CriService struct {
 	coordinator        *coordinator
 }
 
-func NewCriService(orch *ctriface.Orchestrator) (*CriService, error) {
+// NewService initializes the host orchestration state.
+func NewService(orch *ctriface.Orchestrator) (*Service, error) {
 	if orch == nil {
 		return nil, errors.New("orch must be non nil")
 	}
@@ -68,7 +70,7 @@ func NewCriService(orch *ctriface.Orchestrator) (*CriService, error) {
 		return nil, err
 	}
 
-	cs := &CriService{
+	cs := &Service{
 		orch:               orch,
 		stockRuntimeClient: stockRuntimeClient,
 		stockImageClient:   stockImageClient,
@@ -78,7 +80,8 @@ func NewCriService(orch *ctriface.Orchestrator) (*CriService, error) {
 	return cs, nil
 }
 
-func (s *CriService) Register(server *grpc.Server) {
+// Register registers the criapi servers.
+func (s *Service) Register(server *grpc.Server) {
 	criapi.RegisterImageServiceServer(server, s)
 	criapi.RegisterRuntimeServiceServer(server, s)
 }

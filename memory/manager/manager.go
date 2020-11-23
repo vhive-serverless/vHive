@@ -224,7 +224,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 	return nil
 }
 
-// DumpVMStats Saves the per VM stats
+// DumpUPFPageStats Saves the per VM stats
 func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath string) error {
 	var (
 		statHeader []string
@@ -264,7 +264,7 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 	return writeUPFPageStats(metricsOutFilePath, statHeader, stats)
 }
 
-// DumpLatencyStats Dumps latency stats collected for the VM
+// DumpUPFLatencyStats Dumps latency stats collected for the VM
 func (m *MemoryManager) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 

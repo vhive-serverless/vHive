@@ -29,7 +29,8 @@ import (
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
-func (s *CriService) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
+// RemoveContainer removes a container or a VM
+func (s *Service) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
 	log.Debugf("RemoveContainer for %q", r.GetContainerId())
 	containerID := r.GetContainerId()
 
