@@ -201,9 +201,16 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 		func() {
 			fi.logger.Debug("creating instance snapshot on first time offloading")
 
+			err = c.orch.PauseVM(ctx, fi.vmID)
+			if err != nil {
+				fi.logger.WithError(err).Error("failed to pause VM")
+				return
+			}
+
 			err = c.orch.CreateSnapshot(ctx, fi.vmID)
 			if err != nil {
 				fi.logger.WithError(err).Error("failed to create snapshot")
+				return
 			}
 		},
 	)
