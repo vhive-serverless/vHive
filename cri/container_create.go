@@ -55,14 +55,14 @@ func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContai
 			}
 		}
 
-		startVMResp, vmID, err := s.coordinator.startVM(context.Background(), image)
+		fi, err := s.coordinator.startVM(context.Background(), image)
 		if err != nil {
 			log.WithError(err).Error("failed to start VM")
 			return nil, err
 		}
 
 		// Add guest IP
-		guestIPEnv := &criapi.KeyValue{Key: guestIPEnv, Value: startVMResp.GuestIP}
+		guestIPEnv := &criapi.KeyValue{Key: guestIPEnv, Value: fi.startVMResponse.GuestIP}
 		envs = append(envs, guestIPEnv)
 		r.Config.Envs = envs
 
@@ -70,10 +70,16 @@ func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContai
 		containerdID := resp.ContainerId
 		if err != nil {
 			log.WithError(err).Error("stock containerd failed to start UC")
-		} else {
-			s.coordinator.insertMapping(containerdID, vmID)
+			return nil, err
 		}
-		return resp, err
+
+		err = s.coordinator.insertActive(containerdID, fi)
+		if err != nil {
+			log.WithError(err).Error("failed to insert active VM")
+			return nil, err
+		}
+
+		return resp, nil
 	}
 
 	return s.stockRuntimeClient.CreateContainer(ctx, r)
