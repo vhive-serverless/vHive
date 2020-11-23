@@ -36,7 +36,10 @@ const (
 	guestImageEnv     = "GUESTIMAGE"
 )
 
-func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+// CreateContainer starts a container or a VM, depending on the name
+// if the name matches "user-container", the cri plugin starts a VM, assigning it an IP,
+// otherwise starts a regular container
+func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	log.Debugf("CreateContainer within sandbox %q for container %+v",
 		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
 

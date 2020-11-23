@@ -52,8 +52,8 @@ import (
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
 
-// TODO: Integrate response with non-cri API
 // StartVMResponse is the reponse return by StartVM
+// TODO: Integrate response with non-cri API
 type StartVMResponse struct {
 	// GuestIP is the IP of the guest MicroVM
 	GuestIP string
@@ -69,7 +69,6 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
 
-	// FIXME: does not account for Deactivating
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")

@@ -42,7 +42,7 @@ func WithSnapshots(snapshotsEnabled bool) OrchestratorOption {
 	}
 }
 
-// WithUPF Sets the UPF mode on or off
+// WithUPF Sets the user-page faults mode on or off
 func WithUPF(isUPFEnabled bool) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.isUPFEnabled = isUPFEnabled
@@ -57,7 +57,8 @@ func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
 	}
 }
 
-// WithReplayMode Sets the replay mode on or off
+// WithLazyMode Sets the lazy paging mode on (or off),
+// where all guest memory pages are brought on demand.
 // Only works if snapshots are enabled
 func WithLazyMode(isLazyMode bool) OrchestratorOption {
 	return func(o *Orchestrator) {
