@@ -25,10 +25,12 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -123,6 +125,71 @@ func TestBenchParallelServe(t *testing.T) {
 		fusePrintMetrics(t, serveMetrics, upfMetrics, isUPFEnabledTest, true, funcName, "parallelServe.csv")
 
 		vmID += parallel
+	}
+}
+
+func TestBenchWarmServe(t *testing.T) {
+	var (
+		servedTh          uint64
+		pinnedFuncNum     int
+		isSyncOffload     bool = true
+		images                 = getAllImages()
+		vmID                   = 0
+		memManagerMetrics []*metrics.Metric
+	)
+
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+
+	createResultsDir()
+
+	for funcName, imageName := range images {
+		vmIDString := strconv.Itoa(vmID)
+
+		// First time invoke (cold start)
+		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+		require.NoError(t, err, "Function returned error")
+		require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+		// just use the last measurement for memory footprint
+		memFootprint, err := getMemFootprint()
+		if err != nil {
+			log.Warnf("Failed to get memory footprint of VM=%s, image=%s\n", vmIDString, imageName)
+		}
+
+		// Measure warm
+		serveMetrics := make([]*metrics.Metric, *iterNum)
+
+		for k := 0; k < *iterNum; k++ {
+			if !*isWithCache {
+				dropPageCache()
+			}
+
+			resp, met, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			serveMetrics[k] = met
+			time.Sleep(2 * time.Second)
+		}
+
+		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+
+		// FUSE
+		if orch.GetUPFEnabled() {
+			// Page stats
+			err = funcPool.DumpUPFPageStats(vmIDString, imageName, funcName, getOutFile("pageStats.csv"))
+			require.NoError(t, err, "Failed to dump page stats for"+funcName)
+
+			memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "_0")
+			require.NoError(t, err, "Failed to dump get stats for "+funcName)
+			require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
+		}
+
+		fusePrintMetrics(t, serveMetrics, memManagerMetrics, isUPFEnabledTest, true, funcName, "serve.csv")
+
+		appendMemFootprint("serve.csv", memFootprint)
+		vmID++
 	}
 }
 
@@ -302,5 +369,57 @@ func getAllImages() map[string]string {
 		//"lr_training_s3":  "ustiugov/lr_training_s3:var_workload",
 		//"lr_training":  "ustiugov/lr_training:var_workload",
 		//"video_processing_s3": "ustiugov/video_processing_s3:var_workload",
+	}
+}
+
+// getFirecrackerPid Assumes that only one Firecracker process is running
+func getFirecrackerPid() ([]byte, error) {
+	pidBytes, err := exec.Command("pidof", "firecracker").Output()
+	if err != nil {
+		log.Warnf("Failed to get Firecracker PID: %v", err)
+	}
+
+	return pidBytes, err
+}
+
+func getMemFootprint() (float64, error) {
+	pidBytes, err := getFirecrackerPid()
+	if err != nil {
+		return 0, err
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(strings.Split(string(pidBytes), "\n")[0]))
+	if err != nil {
+		log.Warnf("Pid conversion failed: %v", err)
+	}
+
+	cmd := exec.Command("ps", "-o", "rss", "-p", strconv.Itoa(pid))
+
+	stdout, err := cmd.Output()
+	if err != nil {
+		log.Warnf("Failed to run ps command: %v", err)
+	}
+
+	infoArr := strings.Split(string(stdout), "\n")[1]
+	stats := strings.Fields(infoArr)
+
+	rss, err := strconv.ParseFloat(stats[0], 64)
+	if err != nil {
+		log.Warnf("Error in conversion when computing rss: %v", err)
+		return 0, err
+	}
+
+	rss *= 1024
+
+	return rss, nil
+}
+
+func appendMemFootprint(outFileName string, memFootprint float64) {
+	f, err := os.OpenFile(outFileName, os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(fmt.Sprintf("MemFootprint\t%12.1f\n", memFootprint)); err != nil {
+		log.Println(err)
 	}
 }
