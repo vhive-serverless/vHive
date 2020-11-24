@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1 # Current version of Knative
 kind: Service
 metadata:
-  name: helloworldSerial # The name of the app
+  name: helloworldserial # The name of the app
   namespace: default # The namespace the app will use
 spec:
   template:
