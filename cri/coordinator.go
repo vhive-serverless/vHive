@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/ustiugov/fccd-orchestrator/ctriface"
@@ -164,9 +165,12 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInsta
 		resp *ctriface.StartVMResponse
 		err  error
 	)
-	// (plamen) set timeout?
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*40)
+	defer cancel()
+
 	if !c.withoutOrchestrator {
-		resp, _, err = c.orch.StartVM(ctx, vmID, image)
+		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image)
 		if err != nil {
 			logger.WithError(err).Error("coordinator failed to start VM")
 		}
@@ -179,13 +183,16 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInsta
 
 func (c *coordinator) orchLoadInstance(ctx context.Context, fi *funcInstance) error {
 	fi.logger.Debug("found idle instance to load")
-	// (plamen) set timeout?
-	if _, err := c.orch.LoadSnapshot(ctx, fi.vmID); err != nil {
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	if _, err := c.orch.LoadSnapshot(ctxTimeout, fi.vmID); err != nil {
 		fi.logger.WithError(err).Error("failed to load VM")
 		return err
 	}
 
-	if _, err := c.orch.ResumeVM(ctx, fi.vmID); err != nil {
+	if _, err := c.orch.ResumeVM(ctxTimeout, fi.vmID); err != nil {
 		fi.logger.WithError(err).Error("failed to load VM")
 		return err
 	}
@@ -196,18 +203,21 @@ func (c *coordinator) orchLoadInstance(ctx context.Context, fi *funcInstance) er
 
 func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) error {
 	var err error
-	// plamen: set timeout??
+
 	fi.onceCreateSnapInstance.Do(
 		func() {
+			ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+			defer cancel()
+
 			fi.logger.Debug("creating instance snapshot on first time offloading")
 
-			err = c.orch.PauseVM(ctx, fi.vmID)
+			err = c.orch.PauseVM(ctxTimeout, fi.vmID)
 			if err != nil {
 				fi.logger.WithError(err).Error("failed to pause VM")
 				return
 			}
 
-			err = c.orch.CreateSnapshot(ctx, fi.vmID)
+			err = c.orch.CreateSnapshot(ctxTimeout, fi.vmID)
 			if err != nil {
 				fi.logger.WithError(err).Error("failed to create snapshot")
 				return
@@ -225,8 +235,10 @@ func (c *coordinator) orchOffloadInstance(ctx context.Context, fi *funcInstance)
 		return err
 	}
 
-	//plamen : set timeout??
-	if err := c.orch.Offload(ctx, fi.vmID); err != nil {
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	if err := c.orch.Offload(ctxTimeout, fi.vmID); err != nil {
 		fi.logger.WithError(err).Error("failed to offload instance")
 	}
 
@@ -239,7 +251,7 @@ func (c *coordinator) orchStopVM(ctx context.Context, fi *funcInstance) error {
 	if c.withoutOrchestrator {
 		return nil
 	}
-	// plamen: set timeout??
+
 	if err := c.orch.StopSingleVM(ctx, fi.vmID); err != nil {
 		fi.logger.WithError(err).Error("failed to stop VM for instance")
 		return err
