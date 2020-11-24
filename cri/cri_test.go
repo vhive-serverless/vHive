@@ -98,7 +98,7 @@ func TestAutoscaler(t *testing.T) {
 		{
 			name: "Scale from 0",
 			scale: func(funcURL string) {
-				time.Sleep(300 * time.Second)
+				time.Sleep(200 * time.Second)
 				invoke(t, funcURL)
 			},
 		},
@@ -106,7 +106,7 @@ func TestAutoscaler(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			functionURL := getFuncURL("helloworldSerial")
+			functionURL := getFuncURL("helloworldserial")
 			invoke(t, functionURL)
 
 			c.scale(functionURL)
