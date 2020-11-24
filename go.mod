@@ -11,14 +11,14 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
-	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201123114948-bb270b503bc3
+	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201124163614-a10aa40a0e51
 	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201120144936-437e526256c4
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
 	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201120135927-438ab32ec4cf
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20201120135927-438ab32ec4cf
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.33.1
-	k8s.io/cri-api v0.16.16-rc.0
+	k8s.io/cri-api v0.16.16-rc.0 // indirect
 )
 
 // Workaround for github.com/containerd/containerd issue #3031
