@@ -184,7 +184,7 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInsta
 func (c *coordinator) orchLoadInstance(ctx context.Context, fi *funcInstance) error {
 	fi.logger.Debug("found idle instance to load")
 
-	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
 	if _, err := c.orch.LoadSnapshot(ctxTimeout, fi.vmID); err != nil {
@@ -206,7 +206,7 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 
 	fi.onceCreateSnapInstance.Do(
 		func() {
-			ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+			ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
 			defer cancel()
 
 			fi.logger.Debug("creating instance snapshot on first time offloading")
