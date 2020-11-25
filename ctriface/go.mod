@@ -16,7 +16,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
 	github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20201120135927-438ab32ec4cf
-	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201125102612-103ba78db6a1
+	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201125163225-42b4c3d8464b
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20201120144849-ac2c5007923b
 	google.golang.org/grpc v1.31.0
 
