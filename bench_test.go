@@ -188,7 +188,7 @@ func TestBenchWarmServe(t *testing.T) {
 
 		fusePrintMetrics(t, serveMetrics, memManagerMetrics, isUPFEnabledTest, true, funcName, "serve.csv")
 
-		appendMemFootprint("serve.csv", memFootprint)
+		appendMemFootprint(getOutFile("serve.csv"), memFootprint)
 		vmID++
 	}
 }
@@ -356,7 +356,7 @@ func getOutFile(name string) string {
 
 func getAllImages() map[string]string {
 	return map[string]string{
-		"helloworld": "ustiugov/helloworld:var_workload",
+		//"helloworld": "ustiugov/helloworld:var_workload",
 		//"chameleon":    "ustiugov/chameleon:var_workload",
 		//"pyaes":        "ustiugov/pyaes:var_workload",
 		//"image_rotate": "ustiugov/image_rotate:var_workload",
@@ -368,7 +368,7 @@ func getAllImages() map[string]string {
 		//"rnn_serving":  "ustiugov/rnn_serving:var_workload",
 		//"lr_training_s3":  "ustiugov/lr_training_s3:var_workload",
 		//"lr_training":  "ustiugov/lr_training:var_workload",
-		//"video_processing_s3": "ustiugov/video_processing_s3:var_workload",
+		"video_processing_s3": "ustiugov/video_processing_s3:var_workload",
 	}
 }
 
