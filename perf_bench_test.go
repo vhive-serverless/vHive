@@ -96,7 +96,6 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	}
 
 	ticker := time.NewTicker(timeInterval)
-
 	done := make(chan bool, 1)
 
 	for totalRequests > 0 {

@@ -74,6 +74,46 @@ func TestParallelInvoke(t *testing.T) {
 	wg.Wait()
 }
 
+func TestAutoscaler(t *testing.T) {
+	cases := []struct {
+		name  string
+		scale func(funcURL string)
+	}{
+		{
+			name: "Scale fn with concurrency 1",
+			scale: func(funcURL string) {
+				n := 5
+				var wg sync.WaitGroup
+
+				for i := 0; i < n; i++ {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						invoke(t, funcURL)
+					}()
+				}
+				wg.Wait()
+			},
+		},
+		{
+			name: "Scale from 0",
+			scale: func(funcURL string) {
+				time.Sleep(200 * time.Second)
+				invoke(t, funcURL)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			functionURL := getFuncURL("helloworldserial")
+			invoke(t, functionURL)
+
+			c.scale(functionURL)
+		})
+	}
+}
+
 func TestMultipleFuncInvoke(t *testing.T) {
 	var wg sync.WaitGroup
 	funcs := []string{
@@ -111,6 +151,7 @@ func TestBench(t *testing.T) {
 	fmt.Printf("Second invocation took %d ms\n", end.Milliseconds())
 }
 
+// HELPERS BELOW
 func invoke(t *testing.T, functionURL string) {
 	reqPayload := "record"
 	respPayload := "Hello, " + reqPayload + "_response!"

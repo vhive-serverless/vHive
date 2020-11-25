@@ -33,10 +33,10 @@ import (
 
 func TestStartStop(t *testing.T) {
 	containerID := "1"
-	_, _, err := coord.startVM(context.Background(), containerID)
+	fi, err := coord.startVM(context.Background(), containerID)
 	require.NoError(t, err, "could not start VM")
 
-	err = coord.insertMapping(containerID, "1")
+	err = coord.insertActive(containerID, fi)
 	require.NoError(t, err, "could not insert mapping")
 
 	present := coord.isActive(containerID)
@@ -60,10 +60,10 @@ func TestParallelStartStop(t *testing.T) {
 			defer wg.Done()
 
 			containerID := strconv.Itoa(i)
-			_, _, err := coord.startVM(context.Background(), containerID)
+			fi, err := coord.startVM(context.Background(), containerID)
 			require.NoError(t, err, "could not start VM")
 
-			err = coord.insertMapping(containerID, containerID)
+			err = coord.insertActive(containerID, fi)
 			require.NoError(t, err, "could not insert mapping")
 
 			present := coord.isActive(containerID)
