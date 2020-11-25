@@ -44,6 +44,7 @@ import (
 var (
 	parallelNum = flag.Int("parallel", 1, "Number of parallel instances to start")
 	iterNum     = flag.Int("iter", 1, "Number of iterations to run")
+	funcName    = flag.String("funcName", "helloworld", "Name of the function to benchmark")
 )
 
 func TestBenchParallelServe(t *testing.T) {
@@ -59,73 +60,67 @@ func TestBenchParallelServe(t *testing.T) {
 		concurrency        = 2
 	)
 
+	imageName, isPresent := images[*funcName]
+	require.True(t, isPresent, "Function is not supported")
+
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	createResultsDir()
 
-	for funcName, imageName := range images {
-		// Pull image
-		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
+	// Pull image
+	resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+	require.NoError(t, err, "Function returned error")
+	require.Equal(t, resp.Payload, "Hello, record_response!")
 
-		createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
-		log.Info("All snapshots created")
+	createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
+	log.Info("All snapshots created")
 
-		createRecords(t, concurrency, vmID, imageName, isSyncOffload)
-		log.Info("All records done")
+	createRecords(t, concurrency, vmID, imageName, isSyncOffload)
+	log.Info("All records done")
 
-		// Measure
-		var vmGroup sync.WaitGroup
-		semLoad := make(chan bool, 1000)
+	// Measure
+	var vmGroup sync.WaitGroup
 
-		if !*isWithCache {
-			dropPageCache()
-		}
-
-		tStart := time.Now()
-		for i := 0; i < parallel; i++ {
-			vmIDString := strconv.Itoa(vmID + i)
-
-			semLoad <- true
-			vmGroup.Add(1)
-
-			go func(i int) {
-				defer vmGroup.Done()
-				defer func() { <-semLoad }()
-
-				resp, metr, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-				require.NoError(t, err, "Function returned error")
-				require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-				serveMetrics[i] = metr
-			}(i)
-		}
-
-		for i := 0; i < cap(semLoad); i++ {
-			semLoad <- true
-		}
-		vmGroup.Wait()
-
-		log.Printf("Started %d instances in %d milliseconds", parallel, time.Since(tStart).Milliseconds())
-
-		for i := 0; i < parallel; i++ {
-			vmIDString := strconv.Itoa(vmID + i)
-			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-			require.NoError(t, err, "Function returned error, "+message)
-
-			if *isUPFEnabledTest {
-				memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "_0")
-				require.NoError(t, err, "Failed to ge tupf metrics")
-				require.Equal(t, len(memManagerMetrics), 1, "wrong length")
-				upfMetrics[i] = memManagerMetrics[0]
-			}
-		}
-
-		fusePrintMetrics(t, serveMetrics, upfMetrics, isUPFEnabledTest, true, funcName, "parallelServe.csv")
-
-		vmID += parallel
+	if !*isWithCache {
+		dropPageCache()
 	}
+
+	tStart := time.Now()
+	for i := 0; i < parallel; i++ {
+		vmIDString := strconv.Itoa(vmID + i)
+
+		vmGroup.Add(1)
+
+		go func(i int) {
+			defer vmGroup.Done()
+
+			resp, metr, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+			serveMetrics[i] = metr
+		}(i)
+	}
+
+	vmGroup.Wait()
+
+	log.Printf("Started %d instances in %d milliseconds", parallel, time.Since(tStart).Milliseconds())
+
+	for i := 0; i < parallel; i++ {
+		vmIDString := strconv.Itoa(vmID + i)
+		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
+
+		if *isUPFEnabledTest {
+			memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "_0")
+			require.NoError(t, err, "Failed to ge tupf metrics")
+			require.Equal(t, len(memManagerMetrics), 1, "wrong length")
+			upfMetrics[i] = memManagerMetrics[0]
+		}
+	}
+
+	fusePrintMetrics(t, serveMetrics, upfMetrics, isUPFEnabledTest, true, *funcName, "parallelServe.csv")
+
 }
 
 func TestBenchWarmServe(t *testing.T) {
@@ -138,59 +133,59 @@ func TestBenchWarmServe(t *testing.T) {
 		memManagerMetrics []*metrics.Metric
 	)
 
+	imageName, isPresent := images[*funcName]
+	require.True(t, isPresent, "Function is not supported")
+
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	createResultsDir()
 
-	for funcName, imageName := range images {
-		vmIDString := strconv.Itoa(vmID)
+	vmIDString := strconv.Itoa(vmID)
 
-		// First time invoke (cold start)
-		resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+	// First time invoke (cold start)
+	resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+	require.NoError(t, err, "Function returned error")
+	require.Equal(t, resp.Payload, "Hello, replay_response!")
+
+	// memory footprint
+	memFootprint, err := getMemFootprint()
+	if err != nil {
+		log.Warnf("Failed to get memory footprint of VM=%s, image=%s\n", vmIDString, imageName)
+	}
+
+	// Measure warm
+	serveMetrics := make([]*metrics.Metric, *iterNum)
+
+	for k := 0; k < *iterNum; k++ {
+		if !*isWithCache {
+			dropPageCache()
+		}
+
+		resp, met, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-		// just use the last measurement for memory footprint
-		memFootprint, err := getMemFootprint()
-		if err != nil {
-			log.Warnf("Failed to get memory footprint of VM=%s, image=%s\n", vmIDString, imageName)
-		}
-
-		// Measure warm
-		serveMetrics := make([]*metrics.Metric, *iterNum)
-
-		for k := 0; k < *iterNum; k++ {
-			if !*isWithCache {
-				dropPageCache()
-			}
-
-			resp, met, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-			require.NoError(t, err, "Function returned error")
-			require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-			serveMetrics[k] = met
-			time.Sleep(2 * time.Second)
-		}
-
-		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-
-		// FUSE
-		if orch.GetUPFEnabled() {
-			// Page stats
-			err = funcPool.DumpUPFPageStats(vmIDString, imageName, funcName, getOutFile("pageStats.csv"))
-			require.NoError(t, err, "Failed to dump page stats for"+funcName)
-
-			memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "_0")
-			require.NoError(t, err, "Failed to dump get stats for "+funcName)
-			require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
-		}
-
-		fusePrintMetrics(t, serveMetrics, memManagerMetrics, isUPFEnabledTest, true, funcName, "serve.csv")
-
-		appendMemFootprint(getOutFile("serve.csv"), memFootprint)
-		vmID++
+		serveMetrics[k] = met
 	}
+
+	message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+	require.NoError(t, err, "Function returned error, "+message)
+
+	// FUSE
+	if orch.GetUPFEnabled() {
+		// Page stats
+		err = funcPool.DumpUPFPageStats(vmIDString, imageName, *funcName, getOutFile("pageStats.csv"))
+		require.NoError(t, err, "Failed to dump page stats for"+*funcName)
+
+		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "_0")
+		require.NoError(t, err, "Failed to dump get stats for "+*funcName)
+		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
+	}
+
+	fusePrintMetrics(t, serveMetrics, memManagerMetrics, isUPFEnabledTest, true, *funcName, "serve.csv")
+
+	appendMemFootprint(getOutFile("serve.csv"), memFootprint)
+
 }
 
 func TestBenchServe(t *testing.T) {
@@ -203,56 +198,59 @@ func TestBenchServe(t *testing.T) {
 		memManagerMetrics []*metrics.Metric
 	)
 
+	imageName, isPresent := images[*funcName]
+	require.True(t, isPresent, "Function is not supported")
+
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	createResultsDir()
 
-	for funcName, imageName := range images {
-		// Pull image
-		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+	// Pull image
+	resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+	require.NoError(t, err, "Function returned error")
+	require.Equal(t, resp.Payload, "Hello, record_response!")
+
+	vmIDString := strconv.Itoa(vmID)
+
+	createSnapshots(t, 1, vmID, imageName, isSyncOffload)
+
+	createRecords(t, 1, vmID, imageName, isSyncOffload)
+
+	// Measure
+	serveMetrics := make([]*metrics.Metric, *iterNum)
+
+	for k := 0; k < *iterNum; k++ {
+		if !*isWithCache {
+			dropPageCache()
+		}
+
+		resp, met, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
+		require.Equal(t, resp.Payload, "Hello, replay_response!")
 
-		vmIDString := strconv.Itoa(vmID)
+		serveMetrics[k] = met
 
-		createSnapshots(t, 1, vmID, imageName, isSyncOffload)
+		time.Sleep(1 * time.Second) // this helps kworker hanging
 
-		createRecords(t, 1, vmID, imageName, isSyncOffload)
+		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
+		require.NoError(t, err, "Function returned error, "+message)
 
-		// Measure
-		serveMetrics := make([]*metrics.Metric, *iterNum)
-
-		for k := 0; k < *iterNum; k++ {
-			if !*isWithCache {
-				dropPageCache()
-			}
-
-			resp, met, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
-			require.NoError(t, err, "Function returned error")
-			require.Equal(t, resp.Payload, "Hello, replay_response!")
-
-			serveMetrics[k] = met
-			time.Sleep(1 * time.Second)
-			message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-			require.NoError(t, err, "Function returned error, "+message)
-			time.Sleep(5 * time.Second)
-		}
-
-		// FUSE
-		if orch.GetUPFEnabled() {
-			// Page stats
-			err = funcPool.DumpUPFPageStats(vmIDString, imageName, funcName, getOutFile("pageStats.csv"))
-			require.NoError(t, err, "Failed to dump page stats for"+funcName)
-
-			memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "_0")
-			require.NoError(t, err, "Failed to dump get stats for "+funcName)
-			require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
-		}
-
-		fusePrintMetrics(t, serveMetrics, memManagerMetrics, isUPFEnabledTest, true, funcName, "serve.csv")
-
-		vmID++
+		time.Sleep(3 * time.Second) // this helps kworker hanging
 	}
+
+	// FUSE
+	if orch.GetUPFEnabled() {
+		// Page stats
+		err = funcPool.DumpUPFPageStats(vmIDString, imageName, *funcName, getOutFile("pageStats.csv"))
+		require.NoError(t, err, "Failed to dump page stats for"+*funcName)
+
+		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "_0")
+		require.NoError(t, err, "Failed to dump get stats for "+*funcName)
+		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
+	}
+
+	fusePrintMetrics(t, serveMetrics, memManagerMetrics, isUPFEnabledTest, true, *funcName, "serve.csv")
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -356,18 +354,18 @@ func getOutFile(name string) string {
 
 func getAllImages() map[string]string {
 	return map[string]string{
-		//"helloworld": "ustiugov/helloworld:var_workload",
-		//"chameleon":    "ustiugov/chameleon:var_workload",
-		//"pyaes":        "ustiugov/pyaes:var_workload",
-		//"image_rotate": "ustiugov/image_rotate:var_workload",
-		//"image_rotate_s3": "ustiugov/image_rotate_s3:var_workload",
-		//"json_serdes":  "ustiugov/json_serdes:var_workload",
-		//"json_serdes_s3":  "ustiugov/json_serdes_s3:var_workload",
-		//"lr_serving":   "ustiugov/lr_serving:var_workload",
-		//"cnn_serving":  "ustiugov/cnn_serving:var_workload",
-		//"rnn_serving":  "ustiugov/rnn_serving:var_workload",
-		//"lr_training_s3":  "ustiugov/lr_training_s3:var_workload",
-		//"lr_training":  "ustiugov/lr_training:var_workload",
+		"helloworld":          "ustiugov/helloworld:var_workload",
+		"chameleon":           "ustiugov/chameleon:var_workload",
+		"pyaes":               "ustiugov/pyaes:var_workload",
+		"image_rotate":        "ustiugov/image_rotate:var_workload",
+		"image_rotate_s3":     "ustiugov/image_rotate_s3:var_workload",
+		"json_serdes":         "ustiugov/json_serdes:var_workload",
+		"json_serdes_s3":      "ustiugov/json_serdes_s3:var_workload",
+		"lr_serving":          "ustiugov/lr_serving:var_workload",
+		"cnn_serving":         "ustiugov/cnn_serving:var_workload",
+		"rnn_serving":         "ustiugov/rnn_serving:var_workload",
+		"lr_training_s3":      "ustiugov/lr_training_s3:var_workload",
+		"lr_training":         "ustiugov/lr_training:var_workload",
 		"video_processing_s3": "ustiugov/video_processing_s3:var_workload",
 	}
 }
