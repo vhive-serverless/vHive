@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 env:
-  GOOS: linux 
+  GOOS: linux
   GO111MODULE: on
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
-        
+
 #    - name: Setup Node
 #      run: source ./scripts/travis/setup_node.sh
 
