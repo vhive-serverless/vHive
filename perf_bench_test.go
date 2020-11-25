@@ -36,9 +36,9 @@ import (
 
 var (
 	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts (default is false)")
-	vmNum           = flag.Int("vm", 2, "The number of VMs")
-	targetReqPerSec = flag.Int("requestPerSec", 2, "The target number of requests per second")
-	executionTime   = flag.Int("executionTime", 2, "The execution time of the benchmark in seconds")
+	vmNum           = flag.Int("vm", 10, "The number of VMs")
+	targetReqPerSec = flag.Int("requestPerSec", 4, "The target number of requests per second")
+	executionTime   = flag.Int("executionTime", 30, "The execution time of the benchmark in seconds")
 )
 
 func TestBenchRequestPerSecond(t *testing.T) {
@@ -80,12 +80,20 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		funcs = append(funcs, funcName)
 	}
 
+	funcsLen := len(funcs)
+	var vmGroup sync.WaitGroup
+	vmGroup.Add(*vmNum)
+
 	// Boot VMs
 	for i := 0; i < *vmNum; i++ {
 		vmIDString := strconv.Itoa(i)
-		_, err := funcPool.AddInstance(vmIDString, images[funcs[i%len(funcs)]])
-		require.NoError(t, err, "Function returned error")
+		go func(vmIDString string, funcIdx int) {
+			defer vmGroup.Done()
+			_, err := funcPool.AddInstance(vmIDString, images[funcs[funcIdx]])
+			require.NoError(t, err, "Function returned error")
+		}(vmIDString, i%funcsLen)
 	}
+	vmGroup.Wait()
 
 	if !*isWithCache && *isColdStart {
 		log.Info("Profile cold start")
@@ -93,7 +101,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	}
 
 	ticker := time.NewTicker(timeInterval)
-	var vmGroup sync.WaitGroup
+
 	done := make(chan bool, 1)
 
 	for totalRequests > 0 {
@@ -102,7 +110,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 			totalRequests--
 			vmGroup.Add(1)
 
-			funcName := funcs[vmID%len(funcs)]
+			funcName := funcs[vmID%funcsLen]
 			imageName := images[funcName]
 			vmIDString := strconv.Itoa(vmID)
 
@@ -142,14 +150,14 @@ func serveVM(t *testing.T, start time.Time, vmIDString, imageName string, vmGrou
 
 func getImages() map[string]string {
 	return map[string]string{
-		"helloworld": "ustiugov/helloworld:var_workload",
-		// "chameleon":    "ustiugov/chameleon:var_workload",
-		// "pyaes":        "ustiugov/pyaes:var_workload",
-		// "image_rotate": "ustiugov/image_rotate:var_workload",
-		// "json_serdes":  "ustiugov/json_serdes:var_workload",
-		// "lr_serving":   "ustiugov/lr_serving:var_workload",
-		// "cnn_serving":  "ustiugov/cnn_serving:var_workload",
-		// "rnn_serving":  "ustiugov/rnn_serving:var_workload",
-		// "lr_training":  "ustiugov/lr_training:var_workload",
+		"helloworld":   "ustiugov/helloworld:var_workload",
+		"chameleon":    "ustiugov/chameleon:var_workload",
+		"pyaes":        "ustiugov/pyaes:var_workload",
+		"image_rotate": "ustiugov/image_rotate:var_workload",
+		"json_serdes":  "ustiugov/json_serdes:var_workload",
+		"lr_serving":   "ustiugov/lr_serving:var_workload",
+		"cnn_serving":  "ustiugov/cnn_serving:var_workload",
+		"rnn_serving":  "ustiugov/rnn_serving:var_workload",
+		"lr_training":  "ustiugov/lr_training:var_workload",
 	}
 }
