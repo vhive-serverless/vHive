@@ -12,9 +12,9 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201120135927-438ab32ec4cf
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201125102721-6fa5429c84a2
+	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201125164330-518d167f276c
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
-	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201125102721-6fa5429c84a2
+	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201125164330-518d167f276c
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20201120135927-438ab32ec4cf
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.33.1
