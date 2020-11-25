@@ -436,7 +436,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (*metrics.
 
 	<-loadDone
 
-	loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
+	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))
 
 	if loadErr != nil || activateErr != nil {
 		multierr := multierror.Of(loadErr, activateErr)

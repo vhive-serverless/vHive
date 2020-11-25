@@ -3,6 +3,7 @@ module github.com/ustiugov/fccd-orchestrator/ctriface
 go 1.13
 
 replace github.com/firecracker-microvm/firecracker-containerd => github.com/ustiugov/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152
+
 replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/ustiugov/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
 
 require (
@@ -15,7 +16,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
 	github.com/ustiugov/fccd-orchestrator/memory/manager v0.0.0-20201120135927-438ab32ec4cf
-	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201120135927-438ab32ec4cf
+	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201125102612-103ba78db6a1
 	github.com/ustiugov/fccd-orchestrator/misc v0.0.0-20201120144849-ac2c5007923b
 	google.golang.org/grpc v1.31.0
 
