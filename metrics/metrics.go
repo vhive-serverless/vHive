@@ -41,7 +41,7 @@ const (
 	ConnectFuncClient = "ConnectFuncClient"
 
 	// Full Used when there is no breakdown
-	Full = "Full"
+	LoadVMM = "LoadVMM"
 
 	// AddInstance Time to add instance - load snap or start vm
 	AddInstance = "AddInstance"
