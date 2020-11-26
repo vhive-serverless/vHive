@@ -1,4 +1,4 @@
-name: Go
+name: vHive tests
 
 on:
   push:
@@ -13,23 +13,29 @@ env:
 jobs:
 
   build:
-    name: Build and Check Syntax
-    runs-on: self-hosted
+    strategy:
+      matrix:
+        go: ['1.13', '1.14', '1.15']
+      # Build all variants regardless of failures
+      fail-fast: false
+
+    name: Build and check code quality
+    runs-on: ubuntu-18.04
     steps:
 
-    - name: Set up Go 1.x
+    - name: Set up Go ${{ matrix.go }}
       uses: actions/setup-go@v2
       with:
-        go-version: 1.14.12
+        go-version: ${{ matrix.go }}
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+      with:
+        # to add commit DCO checks later
+        fetch-depth: 21
 
-#    - name: Check code
-#      run: |
-#          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b . v1.25.0
-#          ./golangci-lint run
-#      uses: Jerome1337/golint-action@v1.0.2
+    - name: Check code
+      uses: Jerome1337/golint-action@v1.0.2
 
     - name: Get dependencies
       run: |
@@ -39,8 +45,8 @@ jobs:
             dep ensure
         fi
 
-#    - name: Setup Node
-#      run: source ./scripts/travis/setup_node.sh
+    - name: Setup Node
+      run: source ./scripts/travis/setup_node.sh
 
     - name: Build
       run: go build -race -v -a ./...
@@ -52,7 +58,7 @@ jobs:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: 1.14.12
+        go-version: 1.14
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
