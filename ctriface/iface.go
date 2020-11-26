@@ -52,7 +52,7 @@ import (
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
 
-// StartVMResponse is the reponse return by StartVM
+// StartVMResponse is the response returned by StartVM
 // TODO: Integrate response with non-cri API
 type StartVMResponse struct {
 	// GuestIP is the IP of the guest MicroVM

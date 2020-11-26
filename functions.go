@@ -225,7 +225,7 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 // 2. Function (that is not pinned) can serve only up to servedTh requests (controlled by a WeightedSemaphore)
 //    a. The last goroutine needs to trigger the function's instance shutdown, then reset the semaphore,
 //       allowing new goroutines to serve their requests.
-//    b. The last goroutine is determined by the atomic counter: the goroutine wih syncID==0 shuts down
+//    b. The last goroutine is determined by the atomic counter: the goroutine with syncID==0 shuts down
 //       the instance.
 //    c. Instance shutdown is performed asynchronously because all instances have unique IDs.
 func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, *metrics.Metric, error) {
@@ -369,7 +369,7 @@ func (f *Function) AddInstance() *metrics.Metric {
 	tStart := time.Now()
 	funcClient, err := f.getFuncClient()
 	if metr != nil {
-	metr.MetricMap[metrics.ConnectFuncClient] = metrics.ToUS(time.Since(tStart))
+		metr.MetricMap[metrics.ConnectFuncClient] = metrics.ToUS(time.Since(tStart))
 	}
 	if err != nil {
 		logger.Panic("Failed to acquire func client")
@@ -613,4 +613,3 @@ func timeoutDialer(address string, timeout time.Duration) (net.Conn, error) {
 		return nil, errors.Errorf("dial %s: timeout", address)
 	}
 }
-
