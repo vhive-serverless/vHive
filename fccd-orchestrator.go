@@ -77,6 +77,8 @@ func main() {
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 	criSock = flag.String("criSock", "/etc/firecracker-containerd/fccd-cri.sock", "Socket address for CRI service")
 
+	flag.Parse()
+
 	if *isUPFEnabled && !*isSnapshotsEnabled {
 		log.Error("User-level page faults are not supported without snapshots")
 		return
@@ -99,7 +101,6 @@ func main() {
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
 	log.SetOutput(os.Stdout)
-	flag.Parse()
 
 	if *debug {
 		log.SetLevel(log.DebugLevel)
