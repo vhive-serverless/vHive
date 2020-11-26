@@ -12,7 +12,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201120135927-438ab32ec4cf
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201126100319-1ae1698f2302
+	github.com/ustiugov/fccd-orchestrator/ctriface s3_workloads
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
 	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201126100521-1bb17343eab0
 	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20201120135927-438ab32ec4cf
