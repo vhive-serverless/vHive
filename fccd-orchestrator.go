@@ -33,9 +33,9 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
+	fccdcri "github.com/ustiugov/fccd-orchestrator/cri"
 	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
-	fccdcri "github.com/ustiugov/fccd-orchestrator/cri"
 	pb "github.com/ustiugov/fccd-orchestrator/proto"
 	"google.golang.org/grpc"
 )

@@ -16,7 +16,7 @@ import (
 
 func TestSnapLoad(t *testing.T) {
 	// Need to clean up manually after this test because StopVM does not
-	// work for stopping machiens which are loaded from snapshots yet
+	// work for stopping machines which are loaded from snapshots yet
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,

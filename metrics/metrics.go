@@ -40,7 +40,7 @@ const (
 	// ConnectFuncClient Time it takes to reconnect function client
 	ConnectFuncClient = "ConnectFuncClient"
 
-	// Full Used when there is no breakdown
+	// LoadVMM Name of LoadVMM metric
 	LoadVMM = "LoadVMM"
 
 	// AddInstance Time to add instance - load snap or start vm
