@@ -54,6 +54,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	)
 
 	log.SetLevel(log.InfoLevel)
+	bootStart := time.Now()
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
@@ -89,9 +90,10 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		dropPageCache()
 	}
 
-	ticker := time.NewTicker(timeInterval)
 	done := make(chan bool, 1)
 	var vmGroup sync.WaitGroup
+	ticker := time.NewTicker(timeInterval)
+	log.Debugf("All VMs booted in %d ms", time.Since(bootStart).Milliseconds())
 
 	for totalRequests > 0 {
 		select {
@@ -139,14 +141,14 @@ func serveVM(t *testing.T, start time.Time, vmIDString, imageName string, vmGrou
 
 func getImages() map[string]string {
 	return map[string]string{
-		"helloworld": "ustiugov/helloworld:var_workload",
+		// "helloworld": "ustiugov/helloworld:var_workload",
 		// "chameleon":    "ustiugov/chameleon:var_workload",
-		// "pyaes":        "ustiugov/pyaes:var_workload",
+		// "pyaes": "ustiugov/pyaes:var_workload",
 		// "image_rotate": "ustiugov/image_rotate:var_workload",
-		// "json_serdes":  "ustiugov/json_serdes:var_workload",
+		// "json_serdes": "ustiugov/json_serdes:var_workload",
 		// "lr_serving":   "ustiugov/lr_serving:var_workload",
 		// "cnn_serving":  "ustiugov/cnn_serving:var_workload",
-		// "rnn_serving":  "ustiugov/rnn_serving:var_workload",
-		// "lr_training":  "ustiugov/lr_training:var_workload",
+		// "rnn_serving": "ustiugov/rnn_serving:var_workload",
+		"lr_training": "ustiugov/lr_training:var_workload",
 	}
 }
