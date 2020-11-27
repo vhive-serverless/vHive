@@ -947,7 +947,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:20e758e132f19fd1ee61c2c5c1331dcb6f203a175b993ef8d122cdebfea8ad56
+  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:83c28e6457917928863b46fa22dfed7f26441303da464818bdfe9847cd5de7bf
 
 ---
 # Copyright 2018 The Knative Authors
@@ -1314,7 +1314,7 @@ metadata:
 data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:20e758e132f19fd1ee61c2c5c1331dcb6f203a175b993ef8d122cdebfea8ad56
+  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:83c28e6457917928863b46fa22dfed7f26441303da464818bdfe9847cd5de7bf
   _example: |
     ################################
     #                              #
@@ -2193,7 +2193,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:d09ff757d638344347e596d0b388b4ee386836ad24cbc90cc8376b7bea7c4a31
+          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:c6dcf95da396ca9634f95de9f9284f6231956428a519f40fa4d89171546d59e2
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -2343,7 +2343,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:244956c809c7d309c187fd037d707faa68f917cdee56ead6350715e378a0b521
+          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:83d34b4c23a899c06cda5af6749e76b5a475421b9c75c724ac9532467a12bb98
           resources:
             requests:
               cpu: 30m
@@ -2471,7 +2471,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:ee4db481f78b89b853fabc0c7dbea220eb062b63c8221c4247b141f2d6a38523
+          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:47bf5e2a05720b2658c4bd27778dd33968dc169513d1e0951c3e2ee47b3d426a
           resources:
             requests:
               cpu: 100m
@@ -2629,7 +2629,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:7d948bde8dac809ea59935a48663ce4138761faa7bcba53644e9bee85a5e18a8
+          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:5ac29af1d8a373f463f6a2a5422df41a707c410e35aa969691f5fb196f778fa4
           resources:
             requests:
               cpu: 100m
