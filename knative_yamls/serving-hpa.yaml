@@ -47,7 +47,7 @@ spec:
         - name: autoscaler-hpa
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:98820c18bbb97da22c906e7d3f000cc7c7cb893033fedfca4038a6258bf6d487
+          image: docker.io/vhiveease/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:d2944735a19f4745e76d5948fb35c5e83ffe80cee8a36d66f2dbee207890d319
           resources:
             requests:
               cpu: 30m
