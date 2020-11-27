@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       containers:
-        - image: busybox # Reference to the image of the app
+        - image: library/busybox # Reference to the image of the app
           ports:
             - name: h2c
               containerPort: 50051
