@@ -24,6 +24,7 @@ package cri
 
 import (
 	"context"
+	"errors"
 
 	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -31,9 +32,11 @@ import (
 
 const (
 	userContainerName = "user-container"
-	guestIPEnv        = "GUESTIP"
-	guestPortEnv      = "GUESTPORT"
-	guestImageEnv     = "GUESTIMAGE"
+	queueProxyName    = "queue-proxy"
+	guestIPEnv        = "GUEST_ADDR"
+	guestPortEnv      = "GUEST_PORT"
+	guestImageEnv     = "GUEST_IMAGE"
+	guestPortValue    = "50051"
 )
 
 // CreateContainer starts a container or a VM, depending on the name
@@ -45,45 +48,88 @@ func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainer
 
 	config := r.GetConfig()
 	containerName := config.GetMetadata().GetName()
-	log.Debugf("received CreateContainer for %s.", containerName)
 
 	if containerName == userContainerName {
-		var image string
-		// Get image name
-		envs := config.GetEnvs()
-		for _, kv := range envs {
-			if kv.GetKey() == guestImageEnv {
-				image = kv.GetValue()
-				break
-			}
-		}
-
-		fi, err := s.coordinator.startVM(context.Background(), image)
-		if err != nil {
-			log.WithError(err).Error("failed to start VM")
-			return nil, err
-		}
-
-		// Add guest IP
-		guestIPEnv := &criapi.KeyValue{Key: guestIPEnv, Value: fi.startVMResponse.GuestIP}
-		envs = append(envs, guestIPEnv)
-		r.Config.Envs = envs
-
-		resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
-		containerdID := resp.ContainerId
-		if err != nil {
-			log.WithError(err).Error("stock containerd failed to start UC")
-			return nil, err
-		}
-
-		err = s.coordinator.insertActive(containerdID, fi)
-		if err != nil {
-			log.WithError(err).Error("failed to insert active VM")
-			return nil, err
-		}
-
-		return resp, nil
+		return s.processUserContainer(ctx, r)
+	}
+	if containerName == queueProxyName {
+		return s.processQueueProxy(ctx, r)
 	}
 
+	// Containers irrelevant to user's workload
 	return s.stockRuntimeClient.CreateContainer(ctx, r)
+}
+
+func (s *Service) processUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	config := r.GetConfig()
+
+	vmConfig, err := getGuestImagePort(config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	s.insertPodConfig(r.GetPodSandboxId(), vmConfig)
+
+	// TODO: (Plamen) Remove when book keeping is fully supported for the VM
+	return s.stockRuntimeClient.CreateContainer(ctx, r)
+}
+
+func (s *Service) processQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	vmConfig, err := s.getPodConfig(r.GetPodSandboxId())
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	s.removePodConfig(r.GetPodSandboxId())
+
+	fi, err := s.coordinator.startVM(context.Background(), vmConfig.guestImage)
+	if err != nil {
+		log.WithError(err).Error("failed to start VM")
+		return nil, err
+	}
+
+	// Add guest IP and port
+	guestIPKeyVal := &criapi.KeyValue{Key: guestIPEnv, Value: fi.startVMResponse.GuestIP}
+	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: vmConfig.guestPort}
+	r.Config.Envs = append(r.Config.Envs, guestIPKeyVal, guestPortKeyVal)
+
+	resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
+	if err != nil {
+		log.WithError(err).Error("stock containerd failed to start UC")
+		return nil, err
+	}
+
+	containerdID := resp.ContainerId
+	err = s.coordinator.insertActive(containerdID, fi)
+	if err != nil {
+		log.WithError(err).Error("failed to insert active VM")
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func getGuestImagePort(config *criapi.ContainerConfig) (*VMConfig, error) {
+	var (
+		image, port string
+	)
+
+	envs := config.GetEnvs()
+	for _, kv := range envs {
+		if kv.GetKey() == guestImageEnv {
+			image = kv.GetValue()
+			break
+		}
+	}
+
+	// Hardcode port for now
+	port = guestPortValue
+
+	if image == "" || port == "" {
+		return nil, errors.New("failed to provide non empty guest image and port in user container config")
+	}
+
+	return &VMConfig{guestImage: image, guestPort: port}, nil
 }
