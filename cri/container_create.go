@@ -113,19 +113,28 @@ func (s *Service) processQueueProxy(ctx context.Context, r *criapi.CreateContain
 
 func getGuestImagePort(config *criapi.ContainerConfig) (*VMConfig, error) {
 	var (
-		image, port string
+		image, port           string
+		imageFound, portFound bool
 	)
 
 	envs := config.GetEnvs()
 	for _, kv := range envs {
 		if kv.GetKey() == guestImageEnv {
 			image = kv.GetValue()
+			imageFound = true
+		} else if kv.GetKey() == guestPortEnv {
+			port = kv.GetValue()
+			portFound = true
+		}
+		if imageFound && portFound {
 			break
 		}
 	}
 
-	// Hardcode port for now
-	port = guestPortValue
+	// default value if port not provided
+	if port == "" {
+		port = guestPortValue
+	}
 
 	if image == "" || port == "" {
 		return nil, errors.New("failed to provide non empty guest image and port in user container config")
