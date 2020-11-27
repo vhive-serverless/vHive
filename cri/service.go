@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -44,12 +45,23 @@ const (
 
 // Service contains essential objects for host orchestration.
 type Service struct {
+	sync.Mutex
+
 	criapi.ImageServiceServer
 	criapi.RuntimeServiceServer
 	orch               *ctriface.Orchestrator
 	stockRuntimeClient criapi.RuntimeServiceClient
 	stockImageClient   criapi.ImageServiceClient
 	coordinator        *coordinator
+
+	// to store mapping from pod to guest image and port temporarily
+	podVMConfigs map[string]*VMConfig
+}
+
+// VMConfig wraps the IP and port of the guest VM
+type VMConfig struct {
+	guestImage string
+	guestPort  string
 }
 
 // NewService initializes the host orchestration state.
@@ -75,6 +87,7 @@ func NewService(orch *ctriface.Orchestrator) (*Service, error) {
 		stockRuntimeClient: stockRuntimeClient,
 		stockImageClient:   stockImageClient,
 		coordinator:        newCoordinator(orch),
+		podVMConfigs:       make(map[string]*VMConfig),
 	}
 
 	return cs, nil
@@ -120,4 +133,31 @@ func getDialOpts() []grpc.DialOption {
 		grpc.WithContextDialer(dialer),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
 	}
+}
+
+func (s *Service) insertPodConfig(podID string, vmConfig *VMConfig) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.podVMConfigs[podID] = vmConfig
+}
+
+func (s *Service) removePodConfig(podID string) {
+	s.Lock()
+	defer s.Unlock()
+
+	delete(s.podVMConfigs, podID)
+}
+
+func (s *Service) getPodConfig(podID string) (*VMConfig, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	vmConfig, isPresent := s.podVMConfigs[podID]
+	if !isPresent {
+		log.Errorf("VM config for pod %s does not exist", podID)
+		return nil, errors.New("VM config for pod does not exist")
+	}
+
+	return vmConfig, nil
 }

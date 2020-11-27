@@ -7,12 +7,12 @@ spec:
   template:
     spec:
       containers:
-        - image: plamenppetrov/uc-grpc # Reference to the image of the app
+        - image: busybox # Reference to the image of the app
           ports:
             - name: h2c
-              containerPort: 8080
+              containerPort: 50051
           env:
-            - name: GUESTPORT # The environment variable printed out by the sample app
+            - name: GUEST_PORT # The environment variable printed out by the sample app
               value: "50051"
-            - name: GUESTIMAGE
+            - name: GUEST_IMAGE
               value: "ustiugov/helloworld:var_workload"
