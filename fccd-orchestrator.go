@@ -146,7 +146,7 @@ func criServe() {
 
 	s := grpc.NewServer()
 
-	criService, err := fccdcri.NewCriService(orch)
+	criService, err := fccdcri.NewService(orch)
 	if err != nil {
 		log.Fatalf("failed to create CRI service %v", err)
 	}

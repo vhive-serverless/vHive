@@ -11,7 +11,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
-	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201120135927-438ab32ec4cf
+	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201127113826-cea70ad8af78
 	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201126101404-9cc854695c78
 	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
 	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201126101142-295dcf747c86
