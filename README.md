@@ -1,5 +1,8 @@
 [![Build Status](https://travis-ci.com/ease-lab/vhive-orchestrator.svg?token=Dx4z7rB8qLcioVK5Dhsr&branch=master)](https://travis-ci.com/github/ease-lab/vhive-orchestrator)
-<br />
+[![Go Report Card](https://goreportcard.com/badge/github.com/ease-lab/vhive-orchestrator)](https://goreportcard.com/report/github.com/ease-lab/vhive-orchestrator)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+![vHive Logo Title](docs/figures/vhive_logo.png)
 
 # Usage notes
 
