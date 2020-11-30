@@ -79,6 +79,8 @@ github.com/ease-lab/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152/go
 github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123/go.mod h1:zyc9BrKGePpNLbQ5y2ZtdzXEfpMJeHPeFNVpyo0S1WQ=
 github.com/ease-lab/vhive/memory/manager v0.0.0-20201130161836-25b08f5afe7e h1:nKFsJ8LJ/IUZzG+KHlomtQSI9g4O5nmjUik/khgG0NY=
 github.com/ease-lab/vhive/memory/manager v0.0.0-20201130161836-25b08f5afe7e/go.mod h1:bvoyf6ckFJsUwoMXObz8T4IOfLSQMQh1fv0YlRNW164=
+github.com/ease-lab/vhive/memory/manager v0.0.0-20201130190645-c3b71d99f772 h1:44o4m6e/0UotDo0FfuUbRJN67NjVmFgaCYDjIYg2uu8=
+github.com/ease-lab/vhive/memory/manager v0.0.0-20201130190645-c3b71d99f772/go.mod h1:dUy+2+JNuvKrAHleHc8c2r670k3oU7esUPz1x+XuQKc=
 github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15 h1:Cm72CLf1msToq5s0EDmdmVq3SQAkhJl9yLjya2vFpXQ=
 github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15/go.mod h1:+tSvpQ2ZFtwkwGvU+sj/V96yBO6YhgkT0iZVXJ8dlXE=
 github.com/ease-lab/vhive/misc v0.0.0-20201130161836-25b08f5afe7e h1:0utPCmIhH666SgBi4Knm/loPk8GL1AJZVS/9G7urZK0=
@@ -328,6 +330,7 @@ golang.org/x/net v0.0.0-20190613194153-d28f0bde5980/go.mod h1:z5CRVTTTmAJ677TzLL
 golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/net v0.0.0-20191004110552-13f9640d40b9/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
+golang.org/x/net v0.0.0-20200625001655-4c5254603344 h1:vGXIOMxbNfDTk/aXCmfdLgkrSV+Z2tcbze+pEc3v5W4=
 golang.org/x/net v0.0.0-20200625001655-4c5254603344/go.mod h1:/O7V0waA8r7cgGh81Ro3o1hOxt32SMVPicZroKQ2sZA=
 golang.org/x/net v0.0.0-20200707034311-ab3426394381 h1:VXak5I6aEWmAXeQjA+QSZzlgNrpq9mjcfDemuexIKsU=
 golang.org/x/net v0.0.0-20200707034311-ab3426394381/go.mod h1:/O7V0waA8r7cgGh81Ro3o1hOxt32SMVPicZroKQ2sZA=
@@ -358,6 +361,7 @@ golang.org/x/sys v0.0.0-20191026070338-33540a1f6037/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20191120155948-bd437916bb0e/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191210023423-ac6580df4449/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200120151820-655fe14d7479/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd h1:xhmwyvizuTgC2qz7ZlMluP20uW+C3Rm0FD/WLDX8884=
 golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200805065543-0cf7623e9dbd h1:wefLe/3g5tC0FcXw3NneLA5tHgbyouyZlfcSjNfOdgk=
 golang.org/x/sys v0.0.0-20200805065543-0cf7623e9dbd/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
