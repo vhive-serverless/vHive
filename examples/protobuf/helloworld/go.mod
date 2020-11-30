@@ -1,4 +1,4 @@
-module github.com/ustiugov/fccd-orchestrator/helloworld
+module github.com/ease-lab/vhive/examples/protobuf/helloworld
 
 go 1.14
 
