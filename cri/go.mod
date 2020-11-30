@@ -60,11 +60,11 @@ replace k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.16.6
 replace k8s.io/sample-controller => k8s.io/sample-controller v0.16.6
 
 require (
-	github.com/ease-lab/vhive/ctriface v0.0.0-20201130183527-3b6f3d738845
+	github.com/ease-lab/vhive/ctriface v0.0.0-20201130191050-143a91f0910c
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
-	google.golang.org/grpc v1.31.0
+	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.0.0-00010101000000-000000000000
 )
