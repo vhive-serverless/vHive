@@ -5,7 +5,7 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && pwd)"
 BINS=$ROOT/bin
-CONFIGS=$ROOT/configs
+CONFIGS=$ROOT/configs/firecracker-containerd
 
 sudo mkdir -p /etc/firecracker-containerd
 sudo mkdir -p /var/lib/firecracker-containerd/runtime

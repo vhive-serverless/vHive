@@ -135,21 +135,21 @@ func getDialOpts() []grpc.DialOption {
 	}
 }
 
-func (s *Service) insertPodConfig(podID string, vmConfig *VMConfig) {
+func (s *Service) insertPodVMConfig(podID string, vmConfig *VMConfig) {
 	s.Lock()
 	defer s.Unlock()
 
 	s.podVMConfigs[podID] = vmConfig
 }
 
-func (s *Service) removePodConfig(podID string) {
+func (s *Service) removePodVMConfig(podID string) {
 	s.Lock()
 	defer s.Unlock()
 
 	delete(s.podVMConfigs, podID)
 }
 
-func (s *Service) getPodConfig(podID string) (*VMConfig, error) {
+func (s *Service) getPodVMConfig(podID string) (*VMConfig, error) {
 	s.Lock()
 	defer s.Unlock()
 
