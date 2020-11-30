@@ -66,8 +66,11 @@ jobs:
     - name: Build
       run: go build -race -v -a ./...
 
-    - name: Tests
-      run: |
-          make test-subdirs
-          make test
-          make test-man-bench
+    - name: Run tests in submodules
+      run: make test-subdirs
+
+    - name: Run vHive end-to-end tests
+      run: make test
+
+    - name: Run vHive tests that need manual cleaning
+      run: make test-man-bench
