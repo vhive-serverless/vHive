@@ -64,7 +64,7 @@ func (s *Service) processUserContainer(ctx context.Context, r *criapi.CreateCont
 	var (
 		stockResp *criapi.CreateContainerResponse
 		stockErr  error
-		stockDone chan struct{}
+		stockDone = make(chan struct{})
 	)
 
 	go func() {
