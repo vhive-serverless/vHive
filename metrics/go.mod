@@ -1,4 +1,4 @@
-module github.com/ustiugov/fccd-orchestrator/metrics
+module github.com/ease-lab/vhive/metrics
 
 go 1.14
 
