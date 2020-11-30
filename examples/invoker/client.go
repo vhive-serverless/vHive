@@ -33,8 +33,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	pb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 	log "github.com/sirupsen/logrus"
-	pb "github.com/ustiugov/fccd-orchestrator/helloworld"
 	"google.golang.org/grpc"
 )
 
