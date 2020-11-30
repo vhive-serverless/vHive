@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,10 +44,10 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
+	"github.com/ease-lab/vhive/memory/manager"
+	"github.com/ease-lab/vhive/metrics"
+	"github.com/ease-lab/vhive/misc"
 	"github.com/go-multierror/multierror"
-	"github.com/ustiugov/fccd-orchestrator/memory/manager"
-	"github.com/ustiugov/fccd-orchestrator/metrics"
-	"github.com/ustiugov/fccd-orchestrator/misc"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
