@@ -1,7 +1,6 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: helloworld # The name of the function instance
   namespace: default
 spec:
   template:
