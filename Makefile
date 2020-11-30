@@ -29,12 +29,11 @@ WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
 CTRDLOGDIR:=/tmp/ctrd-logs
 
-fccd: proto
-	go install github.com/ustiugov/fccd-orchestrator
+vhive: proto
+	go install github.com/ease-lab/vhive
 
 protobuf:
 	protoc -I proto/ proto/orchestrator.proto --go_out=plugins=grpc:proto
-	protoc -I ../workloads/protos ../workloads/protos/helloworld.proto --go_out=plugins=grpc:helloworld
 
 clean:
 	rm proto/orchestrator.pb.go
