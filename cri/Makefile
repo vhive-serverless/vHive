@@ -26,7 +26,7 @@ test:
 	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
 	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
 	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
-	sudo ./../fccd-orchestrator 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
+	sudo ./../vhive 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
 
 	./../scripts/cluster/create_one_node_cluster.sh
 
@@ -45,7 +45,7 @@ test-travis:
 	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
 	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
 	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
-	sudo ./../fccd-orchestrator 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
+	sudo ./../vhive 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
 
 	./../scripts/cluster/create_one_node_cluster.sh
 
