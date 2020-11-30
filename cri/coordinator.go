@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov
+// Copyright (c) 2020 Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
-	"github.com/ustiugov/fccd-orchestrator/ctriface"
 )
 
 type coordinator struct {
