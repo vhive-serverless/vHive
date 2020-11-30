@@ -8,8 +8,8 @@ replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/ease-lab
 
 require (
 	github.com/containerd/containerd v1.3.6
-	github.com/ease-lab/vhive/cri v0.0.0-20201130183803-69d2fba48d80
-	github.com/ease-lab/vhive/ctriface v0.0.0-20201130183527-3b6f3d738845
+	github.com/ease-lab/vhive/cri release_cleanup
+	github.com/ease-lab/vhive/ctriface release_cleanup
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e
 	github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15
 	github.com/ease-lab/vhive/proto v0.0.0-20201130165135-ffb90bb5b604
@@ -17,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	google.golang.org/grpc v1.31.0
+	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.16.16-rc.0 // indirect
 )
 
