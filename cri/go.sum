@@ -86,6 +86,8 @@ github.com/ease-lab/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152/go
 github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123/go.mod h1:zyc9BrKGePpNLbQ5y2ZtdzXEfpMJeHPeFNVpyo0S1WQ=
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130163407-9aec45e35961 h1:eA/OWgqokdKyeuOYC79loCHtWCklyz0A5YrOA7GHhiA=
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130163407-9aec45e35961/go.mod h1:5Lrm1WsNxDMqexDMsMVp7kLNBXR1H2lP+Lzs0Q45QSs=
+github.com/ease-lab/vhive/ctriface v0.0.0-20201130183527-3b6f3d738845 h1:UgRxwvqBTx+f2z+rhzWPABVE+m8k5WHMAaNpHdhauwg=
+github.com/ease-lab/vhive/ctriface v0.0.0-20201130183527-3b6f3d738845/go.mod h1:ds69+ccA1yOn0V6BGkGfamoWda4W2+8GTXb9TFJX1jo=
 github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e h1:+SI1mtFnCWYRh+t0lSUAd6mpfNgylV/s2M4WKTUE8Q0=
 github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e/go.mod h1:HCBvjykbVHOCFaKkKXW+ikRwdOCjQFy745RgCaZgBpo=
 github.com/ease-lab/vhive/memory/manager v0.0.0-20201130161836-25b08f5afe7e h1:nKFsJ8LJ/IUZzG+KHlomtQSI9g4O5nmjUik/khgG0NY=
@@ -94,6 +96,8 @@ github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15 h1:Cm72CLf1
 github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15/go.mod h1:+tSvpQ2ZFtwkwGvU+sj/V96yBO6YhgkT0iZVXJ8dlXE=
 github.com/ease-lab/vhive/misc v0.0.0-20201130161836-25b08f5afe7e h1:0utPCmIhH666SgBi4Knm/loPk8GL1AJZVS/9G7urZK0=
 github.com/ease-lab/vhive/misc v0.0.0-20201130161836-25b08f5afe7e/go.mod h1:URvXfPjvoOwLTHdY2DmWpkdIlolH08A7HyKt2BNLI9Y=
+github.com/ease-lab/vhive/misc v0.0.0-20201130183108-c8a4a7f8b03f h1:tv3py0I9BsnTZCyeIJq0ksdmxfVWfhDSuPoMhXCPQr4=
+github.com/ease-lab/vhive/misc v0.0.0-20201130183108-c8a4a7f8b03f/go.mod h1:Yfpz6QjHTdfMPBXtTz6cPSehfSacpYrSilZELFVaam8=
 github.com/ease-lab/vhive/taps v0.0.0-20201130160304-f57486a97db0 h1:a/Z5FxDrI7uqJTo5f8ZQZabDNE3pzJhzawJv54zQE+4=
 github.com/ease-lab/vhive/taps v0.0.0-20201130160304-f57486a97db0/go.mod h1:67wcnMnFDZkEhX+lM5xpZxYbJ1N65O+LsrRvDHw1VKQ=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
@@ -462,6 +466,7 @@ google.golang.org/grpc v1.25.1/go.mod h1:c3i+UQWmh7LiEpx4sFZnkU36qjEYZ0imhYfXVyQ
 google.golang.org/grpc v1.26.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
 google.golang.org/grpc v1.27.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
 google.golang.org/grpc v1.30.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM8pak=
+google.golang.org/grpc v1.31.0 h1:T7P4R73V3SSDPhH7WW7ATbfViLtmamH0DKrP3f9AuDI=
 google.golang.org/grpc v1.31.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM8pak=
 google.golang.org/grpc v1.33.1 h1:DGeFlSan2f+WEtCERJ4J9GJWk15TxUi8QGagfI87Xyc=
 google.golang.org/grpc v1.33.1/go.mod h1:fr5YgcSWrqhRRxogOsw7RzIpsmvOZ6IcH4kBYTpR3n0=
