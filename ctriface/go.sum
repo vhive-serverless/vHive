@@ -83,6 +83,8 @@ github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15 h1:Cm72CLf1
 github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15/go.mod h1:+tSvpQ2ZFtwkwGvU+sj/V96yBO6YhgkT0iZVXJ8dlXE=
 github.com/ease-lab/vhive/misc v0.0.0-20201130161836-25b08f5afe7e h1:0utPCmIhH666SgBi4Knm/loPk8GL1AJZVS/9G7urZK0=
 github.com/ease-lab/vhive/misc v0.0.0-20201130161836-25b08f5afe7e/go.mod h1:URvXfPjvoOwLTHdY2DmWpkdIlolH08A7HyKt2BNLI9Y=
+github.com/ease-lab/vhive/misc v0.0.0-20201130183108-c8a4a7f8b03f h1:tv3py0I9BsnTZCyeIJq0ksdmxfVWfhDSuPoMhXCPQr4=
+github.com/ease-lab/vhive/misc v0.0.0-20201130183108-c8a4a7f8b03f/go.mod h1:Yfpz6QjHTdfMPBXtTz6cPSehfSacpYrSilZELFVaam8=
 github.com/ease-lab/vhive/taps v0.0.0-20201130160304-f57486a97db0 h1:a/Z5FxDrI7uqJTo5f8ZQZabDNE3pzJhzawJv54zQE+4=
 github.com/ease-lab/vhive/taps v0.0.0-20201130160304-f57486a97db0/go.mod h1:67wcnMnFDZkEhX+lM5xpZxYbJ1N65O+LsrRvDHw1VKQ=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
@@ -164,6 +166,7 @@ github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfb
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.3.3 h1:gyjaxf+svBWX08ZjK86iN9geUJF0H6gp2IRKX6Nf6/I=
 github.com/golang/protobuf v1.3.3/go.mod h1:vzj43D7+SQXF/4pzW/hwtAqwc6iTitCiVSaWz5lYuqw=
 github.com/golang/protobuf v1.4.0-rc.1/go.mod h1:ceaxUfeHdC40wWswd/P6IGgMaK3YpKi5j83Wpe3EHw8=
 github.com/golang/protobuf v1.4.0-rc.1.0.20200221234624-67d41d38c208/go.mod h1:xKAWHe0F5eneWXFV3EuXVDTCmh+JuBKY0li0aMyXATA=
@@ -394,6 +397,7 @@ google.golang.org/genproto v0.0.0-20181109154231-b5d43981345b/go.mod h1:7Ep/1NZk
 google.golang.org/genproto v0.0.0-20190425155659-357c62f0e4bb/go.mod h1:VzzqZJRnGkLBvHegQrXjBqPurQTc5/KpmUdxsrq26oE=
 google.golang.org/genproto v0.0.0-20190502173448-54afdca5d873/go.mod h1:VzzqZJRnGkLBvHegQrXjBqPurQTc5/KpmUdxsrq26oE=
 google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55/go.mod h1:DMBHOl98Agz4BDEuKkezgsaosCRResVns1a3J2ZsMNc=
+google.golang.org/genproto v0.0.0-20200117163144-32f20d992d24 h1:wDju+RU97qa0FZT0QnZDg9Uc2dH0Ql513kFvHocz+WM=
 google.golang.org/genproto v0.0.0-20200117163144-32f20d992d24/go.mod h1:n3cpQtvxv34hfy77yVDNjmbRyujviMdxYliBSkLhpCc=
 google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 h1:+kGHl1aib/qcwaRi1CbqBZ1rk19r85MNUf8HaBghugY=
 google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013/go.mod h1:NbSheEEYHJ7i3ixzK3sjbqSGDJWnxyFXZblF3eUsNvo=
@@ -406,6 +410,7 @@ google.golang.org/grpc v1.23.1/go.mod h1:Y5yQAOtifL1yxbo5wqy6BxZv8vAUGQwXBOALyac
 google.golang.org/grpc v1.25.1/go.mod h1:c3i+UQWmh7LiEpx4sFZnkU36qjEYZ0imhYfXVyQciAY=
 google.golang.org/grpc v1.26.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
 google.golang.org/grpc v1.27.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
+google.golang.org/grpc v1.31.0 h1:T7P4R73V3SSDPhH7WW7ATbfViLtmamH0DKrP3f9AuDI=
 google.golang.org/grpc v1.31.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM8pak=
 google.golang.org/grpc v1.33.2 h1:EQyQC3sa8M+p6Ulc8yy9SWSS2GVwyRc83gAbG8lrl4o=
 google.golang.org/grpc v1.33.2/go.mod h1:JMHMWHQWaTccqQQlmk3MJZS+GWXOdAesneDmEnv2fbc=
