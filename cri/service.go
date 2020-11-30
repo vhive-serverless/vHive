@@ -60,8 +60,8 @@ type Service struct {
 
 // VMConfig wraps the IP and port of the guest VM
 type VMConfig struct {
-	guestImage string
-	guestPort  string
+	guestIP   string
+	guestPort string
 }
 
 // NewService initializes the host orchestration state.
