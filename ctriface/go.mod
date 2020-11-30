@@ -9,7 +9,6 @@ replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/ease-lab
 require (
 	github.com/containerd/containerd v1.3.6
 	github.com/davecgh/go-spew v1.1.1
-	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e
 	github.com/ease-lab/vhive/memory/manager v0.0.0-20201130161836-25b08f5afe7e
 	github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15
 	github.com/ease-lab/vhive/misc v0.0.0-20201130161836-25b08f5afe7e

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,11 @@ import (
 	"runtime"
 
 	ctrdlog "github.com/containerd/containerd/log"
+	fccdcri "github.com/ease-lab/vhive/cri"
+	ctriface "github.com/ease-lab/vhive/ctriface"
+	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
+	pb "github.com/ease-lab/vhive/proto"
 	log "github.com/sirupsen/logrus"
-	fccdcri "github.com/ustiugov/fccd-orchestrator/cri"
-	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
-	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
-	pb "github.com/ustiugov/fccd-orchestrator/proto"
 	"google.golang.org/grpc"
 )
 
