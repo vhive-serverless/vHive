@@ -1,23 +1,23 @@
-module github.com/ustiugov/fccd-orchestrator
+module github.com/ease-lab/vhive
 
 go 1.13
 
-replace github.com/firecracker-microvm/firecracker-containerd => github.com/ustiugov/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152
+replace github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152
 
-replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/ustiugov/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
+replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
 
 require (
 	github.com/containerd/containerd v1.3.6
+	github.com/ease-lab/vhive/cri v0.0.0-20201130165135-ffb90bb5b604
+	github.com/ease-lab/vhive/ctriface v0.0.0-20201130163407-9aec45e35961
+	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e
+	github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15
+	github.com/ease-lab/vhive/proto v0.0.0-20201130165135-ffb90bb5b604
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
-	github.com/ustiugov/fccd-orchestrator/cri v0.0.0-20201130130504-e071adc31a0b
-	github.com/ustiugov/fccd-orchestrator/ctriface v0.0.0-20201126101404-9cc854695c78
-	github.com/ustiugov/fccd-orchestrator/helloworld v0.0.0-20201120135927-438ab32ec4cf
-	github.com/ustiugov/fccd-orchestrator/metrics v0.0.0-20201126101142-295dcf747c86
-	github.com/ustiugov/fccd-orchestrator/proto v0.0.0-20201120135927-438ab32ec4cf
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	google.golang.org/grpc v1.33.1
+	google.golang.org/grpc v1.33.2
 	k8s.io/cri-api v0.16.16-rc.0 // indirect
 )
 

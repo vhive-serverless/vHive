@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,9 +31,9 @@ import (
 	"testing"
 
 	ctrdlog "github.com/containerd/containerd/log"
+	ctriface "github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	ctriface "github.com/ustiugov/fccd-orchestrator/ctriface"
 )
 
 const (
