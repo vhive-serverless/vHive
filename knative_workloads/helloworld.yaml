@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       containers:
-        - image: library/busybox # Reference to the image of the app
+        - image: crccheck/hello-world:latest # Reference to the image of the app
           ports:
             - name: h2c
               containerPort: 50051
