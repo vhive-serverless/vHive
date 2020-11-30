@@ -50,17 +50,17 @@ func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainer
 	containerName := config.GetMetadata().GetName()
 
 	if containerName == userContainerName {
-		return s.processUserContainer(ctx, r)
+		return s.createUserContainer(ctx, r)
 	}
 	if containerName == queueProxyName {
-		return s.processQueueProxy(ctx, r)
+		return s.createQueueProxy(ctx, r)
 	}
 
-	// Containers irrelevant to user's workload
+	// Containers relevant for control plane
 	return s.stockRuntimeClient.CreateContainer(ctx, r)
 }
 
-func (s *Service) processUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+func (s *Service) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	var (
 		stockResp *criapi.CreateContainerResponse
 		stockErr  error
@@ -73,26 +73,26 @@ func (s *Service) processUserContainer(ctx context.Context, r *criapi.CreateCont
 	}()
 
 	config := r.GetConfig()
-	guestImage, guestPort, err := getGuestImagePort(config)
+	guestImage, err := getGuestImage(config)
 	if err != nil {
 		log.WithError(err).Error()
 		return nil, err
 	}
 
-	fi, err := s.coordinator.startVM(context.Background(), guestImage)
+	funcInst, err := s.coordinator.startVM(context.Background(), guestImage)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
 	}
 
-	vmConfig := &VMConfig{guestIP: fi.startVMResponse.GuestIP, guestPort: guestPort}
-	s.insertPodConfig(r.GetPodSandboxId(), vmConfig)
+	vmConfig := &VMConfig{guestIP: funcInst.startVMResponse.GuestIP, guestPort: guestPortValue}
+	s.insertPodVMConfig(r.GetPodSandboxId(), vmConfig)
 
 	// Wait for placeholder UC to be created
 	<-stockDone
 
 	containerdID := stockResp.ContainerId
-	err = s.coordinator.insertActive(containerdID, fi)
+	err = s.coordinator.insertActive(containerdID, funcInst)
 	if err != nil {
 		log.WithError(err).Error("failed to insert active VM")
 		return nil, err
@@ -101,16 +101,15 @@ func (s *Service) processUserContainer(ctx context.Context, r *criapi.CreateCont
 	return stockResp, stockErr
 }
 
-func (s *Service) processQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	vmConfig, err := s.getPodConfig(r.GetPodSandboxId())
+func (s *Service) createQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	vmConfig, err := s.getPodVMConfig(r.GetPodSandboxId())
 	if err != nil {
 		log.WithError(err).Error()
 		return nil, err
 	}
 
-	s.removePodConfig(r.GetPodSandboxId())
+	s.removePodVMConfig(r.GetPodSandboxId())
 
-	// Add guest IP and port
 	guestIPKeyVal := &criapi.KeyValue{Key: guestIPEnv, Value: vmConfig.guestIP}
 	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: vmConfig.guestPort}
 	r.Config.Envs = append(r.Config.Envs, guestIPKeyVal, guestPortKeyVal)
@@ -124,34 +123,15 @@ func (s *Service) processQueueProxy(ctx context.Context, r *criapi.CreateContain
 	return resp, nil
 }
 
-func getGuestImagePort(config *criapi.ContainerConfig) (string, string, error) {
-	var (
-		image, port           string
-		imageFound, portFound bool
-	)
-
+func getGuestImage(config *criapi.ContainerConfig) (string, error) {
 	envs := config.GetEnvs()
 	for _, kv := range envs {
 		if kv.GetKey() == guestImageEnv {
-			image = kv.GetValue()
-			imageFound = true
-		} else if kv.GetKey() == guestPortEnv {
-			port = kv.GetValue()
-			portFound = true
+			return kv.GetValue(), nil
 		}
-		if imageFound && portFound {
-			break
-		}
+
 	}
 
-	// default value if port not provided
-	if port == "" {
-		port = guestPortValue
-	}
+	return "", errors.New("failed to provide non empty guest image in user container config")
 
-	if image == "" || port == "" {
-		return "", "", errors.New("failed to provide non empty guest image and port in user container config")
-	}
-
-	return image, port, nil
 }
