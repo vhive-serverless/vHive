@@ -11,13 +11,13 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ease-lab/vhive/memory/manager v0.0.0-20201130161836-25b08f5afe7e
 	github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15
-	github.com/ease-lab/vhive/misc v0.0.0-20201130161836-25b08f5afe7e
+	github.com/ease-lab/vhive/misc v0.0.0-20201130183108-c8a4a7f8b03f
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/go-multierror/multierror v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
-	google.golang.org/grpc v1.33.2
+	google.golang.org/grpc v1.31.0
 
 )
 
