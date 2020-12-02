@@ -278,6 +278,49 @@ func fusePrintMetrics(t *testing.T, serveMetrics, upfMetrics []*metrics.Metric, 
 	require.NoError(t, err, "Failed to dump stats")
 }
 
+func createLoaders(t *testing.T, imageName string) {
+	numLoaders := 20
+	sem := make(chan bool, 2)
+	vmID := 100
+
+	// Pull image
+	resp, _, err := funcPool.Serve(context.Background(), "plr_ld", imageName, "record")
+	require.NoError(t, err, "Function returned error")
+	require.Equal(t, resp.Payload, "Hello, record_response!")
+
+	for i := 0; i < numLoaders; i++ {
+		vmIDString := strconv.Itoa(vmID + i)
+
+		sem <- true
+
+		go func(vmIDString string) {
+			defer func() { <-sem }()
+
+			// Create loader VMs
+			resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, record_response!")
+		}(vmIDString)
+	}
+
+	for i := 0; i < cap(sem); i++ {
+		sem <- true
+	}
+
+	for i := 0; i < numLoaders; i++ {
+		vmIDString := strconv.Itoa(vmID + i)
+
+		go func(vmIDString string) {
+			// Invoke
+			for {
+				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "record")
+				require.NoError(t, err, "Function returned error")
+				require.Equal(t, resp.Payload, "Hello, record_response!")
+			}
+		}(vmIDString)
+	}
+}
+
 func createSnapshots(t *testing.T, concurrency, vmID int, imageName string, isSyncOffload bool) {
 	parallel := *parallelNum
 	sem := make(chan bool, concurrency)
