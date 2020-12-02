@@ -23,7 +23,7 @@ including functions autoscaling and cold-start delay optimization with several s
 
 ## vHive architecture
 
-[TBD]()
+![vHive Architecture](docs/figures/vhive_architecture.jpg)
 
 ## Referencing our work
 
