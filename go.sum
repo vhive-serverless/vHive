@@ -90,30 +90,21 @@ github.com/ease-lab/vhive/cri v0.0.0-20201130165135-ffb90bb5b604 h1:V4+x0+yHn4BQ
 github.com/ease-lab/vhive/cri v0.0.0-20201130165135-ffb90bb5b604/go.mod h1:VIG+ebiSpPvTsGYLiwpX9X+6FHU//VUaO2/UW2tQFB8=
 github.com/ease-lab/vhive/cri v0.0.0-20201130183803-69d2fba48d80 h1:5lrBv+nVnixoM6N5cYLjVQzmzN7Ba+mnkgv5Wo1VL94=
 github.com/ease-lab/vhive/cri v0.0.0-20201130183803-69d2fba48d80/go.mod h1:IzSQMi14OaZ9pbf5nCmVHNLy/lkBlL5MR8Ibr67WIGs=
-<<<<<<< HEAD
 github.com/ease-lab/vhive/cri v0.0.0-20201130191325-566327025d78 h1:gYj7SJdAuZTUdUitl/83cEIPGO7xekpbXMIsnp9/B00=
 github.com/ease-lab/vhive/cri v0.0.0-20201130191325-566327025d78/go.mod h1:Fn562m9lolp3SmvGovYZs5w1/o06EnoG/6Lw2aX1GP8=
-=======
->>>>>>> update go.mod and go.sum
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130163407-9aec45e35961 h1:eA/OWgqokdKyeuOYC79loCHtWCklyz0A5YrOA7GHhiA=
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130163407-9aec45e35961/go.mod h1:5Lrm1WsNxDMqexDMsMVp7kLNBXR1H2lP+Lzs0Q45QSs=
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130183527-3b6f3d738845 h1:UgRxwvqBTx+f2z+rhzWPABVE+m8k5WHMAaNpHdhauwg=
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130183527-3b6f3d738845/go.mod h1:ds69+ccA1yOn0V6BGkGfamoWda4W2+8GTXb9TFJX1jo=
-<<<<<<< HEAD
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130191050-143a91f0910c/go.mod h1:3p+FnUhYbS/qHIYYn5gCYew8w7whWHd6gM6Aqu/6juY=
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130191325-566327025d78 h1:nN/ropLCTtC3iegwCi6ngR4FwTvhXkqKqVBUbiBIw7s=
 github.com/ease-lab/vhive/ctriface v0.0.0-20201130191325-566327025d78/go.mod h1:3p+FnUhYbS/qHIYYn5gCYew8w7whWHd6gM6Aqu/6juY=
-=======
->>>>>>> update go.mod and go.sum
 github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e h1:+SI1mtFnCWYRh+t0lSUAd6mpfNgylV/s2M4WKTUE8Q0=
 github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e/go.mod h1:HCBvjykbVHOCFaKkKXW+ikRwdOCjQFy745RgCaZgBpo=
 github.com/ease-lab/vhive/memory/manager v0.0.0-20201130161836-25b08f5afe7e h1:nKFsJ8LJ/IUZzG+KHlomtQSI9g4O5nmjUik/khgG0NY=
 github.com/ease-lab/vhive/memory/manager v0.0.0-20201130161836-25b08f5afe7e/go.mod h1:bvoyf6ckFJsUwoMXObz8T4IOfLSQMQh1fv0YlRNW164=
-<<<<<<< HEAD
 github.com/ease-lab/vhive/memory/manager v0.0.0-20201130190645-c3b71d99f772 h1:44o4m6e/0UotDo0FfuUbRJN67NjVmFgaCYDjIYg2uu8=
 github.com/ease-lab/vhive/memory/manager v0.0.0-20201130190645-c3b71d99f772/go.mod h1:dUy+2+JNuvKrAHleHc8c2r670k3oU7esUPz1x+XuQKc=
-=======
->>>>>>> update go.mod and go.sum
 github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15 h1:Cm72CLf1msToq5s0EDmdmVq3SQAkhJl9yLjya2vFpXQ=
 github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15/go.mod h1:+tSvpQ2ZFtwkwGvU+sj/V96yBO6YhgkT0iZVXJ8dlXE=
 github.com/ease-lab/vhive/misc v0.0.0-20201130161836-25b08f5afe7e h1:0utPCmIhH666SgBi4Knm/loPk8GL1AJZVS/9G7urZK0=
@@ -485,11 +476,8 @@ google.golang.org/grpc v1.27.1/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8
 google.golang.org/grpc v1.30.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM8pak=
 google.golang.org/grpc v1.31.0 h1:T7P4R73V3SSDPhH7WW7ATbfViLtmamH0DKrP3f9AuDI=
 google.golang.org/grpc v1.31.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM8pak=
-<<<<<<< HEAD
 google.golang.org/grpc v1.33.1 h1:DGeFlSan2f+WEtCERJ4J9GJWk15TxUi8QGagfI87Xyc=
 google.golang.org/grpc v1.33.1/go.mod h1:fr5YgcSWrqhRRxogOsw7RzIpsmvOZ6IcH4kBYTpR3n0=
-=======
->>>>>>> update go.mod and go.sum
 google.golang.org/grpc v1.33.2 h1:EQyQC3sa8M+p6Ulc8yy9SWSS2GVwyRc83gAbG8lrl4o=
 google.golang.org/grpc v1.33.2/go.mod h1:JMHMWHQWaTccqQQlmk3MJZS+GWXOdAesneDmEnv2fbc=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=

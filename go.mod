@@ -51,6 +51,8 @@ replace (
 
 require (
 	github.com/containerd/containerd v1.3.6
+	github.com/ease-lab/vhive/cri v0.0.0-20201130191325-566327025d78
+	github.com/ease-lab/vhive/ctriface v0.0.0-20201130191325-566327025d78
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e
 	github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15
 	github.com/ease-lab/vhive/proto v0.0.0-20201130165135-ffb90bb5b604
