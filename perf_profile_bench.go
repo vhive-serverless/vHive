@@ -22,16 +22,7 @@
 
 package main
 
-import (
-	"flag"
-)
-
-var (
-	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts (default is false)")
-	vmNum           = flag.Int("vm", 10, "The number of VMs")
-	targetReqPerSec = flag.Int("requestPerSec", 4, "The target number of requests per second")
-	executionTime   = flag.Int("executionTime", 30, "The execution time of the benchmark in seconds")
-)
+var ()
 
 ///////////////////////////////////////////////////////////////////////////////
 ////////////////////////// Auxialiary functions below /////////////////////////
