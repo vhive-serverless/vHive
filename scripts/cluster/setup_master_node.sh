@@ -26,8 +26,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 
 # Install Calico network add-on
-curl https://docs.projectcalico.org/manifests/canal.yaml -O
-kubectl apply -f canal.yaml
+kubectl apply -f $ROOT/configs/calico/canal.yaml
 
 # Install and configure MetalLB
 kubectl get configmap kube-proxy -n kube-system -o yaml | \
