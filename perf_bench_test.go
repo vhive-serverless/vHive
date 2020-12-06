@@ -38,7 +38,8 @@ var (
 	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts (default is false)")
 	vmNum           = flag.Int("vm", 10, "The number of VMs")
 	targetReqPerSec = flag.Int("requestPerSec", 4, "The target number of requests per second")
-	executionTime   = flag.Int("executionTime", 30, "The execution time of the benchmark in seconds")
+	executionTime   = flag.Int("executionTime", 2, "The execution time of the benchmark in seconds")
+	funcString      = flag.String("functions", "", "User-defined function for perf")
 )
 
 func TestBenchRequestPerSecond(t *testing.T) {
@@ -48,6 +49,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		vmID          int
 		isSyncOffload bool = true
 		images             = getImages()
+		isPerf             = len(*funcString) > 0
 		funcs              = []string{}
 		timeInterval       = time.Duration(time.Second.Nanoseconds() / int64(*targetReqPerSec))
 		totalRequests      = *executionTime * *targetReqPerSec
@@ -60,6 +62,11 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 	log.SetLevel(log.InfoLevel)
 	bootStart := time.Now()
+
+	if isPerf {
+		log.Infof("Perf Profiling %s: %s\n", *funcString, images[*funcString])
+		images = map[string]string{*funcString: images[*funcString]}
+	}
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
@@ -146,14 +153,14 @@ func serveVM(t *testing.T, start time.Time, vmIDString, imageName string, vmGrou
 
 func getImages() map[string]string {
 	return map[string]string{
-		// "helloworld": "ustiugov/helloworld:var_workload",
+		"helloworld": "ustiugov/helloworld:var_workload",
 		// "chameleon":    "ustiugov/chameleon:var_workload",
-		// "pyaes": "ustiugov/pyaes:var_workload",
+		// "pyaes":        "ustiugov/pyaes:var_workload",
 		// "image_rotate": "ustiugov/image_rotate:var_workload",
-		// "json_serdes": "ustiugov/json_serdes:var_workload",
+		// "json_serdes":  "ustiugov/json_serdes:var_workload",
 		// "lr_serving":   "ustiugov/lr_serving:var_workload",
 		// "cnn_serving":  "ustiugov/cnn_serving:var_workload",
-		// "rnn_serving": "ustiugov/rnn_serving:var_workload",
-		"lr_training": "ustiugov/lr_training:var_workload",
+		// "rnn_serving":  "ustiugov/rnn_serving:var_workload",
+		// "lr_training":  "ustiugov/lr_training:var_workload",
 	}
 }
