@@ -40,8 +40,8 @@ kubectl create secret generic -n metallb-system memberlist --from-literal=secret
 kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
 # istio
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.6.11 TARGET_ARCH=x86_64 sh -
-./istio-1.6.11/bin/istioctl manifest apply -f $ROOT/configs/istio/istio-minimal-operator.yaml
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.7.1 TARGET_ARCH=x86_64 sh -
+sudo /users/ustiugov/vhive/istio-1.7.1/bin/istioctl install -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
 
 # Install KNative in the cluster
