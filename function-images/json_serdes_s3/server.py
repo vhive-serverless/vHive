@@ -15,7 +15,7 @@
 
 from concurrent import futures
 import logging
-
+import os
 import grpc
 
 import helloworld_pb2
@@ -26,6 +26,7 @@ from minio.error import (ResponseError, BucketAlreadyOwnedByYou,
                          BucketAlreadyExists)
 import json
 
+minioEnvKey = "MINIO_ADDRESS"
 data_name = '2.json'
 data2_name = '1.json'
 data_path = '/pulled_' + data_name
@@ -33,10 +34,15 @@ data2_path = '/pulled_' + data2_name
 
 responses = ["record_response", "replay_response"]
 
+minioAddress = os.getenv(minioEnvKey)
+
 class Greeter(helloworld_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
-        minioClient = Minio('128.110.154.105:9000',
+        if minioAddress == None:
+            return None
+
+        minioClient = Minio(minioAddress,
                 access_key='minioadmin',
                 secret_key='minioadmin',
                 secure=False)

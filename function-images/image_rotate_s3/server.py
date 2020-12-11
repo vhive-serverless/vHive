@@ -1,6 +1,6 @@
 from concurrent import futures
 import logging
-
+import os
 import grpc
 
 from PIL import Image, ImageOps
@@ -12,6 +12,7 @@ from minio import Minio
 from minio.error import (ResponseError, BucketAlreadyOwnedByYou,
                          BucketAlreadyExists)
 
+minioEnvKey = "MINIO_ADDRESS"
 image_name = 'img2.jpeg'
 image2_name = 'img3.jpeg'
 image_path = '/pulled_' + image_name
@@ -19,10 +20,15 @@ image_path2 = '/pulled_' +image2_name
 
 responses = ["record_response", "replay_response"]
 
+minioAddress = os.getenv(minioEnvKey)
+
 class Greeter(helloworld_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
-        minioClient = Minio('128.110.154.105:9000',
+        if minioAddress == None:
+            return None
+
+        minioClient = Minio(minioAddress,
                 access_key='minioadmin',
                 secret_key='minioadmin',
                 secure=False)

@@ -50,6 +50,7 @@ const (
 	containerdAddress      = "/run/firecracker-containerd/containerd.sock"
 	containerdTTRPCAddress = containerdAddress + ".ttrpc"
 	namespaceName          = "firecracker-containerd"
+	minioEnvVarKey         = "MINIO_ADDRESS"
 )
 
 // Orchestrator Drives all VMs
@@ -65,6 +66,7 @@ type Orchestrator struct {
 	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
+	minioAddress     string
 
 	memoryManager *manager.MemoryManager
 }
