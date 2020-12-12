@@ -25,7 +25,11 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -36,11 +40,75 @@ import (
 
 var (
 	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts (default is false)")
-	vmNum           = flag.Int("vm", 10, "The number of VMs")
-	targetReqPerSec = flag.Int("requestPerSec", 4, "The target number of requests per second")
-	executionTime   = flag.Int("executionTime", 2, "The execution time of the benchmark in seconds")
-	funcString      = flag.String("functions", "", "User-defined function for perf")
+	vmNum           = flag.Int("vm", 2, "The number of VMs")
+	targetReqPerSec = flag.Int("requestPerSec", 10, "The target number of requests per second")
+	executionTime   = flag.Int("executionTime", 1, "The execution time of the benchmark in seconds")
+	funcNames       = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
+	perfEvents      = flag.String("perfEvents", "", "Perf events (run `perf stat` if not empty)")
+
+	envPath = "PATH=" + os.Getenv("PATH")
 )
+
+const (
+	AveExecTime = "AveExecTime"
+	RealRPS     = "RealRPS"
+)
+
+// TODO: Change this from test function to normal function, and move to another file
+func TestBenchMultiVMRequestPerSecond(t *testing.T) {
+	log.SetLevel(log.InfoLevel)
+
+	for i := 4; i <= 4; i += 4 {
+		err := setupBenchRPS()
+		require.NoError(t, err, "Setup TestBenchRequestPerSecond error")
+
+		//Subtest
+		testName := fmt.Sprintf("Test_%dVM", i)
+		*targetReqPerSec = 10
+		*perfEvents = "instructions,LLC-loads,LLC-load-misses"
+		*vmNum = i
+		*funcNames = "rnn_serving"
+
+		testResult := t.Run(testName, TestBenchRequestPerSecond)
+		require.True(t, testResult)
+
+		err = teardownBenchRPS()
+		require.NoError(t, err, "Teardown TestBenchRequestPerSecond error")
+	}
+}
+
+func setupBenchRPS() error {
+	// sudo mkdir -m777 -p /tmp/ctrd-logs && sudo env "PATH=$PATH" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>/tmp/ctrd-logs/fccd_orch_noupf_log_bench.out 2>/tmp/ctrd-logs/fccd_orch_noupf_log_bench.err &
+	var CTRDLOGDIR = "/tmp/ctrd-logs"
+
+	if err := os.MkdirAll(CTRDLOGDIR, 0777); err != nil {
+		return err
+	}
+
+	commandString := "sudo env " + envPath + " /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>/tmp/ctrd-logs/fccd_orch_noupf_log_bench.out 2>/tmp/ctrd-logs/fccd_orch_noupf_log_bench.err &"
+	cmd := exec.Command("sudo", "/bin/sh", "-c", commandString)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func teardownBenchRPS() error {
+	// ./scripts/clean_fcctr.sh
+	cmd := exec.Command("sudo", "/bin/sh", "-c", "./scripts/clean_fcctr.sh")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func TestBenchRequestPerSecond(t *testing.T) {
 	var (
@@ -48,114 +116,117 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		pinnedFuncNum int
 		vmID          int
 		isSyncOffload bool = true
-		images             = getImages()
-		isPerf             = len(*funcString) > 0
-		funcs              = []string{}
+		isPerf             = len(*perfEvents) > 0
+		images             = getImages(t)
 		timeInterval       = time.Duration(time.Second.Nanoseconds() / int64(*targetReqPerSec))
 		totalRequests      = *executionTime * *targetReqPerSec
+		perfStat           = NewPerfStat(AllCPUs, Event, *perfEvents, Output, "perf-tmp.data")
 	)
 
 	log.SetLevel(log.InfoLevel)
 	bootStart := time.Now()
-
-	if isPerf {
-		log.Infof("Perf Profiling %s: %s\n", *funcString, images[*funcString])
-		images = map[string]string{*funcString: images[*funcString]}
-	}
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	createResultsDir()
 
 	// Pull images
-	for funcName, imageName := range images {
+	for _, imageName := range images {
 		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
-
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, record_response!")
-
-		// For future use
-		// createSnapshots(t, concurrency, vmID, imageName, isSyncOffload)
-		// log.Info("Snapshot created")
-		// createRecords(t, concurrency, vmID, imageName, isSyncOffload)
-		// log.Info("Record done")
-
-		funcs = append(funcs, funcName)
 	}
 
-	funcsLen := len(funcs)
+	imagesLen := len(images)
 
 	// Boot VMs
 	for i := 0; i < *vmNum; i++ {
 		vmIDString := strconv.Itoa(i)
-		_, err := funcPool.AddInstance(vmIDString, images[funcs[i%funcsLen]])
+		_, err := funcPool.AddInstance(vmIDString, images[i%imagesLen])
 		require.NoError(t, err, "Function returned error")
 	}
-
-	if !*isWithCache && *isColdStart {
-		log.Info("Profile cold start")
-		dropPageCache()
-	}
-
-	done := make(chan bool, 1)
-	var vmGroup sync.WaitGroup
-	ticker := time.NewTicker(timeInterval)
 	log.Debugf("All VMs booted in %d ms", time.Since(bootStart).Milliseconds())
 
-	for totalRequests > 0 {
+	if isPerf {
+		perfStat.RunPerfStat()
+		log.Info("Perf starts")
+	}
+
+	var vmGroup sync.WaitGroup
+	ticker := time.NewTicker(timeInterval)
+	tickerDone := make(chan bool, 1)
+
+	serveMetrics := make(map[string]float64)
+	serveMetrics[RealRPS] = 0
+	serveMetrics[AveExecTime] = 0
+
+	remainRequests := totalRequests
+	for remainRequests > 0 {
 		select {
 		case <-ticker.C:
-			totalRequests--
+			remainRequests--
 			vmGroup.Add(1)
 
-			funcName := funcs[vmID%funcsLen]
-			imageName := images[funcName]
+			imageName := images[vmID%imagesLen]
 			vmIDString := strconv.Itoa(vmID)
 
-			tStart := time.Now()
-			go serveVM(t, tStart, vmIDString, imageName, &vmGroup, isSyncOffload)
+			go serveVM(t, vmIDString, imageName, &vmGroup, isSyncOffload, serveMetrics)
 
 			vmID = (vmID + 1) % *vmNum
-		case <-done:
+		case <-tickerDone:
 			ticker.Stop()
 		}
 	}
 
-	done <- true
+	tickerDone <- true
 	vmGroup.Wait()
+
+	if isPerf {
+		result := perfStat.StopPerfStat()
+		log.Info("Perf stops")
+		for eventName, value := range result {
+			serveMetrics[eventName] = value
+		}
+	}
+
+	serveMetrics[AveExecTime] /= float64(totalRequests)
+	log.Debugf("RESULTS: %f, %f, %f, %f, %f", serveMetrics[AveExecTime], float64(totalRequests), serveMetrics[RealRPS], serveMetrics["LLC-loads"], serveMetrics["LLC-load-misses"])
 }
 
-///////////////////////////////////////////////////////////////////////////////
-////////////////////////// Auxialiary functions below /////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-func serveVM(t *testing.T, start time.Time, vmIDString, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool) {
+func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool, serveMetrics map[string]float64) {
 	defer vmGroup.Done()
 
+	tStart := time.Now()
 	resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 	require.NoError(t, err, "Function returned error")
-	require.Equal(t, resp.Payload, "Hello, replay_response!")
+	require.Equal(t, resp.IsColdStart, false)
 
-	if *isColdStart {
-		require.Equal(t, resp.IsColdStart, true)
-		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-	} else {
-		require.Equal(t, resp.IsColdStart, false)
+	execTime := time.Since(tStart).Milliseconds()
+	serveMetrics[AveExecTime] += float64(execTime)
+	log.Debugf("VM %s: returned in %d milliseconds", vmIDString, execTime)
+
+	if resp.Payload == "Hello, replay_response!" {
+		serveMetrics[RealRPS]++
 	}
-
-	log.Debugf("vmID %s: returned in %f seconds", vmIDString, time.Since(start).Seconds())
 }
 
-func getImages() map[string]string {
-	return map[string]string{
-		"helloworld": "ustiugov/helloworld:var_workload",
-		// "chameleon":    "ustiugov/chameleon:var_workload",
-		// "pyaes":        "ustiugov/pyaes:var_workload",
-		// "image_rotate": "ustiugov/image_rotate:var_workload",
-		// "json_serdes":  "ustiugov/json_serdes:var_workload",
-		// "lr_serving":   "ustiugov/lr_serving:var_workload",
-		// "cnn_serving":  "ustiugov/cnn_serving:var_workload",
-		// "rnn_serving":  "ustiugov/rnn_serving:var_workload",
-		// "lr_training":  "ustiugov/lr_training:var_workload",
+// Returns a list of image names
+func getImages(t *testing.T) []string {
+	var (
+		images = getAllImages()
+		funcs  = strings.Split(*funcNames, ",")
+		result []string
+	)
+
+	for _, funcName := range funcs {
+		imageName, isPresent := images[funcName]
+		require.True(t, isPresent, "Function is not supported")
+		result = append(result, imageName)
 	}
+
+	return result
+}
+
+func saveResult() {
+
 }
