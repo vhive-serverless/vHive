@@ -9,8 +9,6 @@ import helloworld_pb2
 import helloworld_pb2_grpc
 
 from minio import Minio
-from minio.error import (ResponseError, BucketAlreadyOwnedByYou,
-                         BucketAlreadyExists)
 
 minioEnvKey = "MINIO_ADDRESS"
 image_name = 'img2.jpeg'

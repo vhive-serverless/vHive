@@ -2,8 +2,6 @@ from concurrent import futures
 import logging
 import cv2
 from minio import Minio
-from minio.error import (ResponseError, BucketAlreadyOwnedByYou,
-                         BucketAlreadyExists)
 import grpc
 import os
 import helloworld_pb2
