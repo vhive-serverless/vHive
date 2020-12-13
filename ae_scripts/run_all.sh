@@ -55,7 +55,17 @@ fi
 
 host_ip=`curl ifconfig.me`
 
-wlds=(helloworld chameleon pyaes image_rotate_s3 json_serdes_s3 lr_serving cnn_serving rnn_serving lr_training_s3 video_processing_s3)
+#wlds=(helloworld chameleon pyaes image_rotate_s3 json_serdes_s3 lr_serving cnn_serving rnn_serving lr_training_s3 video_processing_s3)
+
+# Reading the file with functions
+i=0
+for j in `cat $ROOT/ae_scripts/functions.txt`
+do
+    wlds[$i]=$j
+    i=$(($i+1))
+done
+
+echo The experiment will run the following functions: ${wlds[@]}
 
 all_results_path=all_results
 results_path=$all_results_path/$mode

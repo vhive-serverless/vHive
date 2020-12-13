@@ -54,7 +54,7 @@ $ROOT/function-images/minio_scripts/start_minio_server.sh &
 sleep 1
 
 host_ip=`curl ifconfig.me`
-$ROOT/function-images/minio_scripts/create_minio_bucket.sh http://$host_ip:9000
+$ROOT/function-images/minio_scripts/create_minio_bucket.sh http://$host_ip:9000 || echo Minio bucket exists, continuing...
 
 echo Populate the bucket with all files
 $ROOT/function-images/minio_scripts/put_in_bucket.sh
@@ -62,7 +62,7 @@ $ROOT/function-images/minio_scripts/put_in_bucket.sh
 echo Contents of the MinIO bucket:
 mc ls myminio/mybucket
 
-sudo pkill -9 minio
+sudo pkill -9 minio || echo
 
 echo Build the project
 
