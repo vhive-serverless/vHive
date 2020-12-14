@@ -31,16 +31,16 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && pwd)"
 SCRIPTS=$ROOT/scripts
 
+source $SCRIPTS/install_go.sh
+$SCRIPTS/setup_system.sh
+
+sudo apt-get -y install gcc g++ acl gcc g++ make acl net-tools
+
 # Set up KVM
 sudo setfacl -m u:${USER}:rw /dev/kvm
 
 # Check if KVM is available
 [ -r /dev/kvm ] && [ -w /dev/kvm ] && echo "KVM is available" || echo "KVM is unavailable"
-
-source $SCRIPTS/install_go.sh
-$SCRIPTS/setup_system.sh
-
-sudo apt-get -y install gcc g++ acl gcc g++ make acl net-tools
 
 $SCRIPTS/setup_containerd.sh
 

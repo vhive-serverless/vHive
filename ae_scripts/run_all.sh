@@ -55,7 +55,8 @@ fi
 
 host_ip=`curl ifconfig.me`
 
-#wlds=(helloworld chameleon pyaes image_rotate_s3 json_serdes_s3 lr_serving cnn_serving rnn_serving lr_training_s3 video_processing_s3)
+# Make sure KVM is available on the machine
+sudo setfacl -m u:${USER}:rw /dev/kvm
 
 # Reading the file with functions
 i=0
