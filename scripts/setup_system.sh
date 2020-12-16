@@ -28,7 +28,10 @@ sudo apt-get -y install \
 	apt-transport-https \
 	ca-certificates \
 	curl \
-    git-lfs \
+        gcc g++ make \
+        acl \
+        net-tools \
+        git-lfs \
 	gnupg-agent \
 	software-properties-common >> /dev/null
 
