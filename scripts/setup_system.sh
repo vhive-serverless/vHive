@@ -25,12 +25,19 @@
 sudo apt-get update >> /dev/null
 
 sudo apt-get -y install \
-	apt-transport-https \
-	ca-certificates \
-	curl \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gcc \
+    g++ \
+    make \
+    acl \
+    net-tools \
     git-lfs \
-	gnupg-agent \
-	software-properties-common >> /dev/null
+    bc \
+    dmsetup \
+    gnupg-agent \
+    software-properties-common >> /dev/null
 
 # stack size, # of open files, # of pids
 sudo sh -c "echo \"* soft nofile 1000000\" >> /etc/security/limits.conf"
