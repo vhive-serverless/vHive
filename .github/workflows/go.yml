@@ -74,3 +74,7 @@ jobs:
 
     - name: Run vHive tests that need manual cleaning
       run: make test-man-bench
+
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/clean_fcctr.sh
