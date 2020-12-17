@@ -67,4 +67,4 @@ sudo rm /var/lib/cni/networks/fcnet*/last_reserved_ip.0 || echo clean already
 sudo rm /var/lib/cni/networks/fcnet*/19* || echo clean already
 
 echo Restart Docker
-sudo service docker restart
+sudo service docker restart || echo Anything wrong with docker?
