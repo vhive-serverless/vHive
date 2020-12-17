@@ -24,87 +24,32 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"flag"
-	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/ease-lab/vhive/profile"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 var (
-	isColdStart     = flag.Bool("coldStart", false, "Profile cold starts (default is false)")
 	vmNum           = flag.Int("vm", 2, "The number of VMs")
 	targetReqPerSec = flag.Int("requestPerSec", 10, "The target number of requests per second")
 	executionTime   = flag.Int("executionTime", 1, "The execution time of the benchmark in seconds")
 	funcNames       = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
 	perfEvents      = flag.String("perfEvents", "", "Perf events (run `perf stat` if not empty)")
-
-	envPath = "PATH=" + os.Getenv("PATH")
 )
 
 const (
-	AveExecTime = "AveExecTime"
-	RealRPS     = "RealRPS"
+	avgExecTime = "average-execution-time"
+	realRPS     = "real-requests-per-second"
 )
-
-// TODO: Change this from test function to normal function, and move to another file
-func TestBenchMultiVMRequestPerSecond(t *testing.T) {
-	log.SetLevel(log.InfoLevel)
-
-	for i := 4; i <= 4; i += 4 {
-		err := setupBenchRPS()
-		require.NoError(t, err, "Setup TestBenchRequestPerSecond error")
-
-		//Subtest
-		testName := fmt.Sprintf("Test_%dVM", i)
-		*targetReqPerSec = 10
-		*perfEvents = "instructions,LLC-loads,LLC-load-misses"
-		*vmNum = i
-		*funcNames = "rnn_serving"
-
-		testResult := t.Run(testName, TestBenchRequestPerSecond)
-		require.True(t, testResult)
-
-		err = teardownBenchRPS()
-		require.NoError(t, err, "Teardown TestBenchRequestPerSecond error")
-	}
-}
-
-func setupBenchRPS() error {
-	// sudo mkdir -m777 -p /tmp/ctrd-logs && sudo env "PATH=$PATH" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>/tmp/ctrd-logs/fccd_orch_noupf_log_bench.out 2>/tmp/ctrd-logs/fccd_orch_noupf_log_bench.err &
-	var CTRDLOGDIR = "/tmp/ctrd-logs"
-
-	if err := os.MkdirAll(CTRDLOGDIR, 0777); err != nil {
-		return err
-	}
-
-	commandString := "sudo env " + envPath + " /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>/tmp/ctrd-logs/fccd_orch_noupf_log_bench.out 2>/tmp/ctrd-logs/fccd_orch_noupf_log_bench.err &"
-	cmd := exec.Command("sudo", "/bin/sh", "-c", commandString)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func teardownBenchRPS() error {
-	// ./scripts/clean_fcctr.sh
-	cmd := exec.Command("sudo", "/bin/sh", "-c", "./scripts/clean_fcctr.sh")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func TestBenchRequestPerSecond(t *testing.T) {
 	var (
@@ -116,7 +61,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		images             = getImages(t)
 		timeInterval       = time.Duration(time.Second.Nanoseconds() / int64(*targetReqPerSec))
 		totalRequests      = *executionTime * *targetReqPerSec
-		perfStat           = NewPerfStat(AllCPUs, Event, *perfEvents, Output, "perf-tmp.data")
+		perfStat           = profile.NewPerfStat(profile.AllCPUs, profile.Event, *perfEvents, profile.OutFile, "perf-tmp.data")
 	)
 	log.SetLevel(log.InfoLevel)
 
@@ -149,8 +94,8 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	log.Debugf("All VMs booted in %d ms", time.Since(bootStart).Milliseconds())
 
 	if isPerf {
-		perfStat.RunPerfStat()
-		log.Info("Perf starts")
+		err := perfStat.Run()
+		require.NoError(t, err, "Start perf stat returned error")
 	}
 
 	var vmGroup sync.WaitGroup
@@ -158,8 +103,8 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	tickerDone := make(chan bool, 1)
 
 	serveMetrics := make(map[string]float64)
-	serveMetrics[RealRPS] = 0
-	serveMetrics[AveExecTime] = 0
+	serveMetrics[avgExecTime] = 0
+	serveMetrics[realRPS] = 0
 
 	remainRequests := totalRequests
 	for remainRequests > 0 {
@@ -183,15 +128,17 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	vmGroup.Wait()
 
 	if isPerf {
-		result := perfStat.StopPerfStat()
-		log.Info("Perf stops")
+		result, err := perfStat.Stop()
+		require.NoError(t, err, "Stop perf stat returned error")
 		for eventName, value := range result {
+			log.Infof("%s: %f\n", eventName, value)
 			serveMetrics[eventName] = value
 		}
 	}
 
-	serveMetrics[AveExecTime] /= float64(totalRequests)
-	log.Debugf("RESULTS: %f, %f, %f, %f, %f", serveMetrics[AveExecTime], float64(totalRequests), serveMetrics[RealRPS], serveMetrics["LLC-loads"], serveMetrics["LLC-load-misses"])
+	serveMetrics[avgExecTime] /= float64(totalRequests)
+
+	writeResultToCSV(t, serveMetrics, "benchRPS.csv")
 }
 
 func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool, serveMetrics map[string]float64) {
@@ -203,11 +150,11 @@ func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup
 	require.Equal(t, resp.IsColdStart, false)
 
 	execTime := time.Since(tStart).Milliseconds()
-	serveMetrics[AveExecTime] += float64(execTime)
-	log.Debugf("VM %s: returned in %d milliseconds", vmIDString, execTime)
+	serveMetrics[avgExecTime] += float64(execTime)
+	log.Infof("VM %s: returned in %d milliseconds", vmIDString, execTime)
 
 	if resp.Payload == "Hello, replay_response!" {
-		serveMetrics[RealRPS]++
+		serveMetrics[realRPS]++
 	}
 }
 
@@ -228,6 +175,31 @@ func getImages(t *testing.T) []string {
 	return result
 }
 
-func saveResult() {
+func writeResultToCSV(t *testing.T, metrics map[string]float64, filePath string) {
+	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_APPEND, 0644)
+	require.NoError(t, err, "Failed opening file")
+	defer f.Close()
 
+	reader := csv.NewReader(f)
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Fatalf("Failed reading file: %v", err)
+	}
+
+	titles := records[0]
+	writer := csv.NewWriter(f)
+
+	var data []string
+	for _, title := range titles {
+		for k, v := range metrics {
+			if k == title {
+				vStr := strconv.FormatFloat(v, 'E', -1, 64)
+				data = append(data, vStr)
+			}
+		}
+	}
+	err = writer.Write(data)
+	require.NoError(t, err, "Failed writting file")
+
+	writer.Flush()
 }
