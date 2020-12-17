@@ -95,7 +95,6 @@ func TestMain(m *testing.M) {
 
 func TestSendToFunctionSerial(t *testing.T) {
 	fID := "1"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
@@ -103,7 +102,7 @@ func TestSendToFunctionSerial(t *testing.T) {
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 2; i++ {
-		resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+		resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 		require.NoError(t, err, "Function returned error")
 		if i == 0 {
 			require.Equal(t, resp.IsColdStart, true)
@@ -112,13 +111,12 @@ func TestSendToFunctionSerial(t *testing.T) {
 		require.Equal(t, resp.Payload, "Hello, world!")
 	}
 
-	message, err := funcPool.RemoveInstance(fID, imageName, true)
+	message, err := funcPool.RemoveInstance(fID, testImageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestSendToFunctionParallel(t *testing.T) {
 	fID := "2"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
@@ -131,7 +129,7 @@ func TestSendToFunctionParallel(t *testing.T) {
 
 		go func(i int) {
 			defer vmGroup.Done()
-			resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -139,13 +137,12 @@ func TestSendToFunctionParallel(t *testing.T) {
 	}
 	vmGroup.Wait()
 
-	message, err := funcPool.RemoveInstance(fID, imageName, true)
+	message, err := funcPool.RemoveInstance(fID, testImageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestStartSendStopTwice(t *testing.T) {
 	fID := "3"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64 = 1
 		pinnedFuncNum int    = 2
@@ -154,12 +151,12 @@ func TestStartSendStopTwice(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		for k := 0; k < 2; k++ {
-			resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}
 
-		message, err := funcPool.RemoveInstance(fID, imageName, true)
+		message, err := funcPool.RemoveInstance(fID, testImageName, true)
 		require.NoError(t, err, "Function returned error, "+message)
 	}
 
@@ -171,18 +168,17 @@ func TestStartSendStopTwice(t *testing.T) {
 
 func TestStatsNotNumericFunction(t *testing.T) {
 	fID := "not_cld"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64 = 1
 		pinnedFuncNum int    = 2
 	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	message, err := funcPool.RemoveInstance(fID, imageName, true)
+	message, err := funcPool.RemoveInstance(fID, testImageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
 
 	servedGot := funcPool.stats.statMap[fID].served
@@ -193,18 +189,17 @@ func TestStatsNotNumericFunction(t *testing.T) {
 
 func TestStatsNotColdFunction(t *testing.T) {
 	fID := "4"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64 = 1
 		pinnedFuncNum int    = 4
 	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	message, err := funcPool.RemoveInstance(fID, imageName, true)
+	message, err := funcPool.RemoveInstance(fID, testImageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
 
 	servedGot := funcPool.stats.statMap[fID].served
@@ -215,7 +210,6 @@ func TestStatsNotColdFunction(t *testing.T) {
 
 func TestSaveMemorySerial(t *testing.T) {
 	fID := "5"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64 = 40
 		pinnedFuncNum int    = 2
@@ -223,7 +217,7 @@ func TestSaveMemorySerial(t *testing.T) {
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	for i := 0; i < 100; i++ {
-		resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+		resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, world!")
 	}
@@ -231,13 +225,12 @@ func TestSaveMemorySerial(t *testing.T) {
 	startsGot := funcPool.stats.statMap[fID].started
 	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
 
-	message, err := funcPool.RemoveInstance(fID, imageName, true)
+	message, err := funcPool.RemoveInstance(fID, testImageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestSaveMemoryParallel(t *testing.T) {
 	fID := "6"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64 = 40
 		pinnedFuncNum int    = 2
@@ -251,7 +244,7 @@ func TestSaveMemoryParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 
-			resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -262,27 +255,26 @@ func TestSaveMemoryParallel(t *testing.T) {
 	startsGot := funcPool.stats.statMap[fID].started
 	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
 
-	message, err := funcPool.RemoveInstance(fID, imageName, true)
+	message, err := funcPool.RemoveInstance(fID, testImageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
 func TestDirectStartStopVM(t *testing.T) {
 	fID := "7"
-	imageName := "ustiugov/helloworld:runner_workload"
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
 	)
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	message, err := funcPool.AddInstance(fID, imageName)
+	message, err := funcPool.AddInstance(fID, testImageName)
 	require.NoError(t, err, "This error should never happen (addInstance())"+message)
 
-	resp, _, err := funcPool.Serve(context.Background(), fID, imageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	message, err = funcPool.RemoveInstance(fID, imageName, true)
+	message, err = funcPool.RemoveInstance(fID, testImageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
@@ -293,15 +285,15 @@ func TestAllFunctions(t *testing.T) {
     }
 
 	images := []string{
-		"ustiugov/helloworld:var_workload",
-		"ustiugov/chameleon:var_workload",
-		"ustiugov/pyaes:var_workload",
-		"ustiugov/image_rotate:var_workload",
-		"ustiugov/json_serdes:var_workload",
-		"ustiugov/lr_serving:var_workload",
-		"ustiugov/cnn_serving:var_workload",
-		"ustiugov/rnn_serving:var_workload",
-		"ustiugov/lr_training:var_workload",
+		"vhiveease/helloworld:var_workload",
+		"vhiveease/chameleon:var_workload",
+		"vhiveease/pyaes:var_workload",
+		"vhiveease/image_rotate:var_workload",
+		"vhiveease/json_serdes:var_workload",
+		"vhiveease/lr_serving:var_workload",
+		"vhiveease/cnn_serving:var_workload",
+		"vhiveease/rnn_serving:var_workload",
+		"vhiveease/lr_training:var_workload",
 	}
 	var (
 		servedTh      uint64

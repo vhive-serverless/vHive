@@ -67,7 +67,7 @@ func TestPauseSnapResume(t *testing.T) {
 
 	vmID := "4"
 
-	_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -109,7 +109,7 @@ func TestStartStopSerial(t *testing.T) {
 
 	vmID := "5"
 
-	_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.StopSingleVM(ctx, vmID)
@@ -142,7 +142,7 @@ func TestPauseResumeSerial(t *testing.T) {
 
 	vmID := "6"
 
-	_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -180,11 +180,9 @@ func TestStartStopParallel(t *testing.T) {
 		WithLazyMode(*isLazyMode),
 	)
 
-	imageName := "ustiugov/helloworld:runner_workload"
-
 	// Pull image
-	_, err := orch.getImage(ctx, imageName)
-	require.NoError(t, err, "Failed to pull image "+imageName)
+	_, err := orch.getImage(ctx, testImageName)
+	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{
 		var vmGroup sync.WaitGroup
@@ -193,7 +191,7 @@ func TestStartStopParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, imageName)
+				_, _, err := orch.StartVM(ctx, vmID, testImageName)
 				require.NoError(t, err, "Failed to start VM "+vmID)
 			}(i)
 		}
@@ -240,11 +238,9 @@ func TestPauseResumeParallel(t *testing.T) {
 		WithLazyMode(*isLazyMode),
 	)
 
-	imageName := "ustiugov/helloworld:runner_workload"
-
 	// Pull image
-	_, err := orch.getImage(ctx, imageName)
-	require.NoError(t, err, "Failed to pull image "+imageName)
+	_, err := orch.getImage(ctx, testImageName)
+	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{
 		var vmGroup sync.WaitGroup
@@ -253,7 +249,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, imageName)
+				_, _, err := orch.StartVM(ctx, vmID, testImageName)
 				require.NoError(t, err, "Failed to start VM")
 			}(i)
 		}

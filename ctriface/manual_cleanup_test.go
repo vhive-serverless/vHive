@@ -62,7 +62,7 @@ func TestSnapLoad(t *testing.T) {
 
 	vmID := "1"
 
-	_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -111,7 +111,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	vmID := "3"
 
-	_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -162,7 +162,6 @@ func TestParallelSnapLoad(t *testing.T) {
 
 	vmNum := 5
 	vmIDBase := 6
-	imageName := "ustiugov/helloworld:runner_workload"
 
 	orch := NewOrchestrator(
 		"devmapper",
@@ -172,8 +171,8 @@ func TestParallelSnapLoad(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, imageName)
-	require.NoError(t, err, "Failed to pull image "+imageName)
+	_, err := orch.getImage(ctx, testImageName)
+	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -182,7 +181,7 @@ func TestParallelSnapLoad(t *testing.T) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("%d", i+vmIDBase)
 
-			_, _, err := orch.StartVM(ctx, vmID, "ustiugov/helloworld:runner_workload")
+			_, _, err := orch.StartVM(ctx, vmID, testImageName)
 			require.NoError(t, err, "Failed to start VM, "+vmID)
 
 			err = orch.PauseVM(ctx, vmID)
@@ -224,7 +223,6 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 
 	vmNum := 10
 	vmIDBase := 11
-	imageName := "ustiugov/helloworld:runner_workload"
 
 	orch := NewOrchestrator(
 		"devmapper",
@@ -234,8 +232,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, imageName)
-	require.NoError(t, err, "Failed to pull image "+imageName)
+	_, err := orch.getImage(ctx, testImageName)
+	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{
 		var vmGroup sync.WaitGroup
@@ -244,7 +242,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				_, _, err := orch.StartVM(ctx, vmID, imageName)
+				_, _, err := orch.StartVM(ctx, vmID, testImageName)
 				require.NoError(t, err, "Failed to start VM, "+vmID)
 			}(i)
 		}
