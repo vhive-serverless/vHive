@@ -53,7 +53,7 @@ jobs:
 
   test:
     name: Integration tests
-    runs-on: self-hosted
+    runs-on: [self-hosted, ctrd]
     steps:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
