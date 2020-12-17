@@ -32,7 +32,7 @@ die () {
 
 ################### Main body below #######################
 
-[ "$#" -eq 3 ] || die "1 argument required, $# provided"
+[ "$#" -eq 3 ] || die "3 argument required, $# provided"
 
 RUNNER_NAME=$1
 TOKEN=$2
@@ -47,20 +47,50 @@ sudo sh -c "echo always > /sys/kernel/mm/transparent_hugepage/enabled"
 
 cd /mnt/
 
-./scripts/cloudlab/setup_node.sh
+if [[ $EXTRA_LABELS =~ (ctrd) ]]; then
+    echo Setting up a runner for single-host experiments
+
+    sudo apt-get install -y docker.io
+    sudo usermod -aG docker $USER
+
+    ./scripts/travis/setup_node.sh
+else
+    echo Setting up a runner for cluster experiments
+    ./scripts/cloudlab/setup_node.sh
+fi
 
 cd
+
+echo Run local registry in a Docker container
+sudo docker run -d -p 5000:5000 --restart=always --name registry registry:2
+
+declare -a test_func
+test_func[0]="helloworld"
+test_func[1]="chameleon"
+test_func[2]="pyaes"
+test_func[3]="image_rotate"
+test_func[4]="json_serdes"
+test_func[5]="lr_serving"
+test_func[6]="cnn_serving"
+test_func[7]="rnn_serving"
+test_func[8]="lr_training"
+
+for f in ${test_func[@]}; do
+    sudo docker pull vhiveease/$f:var_workload
+    sudo docker tag vhiveease/$f:var_workload localhost:5000/vhiveease/$f:var_workload
+    sudo docker push localhost:5000/vhiveease/$f:var_workload
+done
 
 # Create a folder
 rm -rf actions-runner
 mkdir actions-runner && cd actions-runner
-curl -O -L https://github.com/actions/runner/releases/download/v2.274.2/actions-runner-linux-x64-2.274.2.tar.gz
-tar xzf ./actions-runner-linux-x64-2.274.2.tar.gz
+
+latest_version=$(curl -s "https://github.com/actions/runner/releases/latest/download" 2>&1 | sed "s/^.*download\/v\([^\"]*\).*/\1/")
+curl -O -L https://github.com/actions/runner/releases/download/v${latest_version}/actions-runner-linux-x64-${latest_version}.tar.gz
+tar xzf ./actions-runner-linux-x64-${latest_version}.tar.gz
 
 ./config.sh --unattended \
     --url https://github.com/ease-lab/vhive \
     --token $TOKEN \
     --name $RUNNER_NAME \
     --labels Linux,X64,$EXTRA_LABELS
-
-./run.sh

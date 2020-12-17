@@ -32,13 +32,15 @@ die () {
 
 ################### Main body below #######################
 
-[ "$#" -eq 2 ] || die "1 argument required, $# provided"
+[ "$#" -eq 3 ] || die "3 argument required, $# provided"
 
-TOKEN=$1
-RUNNER_VM=$2
+RUNNER_VM=$1
+TOKEN=$2
+EXTRA_LABELS=$3
 
 multipass launch --name $RUNNER_VM --cpus 8 --mem 8G --disk 40G 18.04 || echo VM exists
 multipass mount . $RUNNER_VM:/mnt || echo Already mounted
 
-multipass exec $RUNNER_VM -- /mnt/scripts/clean_fcctr.sh
-multipass exec $RUNNER_VM -- source /mnt/scripts/testing/setup_github_runner.sh test_runner4 $TOKEN Linux,X64,ctrd
+multipass exec $RUNNER_VM -- source /mnt/scripts/testing/setup_github_runner.sh $RUNNER_VM $TOKEN Linux,X64,$EXTRA_LABELS
+
+multipass exec $RUNNER_VM -- sh -c "cd /home/ubuntu/actions-runner; ./run.sh"
