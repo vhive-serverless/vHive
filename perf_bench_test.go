@@ -131,7 +131,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		result, err := perfStat.Stop()
 		require.NoError(t, err, "Stop perf stat returned error")
 		for eventName, value := range result {
-			log.Infof("%s: %f\n", eventName, value)
+			log.Debugf("%s: %f\n", eventName, value)
 			serveMetrics[eventName] = value
 		}
 	}
@@ -151,7 +151,7 @@ func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup
 
 	execTime := time.Since(tStart).Milliseconds()
 	serveMetrics[avgExecTime] += float64(execTime)
-	log.Infof("VM %s: returned in %d milliseconds", vmIDString, execTime)
+	log.Debugf("VM %s: returned in %d milliseconds", vmIDString, execTime)
 
 	if resp.Payload == "Hello, replay_response!" {
 		serveMetrics[realRPS]++
