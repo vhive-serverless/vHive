@@ -43,6 +43,8 @@ import (
 const (
 	port    = ":3333"
 	fwdPort = ":3334"
+
+	testImageName = "vhiveease/helloworld:var_workload"
 )
 
 var (
