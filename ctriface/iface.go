@@ -52,6 +52,10 @@ import (
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
 
+const (
+	testImageName = "vhiveease/helloworld:var_workload"
+)
+
 // StartVMResponse is the response returned by StartVM
 // TODO: Integrate response with non-cri API
 type StartVMResponse struct {
@@ -270,14 +274,23 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	image, found := o.cachedImages[imageName]
 	if !found {
 		var err error
-		log.Debug(fmt.Sprintf("Pulling image %s", imageName))
-		image, err = o.client.Pull(ctx, "docker.io/"+imageName,
+		log.Debug(fmt.Sprintf("Try to pull image %s from the local registry", imageName))
+		image, err = o.client.Pull(ctx, "localhost:5000/"+imageName,
 			containerd.WithPullUnpack,
 			containerd.WithPullSnapshotter(o.snapshotter),
 		)
+
 		if err != nil {
-			return &image, err
+			log.Debug(fmt.Sprintf("Try to pull image %s from docker.io registry", imageName))
+			image, err = o.client.Pull(ctx, "docker.io/"+imageName,
+				containerd.WithPullUnpack,
+				containerd.WithPullSnapshotter(o.snapshotter),
+			)
+			if err != nil {
+				return &image, err
+			}
 		}
+
 		o.cachedImages[imageName] = image
 	}
 
