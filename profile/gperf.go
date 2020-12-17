@@ -90,7 +90,7 @@ func (p *PerfStat) Stop() (map[string]float64, error) {
 	log.Debug("Perf stops")
 
 	// interrupt perf process
-	log.Infof("perf process: %d", p.proc)
+	log.Debugf("perf process: %d", p.proc)
 	cmd := exec.Command("kill", "-2", strconv.Itoa(p.proc))
 	if err := cmd.Run(); err != nil {
 		return nil, err
