@@ -1,4 +1,5 @@
 package profile
+<<<<<<< HEAD
 
 import (
 	"encoding/csv"
@@ -74,3 +75,5 @@ func createTestFile(filePath string) error {
 
 	return nil
 }
+=======
+>>>>>>> Restruct UI design and refactor perf_profile.go

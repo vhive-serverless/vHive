@@ -3,9 +3,13 @@ package profile
 import (
 	"encoding/csv"
 	"os"
+<<<<<<< HEAD
 	"path/filepath"
 	"strconv"
 	"strings"
+=======
+	"strconv"
+>>>>>>> Restruct UI design and refactor perf_profile.go
 
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
@@ -16,9 +20,15 @@ import (
 )
 
 // CSVPlotter plots every attribute as VM number increases
+<<<<<<< HEAD
 func CSVPlotter(xStep int, filePath, inFile string) {
 	var (
 		records = readResultCSV(filePath, inFile)
+=======
+func CSVPlotter(filePath string) {
+	var (
+		records = readResultCSV(filePath)
+>>>>>>> Restruct UI design and refactor perf_profile.go
 		rows    = len(records)
 		cols    = len(records[0])
 	)
@@ -32,6 +42,7 @@ func CSVPlotter(xStep int, filePath, inFile string) {
 
 		p.X.Label.Text = "VM number"
 		p.Y.Label.Text = records[0][col]
+<<<<<<< HEAD
 		p.Y.Min = 0
 
 		// setup data
@@ -48,6 +59,20 @@ func CSVPlotter(xStep int, filePath, inFile string) {
 				pts[row-1].Y = value
 			}
 			vmNum += xStep
+=======
+
+		// setup data
+		pts := make(plotter.XYs, rows-1)
+		vmNum := 4
+		for row := 1; row < rows; row++ {
+			pts[row-1].X = float64(vmNum)
+			value, err := strconv.ParseFloat(records[row][col], 64)
+			if err != nil {
+				log.Fatalf("Failed parsing string to float: %v", err)
+			}
+			pts[row-1].Y = value
+			vmNum += 4
+>>>>>>> Restruct UI design and refactor perf_profile.go
 		}
 
 		err = plotutil.AddLinePoints(p, pts)
@@ -55,12 +80,17 @@ func CSVPlotter(xStep int, filePath, inFile string) {
 			log.Fatalf("Failed plotting data: %v", err)
 		}
 
+<<<<<<< HEAD
 		p.Y.Label.Text = strings.ReplaceAll(p.Y.Label.Text, "/", "-")
 		fileName := filepath.Join(filePath, p.Y.Label.Text+".png")
+=======
+		fileName := p.Y.Label.Text + ".png"
+>>>>>>> Restruct UI design and refactor perf_profile.go
 		if err := p.Save(4*vg.Inch, 4*vg.Inch, fileName); err != nil {
 			log.Fatalf("Failed saving plot: %v", err)
 		}
 	}
+<<<<<<< HEAD
 
 	log.Info("Plot counters finished.")
 }
@@ -69,6 +99,13 @@ func CSVPlotter(xStep int, filePath, inFile string) {
 func readResultCSV(filePath, inFile string) [][]string {
 	fileName := filepath.Join(filePath, inFile)
 	f, err := os.Open(fileName)
+=======
+}
+
+// retrieve data from csv file
+func readResultCSV(filePath string) [][]string {
+	f, err := os.Open(filePath)
+>>>>>>> Restruct UI design and refactor perf_profile.go
 	if err != nil {
 		log.Fatalf("Failed opening file: %v", err)
 	}
