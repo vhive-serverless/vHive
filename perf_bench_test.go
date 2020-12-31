@@ -46,15 +46,15 @@ var (
 	executionTime   = flag.Int("executionTime", 1, "The execution time of the benchmark in seconds")
 	funcNames       = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
 
-	perfExecTime = flag.Float64("perfExecTime", 0, "The execution time of perf command in seconds (run `perf stat` if bigger than 0)")
-	perfRound    = flag.Float64("perfRound", 1, "The round of perf command")
+	perfExecTime = flag.Int("perfExecTime", 0, "The execution time of perf command in seconds (run `perf stat` if bigger than 0)")
+	perfInterval = flag.Int("perfInterval", 100, "Print count deltas every N milliseconds")
 	perfEvents   = flag.String("perfEvents", "", "Perf events")
 )
 
-// const (
-// 	avgExecTime = "average-execution-time"
-// 	realRPS     = "real-requests-per-second"
-// )
+const (
+	averageExecutionTime  = "average-execution-time"
+	realRequestsPerSecond = "real-requests-per-second"
+)
 
 func TestBenchMultiVMRequestPerSecond(t *testing.T) {
 	for i := 4; i <= 8; i += 4 {
@@ -76,7 +76,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		images             = getImages(t)
 		timeInterval       = time.Duration(time.Second.Nanoseconds() / int64(*targetReqPerSec))
 		totalRequests      = *executionTime * *targetReqPerSec
-		perfStat           = profile.NewPerfStat(*perfEvents, *perfExecTime, *perfRound)
+		perfStat           = profile.NewPerfStat(*perfEvents, "perf-tmp.data", *perfExecTime, *perfInterval)
 	)
 	log.SetLevel(log.InfoLevel)
 
@@ -106,38 +106,47 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	}
 	log.Debugf("All VMs booted in %d ms", time.Since(bootStart).Milliseconds())
 
+	var (
+		vmGroup, remainingRequests sync.WaitGroup
+		avgExecTime, realRPS       int64
+		ticker                     = time.NewTicker(timeInterval)
+		tickerDone                 = make(chan bool, 1)
+	)
+
 	if isRunPerf {
-		log.Info("Perf starts")
 		err := perfStat.Run()
 		require.NoError(t, err, "Start perf stat returned error")
 	}
 
-	var vmGroup sync.WaitGroup
-	ticker := time.NewTicker(timeInterval)
-	tickerDone := make(chan bool, 1)
+	remainingRequests.Add(totalRequests)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				remainingRequests.Done()
+				vmGroup.Add(1)
 
-	var avgExecTime, realRPS int64
+				imageName := images[vmID%len(images)]
+				vmIDString := strconv.Itoa(vmID)
 
-	remainingRequests := totalRequests
-	for remainingRequests > 0 {
-		select {
-		case <-ticker.C:
-			remainingRequests--
-			vmGroup.Add(1)
+				go serveVM(t, vmIDString, imageName, &vmGroup, isSyncOffload, &avgExecTime, &realRPS)
 
-			imageName := images[vmID%len(images)]
-			vmIDString := strconv.Itoa(vmID)
-
-			go serveVM(t, vmIDString, imageName, &vmGroup, isSyncOffload, &avgExecTime, &realRPS)
-
-			vmID = (vmID + 1) % *vmNum
-		case <-tickerDone:
-			ticker.Stop()
+				vmID = (vmID + 1) % *vmNum
+				if vmID == 0 {
+					perfStat.SetWarmTime()
+				}
+			case <-tickerDone:
+				ticker.Stop()
+				vmGroup.Wait()
+				return
+			}
 		}
-	}
+	}()
 
+	remainingRequests.Wait()
 	tickerDone <- true
 	vmGroup.Wait()
+	perfStat.SetTearDownTime()
 
 	// Shutdown VMs
 	for _, imageName := range images {
@@ -152,13 +161,11 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 	// Collect results
 	serveMetrics := make(map[string]float64)
-	serveMetrics["average-execution-time"] = float64(avgExecTime) / float64(totalRequests)
-	serveMetrics["real-requests-per-second"] = float64(realRPS)
-	log.Debugf("%s: %f\n", "average-execution-time", serveMetrics["average-execution-time"])
-	log.Debugf("%s: %f\n", "real-requests-per-second", serveMetrics["real-requests-per-second"])
+	serveMetrics[averageExecutionTime] = float64(avgExecTime) / float64(totalRequests)
+	serveMetrics[realRequestsPerSecond] = float64(realRPS)
 
 	if isRunPerf {
-		log.Info("Perf retriving results")
+		log.Debug("Perf retriving results")
 		result, err := perfStat.GetResult()
 		require.NoError(t, err, "Stop perf stat returned error: %v", err)
 		for eventName, value := range result {
@@ -166,6 +173,8 @@ func TestBenchRequestPerSecond(t *testing.T) {
 			serveMetrics[eventName] = value
 		}
 	}
+	log.Debugf("average-execution-time: %f\n", serveMetrics[averageExecutionTime])
+	log.Debugf("real-requests-per-second: %f\n", serveMetrics[realRequestsPerSecond])
 
 	writeResultToCSV(t, "benchRPS.csv", serveMetrics)
 }

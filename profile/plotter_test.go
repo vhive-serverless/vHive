@@ -1,5 +1,8 @@
 package profile
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Fix perf implementation and add tests for perf.go and plotter.go
 
 import (
 	"encoding/csv"
@@ -14,9 +17,15 @@ func TestReadResultCSV(t *testing.T) {
 	err := createTestFile(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
+<<<<<<< HEAD
 	data := readResultCSV("", fileName)
 	expected := [][]string{
 		{"field1", "field2", "field/3"},
+=======
+	data := readResultCSV(fileName)
+	expected := [][]string{
+		{"field1", "field2", "field3"},
+>>>>>>> Fix perf implementation and add tests for perf.go and plotter.go
 		{"1", "4", "7"},
 		{"2", "5", "8"},
 		{"3", "6", "9"},
@@ -37,9 +46,15 @@ func TestCreatingPlotter(t *testing.T) {
 	err := createTestFile(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
+<<<<<<< HEAD
 	CSVPlotter(4, "", fileName)
 
 	plotNames := []string{"field1.png", "field2.png", "field-3.png"}
+=======
+	CSVPlotter(fileName)
+
+	plotNames := []string{"field1.png", "field2.png", "field3.png"}
+>>>>>>> Fix perf implementation and add tests for perf.go and plotter.go
 	for _, fname := range plotNames {
 		_, err := os.Stat(fname)
 		require.False(t, os.IsNotExist(err), "Target file %s was not found", fname)
@@ -61,7 +76,11 @@ func createTestFile(filePath string) error {
 	defer f.Close()
 
 	records := [][]string{
+<<<<<<< HEAD
 		{"field1", "field2", "field/3"},
+=======
+		{"field1", "field2", "field3"},
+>>>>>>> Fix perf implementation and add tests for perf.go and plotter.go
 		{"1", "4", "7"},
 		{"2", "5", "8"},
 		{"3", "6", "9"},
@@ -75,5 +94,8 @@ func createTestFile(filePath string) error {
 
 	return nil
 }
+<<<<<<< HEAD
 =======
 >>>>>>> Restruct UI design and refactor perf_profile.go
+=======
+>>>>>>> Fix perf implementation and add tests for perf.go and plotter.go
