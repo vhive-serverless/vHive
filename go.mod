@@ -61,10 +61,7 @@ require (
 	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-<<<<<<< HEAD
 	gonum.org/v1/gonum v0.7.0
-=======
->>>>>>> Refactor gperf.go, perf_profile.go and perf_bench_test.go
 	gonum.org/v1/plot v0.0.0-20190515093506-e2840ee46a6b
 	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.16.16-rc.0 // indirect
