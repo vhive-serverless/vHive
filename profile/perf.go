@@ -14,7 +14,7 @@ import (
 
 // PerfStat A instance of perf stat command
 type PerfStat struct {
-	execTime     int
+	execTime     float64
 	cmd          *exec.Cmd
 	tStart       time.Time
 	warmTime     float64
@@ -24,7 +24,7 @@ type PerfStat struct {
 }
 
 // NewPerfStat returns a new instance for perf stat
-func NewPerfStat(events, outFile string, executionTime, printInterval int) *PerfStat {
+func NewPerfStat(events, outFile string, executionTime float64, printInterval int) *PerfStat {
 	perfStat := new(PerfStat)
 	perfStat.sep = "|"
 	perfStat.outFile = outFile
@@ -35,7 +35,7 @@ func NewPerfStat(events, outFile string, executionTime, printInterval int) *Perf
 		"-I", strconv.Itoa(printInterval),
 		"-x", perfStat.sep,
 		"-o", perfStat.outFile,
-		"--", "sleep", strconv.Itoa(executionTime))
+		"--", "sleep", strconv.FormatFloat(executionTime, 'f', -1, 64))
 	log.Debugf("Perf command: %s", perfStat.cmd)
 
 	return perfStat
@@ -54,6 +54,10 @@ func (p *PerfStat) Run() error {
 // SetWarmTime sets the time duration until system is warm.
 func (p *PerfStat) SetWarmTime() {
 	p.warmTime = time.Since(p.tStart).Seconds()
+
+	if p.warmTime > p.execTime {
+		log.Warn("System warmup time is longer than perf execution time.")
+	}
 }
 
 // SetTearDownTime sets the time duration until system tears down.
@@ -68,7 +72,7 @@ func (p *PerfStat) GetResult() (map[string]float64, error) {
 	}
 
 	// wait for perf command finish
-	timeLeft := (float64(p.execTime) - time.Since(p.tStart).Seconds()) * 1e+9
+	timeLeft := (p.execTime - time.Since(p.tStart).Seconds()) * 1e+9
 	time.Sleep(time.Duration(timeLeft))
 
 	log.Debugf("Warm time: %f, Teardown time: %f", p.warmTime, p.tearDownTime)
@@ -78,6 +82,11 @@ func (p *PerfStat) GetResult() (map[string]float64, error) {
 func (p *PerfStat) parseResult() (map[string]float64, error) {
 	data, err := p.readPerfData()
 	if err != nil {
+		return nil, err
+	}
+
+	// remove perf-tmp file
+	if err := os.Remove(p.outFile); err != nil {
 		return nil, err
 	}
 

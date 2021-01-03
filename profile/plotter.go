@@ -3,6 +3,7 @@ package profile
 import (
 	"encoding/csv"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"gonum.org/v1/plot"
@@ -14,9 +15,9 @@ import (
 )
 
 // CSVPlotter plots every attribute as VM number increases
-func CSVPlotter(filePath string) {
+func CSVPlotter(inFile, outPath string) {
 	var (
-		records = readResultCSV(filePath)
+		records = readResultCSV(inFile)
 		rows    = len(records)
 		cols    = len(records[0])
 	)
@@ -49,7 +50,7 @@ func CSVPlotter(filePath string) {
 			log.Fatalf("Failed plotting data: %v", err)
 		}
 
-		fileName := p.Y.Label.Text + ".png"
+		fileName := filepath.Join(outPath, p.Y.Label.Text+".png")
 		if err := p.Save(4*vg.Inch, 4*vg.Inch, fileName); err != nil {
 			log.Fatalf("Failed saving plot: %v", err)
 		}

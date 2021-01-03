@@ -46,7 +46,7 @@ var (
 	executionTime   = flag.Int("executionTime", 1, "The execution time of the benchmark in seconds")
 	funcNames       = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
 
-	perfExecTime = flag.Int("perfExecTime", 0, "The execution time of perf command in seconds (run `perf stat` if bigger than 0)")
+	perfExecTime = flag.Float64("perfExecTime", 0, "The execution time of perf command in seconds (run `perf stat` if bigger than 0)")
 	perfInterval = flag.Int("perfInterval", 100, "Print count deltas every N milliseconds")
 	perfEvents   = flag.String("perfEvents", "", "Perf events")
 )
@@ -57,13 +57,18 @@ const (
 )
 
 func TestBenchMultiVMRequestPerSecond(t *testing.T) {
+	baseRPS := getCPUIntenseRPS()[*funcName]
+	*funcNames = *funcName
+
 	for i := 4; i <= 8; i += 4 {
 		*vmNum = i
-		testName := fmt.Sprintf("Test_%dVM", *vmNum)
+		*targetReqPerSec = *vmNum * baseRPS
+		*funcNames = *funcName
+		testName := fmt.Sprintf("%d VMs,%d RPS", *vmNum, *targetReqPerSec)
 		t.Run(testName, TestBenchRequestPerSecond)
 	}
 
-	profile.CSVPlotter("benchRPS.csv")
+	profile.CSVPlotter(getOutFile("benchRPS.csv"), *benchDir)
 }
 
 func TestBenchRequestPerSecond(t *testing.T) {
@@ -102,10 +107,12 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	log.Debugf("All VMs booted in %d ms", time.Since(bootStart).Milliseconds())
 
 	var (
-		vmGroup, remainingRequests sync.WaitGroup
-		avgExecTime, realRPS       int64
-		ticker                     = time.NewTicker(timeInterval)
-		tickerDone                 = make(chan bool, 1)
+		avgExecTime, realRPS int64
+		vmGroup              sync.WaitGroup
+		ticker               = time.NewTicker(timeInterval)
+		tickerDone           = make(chan bool, 1)
+		remainingRequests    = totalRequests
+		warmupThreshold      = totalRequests - *vmNum - 1
 	)
 
 	if isRunPerf {
@@ -113,13 +120,15 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		require.NoError(t, err, "Start perf stat returned error")
 	}
 
-	remainingRequests.Add(totalRequests)
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				remainingRequests.Done()
 				vmGroup.Add(1)
+				remainingRequests--
+				if remainingRequests == warmupThreshold {
+					perfStat.SetWarmTime()
+				}
 
 				imageName := images[vmID%len(images)]
 				vmIDString := strconv.Itoa(vmID)
@@ -127,9 +136,6 @@ func TestBenchRequestPerSecond(t *testing.T) {
 				go serveVM(t, vmIDString, imageName, &vmGroup, isSyncOffload, &avgExecTime, &realRPS)
 
 				vmID = (vmID + 1) % *vmNum
-				if vmID == 0 {
-					perfStat.SetWarmTime()
-				}
 			case <-tickerDone:
 				ticker.Stop()
 				vmGroup.Wait()
@@ -138,16 +144,15 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		}
 	}()
 
-	remainingRequests.Wait()
+	for remainingRequests > 0 {
+	}
 	tickerDone <- true
 	vmGroup.Wait()
 	perfStat.SetTearDownTime()
 
 	// Shutdown VMs
-	for _, imageName := range images {
-		message, err := funcPool.RemoveInstance("plr_fnc", imageName, isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-	}
+	message, err := funcPool.RemoveInstance("plr_fnc", images[0], isSyncOffload)
+	require.NoError(t, err, "Function returned error, "+message)
 	for i := 0; i < *vmNum; i++ {
 		vmIDString := strconv.Itoa(i)
 		message, err := funcPool.RemoveInstance(vmIDString, images[i%len(images)], isSyncOffload)
@@ -160,7 +165,6 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	serveMetrics[realRequestsPerSecond] = float64(realRPS)
 
 	if isRunPerf {
-		log.Debug("Perf retriving results")
 		result, err := perfStat.GetResult()
 		require.NoError(t, err, "Stop perf stat returned error: %v", err)
 		for eventName, value := range result {
@@ -186,7 +190,7 @@ func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup
 		atomic.AddInt64(realRPS, 1)
 	}
 	if resp.Payload != "Hello, replay_response!" {
-		log.Warn("Function returned invalid")
+		log.Warnf("Function returned invalid: %s", resp.Payload)
 	}
 
 	execTime := time.Since(tStart).Milliseconds()
@@ -197,7 +201,16 @@ func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup
 // Returns a list of image names
 func getImages(t *testing.T) []string {
 	var (
-		images = getAllImages()
+		images = map[string]string{
+			"helloworld":   "ustiugov/helloworld:var_workload",
+			"chameleon":    "ustiugov/chameleon:var_workload",
+			"pyaes":        "ustiugov/pyaes:var_workload",
+			"image_rotate": "ustiugov/image_rotate:var_workload",
+			"json_serdes":  "ustiugov/json_serdes:var_workload",
+			"lr_serving":   "ustiugov/lr_serving:var_workload",
+			"cnn_serving":  "ustiugov/cnn_serving:var_workload",
+			"rnn_serving":  "ustiugov/rnn_serving:var_workload",
+		}
 		funcs  = strings.Split(*funcNames, ",")
 		result []string
 	)
@@ -211,8 +224,10 @@ func getImages(t *testing.T) []string {
 	return result
 }
 
-func writeResultToCSV(t *testing.T, filePath string, metrics map[string]float64) {
-	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+func writeResultToCSV(t *testing.T, outfile string, metrics map[string]float64) {
+	outFile := getOutFile(outfile)
+
+	f, err := os.OpenFile(outFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 	require.NoError(t, err, "Failed opening file")
 	defer f.Close()
 
@@ -243,4 +258,17 @@ func writeResultToCSV(t *testing.T, filePath string, metrics map[string]float64)
 	require.NoError(t, err, "Failed writting file")
 
 	writer.Flush()
+}
+
+func getCPUIntenseRPS() map[string]int {
+	return map[string]int{
+		"helloworld":   10000,
+		"chameleon":    400,
+		"pyaes":        2500,
+		"image_rotate": 600,
+		"json_serdes":  600,
+		"lr_serving":   5000,
+		"cnn_serving":  100,
+		"rnn_serving":  600,
+	}
 }
