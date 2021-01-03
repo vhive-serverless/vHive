@@ -53,9 +53,6 @@ func TestReadPerfData(t *testing.T) {
 			}
 		})
 	}
-
-	err = os.Remove(fileName)
-	require.NoError(t, err, "Failed deleting perf data")
 }
 
 func TestParseResult(t *testing.T) {
@@ -75,9 +72,6 @@ func TestParseResult(t *testing.T) {
 	for k, v := range data {
 		require.Equal(t, v, result[k], "results do not match %f, %f", v, result[k])
 	}
-
-	err = os.Remove(fileName)
-	require.NoError(t, err, "Failed deleting perf data")
 }
 
 func TestGetResult(t *testing.T) {
@@ -101,9 +95,6 @@ func TestGetResult(t *testing.T) {
 	for k, v := range data {
 		require.Equal(t, v, result[k], "results do not match %f, %f", v, result[k])
 	}
-
-	err = os.Remove(fileName)
-	require.NoError(t, err, "Failed deleting perf data")
 }
 
 func createPerfData(filePath string) error {
