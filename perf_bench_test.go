@@ -60,7 +60,7 @@ func TestBenchMultiVMRequestPerSecond(t *testing.T) {
 	baseRPS := getCPUIntenseRPS()[*funcName]
 	*funcNames = *funcName
 
-	for i := 4; i <= 8; i += 4 {
+	for i := 4; i <= 20; i += 4 {
 		*vmNum = i
 		*targetReqPerSec = *vmNum * baseRPS
 		*funcNames = *funcName
@@ -110,9 +110,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		avgExecTime, realRPS int64
 		vmGroup              sync.WaitGroup
 		ticker               = time.NewTicker(timeInterval)
-		tickerDone           = make(chan bool, 1)
 		remainingRequests    = totalRequests
-		warmupThreshold      = totalRequests - *vmNum - 1
 	)
 
 	if isRunPerf {
@@ -120,33 +118,24 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		require.NoError(t, err, "Start perf stat returned error")
 	}
 
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				vmGroup.Add(1)
-				remainingRequests--
-				if remainingRequests == warmupThreshold {
-					perfStat.SetWarmTime()
-				}
+	for remainingRequests > 0 {
+		if tickerT := <-ticker.C; !tickerT.IsZero() {
+			vmGroup.Add(1)
+			remainingRequests--
 
-				imageName := images[vmID%len(images)]
-				vmIDString := strconv.Itoa(vmID)
+			imageName := images[vmID%len(images)]
+			vmIDString := strconv.Itoa(vmID)
 
-				go serveVM(t, vmIDString, imageName, &vmGroup, isSyncOffload, &avgExecTime, &realRPS)
+			go serveVM(t, vmIDString, imageName, &vmGroup, isSyncOffload, &avgExecTime, &realRPS)
 
-				vmID = (vmID + 1) % *vmNum
-			case <-tickerDone:
-				ticker.Stop()
-				vmGroup.Wait()
-				return
+			vmID = (vmID + 1) % *vmNum
+			if vmID == 0 {
+				perfStat.SetWarmTime()
 			}
 		}
-	}()
-
-	for remainingRequests > 0 {
 	}
-	tickerDone <- true
+
+	ticker.Stop()
 	vmGroup.Wait()
 	perfStat.SetTearDownTime()
 
