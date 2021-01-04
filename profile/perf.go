@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -14,6 +15,7 @@ import (
 
 // PerfStat A instance of perf stat command
 type PerfStat struct {
+	once         sync.Once
 	execTime     float64
 	cmd          *exec.Cmd
 	tStart       time.Time
@@ -53,11 +55,13 @@ func (p *PerfStat) Run() error {
 
 // SetWarmTime sets the time duration until system is warm.
 func (p *PerfStat) SetWarmTime() {
-	p.warmTime = time.Since(p.tStart).Seconds()
+	p.once.Do(func() {
+		p.warmTime = time.Since(p.tStart).Seconds()
 
-	if p.warmTime > p.execTime {
-		log.Warn("System warmup time is longer than perf execution time.")
-	}
+		if p.execTime > 0 && p.warmTime > p.execTime {
+			log.Warn("System warmup time is longer than perf execution time.")
+		}
+	})
 }
 
 // SetTearDownTime sets the time duration until system tears down.
@@ -85,7 +89,7 @@ func (p *PerfStat) parseResult() (map[string]float64, error) {
 		return nil, err
 	}
 
-	// remove perf-tmp file
+	// remove temporary perf.data file
 	if err := os.Remove(p.outFile); err != nil {
 		return nil, err
 	}
