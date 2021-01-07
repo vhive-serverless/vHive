@@ -74,3 +74,23 @@ jobs:
 
     - name: Run vHive tests that need manual cleaning
       run: make test-man-bench
+
+  test-profile:
+    name: Profile integration tests
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.14
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Install linux-tools-4.15.0-121-generic
+      uses: mstksg/get-package@v1
+      with:
+        apt-get: linux-tools-`uname -r`
+    
+    - name: Run tests in profile
+      run: make -C profile test
