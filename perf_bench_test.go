@@ -181,10 +181,10 @@ func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup
 	if err != nil {
 		log.Warn("Function returned error")
 	} else {
+		if resp.Payload != "Hello, replay_response!" {
+			log.Warnf("Function returned invalid: %s", resp.Payload)
+		}
 		atomic.AddInt64(realRPS, 1)
-	}
-	if resp.Payload != "Hello, replay_response!" {
-		log.Warnf("Function returned invalid: %s", resp.Payload)
 	}
 
 	execTime := time.Since(tStart).Milliseconds()
