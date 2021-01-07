@@ -16,9 +16,10 @@ import (
 // PerfStat A instance of perf stat command
 type PerfStat struct {
 	once         sync.Once
-	execTime     float64
 	cmd          *exec.Cmd
 	tStart       time.Time
+	interval     uint64
+	execTime     float64
 	warmTime     float64
 	tearDownTime float64
 	outFile      string
@@ -26,18 +27,25 @@ type PerfStat struct {
 }
 
 // NewPerfStat returns a new instance for perf stat
-func NewPerfStat(events, outFile string, executionTime float64, printInterval int) *PerfStat {
+func NewPerfStat(events, outFile string, executionTime float64, printInterval uint64) *PerfStat {
 	perfStat := new(PerfStat)
 	perfStat.sep = "|"
 	perfStat.outFile = outFile
 	perfStat.execTime = executionTime
+	perfStat.interval = printInterval
+	if outFile == "" {
+		perfStat.outFile = "perf-tmp.data"
+	}
 
 	perfStat.cmd = exec.Command("perf", "stat", "-a",
-		"-e", events,
-		"-I", strconv.Itoa(printInterval),
+		"-I", strconv.FormatUint(printInterval, 10),
 		"-x", perfStat.sep,
-		"-o", perfStat.outFile,
-		"--", "sleep", strconv.FormatFloat(executionTime, 'f', -1, 64))
+		"-o", perfStat.outFile)
+	if events != "" {
+		perfStat.cmd.Args = append(perfStat.cmd.Args, "-e", events)
+	}
+	perfStat.cmd.Args = append(perfStat.cmd.Args, "--", "sleep", strconv.FormatFloat(executionTime, 'f', -1, 64))
+
 	log.Debugf("Perf command: %s", perfStat.cmd)
 
 	return perfStat
@@ -45,6 +53,22 @@ func NewPerfStat(events, outFile string, executionTime float64, printInterval in
 
 // Run executes perf stat command
 func (p *PerfStat) Run() error {
+	if !isPerfInstalled() {
+		return errors.New("perf is not installed")
+	}
+
+	if p.execTime < 0 {
+		return errors.New("perf execution time is less than 0s")
+	}
+
+	if p.interval < 10 {
+		return errors.New("perf print interval is less than 10ms")
+	}
+
+	if p.interval < 100 {
+		log.Warn("print interval < 100ms. The overhead percentage could be high in some cases. Please proceed with caution.")
+	}
+
 	if err := p.cmd.Start(); err != nil {
 		return err
 	}
@@ -166,4 +190,11 @@ func (p *PerfStat) readPerfData() ([]map[string]float64, error) {
 	}
 
 	return results, nil
+}
+
+func isPerfInstalled() bool {
+	cmd := exec.Command("perf", "--version")
+	b, _ := cmd.Output()
+
+	return len(b) != 0
 }
