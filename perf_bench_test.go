@@ -47,7 +47,7 @@ var (
 	funcNames       = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
 
 	perfExecTime = flag.Float64("perfExecTime", 0, "The execution time of perf command in seconds (run `perf stat` if bigger than 0)")
-	perfInterval = flag.Int("perfInterval", 100, "Print count deltas every N milliseconds")
+	perfInterval = flag.Uint64("perfInterval", 100, "Print count deltas every N milliseconds")
 	perfEvents   = flag.String("perfEvents", "", "Perf events")
 )
 
@@ -196,14 +196,14 @@ func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup
 func getImages(t *testing.T) []string {
 	var (
 		images = map[string]string{
-			"helloworld":   "ustiugov/helloworld:var_workload",
-			"chameleon":    "ustiugov/chameleon:var_workload",
-			"pyaes":        "ustiugov/pyaes:var_workload",
-			"image_rotate": "ustiugov/image_rotate:var_workload",
-			"json_serdes":  "ustiugov/json_serdes:var_workload",
-			"lr_serving":   "ustiugov/lr_serving:var_workload",
-			"cnn_serving":  "ustiugov/cnn_serving:var_workload",
-			"rnn_serving":  "ustiugov/rnn_serving:var_workload",
+			"helloworld":   "vhiveease/helloworld:var_workload",
+			"chameleon":    "vhiveease/chameleon:var_workload",
+			"pyaes":        "vhiveease/pyaes:var_workload",
+			"image_rotate": "vhiveease/image_rotate:var_workload",
+			"json_serdes":  "vhiveease/json_serdes:var_workload",
+			"lr_serving":   "vhiveease/lr_serving:var_workload",
+			"cnn_serving":  "vhiveease/cnn_serving:var_workload",
+			"rnn_serving":  "vhiveease/rnn_serving:var_workload",
 		}
 		funcs  = strings.Split(*funcNames, ",")
 		result []string
@@ -254,6 +254,7 @@ func writeResultToCSV(t *testing.T, outfile string, metrics map[string]float64) 
 	writer.Flush()
 }
 
+// getCPUIntenseRPS returns the number of requests per second that stress CPU for each image.
 func getCPUIntenseRPS() map[string]int {
 	return map[string]int{
 		"helloworld":   10000,
