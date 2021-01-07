@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@ package misc
 import (
 	log "github.com/sirupsen/logrus"
 
-	"github.com/ustiugov/fccd-orchestrator/taps"
+	"github.com/ease-lab/vhive/taps"
 )
 
 // NewVMPool Initializes a pool of VMs

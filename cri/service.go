@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov
+// Copyright (c) 2020 Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,11 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"time"
 
+	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
-	"github.com/ustiugov/fccd-orchestrator/ctriface"
 	"google.golang.org/grpc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -42,16 +43,29 @@ const (
 	maxMsgSize = 1024 * 1024 * 16
 )
 
-type CriService struct {
+// Service contains essential objects for host orchestration.
+type Service struct {
+	sync.Mutex
+
 	criapi.ImageServiceServer
 	criapi.RuntimeServiceServer
 	orch               *ctriface.Orchestrator
 	stockRuntimeClient criapi.RuntimeServiceClient
 	stockImageClient   criapi.ImageServiceClient
 	coordinator        *coordinator
+
+	// to store mapping from pod to guest image and port temporarily
+	podVMConfigs map[string]*VMConfig
 }
 
-func NewCriService(orch *ctriface.Orchestrator) (*CriService, error) {
+// VMConfig wraps the IP and port of the guest VM
+type VMConfig struct {
+	guestIP   string
+	guestPort string
+}
+
+// NewService initializes the host orchestration state.
+func NewService(orch *ctriface.Orchestrator) (*Service, error) {
 	if orch == nil {
 		return nil, errors.New("orch must be non nil")
 	}
@@ -68,17 +82,19 @@ func NewCriService(orch *ctriface.Orchestrator) (*CriService, error) {
 		return nil, err
 	}
 
-	cs := &CriService{
+	cs := &Service{
 		orch:               orch,
 		stockRuntimeClient: stockRuntimeClient,
 		stockImageClient:   stockImageClient,
 		coordinator:        newCoordinator(orch),
+		podVMConfigs:       make(map[string]*VMConfig),
 	}
 
 	return cs, nil
 }
 
-func (s *CriService) Register(server *grpc.Server) {
+// Register registers the criapi servers.
+func (s *Service) Register(server *grpc.Server) {
 	criapi.RegisterImageServiceServer(server, s)
 	criapi.RegisterRuntimeServiceServer(server, s)
 }
@@ -117,4 +133,31 @@ func getDialOpts() []grpc.DialOption {
 		grpc.WithContextDialer(dialer),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
 	}
+}
+
+func (s *Service) insertPodVMConfig(podID string, vmConfig *VMConfig) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.podVMConfigs[podID] = vmConfig
+}
+
+func (s *Service) removePodVMConfig(podID string) {
+	s.Lock()
+	defer s.Unlock()
+
+	delete(s.podVMConfigs, podID)
+}
+
+func (s *Service) getPodVMConfig(podID string) (*VMConfig, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	vmConfig, isPresent := s.podVMConfigs[podID]
+	if !isPresent {
+		log.Errorf("VM config for pod %s does not exist", podID)
+		return nil, errors.New("VM config for pod does not exist")
+	}
+
+	return vmConfig, nil
 }

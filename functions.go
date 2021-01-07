@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,10 +40,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
+	"github.com/ease-lab/vhive/metrics"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
-	"github.com/ustiugov/fccd-orchestrator/metrics"
 )
 
 var isTestMode bool // set with a call to NewFuncPool
@@ -225,7 +225,7 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 // 2. Function (that is not pinned) can serve only up to servedTh requests (controlled by a WeightedSemaphore)
 //    a. The last goroutine needs to trigger the function's instance shutdown, then reset the semaphore,
 //       allowing new goroutines to serve their requests.
-//    b. The last goroutine is determined by the atomic counter: the goroutine wih syncID==0 shuts down
+//    b. The last goroutine is determined by the atomic counter: the goroutine with syncID==0 shuts down
 //       the instance.
 //    c. Instance shutdown is performed asynchronously because all instances have unique IDs.
 func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, *metrics.Metric, error) {
@@ -366,7 +366,11 @@ func (f *Function) AddInstance() *metrics.Metric {
 		f.lastInstanceID++
 	}
 
+	tStart := time.Now()
 	funcClient, err := f.getFuncClient()
+	if metr != nil {
+		metr.MetricMap[metrics.ConnectFuncClient] = metrics.ToUS(time.Since(tStart))
+	}
 	if err != nil {
 		logger.Panic("Failed to acquire func client")
 	}
@@ -464,7 +468,7 @@ func (f *Function) OffloadInstance() {
 
 	logger.Debug("Offloading instance")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
 	err := orch.Offload(ctx, f.vmID)
@@ -609,4 +613,3 @@ func timeoutDialer(address string, timeout time.Duration) (net.Conn, error) {
 		return nil, errors.Errorf("dial %s: timeout", address)
 	}
 }
-

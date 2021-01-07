@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov
+// Copyright (c) 2020 Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,8 @@ import (
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
-func (s *CriService) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
+// RemoveContainer removes a container or a VM
+func (s *Service) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
 	log.Debugf("RemoveContainer for %q", r.GetContainerId())
 	containerID := r.GetContainerId()
 

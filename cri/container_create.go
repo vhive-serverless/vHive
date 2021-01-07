@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov
+// Copyright (c) 2020 Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@ package cri
 
 import (
 	"context"
+	"errors"
 
 	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -31,56 +32,106 @@ import (
 
 const (
 	userContainerName = "user-container"
-	guestIPEnv        = "GUESTIP"
-	guestPortEnv      = "GUESTPORT"
-	guestImageEnv     = "GUESTIMAGE"
+	queueProxyName    = "queue-proxy"
+	guestIPEnv        = "GUEST_ADDR"
+	guestPortEnv      = "GUEST_PORT"
+	guestImageEnv     = "GUEST_IMAGE"
+	guestPortValue    = "50051"
 )
 
-func (s *CriService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+// CreateContainer starts a container or a VM, depending on the name
+// if the name matches "user-container", the cri plugin starts a VM, assigning it an IP,
+// otherwise starts a regular container
+func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	log.Debugf("CreateContainer within sandbox %q for container %+v",
 		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
 
 	config := r.GetConfig()
 	containerName := config.GetMetadata().GetName()
-	log.Debugf("received CreateContainer for %s.", containerName)
 
 	if containerName == userContainerName {
-		var image string
-		// Get image name
-		envs := config.GetEnvs()
-		for _, kv := range envs {
-			if kv.GetKey() == guestImageEnv {
-				image = kv.GetValue()
-				break
-			}
-		}
-
-		fi, err := s.coordinator.startVM(context.Background(), image)
-		if err != nil {
-			log.WithError(err).Error("failed to start VM")
-			return nil, err
-		}
-
-		// Add guest IP
-		guestIPEnv := &criapi.KeyValue{Key: guestIPEnv, Value: fi.startVMResponse.GuestIP}
-		envs = append(envs, guestIPEnv)
-		r.Config.Envs = envs
-
-		resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
-		containerdID := resp.ContainerId
-		if err != nil {
-			log.WithError(err).Error("stock containerd failed to start UC")
-			return nil, err
-		}
-
-		err = s.coordinator.insertActive(containerdID, fi)
-		if err != nil {
-			log.WithError(err).Error("failed to insert active VM")
-			return nil, err
-		}
-
-		return resp, nil
+		return s.createUserContainer(ctx, r)
+	}
+	if containerName == queueProxyName {
+		return s.createQueueProxy(ctx, r)
 	}
 
+	// Containers relevant for control plane
 	return s.stockRuntimeClient.CreateContainer(ctx, r)
+}
+
+func (s *Service) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	var (
+		stockResp *criapi.CreateContainerResponse
+		stockErr  error
+		stockDone = make(chan struct{})
+	)
+
+	go func() {
+		defer close(stockDone)
+		stockResp, stockErr = s.stockRuntimeClient.CreateContainer(ctx, r)
+	}()
+
+	config := r.GetConfig()
+	guestImage, err := getGuestImage(config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	funcInst, err := s.coordinator.startVM(context.Background(), guestImage)
+	if err != nil {
+		log.WithError(err).Error("failed to start VM")
+		return nil, err
+	}
+
+	vmConfig := &VMConfig{guestIP: funcInst.startVMResponse.GuestIP, guestPort: guestPortValue}
+	s.insertPodVMConfig(r.GetPodSandboxId(), vmConfig)
+
+	// Wait for placeholder UC to be created
+	<-stockDone
+
+	containerdID := stockResp.ContainerId
+	err = s.coordinator.insertActive(containerdID, funcInst)
+	if err != nil {
+		log.WithError(err).Error("failed to insert active VM")
+		return nil, err
+	}
+
+	return stockResp, stockErr
+}
+
+func (s *Service) createQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	vmConfig, err := s.getPodVMConfig(r.GetPodSandboxId())
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	s.removePodVMConfig(r.GetPodSandboxId())
+
+	guestIPKeyVal := &criapi.KeyValue{Key: guestIPEnv, Value: vmConfig.guestIP}
+	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: vmConfig.guestPort}
+	r.Config.Envs = append(r.Config.Envs, guestIPKeyVal, guestPortKeyVal)
+
+	resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
+	if err != nil {
+		log.WithError(err).Error("stock containerd failed to start UC")
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func getGuestImage(config *criapi.ContainerConfig) (string, error) {
+	envs := config.GetEnvs()
+	for _, kv := range envs {
+		if kv.GetKey() == guestImageEnv {
+			return kv.GetValue(), nil
+		}
+
+	}
+
+	return "", errors.New("failed to provide non empty guest image in user container config")
+
 }

@@ -1,4 +1,4 @@
-module github.com/ustiugov/fccd-orchestrator/proto
+module github.com/ease-lab/vhive/proto
 
 go 1.13
 

@@ -1,3 +1,25 @@
+# MIT License
+#
+# Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 SUBDIRS:=ctriface taps misc
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
@@ -7,12 +29,11 @@ WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
 CTRDLOGDIR:=/tmp/ctrd-logs
 
-fccd: proto
-	go install github.com/ustiugov/fccd-orchestrator
+vhive: proto
+	go install github.com/ease-lab/vhive
 
 protobuf:
 	protoc -I proto/ proto/orchestrator.proto --go_out=plugins=grpc:proto
-	protoc -I ../workloads/protos ../workloads/protos/helloworld.proto --go_out=plugins=grpc:helloworld
 
 clean:
 	rm proto/orchestrator.pb.go
@@ -60,27 +81,27 @@ test-skip:
 
 bench:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) -benchDirTest configBase -metricsTest
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) -benchDirTest configBase -metricsTest -funcName helloworld && sudo rm -rf configBase
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) $(WITHUPF) -benchDirTest configREAP -metricsTest
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) $(WITHUPF) -benchDirTest configREAP -metricsTest -funcName helloworld && sudo rm -rf configREAP
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) $(WITHLAZY) -benchDirTest configLazy -metricsTest
-	./scripts/clean_fcctr.sh
-
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) -benchDirTest configBase -metricsTest
-	./scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) -benchDirTest configREAP -metricsTest
-	./scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHLAZY) -benchDirTest configLazy -metricsTest
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) $(WITHLAZY) -benchDirTest configLazy -metricsTest -funcName helloworld && sudo rm -rf configLazy
 	./scripts/clean_fcctr.sh
 
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchRequestPerSecond -args -benchDirTest configBase -metricsTest
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) -benchDirTest configBase -metricsTest -funcName helloworld && sudo rm -rf configBase
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) -benchDirTest configREAP -metricsTest -funcName helloworld && sudo rm -rf configREAP
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHLAZY) -benchDirTest configLazy -metricsTest -funcName helloworld && sudo rm -rf configLazy
+	./scripts/clean_fcctr.sh
+
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchRequestPerSecond -args $(WITHSNAPSHOTS)
 	./scripts/clean_fcctr.sh
 
 test-man-bench:

@@ -1,4 +1,4 @@
-module github.com/ustiugov/fccd-orchestrator/taps
+module github.com/ease-lab/vhive/taps
 
 go 1.14
 

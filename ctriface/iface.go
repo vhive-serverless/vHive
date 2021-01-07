@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,16 +44,16 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
+	"github.com/ease-lab/vhive/memory/manager"
+	"github.com/ease-lab/vhive/metrics"
+	"github.com/ease-lab/vhive/misc"
 	"github.com/go-multierror/multierror"
-	"github.com/ustiugov/fccd-orchestrator/memory/manager"
-	"github.com/ustiugov/fccd-orchestrator/metrics"
-	"github.com/ustiugov/fccd-orchestrator/misc"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
 
+// StartVMResponse is the response returned by StartVM
 // TODO: Integrate response with non-cri API
-// StartVMResponse is the reponse return by StartVM
 type StartVMResponse struct {
 	// GuestIP is the IP of the guest MicroVM
 	GuestIP string
@@ -69,7 +69,6 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
 
-	// FIXME: does not account for Deactivating
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
@@ -437,7 +436,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (*metrics.
 
 	<-loadDone
 
-	loadSnapshotMetric.MetricMap[metrics.Full] = metrics.ToUS(time.Since(tStart))
+	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))
 
 	if loadErr != nil || activateErr != nil {
 		multierr := multierror.Of(loadErr, activateErr)
