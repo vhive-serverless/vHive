@@ -19,7 +19,7 @@ func TestReadPerfData(t *testing.T) {
 	err := createPerfData(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	p := NewPerfStat("", fileName, 0, 0)
+	p := NewPerfStat("", fileName, 0, 100)
 
 	result := []map[string]float64{
 		map[string]float64{
@@ -60,7 +60,7 @@ func TestParseResult(t *testing.T) {
 	err := createPerfData(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	p := NewPerfStat("", fileName, 0, 0)
+	p := NewPerfStat("", fileName, 0, 100)
 	p.warmTime = 0
 	p.tearDownTime = 1
 
@@ -79,7 +79,7 @@ func TestGetResult(t *testing.T) {
 	err := createPerfData(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	p := NewPerfStat("", fileName, 0, 0)
+	p := NewPerfStat("", fileName, 0, 100)
 	p.warmTime = 0
 	p.tearDownTime = 1
 
@@ -95,6 +95,28 @@ func TestGetResult(t *testing.T) {
 	for k, v := range data {
 		require.Equal(t, v, result[k], "results do not match %f, %f", v, result[k])
 	}
+}
+
+func TestPerfRun(t *testing.T) {
+	fileName := "testFile.txt"
+
+	p := NewPerfStat("", fileName, -1, 100)
+	err := p.Run()
+	require.EqualError(t, err, "perf execution time is less than 0s", "Failed creating perf stat")
+
+	p = NewPerfStat("", fileName, 0, 1)
+	err = p.Run()
+	require.EqualError(t, err, "perf print interval is less than 10ms", "Failed creating perf stat")
+
+	p = NewPerfStat("", fileName, 0, 100)
+
+	err = p.Run()
+	require.NoError(t, err, "Perf run returned error: %v.", err)
+
+	time.Sleep(1 * time.Second)
+
+	err = os.Remove(fileName)
+	require.NoError(t, err, "Failed removing test file.")
 }
 
 func createPerfData(filePath string) error {
