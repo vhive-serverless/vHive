@@ -1,0 +1,19 @@
+name: Build docker images for functions
+
+on: workflow_dispatch
+
+jobs:
+  build_images:
+    name: build function docker images
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [chameleon, helloworld, json_serdes_s3, lr_training_s3, pyaes, rnn_serving, cnn_serving, grpc, image_rotate_s3, lr_serving, video_processing_s3]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: master
+    - name: docker build images
+      run: |
+        docker build ./function-images/${{ matrix.image }}
