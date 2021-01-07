@@ -9,8 +9,8 @@ RUN apk add --no-cache \
     \
     ln -s locale.h /usr/include/xlocale.h && \
     \
-    pip install --disable-pip-version-check --no-build-isolation numpy && \
-    pip install --disable-pip-version-check --no-build-isolation pandas && \
+    pip install --disable-pip-version-check --no-build-isolation numpy==1.19.0 && \
+    pip install --disable-pip-version-check --no-build-isolation pandas==1.0.5 && \
     pip install --disable-pip-version-check --no-build-isolation protobuf==3.11.3 && \
     pip install --disable-pip-version-check --no-build-isolation grpcio==1.26.0 && \
     \
