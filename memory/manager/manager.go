@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 package manager
 
 import (
@@ -9,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ustiugov/fccd-orchestrator/metrics"
+	"github.com/ease-lab/vhive/metrics"
 	"gonum.org/v1/gonum/stat"
 
 	log "github.com/sirupsen/logrus"
@@ -224,7 +246,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 	return nil
 }
 
-// DumpVMStats Saves the per VM stats
+// DumpUPFPageStats Saves the per VM stats
 func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath string) error {
 	var (
 		statHeader []string
@@ -264,7 +286,7 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 	return writeUPFPageStats(metricsOutFilePath, statHeader, stats)
 }
 
-// DumpLatencyStats Dumps latency stats collected for the VM
+// DumpUPFLatencyStats Dumps latency stats collected for the VM
 func (m *MemoryManager) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 

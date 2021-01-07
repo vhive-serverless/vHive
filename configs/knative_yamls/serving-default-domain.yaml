@@ -1,0 +1,77 @@
+# Copyright 2019 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: default-domain
+  namespace: knative-serving
+  labels:
+    app: "default-domain"
+    serving.knative.dev/release: devel
+spec:
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: "default-domain"
+    spec:
+      serviceAccountName: controller
+      containers:
+        - name: default-domain
+          # This is the Go import path for the binary that is containerized
+          # and substituted here.
+          image: docker.io/vhiveease/default-domain-dd6f55160290a90018ba318b624be12e@sha256:bd9c4b9bd2b21feb36f00d703d3bd36228964bd3b379ab56dde03b050eed8ce0
+          args: ["-magic-dns=xip.io"]
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              port: 8080
+          livenessProbe:
+            httpGet:
+              port: 8080
+            failureThreshold: 6
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+      restartPolicy: Never
+  backoffLimit: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: default-domain-service
+  namespace: knative-serving
+  labels:
+    app: default-domain
+    serving.knative.dev/release: devel
+spec:
+  selector:
+    app: default-domain
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+
+---

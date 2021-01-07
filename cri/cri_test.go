@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov
+// Copyright (c) 2020 Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	hpb "github.com/ustiugov/fccd-orchestrator/helloworld"
+	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
