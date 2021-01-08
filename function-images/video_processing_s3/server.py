@@ -2,18 +2,19 @@ from concurrent import futures
 import logging
 import cv2
 from minio import Minio
-from minio.error import (ResponseError, BucketAlreadyOwnedByYou,
-                         BucketAlreadyExists)
 import grpc
-
+import os
 import helloworld_pb2
 import helloworld_pb2_grpc
 tmp = "/tmp/"
 
+minioEnvKey = "MINIO_ADDRESS"
 vid1_name = 'vid1.mp4'
 vid2_name = 'vid2.mp4'
 vid1_path = '/pulled_' + vid1_name
 vid2_path = '/pulled_' + vid2_name
+
+minioAddress = os.getenv(minioEnvKey)
 
 def video_processing(video_path):
     result_file_path = tmp + video_path
@@ -47,7 +48,10 @@ responses = ["record_response", "replay_response"]
 class Greeter(helloworld_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
-        minioClient = Minio('128.110.154.105:9000',
+        if minioAddress == None:
+            return None
+
+        minioClient = Minio(minioAddress,
                 access_key='minioadmin',
                 secret_key='minioadmin',
                 secure=False)
