@@ -1,10 +1,8 @@
 from concurrent import futures
 import logging
-
+import os
 import grpc
 from minio import Minio
-from minio.error import (ResponseError, BucketAlreadyOwnedByYou,
-                         BucketAlreadyExists)
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 import joblib
@@ -24,16 +22,21 @@ def cleanup(sentence):
     sentence = cleanup_re.sub(' ', sentence).strip()
     return sentence
 
+minioEnvKey = "MINIO_ADDRESS"
 df_name = 'dataset.csv'
 df2_name = 'dataset2.csv'
 df_path = '/pulled_' + df_name
 df2_path = 'pulled_' + df2_name
 
+minioAddress = os.getenv(minioEnvKey)
 
 class Greeter(helloworld_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
-        minioClient = Minio('128.110.154.105:9000',
+        if minioAddress == None:
+            return None
+
+        minioClient = Minio(minioAddress,
                 access_key='minioadmin',
                 secret_key='minioadmin',
                 secure=False)

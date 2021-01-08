@@ -8,8 +8,9 @@ RUN apk update && \
     ln -sf /usr/bin/pip3 /usr/local/bin/pip && \
     ln -sf /usr/bin/python3 /usr/local/bin/python && \
     ln -sf /usr/bin/python3 /usr/local/bin/python3 && \
-    echo "http://dl-8.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
-    echo "http://dl-3.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+    ln -s /usr/include/locale.h /usr/include/xlocale.h && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
     apk update && \
     apk add --upgrade && \
     apk add --update --no-cache build-base gcc g++ protobuf && \
@@ -17,6 +18,7 @@ RUN apk update && \
     apk add py3-numpy && \
     apk add py-numpy-dev && \
     pip3 install --upgrade pip && \
+    pip3 uninstall -y enum34 && \
     pip3 install --no-cache-dir Cython && \
     pip3 install --no-cache-dir -r requirements.txt && \
     pip3 install --no-cache-dir protobuf==3.11.3 grpcio==${GRPC_PYTHON_VERSION}
