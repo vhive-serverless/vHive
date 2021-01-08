@@ -1,0 +1,23 @@
+name: Check if the docker images of the functions build successfully
+
+on: 
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1'
+
+
+jobs:
+  build_images:
+    name: Build function docker images
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [grpc, helloworld, chameleon, pyaes, image_rotate_s3, lr_serving, json_serdes_s3, cnn_serving, rnn_serving, lr_training_s3, video_processing_s3]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: master
+    - name: docker build images
+      run: |
+        docker build ./function-images/${{ matrix.image }}
