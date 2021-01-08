@@ -21,4 +21,4 @@
 # SOFTWARE.
 
 #!/bin/bash
-sudo minio server /data --address 128.110.154.105:9000
+sudo minio server /data
