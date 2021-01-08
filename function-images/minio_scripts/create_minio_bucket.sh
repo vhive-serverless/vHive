@@ -21,5 +21,5 @@
 # SOFTWARE.
 
 #!/bin/bash
-mc alias set myminio http://128.110.154.105:9000 minioadmin minioadmin
+mc alias set myminio $1 minioadmin minioadmin
 mc mb myminio/mybucket
