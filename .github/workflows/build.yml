@@ -1,4 +1,4 @@
-name: vHive tests
+name: vHive build tests
 
 on:
   push:

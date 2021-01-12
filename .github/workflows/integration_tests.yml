@@ -1,0 +1,42 @@
+name: vHive integration tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+env:
+  GOOS: linux
+  GO111MODULE: on
+
+jobs:
+  integration-tests:
+    name: Integration tests
+    runs-on: self-hosted
+    steps:
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.14
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Build
+      run: go build -race -v -a ./...
+
+    - name: Run vHive end-to-end tests
+      run: make test
+
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/clean_fcctr.sh
+
+    - name: vHive Integration tests (with manual cleaning)
+      run: make test-man-bench
+
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/clean_fcctr.sh

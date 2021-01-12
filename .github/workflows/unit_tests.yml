@@ -1,4 +1,4 @@
-name: vHive tests
+name: vHive unit tests
 
 on:
   push:
@@ -12,8 +12,8 @@ env:
   GO111MODULE: on
 
 jobs:
-  test:
-    name: Integration tests on Github Runners
+  unit-test:
+    name: Unit test
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
@@ -38,8 +38,8 @@ jobs:
         make -C $MODULE test
         make -C $MODULE test-man
   
-  ctriface-test:
-    name: ctriface & end-to-end integration tests on self hosted runners
+  firecracker-containerd-interface-test:
+    name: "Unit tests: Firecracker-containerd interface"
     runs-on: self-hosted
     steps:
     - name: Set up Go 1.x
@@ -61,17 +61,4 @@ jobs:
     - name: Cleaning
       if: ${{ always() }}
       run: ./scripts/clean_fcctr.sh
-
-    - name: Run vHive end-to-end tests
-      run: make test
-
-    - name: Cleaning
-      if: ${{ always() }}
-      run: ./scripts/clean_fcctr.sh
-
-    - name: Run vHive tests that need manual cleaning
-      run: make test-man-bench
-
-    - name: Cleaning
-      if: ${{ always() }}
-      run: ./scripts/clean_fcctr.sh
+      

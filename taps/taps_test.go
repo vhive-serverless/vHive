@@ -30,7 +30,7 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
-	// "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -81,23 +81,26 @@ func TestCreateRemoveTaps(t *testing.T) {
 	}
 }
 
-// func TestCreateRemoveExtra(t *testing.T) {
-// 	tapsNum := 2001
+func TestCreateRemoveExtra(t *testing.T) {
 
-// 	tm := NewTapManager()
-// 	defer tm.RemoveBridges()
+    t.Skip("Test disabled due to execution failure in GitHub Actions and it doesn't seem essential for the test coverage")
 
-// 	for i := 0; i < tapsNum; i++ {
-// 		_, err := tm.AddTap(fmt.Sprintf("tap_%d", i))
-// 		if i < tm.numBridges*TapsPerBridge {
-// 			require.NoError(t, err, "Failed to create tap")
-// 		} else {
-// 			require.Error(t, err, "Did not fail to create extra taps")
-// 		}
-// 	}
+	tapsNum := 2001
 
-// 	for i := 0; i < tapsNum; i++ {
-// 		tm.RemoveTap(fmt.Sprintf("tap_%d", i))
+	tm := NewTapManager()
+	defer tm.RemoveBridges()
 
-// 	}
-// }
+	for i := 0; i < tapsNum; i++ {
+		_, err := tm.AddTap(fmt.Sprintf("tap_%d", i))
+		if i < tm.numBridges*TapsPerBridge {
+			require.NoError(t, err, "Failed to create tap")
+		} else {
+			require.Error(t, err, "Did not fail to create extra taps")
+		}
+	}
+
+	for i := 0; i < tapsNum; i++ {
+		tm.RemoveTap(fmt.Sprintf("tap_%d", i))
+
+	}
+}
