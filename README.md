@@ -1,4 +1,7 @@
-[![Build Status](https://travis-ci.com/ease-lab/vhive.svg?branch=master)](https://travis-ci.com/ease-lab/vhive)
+[![build](https://github.com/ease-lab/vhive/workflows/vHive%20build%20tests/badge.svg)](https://github.com/ease-lab/vhive/actions)
+[![Unit Tests](https://github.com/ease-lab/vhive/workflows/vHive%20unit%20tests/badge.svg)](https://github.com/ease-lab/vhive/actions)
+[![Integration Tests](https://github.com/ease-lab/vhive/workflows/vHive%20integration%20tests/badge.svg)](https://github.com/ease-lab/vhive/actions)
+[![Nightly Tests](https://github.com/ease-lab/vhive/workflows/vHive%20nightly%20integration%20tests/badge.svg)](https://github.com/ease-lab/vhive/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ease-lab/vhive)](https://goreportcard.com/report/github.com/ease-lab/vhive)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
