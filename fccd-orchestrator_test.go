@@ -288,7 +288,9 @@ func TestDirectStartStopVM(t *testing.T) {
 
 func TestAllFunctions(t *testing.T) {
 
-	t.Skip("Test disabled since travis runs only a nightly regression")
+	if testing.Short() {
+        t.Skip("skipping TestAllFunctions in non-nightly runs.")
+    }
 
 	images := []string{
 		"ustiugov/helloworld:var_workload",
