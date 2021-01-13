@@ -13,6 +13,7 @@ RUN apk add --no-cache \
     pip install --disable-pip-version-check --no-build-isolation pandas==1.0.5 && \
     pip install --disable-pip-version-check --no-build-isolation protobuf==3.11.3 && \
     pip install --disable-pip-version-check --no-build-isolation grpcio==1.26.0 && \
+    pip install --disable-pip-version-check --no-build-isolation pybind11 && \
     \
     # scipy 1.4.x releases are broken on Alpine due to: https://github.com/scipy/scipy/issues/11319
     #pip install --disable-pip-version-check --no-build-isolation scipy && \
