@@ -80,7 +80,7 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - name: Install linux tool package
+    - name: Install linux tools package
       uses: mstksg/get-package@v1
       with:
         apt-get: linux-tools-`uname -r`
