@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"os"
 	"strconv"
+	"strings"
 
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
@@ -48,6 +49,8 @@ func CSVPlotter(inFile, outPath string) {
 		if err != nil {
 			log.Fatalf("Failed plotting data: %v", err)
 		}
+
+		p.Y.Label.Text = strings.ReplaceAll(p.Y.Label.Text, "/", "-")
 		fileName := filepath.Join(outPath, p.Y.Label.Text+".png")
 		if err := p.Save(4*vg.Inch, 4*vg.Inch, fileName); err != nil {
 			log.Fatalf("Failed saving plot: %v", err)
