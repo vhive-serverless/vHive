@@ -60,7 +60,7 @@ func TestBenchMultiVMRequestPerSecond(t *testing.T) {
 	baseRPS := getCPUIntenseRPS()[*funcName]
 	*funcNames = *funcName
 
-	for i := 4; i <= 20; i += 4 {
+	for i := 4; i <= 100; i += 4 {
 		*vmNum = i
 		*targetReqPerSec = *vmNum * baseRPS
 		*funcNames = *funcName
@@ -90,8 +90,6 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	createResultsDir()
 
 	log.SetLevel(log.InfoLevel)
-	bootStart := time.Now()
-
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	createResultsDir()
@@ -109,13 +107,12 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		_, err := funcPool.AddInstance(vmIDString, images[i%len(images)])
 		require.NoError(t, err, "Function returned error")
 	}
-	log.Debugf("All VMs booted in %d ms", time.Since(bootStart).Milliseconds())
 
 	var (
-		avgExecTime, realRPS int64
-		vmGroup              sync.WaitGroup
-		ticker               = time.NewTicker(timeInterval)
-		remainingRequests    = totalRequests
+		execTime, realRequests int64
+		vmGroup                sync.WaitGroup
+		ticker                 = time.NewTicker(timeInterval)
+		remainingRequests      = totalRequests
 	)
 
 	if isRunPerf {
@@ -131,7 +128,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 			imageName := images[vmID%len(images)]
 			vmIDString := strconv.Itoa(vmID)
 
-			go serveVM(t, vmIDString, imageName, &vmGroup, isSyncOffload, &avgExecTime, &realRPS)
+			go serveVM(t, vmIDString, imageName, &vmGroup, isSyncOffload, &execTime, &realRequests)
 
 			vmID = (vmID + 1) % *vmNum
 			if vmID == 0 {
@@ -155,8 +152,8 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 	// Collect results
 	serveMetrics := make(map[string]float64)
-	serveMetrics[averageExecutionTime] = float64(avgExecTime) / float64(totalRequests)
-	serveMetrics[realRequestsPerSecond] = float64(realRPS)
+	serveMetrics[averageExecutionTime] = float64(execTime) / float64(totalRequests)
+	serveMetrics[realRequestsPerSecond] = float64(realRequests) / float64(*executionTime)
 
 	if isRunPerf {
 		result, err := perfStat.GetResult()
@@ -172,23 +169,22 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	writeResultToCSV(t, "benchRPS.csv", serveMetrics)
 }
 
-func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool, avgExecTime, realRPS *int64) {
+func serveVM(t *testing.T, vmIDString, imageName string, vmGroup *sync.WaitGroup, isSyncOffload bool, execTime, realRequests *int64) {
 	defer vmGroup.Done()
 
 	tStart := time.Now()
 	resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 	require.Equal(t, resp.IsColdStart, false)
 	if err != nil {
-		log.Warn("Function returned error")
+		log.Warnf("VM %s: Function returned error %v", vmIDString, err)
 	} else {
 		if resp.Payload != "Hello, replay_response!" {
 			log.Warnf("Function returned invalid: %s", resp.Payload)
 		}
-		atomic.AddInt64(realRPS, 1)
+		atomic.AddInt64(realRequests, 1)
 	}
 
-	execTime := time.Since(tStart).Milliseconds()
-	atomic.AddInt64(avgExecTime, execTime)
+	atomic.AddInt64(execTime, time.Since(tStart).Milliseconds())
 	log.Debugf("VM %s: returned in %d milliseconds", vmIDString, execTime)
 }
 
@@ -221,7 +217,7 @@ func getImages(t *testing.T) []string {
 func writeResultToCSV(t *testing.T, outfile string, metrics map[string]float64) {
 	outFile := getOutFile(outfile)
 
-	f, err := os.OpenFile(outFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+	f, err := os.OpenFile(outFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 	require.NoError(t, err, "Failed opening file")
 	defer f.Close()
 
