@@ -56,16 +56,19 @@ const (
 	realRequestsPerSecond = "real-requests-per-second"
 )
 
+var pervVMNum int
+
 func TestBenchMultiVMRequestPerSecond(t *testing.T) {
 	baseRPS := getCPUIntenseRPS()[*funcName]
 	*funcNames = *funcName
 
-	for i := 4; i <= 100; i += 4 {
+	for i := 4; i <= 32; i += 4 {
 		*vmNum = i
 		*targetReqPerSec = *vmNum * baseRPS
 		*funcNames = *funcName
 		testName := fmt.Sprintf("%d VMs,%d RPS", *vmNum, *targetReqPerSec)
 		t.Run(testName, TestBenchRequestPerSecond)
+		pervVMNum = i
 	}
 
 	profile.CSVPlotter(getOutFile("benchRPS.csv"), *benchDir)
@@ -90,15 +93,18 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	createResultsDir()
 
 	log.SetLevel(log.InfoLevel)
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	createResultsDir()
 
-	// Pull images
-	for _, imageName := range images {
-		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
+	if pervVMNum == 0 {
+		funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+
+		// Pull images
+		for _, imageName := range images {
+			resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+			require.NoError(t, err, "Function returned error")
+			require.Equal(t, resp.Payload, "Hello, record_response!")
+		}
 	}
 
 	// Boot VMs
@@ -140,15 +146,6 @@ func TestBenchRequestPerSecond(t *testing.T) {
 	ticker.Stop()
 	vmGroup.Wait()
 	perfStat.SetTearDownTime()
-
-	// Shutdown VMs
-	message, err := funcPool.RemoveInstance("plr_fnc", images[0], isSyncOffload)
-	require.NoError(t, err, "Function returned error, "+message)
-	for i := 0; i < *vmNum; i++ {
-		vmIDString := strconv.Itoa(i)
-		message, err := funcPool.RemoveInstance(vmIDString, images[i%len(images)], isSyncOffload)
-		require.NoError(t, err, "Function returned error, "+message)
-	}
 
 	// Collect results
 	serveMetrics := make(map[string]float64)
