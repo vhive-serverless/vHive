@@ -15,7 +15,7 @@ func TestReadResultCSV(t *testing.T) {
 
 	data := readResultCSV(fileName)
 	expected := [][]string{
-		{"field1", "field2", "field3"},
+		{"field1", "field2", "field/3"},
 		{"1", "4", "7"},
 		{"2", "5", "8"},
 		{"3", "6", "9"},
@@ -38,7 +38,7 @@ func TestCreatingPlotter(t *testing.T) {
 
 	CSVPlotter(fileName, "")
 
-	plotNames := []string{"field1.png", "field2.png", "field3.png"}
+	plotNames := []string{"field1.png", "field2.png", "field-3.png"}
 	for _, fname := range plotNames {
 		_, err := os.Stat(fname)
 		require.False(t, os.IsNotExist(err), "Target file %s was not found", fname)
@@ -60,7 +60,7 @@ func createTestFile(filePath string) error {
 	defer f.Close()
 
 	records := [][]string{
-		{"field1", "field2", "field3"},
+		{"field1", "field2", "field/3"},
 		{"1", "4", "7"},
 		{"2", "5", "8"},
 		{"3", "6", "9"},
