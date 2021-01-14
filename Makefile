@@ -100,7 +100,7 @@ bench:
 	./scripts/clean_fcctr.sh
 
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchRequestPerSecond -args $(WITHSNAPSHOTS)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchRequestPerSecond -args $(WITHSNAPSHOTS) && sudo rm -rf bench_results
 	./scripts/clean_fcctr.sh
 
 test-man-bench:
