@@ -2,8 +2,8 @@ name: vHive nightly integration tests
 
 on:
   workflow_dispatch:
-    schedule:
-      - cron: '0 8 * * *'
+  schedule:
+    - cron: '0 0 * * *'
 
 env:
   GOOS: linux
