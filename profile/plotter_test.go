@@ -13,7 +13,7 @@ func TestReadResultCSV(t *testing.T) {
 	err := createTestFile(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	data := readResultCSV(fileName)
+	data := readResultCSV("", fileName)
 	expected := [][]string{
 		{"field1", "field2", "field/3"},
 		{"1", "4", "7"},
@@ -36,7 +36,7 @@ func TestCreatingPlotter(t *testing.T) {
 	err := createTestFile(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	CSVPlotter(fileName, "")
+	CSVPlotter("", fileName)
 
 	plotNames := []string{"field1.png", "field2.png", "field-3.png"}
 	for _, fname := range plotNames {
