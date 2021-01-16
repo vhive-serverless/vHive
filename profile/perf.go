@@ -24,10 +24,12 @@ type PerfStat struct {
 	tearDownTime float64
 	outFile      string
 	sep          string
+	metrics      []string
+	eventSet     map[string]float64
 }
 
 // NewPerfStat returns a new instance for perf stat
-func NewPerfStat(events, outFile string, executionTime float64, printInterval uint64) *PerfStat {
+func NewPerfStat(executionTime float64, printInterval uint64, eventStr, metricStr, outFile string) *PerfStat {
 	perfStat := new(PerfStat)
 	perfStat.sep = "|"
 	perfStat.outFile = outFile
@@ -41,9 +43,40 @@ func NewPerfStat(events, outFile string, executionTime float64, printInterval ui
 		"-I", strconv.FormatUint(printInterval, 10),
 		"-x", perfStat.sep,
 		"-o", perfStat.outFile)
-	if events != "" {
-		perfStat.cmd.Args = append(perfStat.cmd.Args, "-e", events)
+
+	// create a events set from events and metrics
+	perfStat.eventSet = make(map[string]float64)
+	if len(eventStr) > 0 {
+		events := strings.Split(eventStr, ",")
+		for _, e := range events {
+			perfStat.eventSet[e] = 0
+		}
 	}
+
+	// break metrics into events
+	if len(metricStr) > 0 {
+		perfStat.metrics = strings.Split(metricStr, ",")
+		for _, metric := range perfStat.metrics {
+			metricEvents, err := getEvents(metric)
+			if err != nil {
+				log.Warnf("skip invalid matric %s: %v", metric, err)
+				continue
+			}
+			for _, e := range metricEvents {
+				perfStat.eventSet[e] = 0
+			}
+		}
+	}
+
+	var delimiter, newEventStr string
+	for event := range perfStat.eventSet {
+		newEventStr += delimiter + event
+		delimiter = ","
+	}
+	if newEventStr != "" {
+		perfStat.cmd.Args = append(perfStat.cmd.Args, "-e", newEventStr)
+	}
+
 	perfStat.cmd.Args = append(perfStat.cmd.Args, "--", "sleep", strconv.FormatFloat(executionTime, 'f', -1, 64))
 
 	log.Debugf("Perf command: %s", perfStat.cmd)
@@ -96,7 +129,7 @@ func (p *PerfStat) SetTearDownTime() {
 // GetResult returns the counters of perf stat
 func (p *PerfStat) GetResult() (map[string]float64, error) {
 	if p.tStart.IsZero() {
-		return nil, errors.New("Perf was not executed")
+		return nil, errors.New("Perf was not executed, run perf first")
 	}
 
 	// wait for perf command finish
@@ -113,33 +146,42 @@ func (p *PerfStat) parseResult() (map[string]float64, error) {
 		return nil, err
 	}
 
-	// remove temporary perf.data file
-	if err := os.Remove(p.outFile); err != nil {
-		return nil, err
-	}
-
-	result := make(map[string]float64)
-	for k, v := range data[0] {
-		result[k] = v
-	}
-
-	for i := 1; i < len(data); i++ {
-		for k, v := range data[i] {
-			result[k] += v
+	for _, m := range data {
+		for k, v := range m {
+			p.eventSet[k] += v
 		}
 	}
 
-	for k, v := range result {
-		result[k] = v / float64(len(data))
+	for k := range p.eventSet {
+		p.eventSet[k] /= float64(len(data))
 	}
 
-	return result, nil
+	for _, metric := range p.metrics {
+		events, err := getEvents(metric)
+		if err != nil {
+			return nil, err
+		}
+
+		var params []float64
+		for _, event := range events {
+			params = append(params, p.eventSet[event])
+		}
+
+		result, err := calculateMetric(metric, params...)
+		if err != nil {
+			return nil, err
+		}
+
+		p.eventSet[metric] = result
+	}
+
+	return p.eventSet, nil
 }
 
 func (p *PerfStat) readPerfData() ([]map[string]float64, error) {
 	file, err := os.Open(p.outFile)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("Perf was failed to execute, check perf events")
 	}
 	defer file.Close()
 
@@ -186,6 +228,10 @@ func (p *PerfStat) readPerfData() ([]map[string]float64, error) {
 	results = append(results, epoch)
 
 	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if err := os.Remove(p.outFile); err != nil {
 		return nil, err
 	}
 
