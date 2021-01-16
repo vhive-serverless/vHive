@@ -16,10 +16,8 @@ type testCase struct {
 
 func TestReadPerfData(t *testing.T) {
 	fileName := "testFile.txt"
-	err := createPerfData(fileName)
-	require.NoError(t, err, "Failed creating test file")
 
-	p := NewPerfStat("", fileName, 0, 100)
+	p := NewPerfStat(0, 100, "", "", fileName)
 
 	result := []map[string]float64{
 		map[string]float64{
@@ -36,7 +34,12 @@ func TestReadPerfData(t *testing.T) {
 		{warmTime: 0.5, tearDownTime: 1, expected: []map[string]float64{result[1]}},
 	}
 
+	_, err := p.readPerfData()
+	require.EqualError(t, err, "Perf was failed to execute, check perf events", "Failed detecting perf status")
+
 	for _, tCase := range cases {
+		err := createPerfData(fileName)
+		require.NoError(t, err, "Failed creating test file")
 		testName := fmt.Sprintf("%f,%f", tCase.warmTime, tCase.tearDownTime)
 
 		t.Run(testName, func(t *testing.T) {
@@ -45,14 +48,32 @@ func TestReadPerfData(t *testing.T) {
 
 			data, err := p.readPerfData()
 			require.NoError(t, err, "Failed reading perf data")
-
-			for i := range data {
-				for k, v := range data[i] {
-					require.Equal(t, v, tCase.expected[i][k], "results do not match: actual %f, expected %f", v, tCase.expected[i][k])
-				}
-			}
+			require.EqualValues(t, tCase.expected, data, "results do not match")
 		})
 	}
+}
+
+func TestCalculateMetric(t *testing.T) {
+	result, err := calculateMetric("")
+	require.EqualError(t, err, "the metric does not exist", "Failed popping not exist error")
+
+	_, err = calculateMetric("L1_Bound", 0.1)
+	require.EqualError(t, err, "the number of params does not match with input function", "Failed detecting unmatched parameters")
+
+	result, err = calculateMetric("Fetch_Latency", 10, 20)
+	require.Equal(t, 1., result, "metric calculation is incorrect")
+	require.NoError(t, err, "Failed calculating metric")
+}
+
+func TestGetEvents(t *testing.T) {
+	_, err := getEvents("")
+	require.EqualError(t, err, "the metric does not exist", "Failed popping not exist error")
+
+	events, err := getEvents("DTLB_Load")
+	require.NoError(t, err, "Failed popping not exist error")
+
+	expected := []string{"dtlb_load_misses.stlb_hit", "dtlb_load_misses.walk_duration", "dtlb_load_misses.walk_completed", "cpu_clk_unhalted.thread"}
+	require.EqualValues(t, expected, events, "")
 }
 
 func TestParseResult(t *testing.T) {
@@ -60,7 +81,7 @@ func TestParseResult(t *testing.T) {
 	err := createPerfData(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	p := NewPerfStat("", fileName, 0, 100)
+	p := NewPerfStat(0, 100, "", "", fileName)
 	p.warmTime = 0
 	p.tearDownTime = 1
 
@@ -69,9 +90,7 @@ func TestParseResult(t *testing.T) {
 
 	result := map[string]float64{"instructions": 2, "cycles": 3}
 
-	for k, v := range data {
-		require.Equal(t, v, result[k], "results do not match %f, %f", v, result[k])
-	}
+	require.EqualValues(t, result, data, "results do not match")
 }
 
 func TestGetResult(t *testing.T) {
@@ -79,36 +98,33 @@ func TestGetResult(t *testing.T) {
 	err := createPerfData(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	p := NewPerfStat("", fileName, 0, 100)
+	p := NewPerfStat(0, 100, "", "", fileName)
 	p.warmTime = 0
 	p.tearDownTime = 1
 
 	data, err := p.GetResult()
-	require.EqualError(t, err, "Perf was not executed", "Failed detecting perf status")
+	require.EqualError(t, err, "Perf was not executed, run perf first", "Failed detecting perf status")
 
 	p.tStart = time.Now()
 	data, err = p.GetResult()
 	require.NoError(t, err, "Failed retriving perf result")
 
 	result := map[string]float64{"instructions": 2, "cycles": 3}
-
-	for k, v := range data {
-		require.Equal(t, v, result[k], "results do not match %f, %f", v, result[k])
-	}
+	require.EqualValues(t, result, data, "results do not match")
 }
 
 func TestPerfRun(t *testing.T) {
 	fileName := "testFile.txt"
 
-	p := NewPerfStat("", fileName, -1, 100)
+	p := NewPerfStat(-1, 100, "", "", fileName)
 	err := p.Run()
 	require.EqualError(t, err, "perf execution time is less than 0s", "Failed creating perf stat")
 
-	p = NewPerfStat("", fileName, 0, 1)
+	p = NewPerfStat(0, 1, "", "", fileName)
 	err = p.Run()
 	require.EqualError(t, err, "perf print interval is less than 10ms", "Failed creating perf stat")
 
-	p = NewPerfStat("", fileName, 0, 100)
+	p = NewPerfStat(0, 100, "", "", fileName)
 
 	err = p.Run()
 	require.NoError(t, err, "Perf run returned error: %v.", err)
