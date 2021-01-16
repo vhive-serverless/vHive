@@ -15,9 +15,9 @@ import (
 )
 
 // CSVPlotter plots every attribute as VM number increases
-func CSVPlotter(inFile, outPath string) {
+func CSVPlotter(filePath, inFile string) {
 	var (
-		records = readResultCSV(inFile)
+		records = readResultCSV(filePath, inFile)
 		rows    = len(records)
 		cols    = len(records[0])
 	)
@@ -51,15 +51,17 @@ func CSVPlotter(inFile, outPath string) {
 		}
 
 		p.Y.Label.Text = strings.ReplaceAll(p.Y.Label.Text, "/", "-")
-		fileName := filepath.Join(outPath, p.Y.Label.Text+".png")
+		fileName := filepath.Join(filePath, p.Y.Label.Text+".png")
 		if err := p.Save(4*vg.Inch, 4*vg.Inch, fileName); err != nil {
 			log.Fatalf("Failed saving plot: %v", err)
 		}
 	}
 
 // retrieve data from csv file
-func readResultCSV(filePath string) [][]string {
-	f, err := os.Open(filePath)
+func readResultCSV(filePath, inFile string) [][]string {
+	fileName := filepath.Join(filePath, inFile)
+	f, err := os.Open(fileName)
+	if err != nil {
 		log.Fatalf("Failed opening file: %v", err)
 	}
 	defer f.Close()
