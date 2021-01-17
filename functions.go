@@ -350,7 +350,7 @@ func (f *Function) AddInstance() *metrics.Metric {
 
 	var metr *metrics.Metric = nil
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
 	if f.isSnapshotReady {
