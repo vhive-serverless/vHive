@@ -72,3 +72,10 @@ func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
 		o.isMetricsMode = isMetricsMode
 	}
 }
+
+// WithMinioAddress Sets the IP address and port of the minio server
+func WithMinioAddress(minioAddress string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.minioAddress = minioAddress
+	}
+}

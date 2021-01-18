@@ -115,6 +115,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 		containerd.WithSnapshotter(o.snapshotter),
 		containerd.WithNewSnapshot(vmID, *vm.Image),
 		containerd.WithNewSpec(
+			oci.WithEnv([]string{fmt.Sprintf("%s=%s", minioEnvVarKey, o.minioAddress)}),
 			oci.WithImageConfig(*vm.Image),
 			firecrackeroci.WithVMID(vmID),
 			firecrackeroci.WithVMNetwork,

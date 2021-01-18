@@ -48,6 +48,7 @@ var (
 	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
 	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
+	minioAddress           = flag.String("minioAddress", "", "Address of Minio server holding the inputs to s3 workloads. ADDRESS:PORT")
 )
 
 func TestMain(m *testing.M) {
@@ -79,6 +80,7 @@ func TestMain(m *testing.M) {
 		ctriface.WithUPF(*isUPFEnabledTest),
 		ctriface.WithMetricsMode(*isMetricsModeTest),
 		ctriface.WithLazyMode(*isLazyModeTest),
+		ctriface.WithMinioAddress(*minioAddress),
 	)
 
 	ret := m.Run()
