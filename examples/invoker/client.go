@@ -90,6 +90,7 @@ func runBenchmark(urls []string, runDuration, targetRPS int) (realRPS float64) {
 		case <-timeout:
 			duration := time.Since(start).Seconds()
 			realRPS = float64(completed) / duration
+			log.Infof("Issued / completed requests : %d, %d", issued, completed)
 			log.Infof("Real / target RPS : %.2f / %v", realRPS, targetRPS)
 
 			log.Println("Benchmark finished!")
@@ -153,7 +154,9 @@ func writeLatencies(rps float64, latencyOutputFile string) {
 	latSlice.Lock()
 	defer latSlice.Unlock()
 
-	fileName := fmt.Sprintf("%s_%frps", latencyOutputFile, rps)
+	fileName := fmt.Sprintf("rps%.2f_%s", rps, latencyOutputFile)
+	log.Infof("The measured latencies are saved in %s.", fileName)
+
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
