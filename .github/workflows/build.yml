@@ -3,8 +3,14 @@ name: vHive build tests
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
   pull_request:
     branches: [ master ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
   workflow_dispatch:
 
 env:
