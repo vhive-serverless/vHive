@@ -23,7 +23,7 @@
 SUBDIRS:=ctriface taps misc
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
-EXTRATESTFILES:=fccd-orchestrator_test.go stats.go fccd-orchestrator.go functions.go
+EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go
 WITHUPF:=-upfTest
 WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
