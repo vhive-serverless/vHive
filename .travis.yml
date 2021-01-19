@@ -1,3 +1,5 @@
+# Travis testing is deprecated as vHive moved to Github Actions for testing
+
 dist: bionic
 language: go
 

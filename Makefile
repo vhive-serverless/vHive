@@ -135,7 +135,7 @@ test-subdirs: $(SUBDIRS)
 test-cri:
 	$(MAKE) -C cri test
 
-test-cri-travis:
+test-cri-travis: # Testing in travis is deprecated
 	$(MAKE) -C cri test-travis
 
 .PHONY: test-orch $(SUBDIRS) test-subdirs
