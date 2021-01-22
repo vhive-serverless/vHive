@@ -32,6 +32,7 @@ func CSVPlotter(filePath, inFile string) {
 
 		p.X.Label.Text = "VM number"
 		p.Y.Label.Text = records[0][col]
+		p.Y.Min = 0
 
 		// setup data
 		pts := make(plotter.XYs, rows-1)
