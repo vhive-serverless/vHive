@@ -54,26 +54,43 @@ func TestReadPerfData(t *testing.T) {
 }
 
 func TestCalculateMetric(t *testing.T) {
-	result, err := calculateMetric("")
+	perfVals := map[string]float64{
+		"idq_uops_not_delivered.cycles_0_uops_deliv.core": 10,
+		"cpu_clk_unhalted.thread_any":                     20,
+		"cycle_activity.stalls_mem_any":                   0.1,
+	}
+
+	result, err := calculateMetric("", perfVals)
 	require.EqualError(t, err, "the metric does not exist", "Failed popping not exist error")
 
-	_, err = calculateMetric("L1_Bound", 0.1)
-	require.EqualError(t, err, "the number of params does not match with input function", "Failed detecting unmatched parameters")
-
-	result, err = calculateMetric("Fetch_Latency", 10, 20)
+	result, err = calculateMetric("Fetch_Latency", perfVals)
 	require.Equal(t, 1., result, "metric calculation is incorrect")
 	require.NoError(t, err, "Failed calculating metric")
 }
 
 func TestGetEvents(t *testing.T) {
-	_, err := getEvents("")
+	metrics := getMetrics()
+
+	_, err := getEvents(metrics, "")
 	require.EqualError(t, err, "the metric does not exist", "Failed popping not exist error")
 
-	events, err := getEvents("DTLB_Load")
-	require.NoError(t, err, "Failed popping not exist error")
+	events, err := getEvents(metrics, "DRAM_Bound")
+	require.NoError(t, err, "metric is not found")
+	expected := []string{"mem_load_uops_retired.l3_hit", "mem_load_uops_retired.l3_miss", "cycle_activity.stalls_l2_miss", "cpu_clk_unhalted.thread"}
+	require.EqualValues(t, expected, events, "returned events do not match with expected events")
 
-	expected := []string{"dtlb_load_misses.stlb_hit", "dtlb_load_misses.walk_duration", "dtlb_load_misses.walk_completed", "cpu_clk_unhalted.thread"}
-	require.EqualValues(t, expected, events, "")
+	events, err = getEvents(metrics, "Memory_Bound")
+	require.NoError(t, err, "metric is not found")
+}
+
+func TestSameMetricEntry(t *testing.T) {
+	metrics := getMetrics()
+	funcs := getMetricFuncMap()
+
+	for metric := range metrics {
+		_, isPresent := funcs[metric]
+		require.True(t, isPresent, "metric %s is not found in functions", metric)
+	}
 }
 
 func TestParseResult(t *testing.T) {
