@@ -35,6 +35,7 @@ func NewPerfStat(executionTime float64, printInterval uint64, eventStr, metricSt
 	perfStat.outFile = outFile
 	perfStat.execTime = executionTime
 	perfStat.interval = printInterval
+	perfStat.eventSet = make(map[string]float64)
 	if outFile == "" {
 		perfStat.outFile = "perf-tmp.data"
 	}
@@ -45,28 +46,10 @@ func NewPerfStat(executionTime float64, printInterval uint64, eventStr, metricSt
 		"-o", perfStat.outFile)
 
 	// create a events set from events and metrics
-	perfStat.eventSet = make(map[string]float64)
-	if len(eventStr) > 0 {
-		events := strings.Split(eventStr, ",")
-		for _, e := range events {
-			perfStat.eventSet[e] = 0
-		}
-	}
+	perfStat.initEventSet(eventStr)
 
 	// break metrics into events
-	if len(metricStr) > 0 {
-		perfStat.metrics = strings.Split(metricStr, ",")
-		for _, metric := range perfStat.metrics {
-			metricEvents, err := getEvents(metric)
-			if err != nil {
-				log.Warnf("skip invalid matric %s: %v", metric, err)
-				continue
-			}
-			for _, e := range metricEvents {
-				perfStat.eventSet[e] = 0
-			}
-		}
-	}
+	perfStat.processMetricString(metricStr)
 
 	var delimiter, newEventStr string
 	for event := range perfStat.eventSet {
@@ -140,6 +123,36 @@ func (p *PerfStat) GetResult() (map[string]float64, error) {
 	return p.parseResult()
 }
 
+///////////////////////////////////////////////////////////////////////////////
+////////////////////////// Auxialiary functions below /////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+func (p *PerfStat) initEventSet(eventStr string) {
+	if len(eventStr) > 0 {
+		events := strings.Split(eventStr, ",")
+		for _, e := range events {
+			p.eventSet[e] = 0
+		}
+	}
+}
+
+func (p *PerfStat) processMetricString(metricStr string) {
+	allMetrics := getMetrics()
+	if len(metricStr) > 0 {
+		metrics := strings.Split(metricStr, ",")
+		for _, metric := range metrics {
+			metricEvents, err := getEvents(allMetrics, metric)
+			if err != nil {
+				log.Warnf("skip invalid matric %s: %v", metric, err)
+				continue
+			}
+			p.metrics = append(p.metrics, metric)
+			for _, e := range metricEvents {
+				p.eventSet[e] = 0
+			}
+		}
+	}
+}
+
 func (p *PerfStat) parseResult() (map[string]float64, error) {
 	data, err := p.readPerfData()
 	if err != nil {
@@ -157,17 +170,7 @@ func (p *PerfStat) parseResult() (map[string]float64, error) {
 	}
 
 	for _, metric := range p.metrics {
-		events, err := getEvents(metric)
-		if err != nil {
-			return nil, err
-		}
-
-		var params []float64
-		for _, event := range events {
-			params = append(params, p.eventSet[event])
-		}
-
-		result, err := calculateMetric(metric, params...)
+		result, err := calculateMetric(metric, p.eventSet)
 		if err != nil {
 			return nil, err
 		}
@@ -196,10 +199,8 @@ func (p *PerfStat) readPerfData() ([]map[string]float64, error) {
 	)
 	for scanner.Scan() {
 		line := scanner.Text()
-		tokens := strings.Split(line, p.sep+p.sep)
 
-		timeStr := strings.ReplaceAll(strings.Split(tokens[0], p.sep)[0], " ", "")
-		timestamp, err := strconv.ParseFloat(timeStr, 64)
+		eventName, value, timestamp, err := p.splitLine(line)
 		if err != nil {
 			return nil, err
 		}
@@ -212,14 +213,6 @@ func (p *PerfStat) readPerfData() ([]map[string]float64, error) {
 		} else if prevTimestamp != 0 && timestamp != prevTimestamp {
 			results = append(results, epoch)
 			epoch = make(map[string]float64)
-		}
-
-		eventName := strings.Split(tokens[1], p.sep)[0]
-
-		valueStr := strings.Split(tokens[0], p.sep)[1]
-		value, err := strconv.ParseFloat(valueStr, 64)
-		if err != nil {
-			return nil, err
 		}
 
 		epoch[eventName] = value
@@ -236,6 +229,25 @@ func (p *PerfStat) readPerfData() ([]map[string]float64, error) {
 	}
 
 	return results, nil
+}
+
+func (p *PerfStat) splitLine(line string) (string, float64, float64, error) {
+	tokens := strings.Split(line, p.sep+p.sep)
+	timeStr := strings.ReplaceAll(strings.Split(tokens[0], p.sep)[0], " ", "")
+	timestamp, err := strconv.ParseFloat(timeStr, 64)
+	if err != nil {
+		return "", 0, 0, err
+	}
+
+	eventName := strings.Split(tokens[1], p.sep)[0]
+
+	valueStr := strings.Split(tokens[0], p.sep)[1]
+	value, err := strconv.ParseFloat(valueStr, 64)
+	if err != nil {
+		return "", 0, 0, err
+	}
+
+	return eventName, value, timestamp, nil
 }
 
 func isPerfInstalled() bool {
