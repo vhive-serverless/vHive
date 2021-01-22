@@ -30,10 +30,14 @@ jobs:
   integ_test_image:
     name: Build integration test docker images
     runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [integration_test, github_runner]
     steps:
     - uses: actions/checkout@v2
       with:
         ref: master
     - name: docker build images
       run: |
-        DOCKER_BUILDKIT=1 docker build --file ./scripts/Dockerfile.integration_test .
+        DOCKER_BUILDKIT=1 docker build --file ./scripts/test_runner/Dockerfile.${{ matrix.image }} .

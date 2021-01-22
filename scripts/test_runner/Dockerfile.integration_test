@@ -5,5 +5,3 @@ RUN apt-get update && \
     wget "https://dl.google.com/go/go1.15.linux-amd64.tar.gz" -O go.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go.linux-amd64.tar.gz && \
     ln -s /usr/local/go/bin/go /usr/bin/go
-
-# Get Github action token and link the runner to Github Actions
