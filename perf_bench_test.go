@@ -40,40 +40,34 @@ import (
 )
 
 var (
-	vmNum           = flag.Int("vm", 2, "The number of VMs")
-	targetReqPerSec = flag.Int("requestPerSec", 10, "The target number of requests per second")
-	executionTime   = flag.Int("executionTime", 1, "The execution time of the benchmark in seconds")
-	funcNames       = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
+	// shared arguments
+	injectDuration = flag.Int("injectTimeDuration", 1, "The total time in seconds for injecting requests each round")
+	funcNames      = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
 
-	startVMNum = flag.Int("startVM", 4, "The start VM number for multi-VMs requests per second benchmark")
-	endVMNum   = flag.Int("endVM", 100, "The end VM number for multi-VMs requests per second benchmark")
+	vmNum           = flag.Int("vm", 2, "TestBenchRequestPerSecond: the number of VMs")
+	targetReqPerSec = flag.Int("requestPerSec", 10, "TestBenchRequestPerSecond: the target number of requests per second")
 
-	perfExecTime = flag.Float64("perfExecTime", 0, "The execution time of perf command in seconds (run `perf stat` if bigger than 0)")
-	perfInterval = flag.Uint64("perfInterval", 100, "Print count deltas every N milliseconds")
-	perfEvents   = flag.String("perfEvents", "", "Perf events")
+	vmIncrStep = flag.Int("vmIncrStep", 4, "TestBenchMultiVMRequestPerSecond: the increment VM number for throughput benchmark")
+	maxVMNum   = flag.Int("maxVMNum", 100, "TestBenchMultiVMRequestPerSecond: The maximum VM number for throughput benchmark")
+
+	// perf arguments
+	perfExecTime = flag.Float64("perfExecTime", 30, "The execution time of perf command in seconds (sleep command)")
+	perfInterval = flag.Uint64("perfInterval", 500, "Print count deltas every N milliseconds (-I flag)")
+	perfEvents   = flag.String("perfEvents", "", "Perf events (-e flag)")
 	perfMetrics  = flag.String("perfMetrics", "", "Perf metrics")
 )
 
-const (
-	averageExecutionTime  = "average-execution-time"
-	realRequestsPerSecond = "real-requests-per-second"
-)
-
 func TestBenchMultiVMRequestPerSecond(t *testing.T) {
-	log.SetLevel(log.InfoLevel)
-
-	*funcNames = *funcName
-
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
 		startVMID     int
 		isSyncOffload bool = true
 		metrFile           = "benchRPS.csv"
-		isRunPerf          = *perfExecTime > 0
 		images             = getImages(t)
-		baseRPS            = getCPUIntenseRPS()[*funcName]
+		baseRPS            = getCPUIntenseRPS()
 	)
+	log.SetLevel(log.InfoLevel)
 
 	createResultsDir()
 
@@ -81,15 +75,17 @@ func TestBenchMultiVMRequestPerSecond(t *testing.T) {
 
 	pullImages(t, images)
 
-	for vmNum := *startVMNum; vmNum <= *endVMNum; vmNum += 4 {
-		log.Infof("startVMID: %d, vmNum: %d", startVMID, vmNum)
+	for vmNum := *vmIncrStep; vmNum <= *maxVMNum; vmNum += *vmIncrStep {
+		rps := vmNum * baseRPS
+		log.Infof("vmNum: %d, RPS: %d", vmNum, rps)
+
 		bootVMs(t, images, startVMID, vmNum)
-		metr := injectRequests(t, images, vmNum, vmNum*baseRPS, *executionTime, isRunPerf, isSyncOffload)
+		metr := loadAndProfile(t, images, vmNum, rps, *injectDuration, isSyncOffload)
 		dumpMetrics(t, metr, metrFile)
 		startVMID = vmNum
 	}
 
-	tearDownVMs(t, images, *endVMNum, isSyncOffload)
+	tearDownVMs(t, images, *maxVMNum, isSyncOffload)
 
 	profile.CSVPlotter(*benchDir, metrFile)
 }
@@ -99,7 +95,6 @@ func TestBenchRequestPerSecond(t *testing.T) {
 		servedTh      uint64
 		pinnedFuncNum int
 		isSyncOffload bool = true
-		isRunPerf          = *perfExecTime > 0
 		images             = getImages(t)
 	)
 
@@ -113,7 +108,7 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 	bootVMs(t, images, 0, *vmNum)
 
-	serveMetrics := injectRequests(t, images, *vmNum, *targetReqPerSec, *executionTime, isRunPerf, isSyncOffload)
+	serveMetrics := loadAndProfile(t, images, *vmNum, *targetReqPerSec, *injectDuration, isSyncOffload)
 
 	tearDownVMs(t, images, *vmNum, isSyncOffload)
 
@@ -138,23 +133,28 @@ func bootVMs(t *testing.T, images []string, startVMID, endVMID int) {
 	}
 }
 
-// Inject many requests per second to VMs
-func injectRequests(t *testing.T, images []string, vmNum, targetRPS, executionTime int, isPerf, isSyncOffload bool) map[string]float64 {
+// Inject many requests per second to VMs and profile
+func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS, injectDuration int, isSyncOffload bool) map[string]float64 {
 	var (
 		vmID                   int
 		execTime, realRequests int64
 		vmGroup                sync.WaitGroup
 		timeInterval           = time.Duration(time.Second.Nanoseconds() / int64(targetRPS))
-		totalRequests          = executionTime * targetRPS
+		totalRequests          = injectDuration * targetRPS
 		remainingRequests      = totalRequests
 		ticker                 = time.NewTicker(timeInterval)
 		perfStat               = profile.NewPerfStat(*perfExecTime, *perfInterval, *perfEvents, *perfMetrics, "perf-tmp.data")
 	)
 
-	if isPerf {
-		err := perfStat.Run()
-		require.NoError(t, err, "Start perf stat returned error")
-	}
+	const (
+		averageExecutionTime  = "average-execution-time"
+		realRequestsPerSecond = "real-requests-per-second"
+	)
+
+	log.Info("Load starts")
+	tStart := time.Now()
+	err := perfStat.Run()
+	require.NoError(t, err, "Start perf stat returned error")
 
 	for remainingRequests > 0 {
 		if tickerT := <-ticker.C; !tickerT.IsZero() {
@@ -175,18 +175,17 @@ func injectRequests(t *testing.T, images []string, vmNum, targetRPS, executionTi
 	ticker.Stop()
 	vmGroup.Wait()
 	perfStat.SetTearDownTime()
+	log.Infof("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
 
 	// Collect results
 	serveMetrics := make(map[string]float64)
 	serveMetrics[averageExecutionTime] = float64(execTime) / float64(totalRequests)
-	serveMetrics[realRequestsPerSecond] = float64(realRequests) / float64(executionTime)
-	if isPerf {
-		result, err := perfStat.GetResult()
-		require.NoError(t, err, "Stop perf stat returned error: %v", err)
-		for eventName, value := range result {
-			log.Debugf("%s: %f\n", eventName, value)
-			serveMetrics[eventName] = value
-		}
+	serveMetrics[realRequestsPerSecond] = float64(realRequests) / float64(injectDuration)
+	result, err := perfStat.GetResult()
+	require.NoError(t, err, "Stop perf stat returned error: %v", err)
+	for eventName, value := range result {
+		log.Debugf("%s: %f\n", eventName, value)
+		serveMetrics[eventName] = value
 	}
 	log.Debugf("average-execution-time: %f\n", serveMetrics[averageExecutionTime])
 	log.Debugf("real-requests-per-second: %f\n", serveMetrics[realRequestsPerSecond])
@@ -286,15 +285,31 @@ func dumpMetrics(t *testing.T, metrics map[string]float64, outfile string) {
 }
 
 // getCPUIntenseRPS returns the number of requests per second that stress CPU for each image.
-func getCPUIntenseRPS() map[string]int {
-	return map[string]int{
-		"helloworld":   10000,
-		"chameleon":    400,
-		"pyaes":        2500,
-		"image_rotate": 600,
-		"json_serdes":  600,
-		"lr_serving":   5000,
-		"cnn_serving":  100,
-		"rnn_serving":  600,
+func getCPUIntenseRPS() int {
+	var (
+		sum, result int
+		values      []int
+		funcs       = strings.Split(*funcNames, ",")
+		reqsPerSec  = map[string]int{
+			"helloworld":   10000,
+			"chameleon":    400,
+			"pyaes":        2500,
+			"image_rotate": 600,
+			"json_serdes":  600,
+			"lr_serving":   5000,
+			"cnn_serving":  200,
+			"rnn_serving":  600,
+		}
+	)
+
+	for _, funcName := range funcs {
+		values = append(values, reqsPerSec[funcName])
+		sum += reqsPerSec[funcName]
 	}
+
+	for _, rps := range values {
+		result += rps * rps / sum
+	}
+
+	return result
 }
