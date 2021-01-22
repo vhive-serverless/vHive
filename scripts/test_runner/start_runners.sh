@@ -21,8 +21,14 @@
 # SOFTWARE.
 
 # start a container
-docker run --rm -it --privileged \
---ipc=host \
---volume /dev:/dev \
---volume /run/udev/control:/run/udev/control \
-vhive_integration_test:latest bash
+# create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
+docker run -d --restart always --privileged \
+    --name integration_test-github_runner \
+    -e REPO_URL="https://github.com/ease-lab/vhive" \
+    -e ACCESS_TOKEN="" \
+    --ipc=host \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /tmp/github-runner-vhive:/tmp/github-runner-vhive \
+    --volume /dev:/dev \
+    --volume /run/udev/control:/run/udev/control \
+    vhiveease/integ_test_runner
