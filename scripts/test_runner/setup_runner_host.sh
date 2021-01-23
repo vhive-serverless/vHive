@@ -38,7 +38,7 @@ sudo add-apt-repository \
    stable"
 
 sudo apt-get update
-sudo apt-get install --yes docker-ce docker-ce-cli containerd.io 
+sudo apt-get install --yes docker-ce docker-ce-cli containerd.io >> /dev/null
 
 sudo usermod -aG docker $USER
-newgrp docker 
+newgrp docker

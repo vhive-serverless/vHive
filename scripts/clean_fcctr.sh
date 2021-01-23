@@ -47,9 +47,18 @@ for d in `find /var/lib/cni/ -mindepth 1 -maxdepth 1  -type d | grep -v networks
     sudo rm -rf $d
 done
 
-echo Removing devmapper devices
-for de in `sudo dmsetup ls| cut -f1|grep snap`; do sudo dmsetup remove $de && echo Removed $de; done
-sudo dmsetup remove fc-dev-thinpool
+CONTAINERID=$(basename $(cat /proc/1/cpuset))
+
+if [ 64 -eq ${#CONTAINERID} ]; then
+    echo Removing devmapper devices
+    for de in `sudo dmsetup ls| cut -f1|grep $CONTAINERID |grep snap`; do sudo dmsetup remove $de && echo Removed $de; done
+    sudo dmsetup remove "${CONTAINERID}_thinpool"
+else
+    echo Removing devmapper devices
+    for de in `sudo dmsetup ls| cut -f1|grep snap`; do sudo dmsetup remove $de && echo Removed $de; done
+    sudo dmsetup remove fc-dev-thinpool
+fi
+
 
 echo Cleaning /var/lib/firecracker-containerd/*
 for d in containerd shim-base snapshotter; do sudo rm -rf /var/lib/firecracker-containerd/$d; done

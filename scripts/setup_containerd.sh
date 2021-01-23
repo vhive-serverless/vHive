@@ -49,4 +49,11 @@ sudo cp $BINS/default-rootfs.img /var/lib/firecracker-containerd/runtime/
 sudo curl -fsSL -o /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin https://s3.amazonaws.com/spec.ccfc.min/img/hello/kernel/hello-vmlinux.bin
 
 sudo cp $CONFIGS/config.toml /etc/firecracker-containerd/
+
+CONTAINERID=$(basename $(cat /proc/1/cpuset))
+
+if [ 64 -eq ${#CONTAINERID} ]; then
+  sudo sed -i "s/fc-dev-thinpool/${CONTAINERID}_thinpool/" /etc/firecracker-containerd/config.toml
+fi
+
 sudo cp $CONFIGS/firecracker-runtime.json /etc/containerd/

@@ -6,6 +6,12 @@ pushd /var/lib/firecracker-containerd/snapshotter/devmapper > /dev/null
 DIR=/var/lib/firecracker-containerd/snapshotter/devmapper
 POOL=fc-dev-thinpool
 
+CONTAINERID=$(basename $(cat /proc/1/cpuset))
+
+if [ 64 -eq ${#CONTAINERID} ]; then
+    POOL="${CONTAINERID}_thinpool"
+fi
+
 if [[ ! -f "${DIR}/data" ]]; then
     sudo touch "${DIR}/data"
     sudo truncate -s 100G "${DIR}/data"
