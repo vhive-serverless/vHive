@@ -1,3 +1,4 @@
+#!/bin/bash
 # MIT License
 #
 # Copyright (c) 2020 Shyam Jesalpura and EASE lab
@@ -28,7 +29,7 @@ sudo apt-get install \
     ca-certificates \
     curl \
     gnupg-agent \
-    software-properties-common
+    software-properties-common >> /dev/null
 
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 

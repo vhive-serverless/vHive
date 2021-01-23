@@ -21,6 +21,10 @@ jobs:
   integration-tests:
     name: Integration tests
     runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        test-name: [test, test-man-bench]
     steps:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
@@ -34,14 +38,7 @@ jobs:
       run: go build -race -v -a ./...
 
     - name: Run vHive end-to-end tests
-      run: make test
-
-    - name: Cleaning
-      if: ${{ always() }}
-      run: ./scripts/clean_fcctr.sh
-
-    - name: vHive Integration tests (with manual cleaning)
-      run: make test-man-bench
+      run: make ${{ matrix.test-name }}
 
     - name: Cleaning
       if: ${{ always() }}
