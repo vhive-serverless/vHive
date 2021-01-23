@@ -1,7 +1,0 @@
-FROM ubuntu:18.04
-
-RUN apt-get update && \
-    apt-get install --yes git sudo apt-utils wget curl make gcc iproute2 iptables && \
-    wget "https://dl.google.com/go/go1.15.linux-amd64.tar.gz" -O go.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go.linux-amd64.tar.gz && \
-    ln -s /usr/local/go/bin/go /usr/bin/go

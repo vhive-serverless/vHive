@@ -1,3 +1,4 @@
+#!/bin/bash
 # MIT License
 #
 # Copyright (c) 2020 Shyam Jesalpura and EASE lab
@@ -20,15 +21,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# start a container
-# create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
-docker run -d --restart always --privileged \
-    --name integration_test-github_runner \
-    -e REPO_URL="https://github.com/ease-lab/vhive" \
-    -e ACCESS_TOKEN="" \
-    --ipc=host \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /tmp/github-runner-vhive:/tmp/github-runner-vhive \
-    --volume /dev:/dev \
-    --volume /run/udev/control:/run/udev/control \
-    vhiveease/integ_test_runner
+git clone https://github.com/ease-lab/vhive
+cd vhive
+./scripts/travis/setup_node.sh

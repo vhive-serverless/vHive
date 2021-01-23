@@ -1,0 +1,16 @@
+FROM myoung34/github-runner:ubuntu-bionic
+
+RUN apt-get update && \
+    apt-get install --yes \
+    git \
+    sudo \
+    apt-utils \
+    wget \
+    curl \
+    make \
+    gcc \
+    iproute2 \
+    iptables
+
+COPY ./setup_runner.sh /setup_runner.sh
+ENTRYPOINT /setup_runner.sh ; /entrypoint.sh
