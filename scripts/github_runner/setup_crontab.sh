@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 # MIT License
 #
 # Copyright (c) 2020 Shyam Jesalpura and EASE lab
@@ -21,27 +21,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# download and install docker
-sudo apt-get update
+if [ -z $1 ] ; then
+    echo "Parameters missing"
+    echo "USAGE: setup_crontab.sh <location of config file>"
+    exit -1
+fi
 
-sudo apt-get install \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg-agent \
-    software-properties-common >> /dev/null
+# Config file format
+# KEY="kjbcjvakcjdc"
+# NUM="2"
+# LABEL="nightly"
 
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+source $1
 
-sudo add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-   $(lsb_release -cs) \
-   stable"
+TMPFILE=$(mktemp)
 
-sudo apt-get update
-sudo apt-get install --yes docker-ce docker-ce-cli containerd.io >> /dev/null
-
-sudo usermod -aG docker $USER
-newgrp docker
-
-./setup_crontab.sh
+#write out current crontab
+crontab -l > $TMPFILE
+#echo new cron into cron file
+echo "00 00 * * * shutdown -r 0" >> $TMPFILE
+echo "@reboot /start_runners.sh $NUM $KEY $LABEL"
+#install new cron file
+crontab $TMPFILE

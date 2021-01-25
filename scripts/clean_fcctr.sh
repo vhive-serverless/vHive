@@ -55,7 +55,7 @@ if [ 64 -eq ${#CONTAINERID} ]; then
     sudo dmsetup remove "${CONTAINERID}_thinpool"
 else
     echo Removing devmapper devices
-    for de in `sudo dmsetup ls| cut -f1|grep snap`; do sudo dmsetup remove $de && echo Removed $de; done
+    for de in `sudo dmsetup ls| cut -f1|grep thinpool`; do sudo dmsetup remove $de && echo Removed $de; done
     sudo dmsetup remove fc-dev-thinpool
 fi
 
