@@ -21,6 +21,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-git clone https://github.com/ease-lab/vhive
-cd vhive
-./scripts/travis/setup_node.sh
+# When executed inside a docker container, this command returns the container ID of the container.
+# on a non container environment, this returns "/".
+CONTAINERID=$(basename $(cat /proc/1/cpuset))
+
+# Docker container ID is 64 characters long.
+if [ 64 -eq ${#CONTAINERID} ]; then
+  # set thinpool device name dynamically
+  sudo sed -i "s/fc-dev-thinpool/${CONTAINERID}_thinpool/" /etc/firecracker-containerd/config.toml
+fi
+
+/create_devmapper.sh

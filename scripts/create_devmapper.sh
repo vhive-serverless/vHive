@@ -6,8 +6,11 @@ pushd /var/lib/firecracker-containerd/snapshotter/devmapper > /dev/null
 DIR=/var/lib/firecracker-containerd/snapshotter/devmapper
 POOL=fc-dev-thinpool
 
+# When executed inside a docker container, this command returns the container ID of the container.
+# on a non container environment, this returns "/".
 CONTAINERID=$(basename $(cat /proc/1/cpuset))
 
+# Docker container ID is 64 characters long.
 if [ 64 -eq ${#CONTAINERID} ]; then
     POOL="${CONTAINERID}_thinpool"
 fi

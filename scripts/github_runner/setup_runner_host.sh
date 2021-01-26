@@ -44,4 +44,11 @@ sudo apt-get install --yes docker-ce docker-ce-cli containerd.io >> /dev/null
 sudo usermod -aG docker $USER
 newgrp docker
 
-./setup_crontab.sh
+#setup crontab for nightly reboots
+TMPFILE=$(mktemp)
+#write out current crontab
+crontab -l > $TMPFILE
+#echo new cron into cron file
+echo "00 00 * * * shutdown -r 0" >> $TMPFILE
+#install new cron file
+crontab $TMPFILE

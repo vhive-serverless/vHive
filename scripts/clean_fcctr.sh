@@ -47,10 +47,13 @@ for d in `find /var/lib/cni/ -mindepth 1 -maxdepth 1  -type d | grep -v networks
     sudo rm -rf $d
 done
 
+# When executed inside a docker container, this command returns the container ID of the container.
+# on a non container environment, this returns "/".
 CONTAINERID=$(basename $(cat /proc/1/cpuset))
 
+# Docker container ID is 64 characters long.
 if [ 64 -eq ${#CONTAINERID} ]; then
-    echo Removing devmapper devices
+    echo Removing devmapper devices for the current container
     for de in `sudo dmsetup ls| cut -f1|grep $CONTAINERID |grep snap`; do sudo dmsetup remove $de && echo Removed $de; done
     sudo dmsetup remove "${CONTAINERID}_thinpool"
 else
