@@ -29,8 +29,9 @@ including functions autoscaling and cold-start delay optimization with several s
 
 ![vHive Architecture](docs/figures/vhive_architecture.jpg)
 
-The details of the vHive architecture can be found in our
-[ASPLOS'21 paper](https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf).
+The details of the vHive architecture can be found in our ASPLOS'21 paper
+([extended abstract](https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf),
+[full paper](docs/papers/REAP_ASPLOS21.pdf)).
 
 
 ## Referencing our work

@@ -53,7 +53,10 @@ sudo PATH=$PATH /usr/local/bin/firecracker-containerd --config /etc/firecracker-
 4. Build and start the vHive host orchestrator.
 By default, the microVMs are booted, `snapshots` enables snapshots after the 2nd invocation of each function.
 If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP)
-technique that we described in our [paper](https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf).
+technique that we described in our ASPLOS'21 paper
+([extended abstract](https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf),
+[full paper](papers/REAP_ASPLOS21.pdf)).
+
 ```
 source /etc/profile && go build
 sudo ./vhive [-snapshots|-snapshots -upf]
