@@ -50,8 +50,11 @@ sudo curl -fsSL -o /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin htt
 
 sudo cp $CONFIGS/config.toml /etc/firecracker-containerd/
 
+# When executed inside a docker container, this command returns the container ID of the container.
+# on a non container environment, this returns "/".
 CONTAINERID=$(basename $(cat /proc/1/cpuset))
 
+# Docker container ID is 64 characters long.
 if [ 64 -eq ${#CONTAINERID} ]; then
   sudo sed -i "s/fc-dev-thinpool/${CONTAINERID}_thinpool/" /etc/firecracker-containerd/config.toml
 fi
