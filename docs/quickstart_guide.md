@@ -113,6 +113,16 @@ Type on the master node:
 kn service delete --all
 ```
 
+## Setup a single-node cluster (master and worker functionality on the same node)
+
+```
+./scripts/cloudlab/setup_node.sh
+sudo containerd
+sudo PATH=$PATH /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml
+source /etc/profile && go build && sudo ./vhive
+./scripts/cluster/create_one_node_cluster.sh
+```
+
 ## CloudLab deployment notes
 
 ### CloudLab Profile

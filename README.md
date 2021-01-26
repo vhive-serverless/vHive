@@ -65,6 +65,11 @@ that describes how to set up an experiment with vHive.
 
 ## Developing vHive
 
+### Developer's guide and performance analysis with vHive
+
+We provide a basic developer's guide that we plan to extend in future.
+We encourage the community to contribute their analysis scenarios and tools.
+
 ### vHive roadmap
 
 vHive is a community-led project, maintained by EASE lab.
@@ -80,7 +85,7 @@ To guarantee high code quality and reliability, we deploy fully automated CI
 on cloud and self-hosted runners with GitHub Actions.
 
 
-### License and copyright
+## License and copyright
 
 vHive is free. We publish the code under the terms of the MIT License that allows distribution, modification, and commercial use.
 This software, however, comes without any warranty or liability.
