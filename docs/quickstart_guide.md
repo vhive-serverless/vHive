@@ -86,7 +86,7 @@ sudo kubeadm join <IP>:<PORT> --token <token> --discovery-token-ca-cert-hash <ha
 
 2. Once the last command returns, run `watch kubectl get pods --all-namespaces` and wait until all pods show as "Running" or "Completed".
 
-Congrats, your KNative cluster is ready!
+Congrats, your Knative cluster is ready!
 
 
 ## Deploy functions
@@ -135,7 +135,7 @@ You can use our CloudLab profile that is called [plamenpp/knative-fccd](https://
 This profile allocates 200GB on ```/fccd```, which is helpful because CloudLab provides 16GB on ```/```.
 
 ### Nodes to Rent
-SSD-equipped nodes are highly recommended. We suggest renting nodes on Cloudlab as their service is available to researchers world-wide. Full list of CloudLab nodes can be found [here](https://docs.cloudlab.us/hardware.html).
+SSD-equipped nodes are highly recommended. We suggest renting nodes on CloudLab as their service is available to researchers world-wide. Full list of CloudLab nodes can be found [here](https://docs.cloudlab.us/hardware.html).
 
 List of tested nodes on CloudLab: xl170 on Utah, rs440 on Mass, m400 on OneLab. All of these machines are SSD-equipped. The xl170 are normally less occupied than the other two.
 
