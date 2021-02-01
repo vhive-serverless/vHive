@@ -33,11 +33,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [integration_test, github_runner]
+        image: [github_runner]
     steps:
     - uses: actions/checkout@v2
       with:
         ref: master
+    - name: pull binaries
+      run: |
+        git lfs pull
     - name: docker build images
       run: |
-        DOCKER_BUILDKIT=1 docker build --file ./scripts/test_runner/Dockerfile.${{ matrix.image }} .
+        DOCKER_BUILDKIT=1 docker build --file ./scripts/github_runner/Dockerfile.${{ matrix.image }} .
