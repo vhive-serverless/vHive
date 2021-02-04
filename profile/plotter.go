@@ -16,7 +16,7 @@ import (
 )
 
 // CSVPlotter plots every attribute as VM number increases
-func CSVPlotter(filePath, inFile string) {
+func CSVPlotter(xStep int, filePath, inFile string) {
 	var (
 		records = readResultCSV(filePath, inFile)
 		rows    = len(records)
@@ -36,7 +36,7 @@ func CSVPlotter(filePath, inFile string) {
 
 		// setup data
 		pts := make(plotter.XYs, rows-1)
-		vmNum := 4
+		vmNum := xStep
 		for row := 1; row < rows; row++ {
 			pts[row-1].X = float64(vmNum)
 			value, err := strconv.ParseFloat(records[row][col], 64)
@@ -44,7 +44,7 @@ func CSVPlotter(filePath, inFile string) {
 				log.Fatalf("Failed parsing string to float: %v", err)
 			}
 			pts[row-1].Y = value
-			vmNum += 4
+			vmNum += xStep
 		}
 
 		err = plotutil.AddLinePoints(p, pts)
@@ -58,6 +58,8 @@ func CSVPlotter(filePath, inFile string) {
 			log.Fatalf("Failed saving plot: %v", err)
 		}
 	}
+
+	log.Info("Plot counters finished.")
 }
 
 // retrieve data from csv file

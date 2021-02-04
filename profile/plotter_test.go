@@ -36,7 +36,7 @@ func TestCreatingPlotter(t *testing.T) {
 	err := createTestFile(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	CSVPlotter("", fileName)
+	CSVPlotter(4, "", fileName)
 
 	plotNames := []string{"field1.png", "field2.png", "field-3.png"}
 	for _, fname := range plotNames {
