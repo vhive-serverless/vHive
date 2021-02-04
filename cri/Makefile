@@ -32,14 +32,13 @@ test:
 
 	sleep 2m
 
-	kubectl apply -f ../knative_workloads/helloworld.yaml
-	kubectl apply -f ../knative_workloads/pyaes.yaml
-	kubectl apply -f ../knative_workloads/rnn_serving.yaml
+	kn service apply helloworld -f ./configs/knative_workloads/helloworld.yaml
+	kn service apply helloworldserial -f ./configs/knative_workloads/helloworldSerial.yaml
+	kn service apply pyaes -f ./configs/knative_workloads/pyaes.yaml
 
 	sleep 1m
 
 	go test ./ $(EXTRAGOARGS)
-	./../scripts/clean_fcctr.sh
 
 test-travis:
 	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
