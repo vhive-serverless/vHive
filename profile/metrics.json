@@ -69,8 +69,12 @@
       "events": ["Frontend_Bound", "Bad_Speculation", "Retiring"],
       "childMetrics": [
         {
+          "name": "BE_Bound_at_EXE",
+          "events": ["Backend_Bound_Cycles", "CLKS"]
+        },
+        {
           "name": "Memory_Bound",
-          "events" : ["Memory_Bound_Fraction", "Backend_Bound"],
+          "events" : ["Memory_Bound_Fraction", "CLKS"],
           "childMetrics": [
             { 
               "name": "L1_Bound",
@@ -109,8 +113,50 @@
               ]
             },
             {
+              "name": "Uncore_Bound",
+              "events": ["cycle_activity.stalls_l2_miss", "CLKS"]
+            },
+            {
               "name": "Store_Bound",
               "events": ["resource_stalls.sb", "CLKS"]
+            },
+            {
+              "name": "ROB_Bound",
+              "events": ["resource_stalls.rob", "CLKS"]
+            },
+            {
+              "name": "Precise_Load_Breakdown",
+              "events": ["mem_load_uops_retired.hit_lfb", "mem_load_uops_retired.l1_hit", "mem_load_uops_retired.l2_hit", "mem_load_uops_retired.l3_hit", "mem_load_uops_l3_hit_retired.xsnp_miss", "mem_load_uops_l3_hit_retired.xsnp_hit", "mem_load_uops_l3_hit_retired.xsnp_hitm", "mem_load_uops_retired.l3_miss", "SumOf_PRECISE_LOADS"]
+            },
+            {
+              "name": "Estimated_Load_Penalty",
+              "events": ["EC_L1_Latency", "EC_L2_Latency", "EC_L3_Latency", "EC_XSNP_Latency", "EC_MEM_Latency"],
+              "childMetrics": [
+                {
+                  "name": "EC_L1_Latency",
+                  "events": ["mem_load_uops_retired.l1_hit", "CLKS"]
+                },
+                {
+                  "name": "EC_L2_Latency",
+                  "events": ["mem_load_uops_retired.l2_hit", "CLKS"]
+                },
+                {
+                  "name": "EC_L3_Latency",
+                  "events": ["mem_load_uops_retired.l3_hit", "CLKS"]
+                },
+                {
+                  "name": "EC_XSNP_Latency",
+                  "events": ["mem_load_uops_l3_hit_retired.xsnp_hit", "CLKS"]
+                },
+                {
+                  "name": "EC_MEM_Latency",
+                  "events": ["mem_load_uops_retired.l3_miss", "CLKS"]
+                }
+              ]
+            },
+            {
+              "name": "Lock_Contention",
+              "events": ["mem_load_uops_l3_hit_retired.xsnp_hitm", "mem_uops_retired.lock_loads"]
             }
           ]
         },
@@ -120,11 +166,19 @@
           "childMetrics": [
             {
               "name": "Divider",
-              "events": ["arith.fpu_div_active", "CORE_CLKS"]
+              "events": ["arith.fpu_div_active", "CLKS"]
             },
             {
               "name": "Ports_Utilization",
               "events": ["Backend_Bound_Cycles", "resource_stalls.sb", "cycle_activity.stalls_mem_any", "CLKS"]
+            }, 
+            {
+              "name": "Assists_Cost",
+              "events": ["idq.ms_cycles", "CLKS"]
+            },
+            {
+              "name": "FP_Assists",
+              "events": ["fp_assist.any", "inst_retired.any"]
             }
           ]
         }
@@ -133,7 +187,20 @@
     {
       "name": "Retiring",
       "events": ["uops_retired.retire_slots", "SLOTS"],
-      "childMetrics":[]
+      "childMetrics":[
+        {
+          "name": "FP_Scalar",
+          "events": ["FP_Arith_Scalar", "uops_retired.retire_slots"]
+        },
+        {
+          "name": "FP_Vector",
+          "events": ["FP_Arith_Vector","uops_retired.retire_slots"]
+        },
+        {
+          "name": "Microcode_Sequencer",
+          "events": ["Retire_Fraction", "idq.ms_cycles", "SLOTS"]
+        }
+      ]
     },
     {
       "name": "CLKS",
@@ -161,7 +228,7 @@
     },
     {
       "name": "SLOTS",
-      "events": ["CORE_CLKS"]
+      "events": ["CLKS"]
     },
     {
       "name": "Load_Miss_Real_Latency",
@@ -189,7 +256,7 @@
     },
     {
       "name": "Recovery_Cycles",
-      "events": ["int_misc.recovery_cycles_any"]
+      "events": ["int_misc.recovery_cycles"]
     },
     {
       "name": "Mispred_Clears_Fraction",
@@ -222,6 +289,26 @@
     {
       "name": "ITLB_Miss_Cycles",
       "events": ["itlb_misses.stlb_hit", "cpu/itlb_misses.walk_duration,cmask=1/", "itlb_misses.walk_completed"]
+    },
+    {
+      "name": "Resource_Stalls_Fraction",
+      "events": ["resource_stalls.any", "CLKS"]
+    },
+    {
+      "name": "SumOf_PRECISE_LOADS",
+      "events": ["mem_uops_retired.all_loads"]
+    },
+    {
+      "name": "Retire_Fraction",
+      "events": ["uops_retired.retire_slots", "uops_issued.any"]
+    },
+    {
+      "name": "FP_Arith_Scalar",
+      "events": ["fp_arith_inst_retired.scalar_single", "fp_arith_inst_retired.scalar_double"]
+    },
+    {
+      "name": "FP_Arith_Vector",
+      "events": ["fp_arith_inst_retired.128b_packed_double", "fp_arith_inst_retired.128b_packed_single", "fp_arith_inst_retired.256b_packed_double", "fp_arith_inst_retired.256b_packed_single"]
     }
   ]
 }
