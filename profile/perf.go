@@ -15,17 +15,17 @@ import (
 
 // PerfStat A instance of perf stat command
 type PerfStat struct {
-	once         sync.Once
-	cmd          *exec.Cmd
-	tStart       time.Time
-	interval     uint64
-	execTime     float64
-	warmTime     float64
-	tearDownTime float64
-	outFile      string
-	sep          string
-	metrics      []string
-	eventSet     map[string]float64
+	warmup, teardown sync.Once
+	cmd              *exec.Cmd
+	tStart           time.Time
+	interval         uint64
+	execTime         float64
+	warmTime         float64
+	tearDownTime     float64
+	outFile          string
+	sep              string
+	metrics          []string
+	eventSet         map[string]float64
 }
 
 // NewPerfStat returns a new instance for perf stat
@@ -94,19 +94,23 @@ func (p *PerfStat) Run() error {
 }
 
 // SetWarmTime sets the time duration until system is warm.
-func (p *PerfStat) SetWarmTime() {
-	p.once.Do(func() {
+func (p *PerfStat) SetWarmTime() float64 {
+	p.warmup.Do(func() {
 		p.warmTime = time.Since(p.tStart).Seconds()
 
 		if p.execTime > 0 && p.warmTime > p.execTime {
 			log.Warn("System warmup time is longer than perf execution time.")
 		}
 	})
+	return p.warmTime
 }
 
 // SetTearDownTime sets the time duration until system tears down.
-func (p *PerfStat) SetTearDownTime() {
-	p.tearDownTime = time.Since(p.tStart).Seconds()
+func (p *PerfStat) SetTearDownTime() float64 {
+	p.teardown.Do(func() {
+		p.tearDownTime = time.Since(p.tStart).Seconds()
+	})
+	return p.tearDownTime
 }
 
 // GetResult returns the counters of perf stat
@@ -170,12 +174,10 @@ func (p *PerfStat) parseResult() (map[string]float64, error) {
 	}
 
 	for _, metric := range p.metrics {
-		result, err := calculateMetric(metric, p.eventSet)
+		_, err := calculateMetric(metric, p.eventSet)
 		if err != nil {
 			return nil, err
 		}
-
-		p.eventSet[metric] = result
 	}
 
 	return p.eventSet, nil
