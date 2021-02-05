@@ -34,6 +34,12 @@ The details of the vHive architecture can be found in our ASPLOS'21 paper
 [full paper](docs/papers/REAP_ASPLOS21.pdf)).
 
 
+### Technical talks
+
+* [Slides](docs/talks/vHive_REAP_@AWS_04_02_2021.pdf) from
+[Dmitrii](http://homepages.inf.ed.ac.uk/s1373190/)'s talk at AWS on Feb, 4th 2021.
+
+
 ## Referencing our work
 
 If you decide to use vHive for your research and experiments, we are thrilled to support you by offering
@@ -85,6 +91,9 @@ to submit new Issues, assist in addressing existing issues and limitations, and 
 To guarantee high code quality and reliability, we deploy fully automated CI
 on cloud and self-hosted runners with GitHub Actions.
 
+The statistics of this repository's views, clones, forks is available by the following
+[link](https://ease-lab.github.io/vhive.github.io/ease-lab/vhive/latest-report/report.html).
+
 
 ## License and copyright
 
@@ -96,6 +105,7 @@ The software is maintained at the [EASE lab](https://easelab.inf.ed.ac.uk/) in t
 
 ### Maintainers
 
-* [Dmitrii Ustiugov](https://github.com/ustiugov)
+* Dmitrii Ustiugov: [GitHub](https://github.com/ustiugov),
+[twitter](https://twitter.com/DmitriiUstiugov), [web page](http://homepages.inf.ed.ac.uk/s1373190/)
 * [Plamen Petrov](https://github.com/plamenmpetrov)
 
