@@ -47,8 +47,8 @@ newgrp docker
 #setup crontab for nightly reboots
 TMPFILE=$(mktemp)
 #write out current crontab
-crontab -l > $TMPFILE
+sudo crontab -l > $TMPFILE
 #echo new cron into cron file
-echo "00 00 * * * shutdown -r 0" >> $TMPFILE
+sudo echo "00 02 * * * shutdown -r 0" >> $TMPFILE
 #install new cron file
-crontab $TMPFILE
+sudo crontab $TMPFILE
