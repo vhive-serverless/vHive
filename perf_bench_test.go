@@ -51,24 +51,22 @@ var (
 	maxVMNum   = flag.Int("maxVMNum", 100, "TestBenchMultiVMRequestPerSecond: The maximum VM number for throughput benchmark")
 
 	// profiler arguments
-	// perfExecTime = flag.Float64("perfExecTime", 20, "The execution time of perf command in seconds (sleep command)")
-	// perfInterval = flag.Uint64("perfInterval", 500, "Print count deltas every N milliseconds (-I flag)")
-	// perfEvents   = flag.String("perfEvents", "", "Perf events (-e flag)")
-	// perfMetrics  = flag.String("perfMetrics", "", "Perf metrics")
 	perfExecTime = flag.Float64("perfExecTime", 10, "The execution time of perf command in seconds (sleep command)")
 	perfInterval = flag.Uint64("perfInterval", 500, "Print count deltas every N milliseconds (-I flag)")
-	profileLevel = flag.Int("profileLevel", 1, "")
-	profileNodes = flag.String("profileNodes", "", "")
+	profileLevel = flag.Int("profileLevel", 1, "Profile level (-l flag)")
+	profileNodes = flag.String("profileNodes", "", "Include or exclude nodes (with + to add, -|^ to remove, comma separated list, wildcards allowed, add * to include all children/siblings, add /level to specify highest level node to match, add ^ to match related siblings and metrics, start with ! to only include specified nodes)")
 )
 
 func TestBenchMultiVMRequestPerSecond(t *testing.T) {
 	var (
-		servedTh      uint64
+		idx           int
 		pinnedFuncNum int
 		startVMID     int
+		servedTh      uint64
 		isSyncOffload bool = true
 		metrFile           = "benchRPS.csv"
 		images             = getImages(t)
+		metrics            = make([]map[string]float64, *maxVMNum / *vmIncrStep)
 	)
 	log.SetLevel(log.InfoLevel)
 
@@ -77,17 +75,17 @@ func TestBenchMultiVMRequestPerSecond(t *testing.T) {
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	pullImages(t, images)
-	// *injectDuration = getInjectDuration()
 	for vmNum := *vmIncrStep; vmNum <= *maxVMNum; vmNum += *vmIncrStep {
 		rps := calculateRPS(vmNum)
 		log.Infof("vmNum: %d, RPS: %d", vmNum, rps)
 
 		bootVMs(t, images, startVMID, vmNum)
-		metr := loadAndProfile(t, images, vmNum, *vmIncrStep, rps, isSyncOffload)
-		dumpMetrics(t, metr, metrFile)
+		metrics[idx] = loadAndProfile(t, images, vmNum, rps, isSyncOffload)
 		startVMID = vmNum
+		idx++
 	}
 
+	dumpMetrics(t, metrics, metrFile)
 	profile.CSVPlotter(*vmIncrStep, *benchDir, metrFile)
 
 	tearDownVMs(t, images, *maxVMNum, isSyncOffload)
@@ -116,11 +114,11 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 	bootVMs(t, images, 0, *vmNum)
 
-	serveMetrics := loadAndProfile(t, images, *vmNum, *vmNum, *targetReqPerSec, isSyncOffload)
+	serveMetrics := loadAndProfile(t, images, *vmNum, *targetReqPerSec, isSyncOffload)
 
 	tearDownVMs(t, images, *vmNum, isSyncOffload)
 
-	dumpMetrics(t, serveMetrics, "benchRPS.csv")
+	dumpMetrics(t, []map[string]float64{serveMetrics}, "benchRPS.csv")
 }
 
 // Pull a list of images
@@ -142,7 +140,7 @@ func bootVMs(t *testing.T, images []string, startVMID, endVMID int) {
 }
 
 // Inject many requests per second to VMs and profile
-func loadAndProfile(t *testing.T, images []string, vmNum, incrVM, targetRPS int, isSyncOffload bool) map[string]float64 {
+func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncOffload bool) map[string]float64 {
 	var (
 		vmID, requestID        int
 		execTime, realRequests int64
@@ -152,7 +150,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, incrVM, targetRPS int,
 		totalRequests          = *injectDuration * float64(targetRPS)
 		remainingRequests      = totalRequests
 		ticker                 = time.NewTicker(timeInterval)
-		profiler               = profile.NewProfiler(*perfExecTime, *perfInterval, *profileLevel, *profileNodes, "perf-tmp.data")
+		profiler               = profile.NewProfiler(*perfExecTime, *perfInterval, vmNum, *profileLevel, *profileNodes, "profile")
 	)
 
 	const (
@@ -161,9 +159,9 @@ func loadAndProfile(t *testing.T, images []string, vmNum, incrVM, targetRPS int,
 	)
 
 	tStart := time.Now()
-	// err := profiler.Run()
-	// require.NoError(t, err, "Run profiler returned error")
-	go profileControl(incrVM, &isProfile, profiler)
+	err := profiler.Run()
+	require.NoError(t, err, "Run profiler returned error")
+	go profileControl(vmNum, &isProfile, profiler)
 
 	for remainingRequests > 0 {
 		if tickerT := <-ticker.C; !tickerT.IsZero() {
@@ -188,7 +186,9 @@ func loadAndProfile(t *testing.T, images []string, vmNum, incrVM, targetRPS int,
 	serveMetrics[averageExecutionTime] = float64(execTime) / float64(realRequests)
 	serveMetrics[realRequestsPerSecond] = float64(realRequests) / (profiler.GetTearDownTime() - profiler.GetWarmupTime())
 	result, err := profiler.GetResult()
-	require.NoError(t, err, "Stop perf stat returned error: %v", err)
+	cores := profiler.GetCores()
+	log.Infof("%d cores are recorded: %v", len(cores), cores)
+	require.NoError(t, err, "Stopping profiler returned error: %v", err)
 	for eventName, value := range result {
 		log.Debugf("%s: %f\n", eventName, value)
 		serveMetrics[eventName] = value
@@ -196,15 +196,6 @@ func loadAndProfile(t *testing.T, images []string, vmNum, incrVM, targetRPS int,
 	log.Infof("average-execution-time: %f\n", serveMetrics[averageExecutionTime])
 	log.Infof("real-requests-per-second: %f\n", serveMetrics[realRequestsPerSecond])
 	profiler.PrintBottlenecks()
-	cores := profiler.GetCores()
-	log.Infof("%d cores are recorded: %v", len(cores), cores)
-	expectCores := vmNum
-	if expectCores > 10 {
-		expectCores = 10
-	}
-	if len(cores) != expectCores {
-		log.Warnf("Measured core number unmatched: %d; VM number: %d", len(cores), expectCores)
-	}
 
 	return serveMetrics
 }
@@ -232,17 +223,16 @@ func serveVM(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageNa
 	}
 }
 
-func profileControl(vmNum int, isProfile *bool, perfStat *profile.Profiler) {
-	// warmupTime := getWarmupTime()
-	// time.Sleep(time.Duration(warmupTime) * time.Millisecond)
-	time.Sleep(1 * time.Second)
-	perfStat.Run()
+// Control start and end of profiling
+func profileControl(vmNum int, isProfile *bool, profiler *profile.Profiler) {
+	warmupTime := getWarmupTime()
+	time.Sleep(time.Duration(warmupTime) * time.Millisecond)
 	*isProfile = true
-	perfStat.SetWarmTime()
+	profiler.SetWarmTime()
 	log.Info("Profile started")
 	time.Sleep(time.Duration(*perfExecTime) * time.Second)
 	*isProfile = false
-	perfStat.SetTearDownTime()
+	profiler.SetTearDownTime()
 }
 
 // Tear down VMs
@@ -280,40 +270,46 @@ func getImages(t *testing.T) []string {
 	return result
 }
 
-func dumpMetrics(t *testing.T, metrics map[string]float64, outfile string) {
+func dumpMetrics(t *testing.T, metrics []map[string]float64, outfile string) {
 	outFile := getOutFile(outfile)
 
-	f, err := os.OpenFile(outFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+	f, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err, "Failed opening file")
 	defer f.Close()
 
-	reader := csv.NewReader(f)
-	headers, err := reader.Read()
-	require.True(t, err == nil || err.Error() == "EOF", "Failed reading file")
+	headerSet := make(map[string]bool)
+	for _, metric := range metrics {
+		for area := range metric {
+			headerSet[area] = true
+		}
+	}
+
+	var headers []string
+	for area := range headerSet {
+		headers = append(headers, area)
+	}
 
 	writer := csv.NewWriter(f)
-	if headers == nil {
-		for k := range metrics {
-			headers = append(headers, k)
+
+	err = writer.Write(headers)
+	require.NoError(t, err, "Failed writting file")
+	writer.Flush()
+
+	for _, metric := range metrics {
+		var data []string
+		for _, header := range headers {
+			value, isPresent := metric[header]
+			if isPresent {
+				vStr := strconv.FormatFloat(value, 'f', -1, 64)
+				data = append(data, vStr)
+			} else {
+				data = append(data, "")
+			}
 		}
-		err = writer.Write(headers)
+		err = writer.Write(data)
 		require.NoError(t, err, "Failed writting file")
 		writer.Flush()
 	}
-
-	var data []string
-	for _, header := range headers {
-		for k, v := range metrics {
-			if k == header {
-				vStr := strconv.FormatFloat(v, 'f', -1, 64)
-				data = append(data, vStr)
-			}
-		}
-	}
-	err = writer.Write(data)
-	require.NoError(t, err, "Failed writting file")
-
-	writer.Flush()
 }
 
 // getCPUIntenseRPS returns the number of requests per second that stress CPU for each image.
