@@ -51,10 +51,10 @@ var (
 	maxVMNum   = flag.Int("maxVMNum", 100, "TestBenchMultiVMRequestPerSecond: The maximum VM number for throughput benchmark")
 
 	// profiler arguments
-	perfExecTime = flag.Float64("perfExecTime", 10, "The execution time of perf command in seconds (sleep command)")
-	perfInterval = flag.Uint64("perfInterval", 500, "Print count deltas every N milliseconds (-I flag)")
-	profileLevel = flag.Int("profileLevel", 1, "Profile level (-l flag)")
-	profileNodes = flag.String("profileNodes", "", "Include or exclude nodes (with + to add, -|^ to remove, comma separated list, wildcards allowed, add * to include all children/siblings, add /level to specify highest level node to match, add ^ to match related siblings and metrics, start with ! to only include specified nodes)")
+	profilerLevel    = flag.Int("l", 1, "Profile level (-l flag)")
+	profilerExecTime = flag.Float64("profilerExecTime", 10, "The execution time of perf command in seconds (sleep command)")
+	profilerInterval = flag.Uint64("profilerInterval", 500, "Print count deltas every N milliseconds (-I flag)")
+	profilerNodes    = flag.String("profilerNodes", "", "Include or exclude nodes (with + to add, -|^ to remove, comma separated list, wildcards allowed, add * to include all children/siblings, add /level to specify highest level node to match, add ^ to match related siblings and metrics, start with ! to only include specified nodes)")
 )
 
 func TestBenchMultiVMRequestPerSecond(t *testing.T) {
@@ -145,7 +145,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		totalRequests          = *injectDuration * float64(targetRPS)
 		remainingRequests      = totalRequests
 		ticker                 = time.NewTicker(timeInterval)
-		profiler               = profile.NewProfiler(*perfExecTime, *perfInterval, vmNum, *profileLevel, *profileNodes, "profile")
+		profiler               = profile.NewProfiler(*profilerExecTime, *profilerInterval, vmNum, *profilerLevel, *profilerNodes, "profile")
 	)
 
 	const (
@@ -182,14 +182,14 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 	serveMetrics[realRequestsPerSecond] = float64(realRequests) / (profiler.GetTearDownTime() - profiler.GetWarmupTime())
 	result, err := profiler.GetResult()
 	cores := profiler.GetCores()
-	log.Infof("%d cores are recorded: %v", len(cores), cores)
+	log.Debugf("%d cores are recorded: %v", len(cores), cores)
 	require.NoError(t, err, "Stopping profiler returned error: %v", err)
 	for eventName, value := range result {
 		log.Debugf("%s: %f\n", eventName, value)
 		serveMetrics[eventName] = value
 	}
-	log.Infof("average-execution-time: %f\n", serveMetrics[averageExecutionTime])
-	log.Infof("real-requests-per-second: %f\n", serveMetrics[realRequestsPerSecond])
+	log.Debugf("average-execution-time: %f\n", serveMetrics[averageExecutionTime])
+	log.Debugf("real-requests-per-second: %f\n", serveMetrics[realRequestsPerSecond])
 	profiler.PrintBottlenecks()
 
 	return serveMetrics
@@ -225,7 +225,7 @@ func profileControl(vmNum int, isProfile *bool, profiler *profile.Profiler) {
 	*isProfile = true
 	profiler.SetWarmTime()
 	log.Info("Profile started")
-	time.Sleep(time.Duration(*perfExecTime) * time.Second)
+	time.Sleep(time.Duration(*profilerExecTime) * time.Second)
 	*isProfile = false
 	profiler.SetTearDownTime()
 }

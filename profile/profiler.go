@@ -52,7 +52,7 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		"-o", profiler.outFile)
 
 	if vmNum < coreNum {
-		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "40")
+		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "50")
 	} else {
 		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "0")
 	}
