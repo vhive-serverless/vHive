@@ -38,11 +38,14 @@ func CSVPlotter(xStep int, filePath, inFile string) {
 		vmNum := xStep
 		for row := 1; row < rows; row++ {
 			pts[row-1].X = float64(vmNum)
-			value, err := strconv.ParseFloat(records[row][col], 64)
-			if err != nil {
-				log.Fatalf("Failed parsing string to float: %v", err)
+			valStr := records[row][col]
+			if valStr != "" {
+				value, err := strconv.ParseFloat(valStr, 64)
+				if err != nil {
+					log.Fatalf("Failed parsing string to float: %v", err)
+				}
+				pts[row-1].Y = value
 			}
-			pts[row-1].Y = value
 			vmNum += xStep
 		}
 
