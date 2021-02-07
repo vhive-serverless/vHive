@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Profiler a instance of toplev command
 type Profiler struct {
 	teardown     sync.Once
 	cmd          *exec.Cmd
@@ -27,24 +28,34 @@ type Profiler struct {
 	bottlenecks  map[string]float64
 }
 
-func NewProfiler(executionTime float64, printInterval uint64, level int, nodes, outFile string) *Profiler {
+// NewProfiler returns a new instance of profiler
+func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string) *Profiler {
 	profiler := new(Profiler)
 	profiler.execTime = executionTime
 	profiler.interval = printInterval
 	profiler.cores = make(map[string]bool)
 	profiler.bottlenecks = make(map[string]float64)
 
+	const coreNum = 20
+
 	if outFile == "" {
 		outFile = "profile"
 	}
 	profiler.outFile = outFile + ".csv"
 
-	profiler.cmd = exec.Command("toplev.py", "-v", "--no-desc", "--no-util",
+	profiler.cmd = exec.Command("toplev.py",
+		"-v",
+		"--no-desc",
 		"-x", ",",
-		"--idle-threshold", "30",
 		"-l", strconv.Itoa(level),
 		"-I", strconv.FormatUint(printInterval, 10),
 		"-o", profiler.outFile)
+
+	if vmNum < coreNum {
+		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "40")
+	} else {
+		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "0")
+	}
 
 	if nodes != "" {
 		profiler.cmd.Args = append(profiler.cmd.Args, "--nodes", nodes)
@@ -52,13 +63,14 @@ func NewProfiler(executionTime float64, printInterval uint64, level int, nodes, 
 
 	profiler.cmd.Args = append(profiler.cmd.Args, "sleep", strconv.FormatFloat(executionTime, 'f', -1, 64))
 
-	log.Infof("Profiler command: %s", profiler.cmd)
+	log.Debugf("Profiler command: %s", profiler.cmd)
 
 	return profiler
 }
 
+// Run checks environment and arguments and executes command
 func (p *Profiler) Run() error {
-	if !isPerfInstalled() {
+	if !isPmuToolInstalled() {
 		return errors.New("pmu tool is not set")
 	}
 
@@ -86,6 +98,7 @@ func (p *Profiler) Run() error {
 	return nil
 }
 
+// SetWarmTime sets the time duration until system is warm.
 func (p *Profiler) SetWarmTime() {
 	p.warmTime = time.Since(p.tStart).Seconds()
 
@@ -94,44 +107,48 @@ func (p *Profiler) SetWarmTime() {
 	}
 }
 
+// GetWarmupTime returns the time duration until system is warm.
 func (p *Profiler) GetWarmupTime() float64 {
 	return p.warmTime
 }
 
+// SetTearDownTime sets the time duration until system starts tearing down.
 func (p *Profiler) SetTearDownTime() {
 	p.teardown.Do(func() {
 		p.tearDownTime = time.Since(p.tStart).Seconds()
 	})
 }
 
+// GetTearDownTime returns the time duration until system starts tearing down.
 func (p *Profiler) GetTearDownTime() float64 {
 	return p.tearDownTime
 }
 
+// GetResult returns the counters of perf stat
 func (p *Profiler) GetResult() (map[string]float64, error) {
 	if p.tStart.IsZero() {
 		return nil, errors.New("pmu tool was not executed, run it first")
 	}
 
 	// wait for profiler command finish
-	timeLeft := (p.execTime - time.Since(p.tStart).Seconds()) * 1e+9
-	time.Sleep(time.Duration(timeLeft))
+	timeLeft := p.execTime - time.Since(p.tStart).Seconds() + 5
+	time.Sleep(time.Duration(timeLeft) * time.Second)
 
 	log.Debugf("Warm time: %f, Teardown time: %f", p.warmTime, p.tearDownTime)
 	return p.readCSV()
 }
 
+// PrintBottlenecks prints the bottlenecks during profiling
 func (p *Profiler) PrintBottlenecks() {
 	for k, v := range p.bottlenecks {
 		log.Infof("Bottleneck %s with value %f", k, v)
 	}
 }
 
+// GetCores returns measured core ID or thread ID
 func (p *Profiler) GetCores() map[string]bool {
 	return p.cores
 }
-
-// PMU Tool
 
 type pmuLine struct {
 	timestamp    float64
@@ -154,16 +171,20 @@ func (p *Profiler) readCSV() (map[string]float64, error) {
 
 	// Read File into a Variable
 	reader := csv.NewReader(f)
-	reader.Read() // skip headers
+	headers, err := reader.Read()
+	if err != nil {
+		return nil, err
+	}
+	headerIdxMap := headerPos(headers)
 	for {
 		line, err := reader.Read()
-		if err == io.EOF {
-			break
+		if err != nil {
+			if err == io.EOF || strings.HasPrefix(line[0], "#") {
+				break
+			}
+			return nil, err
 		}
-		if strings.HasPrefix(line[0], "#") {
-			break
-		}
-		record, err := p.splitLine(line)
+		record, err := p.splitLine(headerIdxMap, line)
 		if err != nil {
 			return nil, err
 		}
@@ -178,18 +199,15 @@ func (p *Profiler) readCSV() (map[string]float64, error) {
 		}
 	}
 
-	// if err := os.Remove(p.outFile); err != nil {
-	// 	return nil, err
-	// }
-	if len(records) == 0 {
-		return nil, errors.New("empty file")
+	if err := os.Remove(p.outFile); err != nil {
+		return nil, err
 	}
 
 	return p.parseMetric(records), nil
 }
 
-func (p *Profiler) splitLine(line []string) (pmuLine, error) {
-	ts, err := strconv.ParseFloat(line[0], 64)
+func (p *Profiler) splitLine(headers map[string]int, line []string) (pmuLine, error) {
+	ts, err := strconv.ParseFloat(line[headers["Timestamp"]], 64)
 	if err != nil {
 		return pmuLine{}, err
 	}
@@ -200,46 +218,52 @@ func (p *Profiler) splitLine(line []string) (pmuLine, error) {
 		return pmuLine{timestamp: -1}, nil
 	}
 
-	v, err := strconv.ParseFloat(line[3], 64)
+	value, err := strconv.ParseFloat(line[headers["Value"]], 64)
 	if err != nil {
+		log.Warnf("error line: %v", line)
 		return pmuLine{}, err
 	}
+
+	idx, isCore := headers["CPUs"]
+	var cpu string
+	if !isCore {
+		cpu = "uncore"
+	} else {
+		cpu = line[idx]
+	}
+
 	data := pmuLine{
 		timestamp:    ts,
-		cpu:          line[1],
-		area:         line[2],
-		value:        v,
-		unit:         line[4],
-		isBottleneck: line[9] != "",
+		cpu:          cpu,
+		area:         line[headers["Area"]],
+		value:        value,
+		unit:         line[headers["Unit"]],
+		isBottleneck: line[headers["Bottleneck"]] != "",
 	}
 
 	return data, nil
 }
 
+func headerPos(headers []string) map[string]int {
+	result := make(map[string]int)
+	for i, field := range headers {
+		result[field] = i
+	}
+	return result
+}
+
 func (p *Profiler) parseMetric(lines []pmuLine) map[string]float64 {
 	var (
-		epoch    float64
-		prevTime float64
-		prevCPU  string
-		results  = make(map[string]float64)
-		initTime = lines[0].timestamp
-		initCPU  = lines[0].cpu
+		epochs  = make(map[string]float64)
+		results = make(map[string]float64)
 	)
-	// TODO: measured core number == vm number
 	for _, line := range lines {
-		if line.timestamp != prevTime || line.cpu != prevCPU {
-			epoch++
-		}
-		if line.timestamp == initTime && line.cpu == initCPU {
-			results[line.area] = line.value
-		} else {
-			results[line.area] += line.value
-		}
-		prevTime, prevCPU = line.timestamp, line.cpu
+		results[line.area] += line.value
+		epochs[line.area]++
 		p.cores[line.cpu] = true
 	}
 	for k, v := range results {
-		results[k] = v / epoch
+		results[k] = v / epochs[k]
 	}
 	for k := range p.bottlenecks {
 		p.bottlenecks[k] = results[k]
@@ -247,8 +271,15 @@ func (p *Profiler) parseMetric(lines []pmuLine) map[string]float64 {
 	return results
 }
 
-func isInstalled() bool {
+func isPmuToolInstalled() bool {
 	cmd := exec.Command("toplev.py", "--version")
+	b, _ := cmd.Output()
+
+	return len(b) != 0
+}
+
+func isPerfInstalled() bool {
+	cmd := exec.Command("perf", "--version")
 	b, _ := cmd.Output()
 
 	return len(b) != 0
