@@ -9,28 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-<<<<<<< HEAD
-func TestReadPerfData(t *testing.T) {
-	var (
-		fileName = "test"
-		p        = NewProfiler(0, 100, 0, 1, "", fileName, false)
-		result   = []map[string]float64{
-			{
-				"Frontend_Bound": 2,
-				"Backend_Bound":  3},
-			{
-				"Frontend_Bound": 1,
-				"Backend_Bound":  2},
-			{
-				"Frontend_Bound": 3,
-				"Backend_Bound":  4},
-		}
-	)
-
-	type testCase struct {
-		warmTime, tearDownTime float64
-		expected               map[string]float64
-=======
 type testCase struct {
 	warmTime, tearDownTime float64
 	expected               map[string]float64
@@ -51,7 +29,6 @@ func TestReadPerfData(t *testing.T) {
 		{
 			"Frontend_Bound": 3,
 			"Backend_Bound":  4},
->>>>>>> integrate PMU tool to benchmark
 	}
 
 	cases := []testCase{
@@ -76,23 +53,6 @@ func TestReadPerfData(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
-func TestProfilerRun(t *testing.T) {
-	fileName := "testFile"
-
-	p := NewProfiler(-1, 100, 0, 1, "", fileName, false)
-	err := p.Run()
-	require.EqualError(t, err, "profiler execution time is less than 0s", "Failed creating perf stat")
-
-	p = NewProfiler(0, 1, 0, 1, "", fileName, false)
-	err = p.Run()
-	require.EqualError(t, err, "profiler print interval is less than 10ms", "Failed creating perf stat")
-
-	p = NewProfiler(0, 100, 0, 1, "", fileName, false)
-
-	err = p.Run()
-	require.NoError(t, err, "profiler run returned error: %v.", err)
-=======
 // func TestCalculateMetric(t *testing.T) {
 // 	perfVals := map[string]float64{
 // 		"idq_uops_not_delivered.cycles_0_uops_deliv.core": 10,
@@ -185,7 +145,6 @@ func TestProfilerRun(t *testing.T) {
 
 	err = p.Run()
 	require.NoError(t, err, "Perf run returned error: %v.", err)
->>>>>>> integrate PMU tool to benchmark
 
 	time.Sleep(1 * time.Second)
 
