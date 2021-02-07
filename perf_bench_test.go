@@ -41,8 +41,10 @@ import (
 
 var (
 	// shared arguments
-	injectDuration = flag.Float64("injectTimeDuration", 1, "The total time in seconds for injecting requests each round")
-	funcNames      = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
+	warmUpTime   = flag.Float64("warmUpTime", 5, "The warm up time before profiling in seconds")
+	coldDownTime = flag.Float64("coldDownTime", 1, "The cold down time after profiling in seconds")
+	profileTime  = flag.Float64("profileTime", 10, "The profiling time in seconds")
+	funcNames    = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
 
 	vmNum           = flag.Int("vm", 2, "TestBenchRequestPerSecond: the number of VMs")
 	targetReqPerSec = flag.Int("requestPerSec", 10, "TestBenchRequestPerSecond: the target number of requests per second")
@@ -52,7 +54,6 @@ var (
 
 	// profiler arguments
 	profilerLevel    = flag.Int("l", 1, "Profile level (-l flag)")
-	profilerExecTime = flag.Float64("profilerExecTime", 10, "The execution time of perf command in seconds (sleep command)")
 	profilerInterval = flag.Uint64("profilerInterval", 500, "Print count deltas every N milliseconds (-I flag)")
 	profilerNodes    = flag.String("profilerNodes", "", "Include or exclude nodes (with + to add, -|^ to remove, comma separated list, wildcards allowed, add * to include all children/siblings, add /level to specify highest level node to match, add ^ to match related siblings and metrics, start with ! to only include specified nodes)")
 )
@@ -142,15 +143,16 @@ func bootVMs(t *testing.T, images []string, startVMID, endVMID int) {
 // Inject many requests per second to VMs and profile
 func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncOffload bool) map[string]float64 {
 	var (
-		vmID, requestID        int
-		execTime, realRequests int64
-		vmGroup                sync.WaitGroup
-		isProfile              = false
-		timeInterval           = time.Duration(time.Second.Nanoseconds() / int64(targetRPS))
-		totalRequests          = *injectDuration * float64(targetRPS)
-		remainingRequests      = totalRequests
-		ticker                 = time.NewTicker(timeInterval)
-		profiler               = profile.NewProfiler(*profilerExecTime, *profilerInterval, vmNum, *profilerLevel, *profilerNodes, "profile")
+		vmID, requestID             int
+		invokExecTime, realRequests int64
+		vmGroup                     sync.WaitGroup
+		isProfile                   = false
+		timeInterval                = time.Duration(time.Second.Nanoseconds() / int64(targetRPS))
+		injectDuration              = *warmUpTime + *profileTime + *coldDownTime
+		totalRequests               = injectDuration * float64(targetRPS)
+		remainingRequests           = totalRequests
+		ticker                      = time.NewTicker(timeInterval)
+		profiler                    = profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel, *profilerNodes, "profile")
 	)
 
 	const (
@@ -170,7 +172,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 
 			imageName := images[vmID%len(images)]
 
-			go serveVM(t, &vmGroup, vmID, requestID, imageName, isSyncOffload, &isProfile, &execTime, &realRequests)
+			go serveVM(t, &vmGroup, vmID, requestID, imageName, isSyncOffload, &isProfile, &invokExecTime, &realRequests)
 			requestID++
 
 			vmID = (vmID + 1) % vmNum
@@ -179,11 +181,11 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 	ticker.Stop()
 	vmGroup.Wait()
 	profiler.SetTearDownTime()
-	log.Infof("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
+	log.Debugf("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
 
 	// Collect results
 	serveMetrics := make(map[string]float64)
-	serveMetrics[averageExecutionTime] = float64(execTime) / float64(realRequests)
+	serveMetrics[averageExecutionTime] = float64(invokExecTime) / float64(realRequests)
 	serveMetrics[realRequestsPerSecond] = float64(realRequests) / (profiler.GetTearDownTime() - profiler.GetWarmupTime())
 	result, err := profiler.GetResult()
 	cores := profiler.GetCores()
@@ -225,14 +227,14 @@ func serveVM(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageNa
 
 // Control start and end of profiling
 func profileControl(vmNum int, isProfile *bool, profiler *profile.Profiler) {
-	warmupTime := getWarmupTime()
-	time.Sleep(time.Duration(warmupTime) * time.Millisecond)
+	time.Sleep(time.Duration(*warmUpTime) * time.Second)
 	*isProfile = true
 	profiler.SetWarmTime()
 	log.Info("Profile started")
-	time.Sleep(time.Duration(*profilerExecTime) * time.Second)
+	time.Sleep(time.Duration(*profileTime) * time.Second)
 	*isProfile = false
 	profiler.SetTearDownTime()
+	log.Info("Profile finished")
 }
 
 // Tear down VMs
@@ -325,7 +327,7 @@ func getCPUIntenseRPS() int {
 			"image_rotate": 600,
 			"json_serdes":  600,
 			"lr_serving":   5000,
-			"cnn_serving":  200,
+			"cnn_serving":  20,
 			"rnn_serving":  600,
 		}
 	)
