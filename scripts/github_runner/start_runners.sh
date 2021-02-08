@@ -27,18 +27,67 @@ if [ -z $1 ] || [ -z $2 ] || [ -z $3 ]; then
     exit -1
 fi
 
+ACCESS_TOKEN=$2
+API_VERSION=v3
+API_HEADER="Accept: application/vnd.github.${API_VERSION}+json"
+AUTH_HEADER="Authorization: token ${ACCESS_TOKEN}"
+
+_SHORT_URL="https://github.com/ease-lab/vhive"
+_FULL_URL="https://api.github.com/repos/ease-lab/vhive/actions/runners/registration-token"
+
+RUNNER_TOKEN="$(curl -XPOST -fsSL \
+  -H "${AUTH_HEADER}" \
+  -H "${API_HEADER}" \
+  "${_FULL_URL}" \
+| jq -r '.token')"
+
+
 for number in $(seq 1 $1)
 do
-    # create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
-    CONTAINERID=$(docker run -d --restart always --privileged \
-        --name "integration_test-github_runner-${number}" \
-        -e REPO_URL="https://github.com/ease-lab/vhive" \
-        -e ACCESS_TOKEN="${2}" \
-        -e LABELS="${3}" \
-        --ipc=host \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        --volume /dev:/dev \
-        --volume /run/udev/control:/run/udev/control \
-        vhiveease/integ_test_runner)
+    case "$3" in
+    "integ")
+        # create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
+        CONTAINERID=$(docker run -d --restart always --privileged \
+            --name "integration_test-github_runner-${number}" \
+            -e REPO_URL="${_SHORT_URL}" \
+            -e ACCESS_TOKEN="${ACCESS_TOKEN}" \
+            -e LABELS="${3}" \
+            --ipc=host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            --volume /dev:/dev \
+            --volume /run/udev/control:/run/udev/control \
+            vhiveease/integ_test_runner)
+        ;;
+    "cri")
+        git clone https://github.com/ease-lab/kind
+        cd kind
+        go build
+        ./kind/kind create cluster --image vhiveease/cri_test_runner --name "cri_test-github_runner-${number}"
+        sleep 2m
+        docker exec -it \
+            -e RUNNER_ALLOW_RUNASROOT=1 \
+            -w /root/actions-runner \
+            "cri_test-github_runner-${number}" \
+            ./config.sh \
+                --url "${_SHORT_URL}" \
+                --token "${ACCESS_TOKEN}" \
+                --name "cri_test-github_runner-${number}" \
+                --work "_work" \
+                --labels "cri" \
+                --unattended \
+                --replace
+        sleep 20s
+        docker exec -it \
+            "cri_test-github_runner-${number}" \
+            systemctl daemon-reload
+        docker exec -it \
+            "cri_test-github_runner-${number}" \
+            sysctl enable connect_github_runner --now
+        ;;
+    *)
+        echo "Invalid label"
+        ;;
+    esac
+
     
 done
