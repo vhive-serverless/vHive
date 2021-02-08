@@ -89,6 +89,7 @@ net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
 sudo sysctl --system
+mkdir ~/tmp
 
 # setup github runner
 cd $HOME
@@ -117,7 +118,7 @@ WantedBy=default.target
 END
 else
     systemctl daemon-reload
-    sysctl enable connect_github_runner
+    sysctl enable connect_github_runner --now
 
 fi
 

@@ -25,20 +25,28 @@ CTRDLOGDIR:=/tmp/ctrd-logs
 test:
 	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
 	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
-	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
+	sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
 	sudo ./../vhive 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
 
 	./../scripts/cluster/create_one_node_cluster.sh
 
 	sleep 2m
 
-	kn service apply helloworld -f ./configs/knative_workloads/helloworld.yaml
-	kn service apply helloworldserial -f ./configs/knative_workloads/helloworldSerial.yaml
-	kn service apply pyaes -f ./configs/knative_workloads/pyaes.yaml
+	kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
+	kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
+	kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
 
 	sleep 1m
 
 	go test ./ $(EXTRAGOARGS)
+
+	kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
+	sudo pkill -INT vhive
+	sudo pkill -INT firec
+	sudo pkill -9 containerd
+	./../scripts/create_devmapper.sh
+	sudo rm /etc/firecracker-containerd/fccd-cri.sock
+	rm ${HOME}/.kube/config
 
 test-travis:
 	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
