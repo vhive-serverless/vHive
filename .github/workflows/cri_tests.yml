@@ -22,19 +22,20 @@ jobs:
     name: CRI tests
     runs-on: [self-hosted, cri]
     steps:
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.14
-
-    - name: Check out code into the Go module directory
+    - name: Check out code
       uses: actions/checkout@v2
 
     - name: Setup environment
-      run: ./scripts/setup_containerd.sh && export TMPDIR=~/tmp/
+      run: ./scripts/setup_containerd.sh
 
     - name: Build
-      run: go build -race -v -a ./...
+      env:
+          GOCACHE: /root/tmp/gocache
+          GOPATH: /root/tmp/go
+      run: go build
 
     - name: Run vHive end-to-end tests
+      env:
+          GOCACHE: /root/tmp/gocache
+          TMPDIR: /root/tmp/
       run: make test-cri
