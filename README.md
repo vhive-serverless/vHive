@@ -79,20 +79,21 @@ We encourage the community to contribute their analysis scenarios and tools.
 
 ### vHive roadmap
 
-vHive is a community-led project, maintained by EASE lab.
+vHive is a community-led project, maintained by the EASE lab.
 The current roadmap is [available](https://github.com/ease-lab/vhive/projects/1)
 and is going to be updated to accommodate the community's goals and evolution.
-
-### Getting help and contributing
-
-We would be happy to answer any questions in GitHub Issues and encourage the open-source community
-to submit new Issues, assist in addressing existing issues and limitations, and contribute their code with Pull Requests.
-
 To guarantee high code quality and reliability, we deploy fully automated CI
 on cloud and self-hosted runners with GitHub Actions.
 
 The statistics of this repository's views, clones, forks is available by the following
 [link](https://ease-lab.github.io/vhive.github.io/ease-lab/vhive/latest-report/report.html).
+
+
+### Getting help and contributing
+
+We would be happy to answer any questions in GitHub Issues and encourage the open-source community
+to submit new Issues, assist in addressing existing issues and limitations, and contribute their code with Pull Requests.
+You can also talk to us on the official [Firecracker Slack](https://firecracker-microvm.slack.com) in the **#firecracker-vHive-research** channel.
 
 
 ## License and copyright
