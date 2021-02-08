@@ -32,9 +32,9 @@ test:
 
 	sleep 2m
 
-	kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
-	kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
-	kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
 
 	sleep 1m
 

@@ -59,30 +59,31 @@ do
             vhiveease/integ_test_runner)
         ;;
     "cri")
+        cd $HOME
         git clone https://github.com/ease-lab/kind
         cd kind
         go build
-        ./kind/kind create cluster --image vhiveease/cri_test_runner --name "cri_test-github_runner-${number}"
+        ~/kind/kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${number}"
         sleep 2m
         docker exec -it \
             -e RUNNER_ALLOW_RUNASROOT=1 \
             -w /root/actions-runner \
-            "cri_test-github_runner-${number}" \
+            "cri-test-github-runner-${number}-control-plane" \
             ./config.sh \
                 --url "${_SHORT_URL}" \
-                --token "${ACCESS_TOKEN}" \
-                --name "cri_test-github_runner-${number}" \
-                --work "_work" \
+                --token "${RUNNER_TOKEN}" \
+                --name "cri-test-github-runner-${number}-control-plane" \
+                --work "/root/_work" \
                 --labels "cri" \
                 --unattended \
                 --replace
         sleep 20s
         docker exec -it \
-            "cri_test-github_runner-${number}" \
+            "cri-test-github-runner-${number}-control-plane" \
             systemctl daemon-reload
         docker exec -it \
-            "cri_test-github_runner-${number}" \
-            sysctl enable connect_github_runner --now
+            "cri-test-github-runner-${number}-control-plane" \
+            systemctl enable connect_github_runner --now
         ;;
     *)
         echo "Invalid label"
