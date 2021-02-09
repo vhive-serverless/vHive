@@ -118,6 +118,41 @@ func TestStartStopSerial(t *testing.T) {
 	orch.Cleanup()
 }
 
+func TestPing(t *testing.T) {
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
+	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+
+	log.SetOutput(os.Stdout)
+
+	log.SetLevel(log.InfoLevel)
+
+	testTimeout := 120 * time.Second
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+	defer cancel()
+
+	orch := NewOrchestrator(
+		"devmapper",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
+
+	vmID := "5"
+
+	_, _, err := orch.StartVM(ctx, vmID, "vhiveease/ping_google:latest")
+	require.NoError(t, err, "Failed to start VM")
+
+	time.Sleep(10 * time.Second)
+
+	err = orch.StopSingleVM(ctx, vmID)
+	require.NoError(t, err, "Failed to stop VM")
+
+	orch.Cleanup()
+}
+
 func TestPauseResumeSerial(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
