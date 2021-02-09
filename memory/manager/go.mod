@@ -1,6 +1,11 @@
 module github.com/ease-lab/vhive/memory/manager
 
-go 1.14
+go 1.15
+
+// Workaround for github.com/containerd/containerd issue #3031
+replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
+
+replace github.com/ease-lab/vhive/metrics => ../../misc
 
 require (
 	github.com/Microsoft/hcsshim v0.8.9 // indirect
@@ -24,6 +29,3 @@ require (
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 	gonum.org/v1/gonum v0.7.0
 )
-
-// Workaround for github.com/containerd/containerd issue #3031
-replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
