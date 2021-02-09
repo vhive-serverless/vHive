@@ -23,7 +23,9 @@
 EXTRAGOARGS:=-v -race -cover
 
 test:
-	sudo env "PATH=$(PATH)" go test ./ $(EXTRAGOARGS)
+	# Need to pass GOROOT because GitHub-hosted runners may have several
+	# go versions installed so that calling go from root may fail
+	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS)
 
 test-man:
 	echo "Nothing to test manually"
