@@ -1,10 +1,20 @@
 module github.com/ease-lab/vhive/ctriface
 
-go 1.13
+go 1.15
 
-replace github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152
+// Workaround for github.com/containerd/containerd issue #3031
+replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
 
-replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
+replace (
+	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152
+	github.com/firecracker-microvm/firecracker-go-sdk => github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
+)
+
+replace (
+	github.com/ease-lab/vhive/memory/manager => ../memory/manager
+	github.com/ease-lab/vhive/metrics => ../metrics
+	github.com/ease-lab/vhive/misc => ../misc
+)
 
 require (
 	github.com/containerd/containerd v1.3.6
@@ -20,6 +30,3 @@ require (
 	google.golang.org/grpc v1.31.0
 
 )
-
-// Workaround for github.com/containerd/containerd issue #3031
-replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible

@@ -1,6 +1,6 @@
 module github.com/ease-lab/vhive/taps
 
-go 1.14
+go 1.15
 
 require (
 	github.com/containerd/containerd v1.3.6
