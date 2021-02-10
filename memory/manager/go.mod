@@ -8,7 +8,7 @@ replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/
 replace github.com/ease-lab/vhive/metrics => ../../metrics
 
 require (
-	github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15
+	github.com/ease-lab/vhive/metrics v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/sirupsen/logrus v1.7.0
 	golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3

@@ -40,19 +40,23 @@ replace (
 	github.com/ease-lab/vhive/cri => ./cri
 	github.com/ease-lab/vhive/ctriface => ./ctriface
 	github.com/ease-lab/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
+	github.com/ease-lab/vhive/memory/manager => ./memory/manager
 	github.com/ease-lab/vhive/metrics => ./metrics
+	github.com/ease-lab/vhive/misc => ./misc
 	github.com/ease-lab/vhive/proto => ./proto
+	github.com/ease-lab/vhive/taps => ./taps
 	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152
 	github.com/firecracker-microvm/firecracker-go-sdk => github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
 )
 
 require (
 	github.com/containerd/containerd v1.3.6
-	github.com/ease-lab/vhive/cri v0.0.0-20201130191325-566327025d78
-	github.com/ease-lab/vhive/ctriface v0.0.0-20201130191325-566327025d78
-	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e
-	github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15
-	github.com/ease-lab/vhive/proto v0.0.0-20201130165135-ffb90bb5b604
+	github.com/ease-lab/vhive/cri v0.0.0-00010101000000-000000000000
+	github.com/ease-lab/vhive/ctriface v0.0.0-00010101000000-000000000000
+	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
+	github.com/ease-lab/vhive/metrics v0.0.0-00010101000000-000000000000
+	github.com/ease-lab/vhive/proto v0.0.0-00010101000000-000000000000
+	github.com/golang/protobuf v1.3.5
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.7.0
