@@ -18,7 +18,7 @@ require (
 	github.com/containerd/typeurl v1.0.1 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
-	github.com/ease-lab/vhive/taps v0.0.0-20201130160304-f57486a97db0
+	github.com/ease-lab/vhive/taps v0.0.0-00010101000000-000000000000
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect

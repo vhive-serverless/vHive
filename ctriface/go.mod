@@ -14,14 +14,15 @@ replace (
 	github.com/ease-lab/vhive/memory/manager => ../memory/manager
 	github.com/ease-lab/vhive/metrics => ../metrics
 	github.com/ease-lab/vhive/misc => ../misc
+	github.com/ease-lab/vhive/taps => ../taps
 )
 
 require (
 	github.com/containerd/containerd v1.3.6
 	github.com/davecgh/go-spew v1.1.1
-	github.com/ease-lab/vhive/memory/manager v0.0.0-20201130190645-c3b71d99f772
-	github.com/ease-lab/vhive/metrics v0.0.0-20201130161247-acbfdab4ba15
-	github.com/ease-lab/vhive/misc v0.0.0-20201130183108-c8a4a7f8b03f
+	github.com/ease-lab/vhive/memory/manager v0.0.0-00010101000000-000000000000
+	github.com/ease-lab/vhive/metrics v0.0.0-00010101000000-000000000000
+	github.com/ease-lab/vhive/misc v0.0.0-00010101000000-000000000000
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/go-multierror/multierror v1.0.2
 	github.com/pkg/errors v0.9.1

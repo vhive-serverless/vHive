@@ -41,11 +41,14 @@ replace (
 replace (
 	github.com/ease-lab/vhive/ctriface => ../ctriface
 	github.com/ease-lab/vhive/examples/protobuf/helloworld => ../examples/protobuf/helloworld
+	github.com/ease-lab/vhive/memory/manager => ../memory/manager
+	github.com/ease-lab/vhive/metrics => ../metrics
+	github.com/ease-lab/vhive/misc => ../misc
+	github.com/ease-lab/vhive/taps => ../taps
 )
 
 require (
-	github.com/ease-lab/vhive/ctriface v0.0.0-20201130191050-143a91f0910c
-	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20201130161836-25b08f5afe7e
+	github.com/ease-lab/vhive/ctriface v0.0.0-00010101000000-000000000000
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
