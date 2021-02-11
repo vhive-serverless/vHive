@@ -56,7 +56,7 @@ require (
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/ease-lab/vhive/metrics v0.0.0-00010101000000-000000000000
 	github.com/ease-lab/vhive/proto v0.0.0-00010101000000-000000000000
-	github.com/golang/protobuf v1.3.5
+	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.7.0
