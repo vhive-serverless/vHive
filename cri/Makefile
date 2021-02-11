@@ -25,17 +25,18 @@ CTRDLOGDIR:=/tmp/ctrd-logs
 test:
 	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
 	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
+	sleep 1s
 	sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
+	sleep 1s
 	sudo ./../vhive 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
+	sleep 1s
 
 	./../scripts/cluster/create_one_node_cluster.sh
-
 	sleep 2m
 
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
-
 	sleep 1m
 
 	go test ./ $(EXTRAGOARGS)
