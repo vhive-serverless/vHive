@@ -41,3 +41,5 @@ Currently, we are in the process of upstreaming VM snapshots support to the upst
 
 * Current Firecracker version is 0.21.0. We plan to keep our code loosely up to date with
 the upstream Firecracker repository.
+
+* vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind) to speed up testing environment setup requiring kubernetes
