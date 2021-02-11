@@ -44,7 +44,7 @@ RUNNER_TOKEN="$(curl -XPOST -fsSL \
 
 # install kind from ease-lab/kind
 rm -rf $HOME/kind/
-git clone https://github.com/ease-lab/kind $HOME/kind/
+git clone -b custom_docker_params_for_vHive https://github.com/ease-lab/kind $HOME/kind/
 cd $HOME/kind
 go build
 
