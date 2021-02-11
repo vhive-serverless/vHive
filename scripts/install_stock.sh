@@ -24,7 +24,7 @@
 
 sudo apt-get update >> /dev/null
 
-sudo apt-get -y install  unzip pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
+sudo apt-get -y install btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
 
 wget -c https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
 sudo unzip protoc-3.11.4-linux-x86_64.zip -d /usr/local
