@@ -28,7 +28,7 @@ SCRIPTS=$ROOT/scripts
 
 source $SCRIPTS/install_go.sh
 $SCRIPTS/setup_system.sh
-$SCRIPTS/setup_containerd.sh
+$SCRIPTS/setup_firecracker_containerd.sh
 
 $SCRIPTS/install_stock.sh
 $SCRIPTS/create_devmapper.sh
