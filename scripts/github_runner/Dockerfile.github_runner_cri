@@ -1,6 +1,29 @@
 FROM kindest/node:v1.20.2
 
-RUN mkdir /scripts
+RUN apt-get update && \
+    apt-get install --yes \
+    apt-utils && \
+    apt-get install --yes \
+    sudo \
+    wget curl\
+    gcc g++\
+    iproute2 iptables net-tools \
+    apt-transport-https \
+    ca-certificates \
+    make jq \
+    acl \
+    git git-lfs \
+    bc \
+    dmsetup \
+    gnupg-agent \
+    apt-transport-https software-properties-common pkg-config \
+    libseccomp-dev libseccomp2 \
+    unzip tar \
+    socat \
+    util-linux \
+    ipvsadm \
+    tmux vim && \
+    mkdir /scripts
 COPY scripts/github_runner/setup_runner_cri.sh /scripts/
 COPY scripts/setup_system.sh /scripts/
 COPY scripts/create_devmapper.sh /scripts/

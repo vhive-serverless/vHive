@@ -22,59 +22,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-apt-get update
-apt-get install --yes \
-    git \
-    sudo \
-    apt-utils \
-    wget \
-    curl \
-    make \
-    gcc \
-    iproute2 \
-    iptables \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gcc \
-    g++ \
-    make \
-    jq \
-    acl \
-    net-tools \
-    git-lfs \
-    bc \
-    dmsetup \
-    gnupg-agent \
-    wget \
-    tmux \
-    vim \
-    software-properties-common
-
-# install golang
-if [ ! -f "/usr/local/go/bin/go" ]; then
-    wget -c https://golang.org/dl/go1.15.linux-amd64.tar.gz
-    sudo tar -C /usr/local -xzf go1.15.linux-amd64.tar.gz
-    sudo ln -s /usr/local/go/bin/go /usr/bin/go
-fi
-
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 $PWD/setup_system.sh
 $PWD/create_devmapper.sh
 
-sudo apt-get -y install  unzip pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
-
-if [ ! -f "protoc-3.11.4-linux-x86_64.zip" ]; then
-    wget -c https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
-    sudo unzip -u protoc-3.11.4-linux-x86_64.zip -d /usr/local
+# install golang
+GO_VERSION=1.15
+if [ ! -f "/usr/local/go/bin/go" ]; then
+    wget -c "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+    sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
+    sudo ln -s /usr/local/go/bin/go /usr/bin/go
+    rm "go${GO_VERSION}.linux-amd64.tar.gz"
+fi
+# install Protocol Buffer Compiler
+PROTO_VERSION=3.11.4
+if [ ! -f "protoc-$PROTO_VERSION-linux-x86_64.zip" ]; then
+    wget -c "https://github.com/google/protobuf/releases/download/v$PROTO_VERSION/protoc-$PROTO_VERSION-linux-x86_64.zip"
+    sudo unzip -u "protoc-$PROTO_VERSION-linux-x86_64.zip" -d /usr/local
+    rm "protoc-$PROTO_VERSION-linux-x86_64.zip"
 fi
 
-# Install knative CLI
+# Compile & install knative CLI
 if [ ! -d "$HOME/client" ]; then
     git clone https://github.com/knative/client.git $HOME/client
     cd $HOME/client
     hack/build.sh -f
     sudo cp kn /usr/local/bin
+    sudo rm -rf /usr/local/go
 fi
 
 # Necessary for containerd as container runtime but not docker
@@ -89,14 +63,15 @@ net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
 sudo sysctl --system
-mkdir ~/tmp
 
 # setup github runner
 cd $HOME
 if [ ! -d "$HOME/actions-runner" ]; then
     mkdir actions-runner && cd actions-runner
-    curl -O -L -C - https://github.com/actions/runner/releases/download/v2.276.1/actions-runner-linux-x64-2.276.1.tar.gz
-    tar xzf ./actions-runner-linux-x64-2.276.1.tar.gz
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep 'browser_' | cut -d\" -f4 | grep linux-x64)
+    curl -o actions-runner-linux-x64.tar.gz -L -C - $LATEST_VERSION
+    tar xzf "./actions-runner-linux-x64.tar.gz"
+    rm actions-runner-linux-x64.tar.gz
     chmod +x ./config.sh
     chmod +x ./run.sh
     systemctl enable run-at-startup.service
@@ -118,7 +93,7 @@ WantedBy=default.target
 END
 else
     systemctl daemon-reload
-    sysctl enable connect_github_runner --now
+    systemctl enable connect_github_runner --now
 
 fi
 
