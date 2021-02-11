@@ -27,6 +27,7 @@ if [ -z $1 ] || [ -z $2 ] || [ -z $3 ]; then
     exit -1
 fi
 
+# fetch runner token using access token
 ACCESS_TOKEN=$2
 API_VERSION=v3
 API_HEADER="Accept: application/vnd.github.${API_VERSION}+json"
@@ -40,6 +41,12 @@ RUNNER_TOKEN="$(curl -XPOST -fsSL \
   -H "${API_HEADER}" \
   "${_FULL_URL}" \
 | jq -r '.token')"
+
+# install kind from ease-lab/kind
+rm -rf $HOME/kind/
+git clone https://github.com/ease-lab/kind $HOME/kind/
+cd $HOME/kind
+go build
 
 
 for number in $(seq 1 $1)
@@ -59,10 +66,6 @@ do
             vhiveease/integ_test_runner)
         ;;
     "cri")
-        cd $HOME
-        git clone https://github.com/ease-lab/kind
-        cd kind
-        go build
         ~/kind/kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${number}"
         sleep 2m
         docker exec -it \

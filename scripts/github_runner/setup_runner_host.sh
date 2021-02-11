@@ -24,11 +24,12 @@
 # download and install docker
 sudo apt-get update
 
-sudo apt-get install \
+sudo apt-get install -y \
     apt-transport-https \
     ca-certificates \
     curl \
     gnupg-agent \
+    jq \
     software-properties-common >> /dev/null
 
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -40,6 +41,9 @@ sudo add-apt-repository \
 
 sudo apt-get update
 sudo apt-get install --yes docker-ce docker-ce-cli containerd.io >> /dev/null
+
+PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+$PWD/../install_go.sh
 
 sudo usermod -aG docker $USER
 newgrp docker
