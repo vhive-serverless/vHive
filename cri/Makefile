@@ -40,31 +40,6 @@ test:
 
 	go test ./ $(EXTRAGOARGS)
 
-	kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
-	sudo pkill -INT vhive
-	sudo pkill -INT firec
-	sudo pkill -9 containerd
-	./../scripts/create_devmapper.sh
-	sudo rm /etc/firecracker-containerd/fccd-cri.sock
-	rm ${HOME}/.kube/config
-
-test-travis:
-	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
-	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
-	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
-	sudo ./../vhive 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
-
-	./../scripts/cluster/create_one_node_cluster.sh
-
-	sleep 2m
-
-	kubectl apply -f ../knative_workloads/helloworld.yaml
-
-	sleep 2m
-
-	go test $(EXTRAGOARGS) -run TestSingleInvoke
-	./../scripts/clean_fcctr.sh
-
 test-man:
 	echo "Nothing to test manually"
 
