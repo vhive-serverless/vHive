@@ -8,7 +8,21 @@ git clone <repo URL> && cd vhive
 # setup host 
 ./scripts/github_runner/setup_runner_host.sh
 # start integration test runners
-./scripts/github_runner/start_runners.sh <num of runners> <Github repo URL> <Github Access key> integ
+./scripts/github_runner/start_runners.sh <num of runners> https://github.com/<OWNER>/<REPO> <Github Access key> integ
 # start cri test runners
-./scripts/github_runner/start_runners.sh <num of runners> <Github repo URL> <Github Access key> cri
+./scripts/github_runner/start_runners.sh <num of runners> https://github.com/<OWNER>/<REPO> <Github Access key> cri
+```
+
+## Clean up for restart
+```bash
+# list all kind clusters
+kind get clusters 
+# delete a cluster 
+kind delete cluster --name <name>
+# list remaining docker containers
+docker ps
+# stop a docker container
+docker container stop <container ID>
+#docker remove container
+docker container rm <container ID>
 ```

@@ -23,7 +23,7 @@
 
 if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ]; then
     echo "Parameters missing"
-    echo "USAGE: start_runners.sh <num of runners> <Github URL> <Github Access key> <runner label(comma separated)>"
+    echo "USAGE: start_runners.sh <num of runners> https://github.com/<OWNER>/<REPO> <Github Access key> <runner label(comma separated)>"
     exit -1
 fi
 
@@ -43,12 +43,9 @@ RUNNER_TOKEN="$(curl -XPOST -fsSL \
   "${_FULL_URL}" \
 | jq -r '.token')"
 
-# install kind from ease-lab/kind
-rm -rf $HOME/kind/
-git clone -b custom_docker_params_for_vHive https://github.com/ease-lab/kind $HOME/kind/
-cd $HOME/kind
-go build
-
+# pull latest images
+docker pull vhiveease/integ_test_runner
+docker pull vhiveease/cri_test_runner
 
 for number in $(seq 1 $1)
 do

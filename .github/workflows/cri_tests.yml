@@ -47,7 +47,7 @@ jobs:
           GOPATH: /root/tmp/gopath
       run: go build
 
-    - name: Run vHive end-to-end tests
+    - name: Run vHive CRI tests
       env:
           TMPDIR: /root/tmp/
           GOCACHE: /root/tmp/gocache
