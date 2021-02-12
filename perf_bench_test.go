@@ -27,6 +27,8 @@ import (
 	"encoding/csv"
 	"flag"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,7 +36,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ease-lab/vhive/metrics"
 	"github.com/ease-lab/vhive/profile"
+	"github.com/montanaflynn/stats"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -42,9 +46,10 @@ import (
 var (
 	// shared arguments
 	warmUpTime   = flag.Float64("warmUpTime", 5, "The warm up time before profiling in seconds")
-	coldDownTime = flag.Float64("coldDownTime", 1, "The cold down time after profiling in seconds")
+	coolDownTime = flag.Float64("coolDownTime", 1, "The cool down time after profiling in seconds")
 	profileTime  = flag.Float64("profileTime", 10, "The profiling time in seconds")
 	funcNames    = flag.String("funcNames", "helloworld", "Name of the functions to benchmark")
+	isBindSocket = flag.Bool("bindSocket", false, "Bind all VMs to socket 1 on CloudLab rs440")
 
 	vmNum           = flag.Int("vm", 2, "TestBenchRequestPerSecond: the number of VMs")
 	targetReqPerSec = flag.Int("requestPerSec", 10, "TestBenchRequestPerSecond: the target number of requests per second")
@@ -54,8 +59,15 @@ var (
 
 	// profiler arguments
 	profilerLevel    = flag.Int("l", 1, "Profile level (-l flag)")
-	profilerInterval = flag.Uint64("profilerInterval", 500, "Print count deltas every N milliseconds (-I flag)")
-	profilerNodes    = flag.String("profilerNodes", "", "Include or exclude nodes (with + to add, -|^ to remove, comma separated list, wildcards allowed, add * to include all children/siblings, add /level to specify highest level node to match, add ^ to match related siblings and metrics, start with ! to only include specified nodes)")
+	profilerInterval = flag.Uint64("I", 500, "Print count deltas every N milliseconds (-I flag)")
+	profilerNodes    = flag.String("nodes", "", "Include or exclude nodes (with "+
+		"+ to add, "+
+		"-|^ to remove, "+
+		"comma separated list, wildcards allowed, "+
+		"add * to include all children/siblings, "+
+		"add /level to specify highest level node to match, "+
+		"add ^ to match related siblings and metrics, "+
+		"start with ! to only include specified nodes)")
 )
 
 func TestBenchMultiVMRequestPerSecond(t *testing.T) {
@@ -75,12 +87,12 @@ func TestBenchMultiVMRequestPerSecond(t *testing.T) {
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	pullImages(t, images)
+	flrPid := pullImages(t, images)
+	rps := calculateRPS(runtime.NumCPU())
 	for vmNum := *vmIncrStep; vmNum <= *maxVMNum; vmNum += *vmIncrStep {
-		rps := calculateRPS(vmNum)
-		log.Infof("vmNum: %d, RPS: %d", vmNum, rps)
+		log.Infof("vmNum: %d, Target RPS: %d", vmNum, rps)
 
-		bootVMs(t, images, startVMID, vmNum)
+		bootVMs(t, images, startVMID, vmNum, flrPid)
 		metrics[idx] = loadAndProfile(t, images, vmNum, rps, isSyncOffload)
 		startVMID = vmNum
 		idx++
@@ -106,9 +118,9 @@ func TestBenchRequestPerSecond(t *testing.T) {
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	pullImages(t, images)
+	flrPid := pullImages(t, images)
 
-	bootVMs(t, images, 0, *vmNum)
+	bootVMs(t, images, 0, *vmNum, flrPid)
 
 	serveMetrics := loadAndProfile(t, images, *vmNum, *targetReqPerSec, isSyncOffload)
 
@@ -118,36 +130,43 @@ func TestBenchRequestPerSecond(t *testing.T) {
 }
 
 // Pull a list of images
-func pullImages(t *testing.T, images []string) {
+func pullImages(t *testing.T, images []string) string {
 	for _, imageName := range images {
 		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, record_response!")
 	}
+
+	pidBytes, err := getFirecrackerPid()
+	require.NoError(t, err, "Cannot get firecracker pid")
+	pid := strings.TrimSpace(strings.Split(string(pidBytes), "\n")[0])
+	return pid
 }
 
 // Boot a range of VMs with given images
-func bootVMs(t *testing.T, images []string, startVMID, endVMID int) {
+func bootVMs(t *testing.T, images []string, startVMID, endVMID int, omitPid string) {
 	for i := startVMID; i < endVMID; i++ {
 		vmIDString := strconv.Itoa(i)
 		_, err := funcPool.AddInstance(vmIDString, images[i%len(images)])
 		require.NoError(t, err, "Function returned error")
+	}
+
+	if *isBindSocket {
+		log.Debugf("Binding socket 1")
+		err := bindSocket(omitPid)
+		require.NoError(t, err, "BindSocket returned error")
 	}
 }
 
 // Inject many requests per second to VMs and profile
 func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncOffload bool) map[string]float64 {
 	var (
-		vmID, requestID             int
-		invokExecTime, realRequests int64
-		vmGroup                     sync.WaitGroup
-		isProfile                   = false
-		timeInterval                = time.Duration(time.Second.Nanoseconds() / int64(targetRPS))
-		injectDuration              = *warmUpTime + *profileTime + *coldDownTime
-		totalRequests               = injectDuration * float64(targetRPS)
-		remainingRequests           = totalRequests
-		ticker                      = time.NewTicker(timeInterval)
-		profiler                    = profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel, *profilerNodes, "profile")
+		pmuMetric      *metrics.Metric
+		vmGroup        sync.WaitGroup
+		isProfile      = false
+		cores          = runtime.NumCPU()
+		threshold      = 5 * getUnloadServiceTime()
+		injectDuration = *warmUpTime + *profileTime + *coolDownTime
 	)
 
 	const (
@@ -155,46 +174,78 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		realRequestsPerSecond = "real-requests-per-second"
 	)
 
-	tStart := time.Now()
-	err := profiler.Run()
-	require.NoError(t, err, "Run profiler returned error")
-	go profileControl(vmNum, &isProfile, profiler)
+	for i := 1.; i < 9; i++ {
+		var (
+			vmID, requestID             int
+			invokExecTime, realRequests int64
+			serveMetric                 = metrics.NewMetric()
+			rps                         = 0.1 * i * float64(targetRPS)
+			timeInterval                = time.Duration(time.Second.Nanoseconds() / int64(rps))
+			ticker                      = time.NewTicker(timeInterval)
+			totalRequests               = injectDuration * rps
+			remainingRequests           = totalRequests
+			profiler                    = profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel, *profilerNodes, "profile", *isBindSocket)
+		)
 
-	for remainingRequests > 0 {
-		if tickerT := <-ticker.C; !tickerT.IsZero() {
-			vmGroup.Add(1)
-			remainingRequests--
+		log.Debugf("RPS: %f", rps)
 
-			imageName := images[vmID%len(images)]
+		tStart := time.Now()
+		latencies := make(chan float64, 2)
+		go latencyMeasurement(t, 1, images[1%len(images)], &isProfile, latencies)
 
-			go serveVM(t, &vmGroup, vmID, requestID, imageName, isSyncOffload, &isProfile, &invokExecTime, &realRequests)
-			requestID++
+		err := profiler.Run()
+		require.NoError(t, err, "Run profiler returned error")
+		go profileControl(vmNum, &isProfile, profiler)
 
-			vmID = (vmID + 1) % vmNum
+		for remainingRequests > 0 {
+			if tickerT := <-ticker.C; !tickerT.IsZero() {
+				vmGroup.Add(1)
+				remainingRequests--
+
+				imageName := images[vmID%len(images)]
+
+				go serveVM(t, &vmGroup, vmID, requestID, imageName, isSyncOffload, &isProfile, &invokExecTime, &realRequests)
+				requestID++
+
+				vmID = (vmID + 1) % vmNum
+			}
 		}
-	}
-	ticker.Stop()
-	vmGroup.Wait()
-	profiler.SetTearDownTime()
-	log.Debugf("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
+		ticker.Stop()
+		vmGroup.Wait()
+		log.Debugf("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
+		meanLatency, percentileLatency := <-latencies, <-latencies
+		log.Debug(meanLatency, percentileLatency)
 
-	// Collect results
-	serveMetrics := make(map[string]float64)
-	serveMetrics[averageExecutionTime] = float64(invokExecTime) / float64(realRequests)
-	serveMetrics[realRequestsPerSecond] = float64(realRequests) / (profiler.GetTearDownTime() - profiler.GetWarmupTime())
-	result, err := profiler.GetResult()
-	cores := profiler.GetCores()
-	log.Debugf("%d cores are recorded: %v", len(cores), cores)
-	require.NoError(t, err, "Stopping profiler returned error: %v", err)
-	for eventName, value := range result {
-		log.Debugf("%s: %f\n", eventName, value)
-		serveMetrics[eventName] = value
-	}
-	log.Debugf("average-execution-time: %f\n", serveMetrics[averageExecutionTime])
-	log.Debugf("real-requests-per-second: %f\n", serveMetrics[realRequestsPerSecond])
-	profiler.PrintBottlenecks()
+		// Collect results
+		serveMetric.MetricMap[averageExecutionTime] = float64(invokExecTime) / float64(realRequests)
+		serveMetric.MetricMap[realRequestsPerSecond] = float64(realRequests) / (profiler.GetCoolDownTime() - profiler.GetWarmUpTime())
+		if cores > vmNum {
+			serveMetric.MetricMap[realRequestsPerSecond] /= float64(vmNum)
+		} else {
+			serveMetric.MetricMap[realRequestsPerSecond] /= float64(cores)
+		}
+		result, err := profiler.GetResult()
+		profiledCores := profiler.GetCores()
+		log.Debugf("%d cores are recorded: %v", len(profiledCores), profiledCores)
+		require.NoError(t, err, "Stopping profiler returned error: %v", err)
+		for eventName, value := range result {
+			log.Debugf("%s: %f\n", eventName, value)
+			serveMetric.MetricMap[eventName] = value
+		}
+		log.Debugf("average-execution-time: %f\n", serveMetric.MetricMap[averageExecutionTime])
+		log.Debugf("real-requests-per-second: %f\n", serveMetric.MetricMap[realRequestsPerSecond])
+		profiler.PrintBottlenecks()
 
-	return serveMetrics
+		if percentileLatency > float64(threshold) {
+			if pmuMetric.MetricMap == nil {
+				return serveMetric.MetricMap
+			}
+			return pmuMetric.MetricMap
+		}
+		pmuMetric = serveMetric
+	}
+
+	return pmuMetric.MetricMap
 }
 
 // Goroutine function: serve VM, record real RPS and exection time
@@ -220,21 +271,59 @@ func serveVM(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageNa
 	}
 }
 
-// Control start and end of profiling
+// Goroutine function: Control start and end of profiling
 func profileControl(vmNum int, isProfile *bool, profiler *profile.Profiler) {
 	time.Sleep(time.Duration(*warmUpTime) * time.Second)
 	*isProfile = true
-	profiler.SetWarmTime()
+	profiler.SetWarmUpTime()
 	log.Info("Profile started")
 	time.Sleep(time.Duration(*profileTime) * time.Second)
 	*isProfile = false
-	profiler.SetTearDownTime()
+	profiler.SetCoolDownTime()
 	log.Info("Profile finished")
+}
+
+func latencyMeasurement(t *testing.T, vmID int, imageName string, isProfile *bool, results chan float64) {
+	var (
+		latencies  []float64
+		vmGroup    sync.WaitGroup
+		ticker     = time.NewTicker(500 * time.Millisecond)
+		vmIDString = strconv.Itoa(vmID)
+	)
+
+	for {
+		if tickerT := <-ticker.C; *isProfile && !tickerT.IsZero() {
+			vmGroup.Add(1)
+			go func() {
+				defer vmGroup.Done()
+				tStart := time.Now()
+				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+				require.Equal(t, resp.IsColdStart, false)
+				if err != nil {
+					log.Debugf("VM %s: Function returned error %v", vmIDString, err)
+				} else if resp.Payload != "Hello, replay_response!" {
+					log.Debugf("Function returned invalid: %s", resp.Payload)
+				}
+				latencies = append(latencies, float64(time.Since(tStart).Milliseconds()))
+			}()
+		} else if !*isProfile && len(latencies) > 0 {
+			vmGroup.Wait()
+			data := stats.LoadRawData(latencies)
+			mean, err := stats.Mean(data)
+			require.NoError(t, err, "Compute mean returned error")
+			percentile, err := stats.Percentile(data, 90)
+			require.NoError(t, err, "Compute percentile returned error")
+			results <- mean
+			results <- percentile
+			return
+		}
+	}
 }
 
 // Tear down VMs
 func tearDownVMs(t *testing.T, images []string, vmNum int, isSyncOffload bool) {
 	for i := 0; i < vmNum; i++ {
+		log.Debugf("Shutting down VM %d, images: %s", i, images[i%len(images)])
 		vmIDString := strconv.Itoa(i)
 		message, err := funcPool.RemoveInstance(vmIDString, images[i%len(images)], isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
@@ -317,12 +406,12 @@ func getCPUIntenseRPS() int {
 		funcs       = strings.Split(*funcNames, ",")
 		reqsPerSec  = map[string]int{
 			"helloworld":   10000,
-			"chameleon":    600,
-			"pyaes":        10000,
+			"chameleon":    700,
+			"pyaes":        1000,
 			"image_rotate": 600,
 			"json_serdes":  600,
 			"lr_serving":   5000,
-			"cnn_serving":  20,
+			"cnn_serving":  30,
 			"rnn_serving":  600,
 		}
 	)
@@ -339,31 +428,51 @@ func getCPUIntenseRPS() int {
 	return result
 }
 
-func getWarmupTime() int {
+func getUnloadServiceTime() float64 {
 	var (
-		max          int
-		funcs        = strings.Split(*funcNames, ",")
-		serviceTimes = map[string]int{
+		sum         float64
+		funcs       = strings.Split(*funcNames, ",")
+		serviceTime = map[string]float64{
 			"helloworld":   1,
-			"chameleon":    20,
+			"chameleon":    23,
 			"pyaes":        1,
-			"image_rotate": 26,
-			"json_serdes":  16,
-			"lr_serving":   3,
+			"image_rotate": 0,
+			"json_serdes":  0,
+			"lr_serving":   0,
 			"cnn_serving":  70,
-			"rnn_serving":  26,
+			"rnn_serving":  0,
 		}
 	)
+
 	for _, funcName := range funcs {
-		delay := serviceTimes[funcName]
-		if max < delay {
-			max = delay
-		}
+		sum += serviceTime[funcName]
 	}
-	return max
+
+	return sum / float64(len(funcs))
 }
 
 func calculateRPS(vmNum int) int {
 	baseRPS := getCPUIntenseRPS()
 	return vmNum * baseRPS
+}
+
+func bindSocket(omitPid string) error {
+	pidBytes, err := getFirecrackerPid()
+	if err != nil {
+		return err
+	}
+
+	vmPidList := strings.Split(string(pidBytes), " ")
+	for _, vm := range vmPidList {
+		vm = strings.TrimSpace(vm)
+		if vm != omitPid {
+			log.Debugf("binding pid: %s", vm)
+			cmd := exec.Command("taskset", "--all-tasks", "-cp", "1-63:2", vm)
+			if err := cmd.Run(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
