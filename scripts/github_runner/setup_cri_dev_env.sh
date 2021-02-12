@@ -23,44 +23,46 @@
 # SOFTWARE.
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-$PWD/setup_cri_dev_env.sh
+$PWD/setup_system.sh
+$PWD/create_devmapper.sh
 
-if [ -f "/usr/local/go/bin/go" ]; then
-    sudo rm -rf /usr/local/go
+# install golang
+GO_VERSION=1.15
+if [ ! -f "/usr/local/go/bin/go" ]; then
+    wget -c "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+    sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
+    sudo ln -s /usr/local/go/bin/go /usr/bin/go
+    rm "go${GO_VERSION}.linux-amd64.tar.gz"
 fi
 
-# setup github runner
-cd $HOME
-if [ ! -d "$HOME/actions-runner" ]; then
-    mkdir actions-runner && cd actions-runner
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep 'browser_' | cut -d\" -f4 | grep linux-x64)
-    curl -o actions-runner-linux-x64.tar.gz -L -C - $LATEST_VERSION
-    tar xzf "./actions-runner-linux-x64.tar.gz"
-    rm actions-runner-linux-x64.tar.gz
-    chmod +x ./config.sh
-    chmod +x ./run.sh
-    systemctl enable run-at-startup.service
-    sudo tee /etc/systemd/system/connect_github_runner.service <<END
-[Unit]
-Description=Connect to Github as self hosted runner
-Wants=network-online.target
-After=network.target network-online.target
-
-[Service]
-Type=simple
-RemainAfterExit=yes
-Environment="RUNNER_ALLOW_RUNASROOT=1"
-ExecStart=/root/actions-runner/run.sh
-TimeoutStartSec=0
-
-[Install]
-WantedBy=default.target
-END
-else
-    systemctl daemon-reload
-    systemctl enable connect_github_runner --now
-
+# install Protocol Buffer Compiler
+PROTO_VERSION=3.11.4
+if [ ! -f "protoc-$PROTO_VERSION-linux-x86_64.zip" ]; then
+    wget -c "https://github.com/google/protobuf/releases/download/v$PROTO_VERSION/protoc-$PROTO_VERSION-linux-x86_64.zip"
+    sudo unzip -u "protoc-$PROTO_VERSION-linux-x86_64.zip" -d /usr/local
+    rm "protoc-$PROTO_VERSION-linux-x86_64.zip"
 fi
+
+# Compile & install knative CLI
+if [ ! -d "$HOME/client" ]; then
+    git clone https://github.com/knative/client.git $HOME/client
+    cd $HOME/client
+    hack/build.sh -f
+    sudo cp kn /usr/local/bin
+fi
+
+# Necessary for containerd as container runtime but not docker
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# Set up required sysctl params, these persist across reboots.
+sudo tee /etc/sysctl.d/99-kubernetes-cri.conf <<EOF
+net.bridge.bridge-nf-call-iptables  = 1
+net.ipv4.ip_forward                 = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+
+sudo sysctl --system
 
 # we want the command (expected to be systemd) to be PID1, so exec to it
 exec "$@"

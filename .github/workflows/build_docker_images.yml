@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [github_runner]
+        image: [github_runner, github_runner_cri, cri_dev_env]
     steps:
     - uses: actions/checkout@v2
       with:
