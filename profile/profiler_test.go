@@ -17,7 +17,7 @@ type testCase struct {
 func TestReadPerfData(t *testing.T) {
 	fileName := "test"
 
-	p := NewProfiler(0, 100, 0, 1, "", fileName)
+	p := NewProfiler(0, 100, 0, 1, "", fileName, false)
 
 	result := []map[string]float64{
 		{
@@ -56,15 +56,15 @@ func TestReadPerfData(t *testing.T) {
 func TestProfilerRun(t *testing.T) {
 	fileName := "testFile"
 
-	p := NewProfiler(-1, 100, 0, 1, "", fileName)
+	p := NewProfiler(-1, 100, 0, 1, "", fileName, false)
 	err := p.Run()
 	require.EqualError(t, err, "profiler execution time is less than 0s", "Failed creating perf stat")
 
-	p = NewProfiler(0, 1, 0, 1, "", fileName)
+	p = NewProfiler(0, 1, 0, 1, "", fileName, false)
 	err = p.Run()
 	require.EqualError(t, err, "profiler print interval is less than 10ms", "Failed creating perf stat")
 
-	p = NewProfiler(0, 100, 0, 1, "", fileName)
+	p = NewProfiler(0, 100, 0, 1, "", fileName, false)
 
 	err = p.Run()
 	require.NoError(t, err, "profiler run returned error: %v.", err)
