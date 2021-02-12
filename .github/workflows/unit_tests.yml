@@ -46,7 +46,7 @@ jobs:
   
   firecracker-containerd-interface-test:
     name: "Unit tests: Firecracker-containerd interface"
-    runs-on: self-hosted
+    runs-on: [self-hosted, integ]
     steps:
     - name: Set up Go 1.15
       uses: actions/setup-go@v2

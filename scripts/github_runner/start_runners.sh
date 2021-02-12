@@ -21,20 +21,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-if [ -z $1 ] || [ -z $2 ] || [ -z $3 ]; then
+if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ]; then
     echo "Parameters missing"
-    echo "USAGE: start_runners.sh <num of runners> <Github Access key> <runner label(comma separated)>"
+    echo "USAGE: start_runners.sh <num of runners> <Github URL> <Github Access key> <runner label(comma separated)>"
     exit -1
 fi
 
 # fetch runner token using access token
-ACCESS_TOKEN=$2
+ACCESS_TOKEN=$3
 API_VERSION=v3
 API_HEADER="Accept: application/vnd.github.${API_VERSION}+json"
 AUTH_HEADER="Authorization: token ${ACCESS_TOKEN}"
 
-_SHORT_URL="https://github.com/ease-lab/vhive"
-_FULL_URL="https://api.github.com/repos/ease-lab/vhive/actions/runners/registration-token"
+_SHORT_URL=$2
+REPO_NAME="$(echo "${_SHORT_URL}" | grep / | cut -d/ -f4-)"
+_FULL_URL="https://api.github.com/repos/${REPO_NAME}/actions/runners/registration-token"
 
 RUNNER_TOKEN="$(curl -XPOST -fsSL \
   -H "${AUTH_HEADER}" \
@@ -51,7 +52,7 @@ go build
 
 for number in $(seq 1 $1)
 do
-    case "$3" in
+    case "$4" in
     "integ")
         # create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
         CONTAINERID=$(docker run -d --restart always --privileged \
