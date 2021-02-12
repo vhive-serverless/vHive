@@ -26,29 +26,12 @@ PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 $PWD/setup_system.sh
 $PWD/create_devmapper.sh
 
-# install golang
-GO_VERSION=1.15
-if [ ! -f "/usr/local/go/bin/go" ]; then
-    wget -c "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz"
-    sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
-    sudo ln -s /usr/local/go/bin/go /usr/bin/go
-    rm "go${GO_VERSION}.linux-amd64.tar.gz"
-fi
-
 # install Protocol Buffer Compiler
 PROTO_VERSION=3.11.4
 if [ ! -f "protoc-$PROTO_VERSION-linux-x86_64.zip" ]; then
     wget -c "https://github.com/google/protobuf/releases/download/v$PROTO_VERSION/protoc-$PROTO_VERSION-linux-x86_64.zip"
     sudo unzip -u "protoc-$PROTO_VERSION-linux-x86_64.zip" -d /usr/local
     rm "protoc-$PROTO_VERSION-linux-x86_64.zip"
-fi
-
-# Compile & install knative CLI
-if [ ! -d "$HOME/client" ]; then
-    git clone https://github.com/knative/client.git $HOME/client
-    cd $HOME/client
-    hack/build.sh -f
-    sudo cp kn /usr/local/bin
 fi
 
 # Necessary for containerd as container runtime but not docker

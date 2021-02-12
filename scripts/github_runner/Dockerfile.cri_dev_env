@@ -23,6 +23,8 @@ RUN apt-get update && \
     util-linux \
     ipvsadm \
     tmux vim && \
+    sudo wget -O /usr/local/bin/kn -c "https://github.com/knative/client/releases/download/v0.20.0/kn-linux-amd64" && \
+    sudo chmod +x /usr/local/bin/kn && \
     mkdir /scripts
 COPY scripts/github_runner/setup_cri_dev_env.sh /scripts/
 COPY scripts/setup_system.sh /scripts/

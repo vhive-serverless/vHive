@@ -52,8 +52,5 @@ jobs:
             dep ensure
         fi
 
-    - name: Setup Node
-      run: source ./scripts/travis/setup_node.sh
-
     - name: Build
       run: go build -race -v -a ./...

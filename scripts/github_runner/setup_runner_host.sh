@@ -45,6 +45,13 @@ sudo apt-get install --yes docker-ce docker-ce-cli containerd.io >> /dev/null
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 $PWD/../install_go.sh
 
+# install kind from ease-lab/kind
+rm -rf /tmp/kind/
+git clone -b custom_docker_params_for_vHive https://github.com/ease-lab/kind /tmp/kind/
+cd /tmp/kind
+go build
+sudo mv kind /usr/local/bin/
+
 sudo usermod -aG docker $USER
 newgrp docker
 
