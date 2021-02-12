@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -16,7 +16,6 @@ import (
 
 // Profiler a instance of toplev command
 type Profiler struct {
-	teardown     sync.Once
 	cmd          *exec.Cmd
 	tStart       time.Time
 	interval     uint64
@@ -29,14 +28,12 @@ type Profiler struct {
 }
 
 // NewProfiler returns a new instance of profiler
-func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string) *Profiler {
+func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string, isBind bool) *Profiler {
 	profiler := new(Profiler)
 	profiler.execTime = executionTime
 	profiler.interval = printInterval
 	profiler.cores = make(map[string]bool)
 	profiler.bottlenecks = make(map[string]float64)
-
-	const coreNum = 20
 
 	if outFile == "" {
 		outFile = "profile"
@@ -51,12 +48,18 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		"-I", strconv.FormatUint(printInterval, 10),
 		"-o", profiler.outFile)
 
-	if vmNum < coreNum {
-		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "50")
+	if isBind {
+		profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S1")
+	}
+
+	// set idle threshold if VM number < cores number, hide idle CPUs <[num]% of busiest
+	if vmNum < runtime.NumCPU() {
+		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "80")
 	} else {
 		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "0")
 	}
 
+	// pass `profilerNodes` to pmu-tool if it is not empty, it controls specific metric/metrics to profile.
 	if nodes != "" {
 		profiler.cmd.Args = append(profiler.cmd.Args, "--nodes", nodes)
 	}
@@ -98,8 +101,8 @@ func (p *Profiler) Run() error {
 	return nil
 }
 
-// SetWarmTime sets the time duration until system is warm.
-func (p *Profiler) SetWarmTime() {
+// SetWarmUpTime sets the time duration until system is warm.
+func (p *Profiler) SetWarmUpTime() {
 	p.warmTime = time.Since(p.tStart).Seconds()
 
 	if p.execTime > 0 && p.warmTime > p.execTime {
@@ -107,20 +110,18 @@ func (p *Profiler) SetWarmTime() {
 	}
 }
 
-// GetWarmupTime returns the time duration until system is warm.
-func (p *Profiler) GetWarmupTime() float64 {
+// GetWarmUpTime returns the time duration until system is warm.
+func (p *Profiler) GetWarmUpTime() float64 {
 	return p.warmTime
 }
 
-// SetTearDownTime sets the time duration until system starts tearing down.
-func (p *Profiler) SetTearDownTime() {
-	p.teardown.Do(func() {
-		p.tearDownTime = time.Since(p.tStart).Seconds()
-	})
+// SetCoolDownTime sets the time duration until system starts tearing down.
+func (p *Profiler) SetCoolDownTime() {
+	p.tearDownTime = time.Since(p.tStart).Seconds()
 }
 
-// GetTearDownTime returns the time duration until system starts tearing down.
-func (p *Profiler) GetTearDownTime() float64 {
+// GetCoolDownTime returns the time duration until system starts tearing down.
+func (p *Profiler) GetCoolDownTime() float64 {
 	return p.tearDownTime
 }
 
@@ -273,14 +274,20 @@ func (p *Profiler) parseMetric(lines []pmuLine) map[string]float64 {
 
 func isPmuToolInstalled() bool {
 	cmd := exec.Command("toplev.py", "--version")
-	b, _ := cmd.Output()
+	b, err := cmd.Output()
+	if err != nil {
+		log.Error(err)
+	}
 
 	return len(b) != 0
 }
 
 func isPerfInstalled() bool {
 	cmd := exec.Command("perf", "--version")
-	b, _ := cmd.Output()
+	b, err := cmd.Output()
+	if err != nil {
+		log.Error(err)
+	}
 
 	return len(b) != 0
 }

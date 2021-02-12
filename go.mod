@@ -58,6 +58,7 @@ require (
 	github.com/ease-lab/vhive/proto v0.0.0-20201130165135-ffb90bb5b604
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/manifoldco/promptui v0.8.0
+	github.com/montanaflynn/stats v0.6.4 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.7.0
