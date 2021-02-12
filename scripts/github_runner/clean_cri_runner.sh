@@ -37,5 +37,4 @@ sudo rm -rf ${HOME}/tmp
 
 ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
-sudo ip link delete br0
-sudo ip link delete br1
+bridge -j vlan |jq -r '.[].ifname'| while read line ; do sudo ip link delete "$line" ; done
