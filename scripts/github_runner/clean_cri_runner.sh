@@ -1,8 +1,6 @@
-#!/bin/bash
-
 # MIT License
 #
-# Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+# Copyright (c) 2020 Shyam Jesalpura and EASE lab
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,12 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+#!/bin/bash
+
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-kn service delete --all
-kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
+KUBECONFIG=/etc/kubernetes/admin.conf kn service delete --all
+sudo kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
 sudo pkill -INT vhive
-sudo pkill -INT firecracker-containerd
+sudo pkill -9 firecracker-containerd
 sudo pkill -9 firecracker
 sudo pkill -9 containerd
 $PWD/../create_devmapper.sh
