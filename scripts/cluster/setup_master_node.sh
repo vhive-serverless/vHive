@@ -26,8 +26,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 
 # Install Calico network add-on
-curl https://docs.projectcalico.org/manifests/canal.yaml -O
-kubectl apply -f canal.yaml
+kubectl apply -f $ROOT/configs/calico/canal.yaml
 
 # Install and configure MetalLB
 kubectl get configmap kube-proxy -n kube-system -o yaml | \
@@ -40,8 +39,8 @@ kubectl create secret generic -n metallb-system memberlist --from-literal=secret
 kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
 # istio
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.7.1 TARGET_ARCH=x86_64 sh -
-sudo /users/ustiugov/vhive/istio-1.7.1/bin/istioctl install -f $ROOT/configs/istio/istio-minimal-operator.yaml
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.6.11 TARGET_ARCH=x86_64 sh -
+./istio-1.6.11/bin/istioctl manifest apply -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
 
 # Install KNative in the cluster
