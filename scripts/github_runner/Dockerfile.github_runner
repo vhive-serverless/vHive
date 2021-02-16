@@ -1,0 +1,67 @@
+# MIT License
+#
+# Copyright (c) 2020 Dmitrii Ustiugov, Shyam Jesalpura and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+FROM myoung34/github-runner:ubuntu-bionic
+
+RUN apt-get update && \
+    apt-get install --yes \
+    git \
+    sudo \
+    apt-utils \
+    wget \
+    curl \
+    make \
+    gcc \
+    iproute2 \
+    iptables \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gcc \
+    g++ \
+    make \
+    acl \
+    net-tools \
+    git-lfs \
+    bc \
+    dmsetup \
+    gnupg-agent \
+    software-properties-common && \
+    sudo sysctl -w net.ipv4.conf.all.forwarding=1 && \
+    sudo sysctl net.ipv4.ip_forward=1 && \
+    sudo sysctl --system && \
+    sudo mkdir -p /etc/firecracker-containerd && \
+    sudo mkdir -p /var/lib/firecracker-containerd/runtime && \
+    sudo mkdir -p /etc/containerd/ && \
+    sudo curl -fsSL -o /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin https://s3.amazonaws.com/spec.ccfc.min/img/hello/kernel/hello-vmlinux.bin
+
+COPY scripts/github_runner/setup_runner.sh /setup_runner.sh
+COPY scripts/create_devmapper.sh /create_devmapper.sh
+COPY bin/firecracker /usr/local/bin/
+COPY bin/jailer /usr/local/bin/
+COPY bin/containerd-shim-aws-firecracker /usr/local/bin/
+COPY bin/firecracker-containerd /usr/local/bin/
+COPY bin/firecracker-ctr /usr/local/bin/
+COPY bin/default-rootfs.img /var/lib/firecracker-containerd/runtime/
+COPY configs/firecracker-containerd/config.toml /etc/firecracker-containerd/
+COPY configs/firecracker-containerd/firecracker-runtime.json /etc/containerd/
+ENTRYPOINT /setup_runner.sh ; /entrypoint.sh

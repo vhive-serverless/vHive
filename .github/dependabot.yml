@@ -1,0 +1,34 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/metrics"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/misc"
+    schedule:
+      interval: "daily"
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/taps"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/memory/manager"
+    schedule:
+      interval: "daily"
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/ctriface"
+    schedule:
+      interval: "daily"
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/cri"
+    schedule:
+      interval: "daily"
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"

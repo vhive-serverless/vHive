@@ -59,6 +59,10 @@ type StartVMResponse struct {
 	GuestIP string
 }
 
+const (
+	testImageName = "vhiveease/helloworld:var_workload"
+)
+
 // StartVM Boots a VM if it does not exist
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (

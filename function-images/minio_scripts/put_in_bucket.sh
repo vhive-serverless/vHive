@@ -27,20 +27,20 @@ SERVERSDIR="$( cd $DIR && cd .. && pwd)"
 BUCKET=myminio/mybucket
 
 
-WORKLOAD=image_rotate
+WORKLOAD=image_rotate_s3
 for INPUTFILE in img2.jpeg img3.jpeg
 do
     mc cp $SERVERSDIR/$WORKLOAD/$INPUTFILE $BUCKET/$INPUTFILE
 done
 
 
-WORKLOAD=lr_training
+WORKLOAD=lr_training_s3
 for INPUTFILE in dataset.csv dataset2.csv
 do
     mc cp $SERVERSDIR/$WORKLOAD/$INPUTFILE $BUCKET/$INPUTFILE
 done
 
-WORKLOAD=json_serdes
+WORKLOAD=json_serdes_s3
 for INPUTFILE in 1.json 2.json
 do
     mc cp $SERVERSDIR/$WORKLOAD/$INPUTFILE $BUCKET/$INPUTFILE

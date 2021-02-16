@@ -21,7 +21,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
+set -x
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 
@@ -33,6 +33,12 @@ sudo kubeadm init --ignore-preflight-errors=all --cri-socket /etc/firecracker-co
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# if the user is root, export KUBECONFIG as $HOME is different for root user and /etc is readable
+if [ "$EUID" -eq 0 ]; then
+    export KUBECONFIG=/etc/kubernetes/admin.conf
+fi
+
 
 # Untaint master (allow pods to be scheduled on master) 
 kubectl taint nodes --all node-role.kubernetes.io/master-

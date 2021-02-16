@@ -1,0 +1,59 @@
+name: vHive cri tests
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+  workflow_dispatch:
+
+env:
+  GOOS: linux
+  GO111MODULE: on
+
+jobs:
+  cri-tests:
+    name: CRI tests
+    runs-on: [self-hosted, cri]
+    
+    steps:
+    - name: Setup TMPDIR
+      run: mkdir -p $HOME/tmp
+
+    - name: Set up Go 1.15
+      env:
+          GOROOT: $HOME/go
+          GOCACHE: /root/tmp/gocache
+          GOPATH: /root/tmp/gopath
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Setup firecracker-containerd
+      run: ./scripts/setup_firecracker_containerd.sh
+
+    - name: Build
+      env:
+          GOCACHE: /root/tmp/gocache
+          GOPATH: /root/tmp/gopath
+      run: go build
+
+    - name: Run vHive CRI tests
+      env:
+          TMPDIR: /root/tmp/
+          GOCACHE: /root/tmp/gocache
+          GOPATH: /root/tmp/gopath
+      run: make test-cri
+    
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/github_runner/clean_cri_runner.sh

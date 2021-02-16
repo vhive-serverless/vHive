@@ -23,7 +23,7 @@
 SUBDIRS:=ctriface taps misc
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
-EXTRATESTFILES:=fccd-orchestrator_test.go stats.go fccd-orchestrator.go functions.go
+EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go
 WITHUPF:=-upfTest
 WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
@@ -44,16 +44,15 @@ test-orch: test test-man
 
 test:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(WITHSNAPSHOTS)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
 	./scripts/clean_fcctr.sh
-
 
 test-man:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_man_travis.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_man_travis.err &
@@ -108,6 +107,18 @@ test-man-bench:
 	$(MAKE) test-man
 	$(MAKE) bench
 
+nightly-test:
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -run TestAllFunctions $(EXTRAGOARGS)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -run TestAllFunctions $(EXTRAGOARGS) -args $(WITHSNAPSHOTS)
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -run TestAllFunctions $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF)
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -run TestAllFunctions $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
+	./scripts/clean_fcctr.sh
+
 test-skip-all:
 	$(MAKE) test-skip
 	$(MAKE) -C ctriface test-skip
@@ -124,7 +135,7 @@ test-subdirs: $(SUBDIRS)
 test-cri:
 	$(MAKE) -C cri test
 
-test-cri-travis:
+test-cri-travis: # Testing in travis is deprecated
 	$(MAKE) -C cri test-travis
 
 .PHONY: test-orch $(SUBDIRS) test-subdirs
