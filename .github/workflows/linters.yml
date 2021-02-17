@@ -1,0 +1,37 @@
+name: Linters
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Spellcheck
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@master
+    - uses: rojopolis/spellcheck-github-actions@0.5.0
+      name: Spellcheck
+      with:
+        config_path: configs/.spellcheck.yml
+  commitlint:
+    name: Commitlint
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      
+      - name: Install Commitlint
+        run: sudo npm install -g @commitlint/cli
+
+      - name: Lint commits
+        run: commitlint 
+          --config ${{ github.workspace }}/configs/commitlint.config.js 
+          --help-url 'https://stackoverflow.com/a/45974435' 
+          --from HEAD~1 --to HEAD 
+          --verbose

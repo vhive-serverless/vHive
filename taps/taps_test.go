@@ -83,7 +83,7 @@ func TestCreateRemoveTaps(t *testing.T) {
 
 func TestCreateRemoveExtra(t *testing.T) {
 
-    t.Skip("Test disabled due to execution failure in GitHub Actions and it doesn't seem essential for the test coverage")
+	t.Skip("Test disabled due to execution failure in GitHub Actions and it doesn't seem essential for the test coverage")
 
 	tapsNum := 2001
 
