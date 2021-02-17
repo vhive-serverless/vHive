@@ -281,8 +281,8 @@ func TestDirectStartStopVM(t *testing.T) {
 func TestAllFunctions(t *testing.T) {
 
 	if testing.Short() {
-        t.Skip("skipping TestAllFunctions in non-nightly runs.")
-    }
+		t.Skip("skipping TestAllFunctions in non-nightly runs.")
+	}
 
 	images := []string{
 		"vhiveease/helloworld:var_workload",

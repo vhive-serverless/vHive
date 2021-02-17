@@ -138,7 +138,3 @@ This profile allocates 200GB on ```/fccd```, which is helpful because CloudLab p
 SSD-equipped nodes are highly recommended. We suggest renting nodes on CloudLab as their service is available to researchers world-wide. Full list of CloudLab nodes can be found [here](https://docs.cloudlab.us/hardware.html).
 
 List of tested nodes on CloudLab: xl170 on Utah, rs440 on Mass, m400 on OneLab. All of these machines are SSD-equipped. The xl170 are normally less occupied than the other two.
-
-## Known issues
-
-There is a Kubernetes/Knative [problem](https://github.com/ease-lab/vhive/issues/94) with Calico installation that appeared on a 3+ node cluster (i.e., with one master and 2+ workers). We are currently investigating it.

@@ -46,6 +46,7 @@ net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
 sudo sysctl --system
+sudo swapoff -a
 
 # we want the command (expected to be systemd) to be PID1, so exec to it
 exec "$@"
