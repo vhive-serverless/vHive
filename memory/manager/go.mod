@@ -12,5 +12,5 @@ require (
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/sirupsen/logrus v1.7.0
 	golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3
-	gonum.org/v1/gonum v0.7.0
+	gonum.org/v1/gonum v0.8.2
 )
