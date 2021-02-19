@@ -3,32 +3,32 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/metrics"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/misc"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 updates:
   - package-ecosystem: "gomod"
     directory: "/taps"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/memory/manager"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 updates:
   - package-ecosystem: "gomod"
     directory: "/ctriface"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 updates:
   - package-ecosystem: "gomod"
     directory: "/cri"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
