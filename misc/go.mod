@@ -8,24 +8,14 @@ replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/
 replace github.com/ease-lab/vhive/taps => ../taps
 
 require (
-	github.com/Microsoft/go-winio v0.4.16 // indirect
-	github.com/Microsoft/hcsshim v0.8.14 // indirect
+	github.com/Microsoft/hcsshim/test v0.0.0-20210216213744-1287a2c4080d // indirect
 	github.com/containerd/cgroups v0.0.0-20210114181951-8a68de567b68 // indirect
-	github.com/containerd/containerd v1.3.6
-	github.com/containerd/continuity v0.0.0-20201119173150-04c754faca46 // indirect
-	github.com/containerd/fifo v0.0.0-20201026212402-0724c46b320c // indirect
-	github.com/containerd/ttrpc v1.0.2 // indirect
-	github.com/containerd/typeurl v1.0.1 // indirect
-	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
+	github.com/containerd/containerd v1.5.0-beta.1
 	github.com/ease-lab/vhive/taps v0.0.0-00010101000000-000000000000
-	github.com/gogo/googleapis v1.4.0 // indirect
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
-	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/sirupsen/logrus v1.7.0
-	github.com/stretchr/testify v1.5.1
-	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
-	go.etcd.io/bbolt v1.3.5 // indirect
+	github.com/stretchr/testify v1.6.1
+	gotest.tools/v3 v3.0.3 // indirect
 
 )
