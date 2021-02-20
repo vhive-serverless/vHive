@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -49,15 +48,11 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		"-o", profiler.outFile)
 
 	if isBind {
-		profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S1")
+		profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S1-C0")
 	}
 
-	// set idle threshold if VM number < cores number, hide idle CPUs <[num]% of busiest
-	if vmNum < runtime.NumCPU() {
-		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "80")
-	} else {
-		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "0")
-	}
+	// set idle threshold to hide idle CPUs <[num]% of busiest
+	profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "50")
 
 	// pass `profilerNodes` to pmu-tool if it is not empty, it controls specific metric/metrics to profile.
 	if nodes != "" {
