@@ -9,26 +9,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type testCase struct {
-	warmTime, tearDownTime float64
-	expected               map[string]float64
-}
-
 func TestReadPerfData(t *testing.T) {
-	fileName := "test"
+	var (
+		fileName = "test"
+		p        = NewProfiler(0, 100, 0, 1, "", fileName, false)
+		result   = []map[string]float64{
+			{
+				"Frontend_Bound": 2,
+				"Backend_Bound":  3},
+			{
+				"Frontend_Bound": 1,
+				"Backend_Bound":  2},
+			{
+				"Frontend_Bound": 3,
+				"Backend_Bound":  4},
+		}
+	)
 
-	p := NewProfiler(0, 100, 0, 1, "", fileName, false)
-
-	result := []map[string]float64{
-		{
-			"Frontend_Bound": 2,
-			"Backend_Bound":  3},
-		{
-			"Frontend_Bound": 1,
-			"Backend_Bound":  2},
-		{
-			"Frontend_Bound": 3,
-			"Backend_Bound":  4},
+	type testCase struct {
+		warmTime, tearDownTime float64
+		expected               map[string]float64
 	}
 
 	cases := []testCase{
