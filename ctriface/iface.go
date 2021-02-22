@@ -306,6 +306,7 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 				IPConfig: &proto.IPConfiguration{
 					PrimaryAddr: vm.Ni.PrimaryAddress + vm.Ni.Subnet,
 					GatewayAddr: vm.Ni.GatewayAddress,
+					Nameservers: []string{"10.96.0.10", "8.8.8.8"},
 				},
 			},
 		}},
