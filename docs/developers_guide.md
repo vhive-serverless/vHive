@@ -41,6 +41,23 @@ Record-and-Prefetch (REAP) snapshots.
 * vHive has robust Continuous-Integration and our team is committed to deliver
 high-quality code.
 
+### Deploying a MinIO S3 service in a cluster
+
+```bash
+# create a folder in the local storage (on <MINIO_NODE_NAME> that is one of the Kubernetes nodes)
+sudo mkdir -p <MINIO_PATH>
+
+cd ./configs/storage/minio
+
+# create a persistent volume (PV) and the corresponding PV claim
+# specify the node name that would host the MinIO objects
+# (use `hostname` command for the local node)
+MINIO_NODE_NAME=<MINIO_NODE_NAME> MINIO_PATH=<MINIO_PATH> envsubst < pv.yaml | kubectl apply -f -
+kubectl apply -f pv-claim.yaml
+# create a storage app and the corresponding service
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+```
 
 ## Performance analysis
 
