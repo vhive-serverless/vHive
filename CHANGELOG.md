@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Added
-
+- Support for MinIO S3 storage (non-replicated, non-distributed).
 
 ### Changed
 
