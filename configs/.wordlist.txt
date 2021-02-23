@@ -1,5 +1,3 @@
-linter
-md
 ACM
 Adileh
 al
@@ -47,6 +45,7 @@ CNI
 coderay
 colocated
 config
+configs
 CONFL
 congrats
 Congrats
@@ -82,6 +81,7 @@ Drumond
 DVFS
 Edouard
 env
+envsubst
 EPFL
 et
 EuroSys
@@ -108,6 +108,7 @@ grot
 Grot
 HDDs
 Hestness
+hostname
 HPCA
 href
 htaccess
@@ -161,6 +162,7 @@ ldquo
 Letraset
 Lim
 Linearizable
+linter
 LLC
 Lorem
 Lotfi
@@ -171,6 +173,7 @@ Manycore
 margaritov
 Margaritov
 Marios
+md
 MECS
 metadata
 Micheli
@@ -180,6 +183,7 @@ microVMs
 minio
 MinIO
 Mirzadeh
+mkdir
 mr
 MSI
 multi
@@ -237,6 +241,9 @@ priyank
 Priyank
 ps
 PTEMagnet
+pv
+PV
+pvc
 QoS
 QOS
 quickstart
@@ -286,6 +293,7 @@ SSD
 stateful
 Stavros
 sudo
+svc
 TCO
 th
 TLB
@@ -322,6 +330,7 @@ WOOT
 xl
 xml
 xyz
+yaml
 yml
 YY
 Zhu
