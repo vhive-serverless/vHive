@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [grpc, helloworld, chameleon, pyaes, image_rotate_s3, lr_serving, json_serdes_s3, cnn_serving, rnn_serving, lr_training_s3, video_processing_s3]
+        image: [grpc, helloworld, chameleon, pyaes, image_rotate_s3, lr_serving, json_serdes_s3, cnn_serving, rnn_serving, lr_training_s3, video_processing_s3, springboot]
     steps:
     - uses: actions/checkout@v2
       with:
