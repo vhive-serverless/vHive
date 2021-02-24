@@ -294,6 +294,7 @@ func TestAllFunctions(t *testing.T) {
 		"vhiveease/cnn_serving:var_workload",
 		"vhiveease/rnn_serving:var_workload",
 		"vhiveease/lr_training:var_workload",
+		"vhiveease/springboot:var_workload",
 	}
 	var (
 		servedTh      uint64
