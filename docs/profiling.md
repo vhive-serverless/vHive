@@ -28,32 +28,3 @@ Profile from 4 VMs to 32 VMs (increment step is 4) with `helloworld` image at To
 sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileIncrementConfiguration -args -funcNames cnn_serving -vmIncrStep 4 -maxVMNum 32 -l 1
 ```
 Once the profile iteration is finished, all results will be saved in the `profile.csv`. Then, plotter retrives the contents in the file and plots according to the attributes.
-
-## Argument reference
-
-```
-General options:
-    --warmUpTime TIME       The warm up time before profiling in seconds
-    --profileTime TIME      The profiling time in seconds
-    --coolDownTime TIME     The cool down time after profiling in seconds
-    --funcNames FUNCTIONS   Names of the functions to benchmark, separated by comma
-    --bindSocket            Bind all VMs to socket 1
-
-Profile fixed setting:
-    --vm VMNUM              The number of VMs
-    --rps RPS               The target requests per second
-
-Profile increment VM:
-    --vmIncrStep VMNUM      The increment VM number
-    --maxVMNum VMNUM        The maximum VM number
-
-Profiler control:
-    --l LEVEL               Profile level
-    --I INTERVAL            Print count deltas every N milliseconds
-    --nodes NODES           Include or exclude nodes (with + to add, -|^ to remove, 
-                            comma separated list, wildcards allowed, 
-                            add * to include all children/siblings, 
-                            add /level to specify highest level node to match, 
-                            add ^ to match related siblings and metrics, 
-                            start with ! to only include specified nodes)
-```
