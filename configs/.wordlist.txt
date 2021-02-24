@@ -121,6 +121,7 @@ IEEE
 IEEEMicro
 IISWC
 IIT
+Initializr
 InfiniBand
 init
 inproceedings
