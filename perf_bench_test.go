@@ -181,7 +181,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		vmGroup        sync.WaitGroup
 		isProfile      = false
 		cores          = runtime.NumCPU()
-		threshold      = 10 * getUnloadServiceTime() // for the constraint of tail latency
+		threshold      = 5 * getUnloadServiceTime() // for the constraint of tail latency
 		injectDuration = *warmUpTime + *profileTime + *coolDownTime
 	)
 
@@ -196,23 +196,27 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			vmID, requestID             int
 			invokExecTime, realRequests int64
 			serveMetric                 = metrics.NewMetric()
-			rps                         = step * float64(targetRPS)
-			timeInterval                = time.Duration(time.Second.Nanoseconds() / int64(rps))
-			ticker                      = time.NewTicker(timeInterval)
-			totalRequests               = injectDuration * rps
+			rps                         = int64(step * float64(targetRPS))
+			totalRequests               = injectDuration * float64(rps)
 			remainingRequests           = totalRequests
 			profiler                    = profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel, *profilerNodes, "profile", *isBindSocket)
 		)
 
-		log.Infof("Current RPS: %f", rps)
+		if rps <= 0 {
+			continue
+		}
+
+		ticker := time.NewTicker(time.Duration(time.Second.Nanoseconds() / rps))
+
+		log.Infof("Current RPS: %d", rps)
 
 		tStart := time.Now()
 		latencyCh := make(chan LatencyStat)
-		go latencyMeasurement(t, 0, images[1%len(images)], &isProfile, latencyCh)
+		go latencyMeasurement(t, vmNum, images, &isProfile, latencyCh)
 
 		err := profiler.Run()
 		require.NoError(t, err, "Run profiler returned error")
-		go profileControl(vmNum, &isProfile, profiler)
+		go profileControl(&isProfile, profiler)
 
 		for remainingRequests > 0 {
 			if tickerT := <-ticker.C; !tickerT.IsZero() {
@@ -290,7 +294,7 @@ func loadVM(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageNam
 }
 
 // Goroutine function: Control start and end of profiling
-func profileControl(vmNum int, isProfile *bool, profiler *profile.Profiler) {
+func profileControl(isProfile *bool, profiler *profile.Profiler) {
 	time.Sleep(time.Duration(*warmUpTime) * time.Second)
 	*isProfile = true
 	profiler.SetWarmUpTime()
@@ -306,29 +310,36 @@ type LatencyStat struct {
 	tailLatency float64
 }
 
-func latencyMeasurement(t *testing.T, vmID int, imageName string, isProfile *bool, latencyCh chan LatencyStat) {
+// Goroutine function: measure tail latency
+func latencyMeasurement(t *testing.T, vmNum int, images []string, isProfile *bool, latencyCh chan LatencyStat) {
 	var (
+		vmID         int
 		serviceTimes []float64
 		vmGroup      sync.WaitGroup
-		ticker       = time.NewTicker(500 * time.Millisecond)
-		vmIDString   = strconv.Itoa(vmID)
+		duration     = time.Duration(*profileTime * 1000 / 50)
+		ticker       = time.NewTicker(duration * time.Millisecond)
 	)
 
 	for {
 		if tickerT := <-ticker.C; *isProfile && !tickerT.IsZero() {
 			vmGroup.Add(1)
-			go func() {
+			go func(vmID int) {
 				defer vmGroup.Done()
-				tStart := time.Now()
-				resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+				var (
+					tStart     = time.Now()
+					vmIDString = strconv.Itoa(vmID)
+				)
+				resp, _, err := funcPool.Serve(context.Background(), vmIDString, images[vmID%len(images)], "replay")
 				require.Equal(t, resp.IsColdStart, false)
 				if err != nil {
 					log.Debugf("VM %s: Function returned error %v", vmIDString, err)
 				} else if resp.Payload != "Hello, replay_response!" {
 					log.Debugf("Function returned invalid: %s", resp.Payload)
+				} else {
+					serviceTimes = append(serviceTimes, float64(time.Since(tStart).Milliseconds()))
 				}
-				serviceTimes = append(serviceTimes, float64(time.Since(tStart).Milliseconds()))
-			}()
+			}(vmID)
+			vmID = (vmID + 1) % vmNum
 		} else if !*isProfile && len(serviceTimes) > 0 {
 			vmGroup.Wait()
 			data := stats.LoadRawData(serviceTimes)
@@ -431,13 +442,13 @@ func getCPUIntenseRPS() int {
 		funcs       = strings.Split(*funcNames, ",")
 		reqsPerSec  = map[string]int{
 			"helloworld":   1000,
-			"chameleon":    66,
+			"chameleon":    85,
 			"pyaes":        1000,
-			"image_rotate": 600,
-			"json_serdes":  600,
-			"lr_serving":   5000,
-			"cnn_serving":  17,
-			"rnn_serving":  600,
+			"image_rotate": 333,
+			"json_serdes":  167,
+			"lr_serving":   1000,
+			"cnn_serving":  20,
+			"rnn_serving":  100,
 		}
 	)
 
@@ -459,13 +470,13 @@ func getUnloadServiceTime() float64 {
 		funcs       = strings.Split(*funcNames, ",")
 		serviceTime = map[string]float64{
 			"helloworld":   1,
-			"chameleon":    15,
+			"chameleon":    12,
 			"pyaes":        1,
-			"image_rotate": 26,
-			"json_serdes":  16,
-			"lr_serving":   3,
+			"image_rotate": 3,
+			"json_serdes":  6,
+			"lr_serving":   1,
 			"cnn_serving":  60,
-			"rnn_serving":  26,
+			"rnn_serving":  10,
 		}
 	)
 
@@ -495,7 +506,7 @@ func TestBindSocket(t *testing.T) {
 	}
 
 	cases := []testCase{
-		{vmNum: 1, expected: "1"},
+		{vmNum: 1, expected: "13"},
 		{vmNum: 32, expected: "1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63"},
 	}
 
@@ -545,14 +556,14 @@ func bindSocket(omittedPid string) error {
 			if cores > len(vmPidList) {
 				if core1Free {
 					log.Debugf("binding pid: %s to core 1", vm)
-					cmd := exec.Command("taskset", "--all-tasks", "-cp", "1", vm)
+					cmd := exec.Command("taskset", "--all-tasks", "-cp", "13", vm)
 					if err := cmd.Run(); err != nil {
 						return err
 					}
 					core1Free = false
 				} else {
 					log.Debugf("binding pid: %s", vm)
-					cmd := exec.Command("taskset", "--all-tasks", "-cp", "3-63:2", vm)
+					cmd := exec.Command("taskset", "--all-tasks", "-cp", "1-11:2,15-63:2", vm)
 					if err := cmd.Run(); err != nil {
 						return err
 					}
@@ -577,7 +588,7 @@ func checkInputValidation(t *testing.T) {
 	require.Truef(t, *profilerInterval >= 10, "profiler print interval = %d is less than 10ms", *profilerInterval)
 	require.Truef(t, *profilerLevel > 0, "profiler level = %d is less than 1", *profilerLevel)
 	require.Truef(t, *vmNum > 0, "VM number = %d is less than 1", *vmNum)
-	require.Truef(t, int64(float64(*targetRPS)*0.05) > 0, "requests per second = %d is less than 0", *targetRPS)
+	require.Truef(t, *targetRPS > 0, "requests per second = %d is less than 0", *targetRPS)
 	require.Truef(t, *vmIncrStep >= 0, "negative increment step of VM number = %d", *vmIncrStep)
 	require.Truef(t, *maxVMNum >= 0, "the maximum VM number = %d is less than 0", *maxVMNum)
 	require.Truef(t, *maxVMNum >= *vmIncrStep, "the maximum VM number = %d is less than the increment step = %d", *maxVMNum, *vmIncrStep)
