@@ -55,6 +55,7 @@ func TestSnapLoad(t *testing.T) {
 
 	orch := NewOrchestrator(
 		"devmapper",
+		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
@@ -104,6 +105,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	orch := NewOrchestrator(
 		"devmapper",
+		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
@@ -165,6 +167,7 @@ func TestParallelSnapLoad(t *testing.T) {
 
 	orch := NewOrchestrator(
 		"devmapper",
+		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
@@ -226,6 +229,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 
 	orch := NewOrchestrator(
 		"devmapper",
+		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),

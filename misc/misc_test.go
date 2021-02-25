@@ -53,7 +53,7 @@ func TestAllocateFreeVMs(t *testing.T) {
 	vmIDs := [2]string{"test1", "test2"}
 
 	for _, vmID := range vmIDs {
-		_, err := vmPool.Allocate(vmID)
+		_, err := vmPool.Allocate(vmID, "")
 		require.NoError(t, err, "Failed to allocate VM")
 	}
 
@@ -76,7 +76,7 @@ func TestAllocateFreeVMsParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			_, err := vmPool.Allocate(vmID)
+			_, err := vmPool.Allocate(vmID, "")
 			require.NoError(t, err, "Failed to allocate VM")
 		}(i)
 	}
@@ -108,7 +108,7 @@ func TestRecreateParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			_, err := vmPool.Allocate(vmID)
+			_, err := vmPool.Allocate(vmID, "")
 			require.NoError(t, err, "Failed to allocate VM")
 		}(i)
 	}
@@ -123,7 +123,7 @@ func TestRecreateParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroupRecreate.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			err := vmPool.RecreateTap(vmID)
+			err := vmPool.RecreateTap(vmID, "")
 			require.NoError(t, err, "Failed to recreate tap")
 		}(i)
 	}

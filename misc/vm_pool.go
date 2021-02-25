@@ -37,7 +37,7 @@ func NewVMPool() *VMPool {
 }
 
 // Allocate Initializes a VM, activates it and then adds it to VM map
-func (p *VMPool) Allocate(vmID string) (*VM, error) {
+func (p *VMPool) Allocate(vmID, hostIface string) (*VM, error) {
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -50,7 +50,7 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	vm := NewVM(vmID)
 
 	var err error
-	vm.Ni, err = p.tapManager.AddTap(vmID + "_tap")
+	vm.Ni, err = p.tapManager.AddTap(vmID+"_tap", hostIface)
 	if err != nil {
 		logger.Warn("Ni allocation failed")
 		return nil, err
@@ -84,7 +84,7 @@ func (p *VMPool) Free(vmID string) error {
 }
 
 // RecreateTap Deletes and creates the tap for a VM
-func (p *VMPool) RecreateTap(vmID string) error {
+func (p *VMPool) RecreateTap(vmID, hostIface string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Recreating tap")
@@ -100,7 +100,7 @@ func (p *VMPool) RecreateTap(vmID string) error {
 		return err
 	}
 
-	_, err := p.tapManager.AddTap(vmID + "_tap")
+	_, err := p.tapManager.AddTap(vmID+"_tap", hostIface)
 	if err != nil {
 		logger.Error("Failed to add tap")
 		return err
