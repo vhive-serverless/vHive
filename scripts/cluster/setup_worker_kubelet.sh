@@ -22,9 +22,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+if [ $1 == "no-vhive" ]; then
+    CRI_SOCK="/run/containerd/containerd.sock"
+else
+    CRI_SOCK="/etc/firecracker-containerd/fccd-cri.sock"
+fi
 # Create kubelet service
 sudo sh -c 'cat <<EOF > /etc/systemd/system/kubelet.service.d/0-containerd.conf
 [Service]                                                 
-Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///etc/firecracker-containerd/fccd-cri.sock"
+Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix://'${CRI_SOCK}'"
 EOF'
 sudo systemctl daemon-reload
