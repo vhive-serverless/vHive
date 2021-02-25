@@ -24,8 +24,14 @@
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+STOCK_CONTAINERD=$1
+
 KUBECONFIG=/etc/kubernetes/admin.conf kn service delete --all
-sudo kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
+if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
+    sudo kubeadm reset --cri-socket /run/containerd/containerd.sock -f
+else
+    sudo kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
+fi
 sudo pkill -INT vhive
 sudo pkill -9 firecracker-containerd
 sudo pkill -9 firecracker

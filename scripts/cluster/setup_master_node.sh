@@ -25,6 +25,8 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 
+STOCK_CONTAINERD=$1
+
 # Install Calico network add-on
 kubectl apply -f $ROOT/configs/calico/canal.yaml
 
@@ -42,10 +44,14 @@ kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.7.1 TARGET_ARCH=x86_64 sh -
 ./istio-1.7.1/bin/istioctl install -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
-
 # Install KNative in the cluster
-kubectl apply --filename $ROOT/configs/knative_yamls/serving-crds.yaml
-kubectl apply --filename $ROOT/configs/knative_yamls/serving-core.yaml
+if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
+    kubectl apply --filename https://github.com/knative/serving/releases/download/v0.21.0/serving-crds.yaml
+    kubectl apply --filename https://github.com/knative/serving/releases/download/v0.21.0/serving-core.yaml
+else
+    kubectl apply --filename $ROOT/configs/knative_yamls/serving-crds.yaml
+    kubectl apply --filename $ROOT/configs/knative_yamls/serving-core.yaml
+fi
 
 # magic DNS
 kubectl apply --filename $ROOT/configs/knative_yamls/serving-default-domain.yaml

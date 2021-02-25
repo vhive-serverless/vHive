@@ -22,7 +22,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-if [ $1 == "no-vhive" ]; then
+STOCK_CONTAINERD=$1
+
+if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     CRI_SOCK="/run/containerd/containerd.sock"
 else
     CRI_SOCK="/etc/firecracker-containerd/fccd-cri.sock"

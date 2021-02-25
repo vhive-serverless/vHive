@@ -26,16 +26,18 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 SCRIPTS=$ROOT/scripts
 
+STOCK_CONTAINERD=$1
+
 source $SCRIPTS/install_go.sh
 $SCRIPTS/setup_system.sh
 
-if [ $1 != "no-vhive" ]; then
+if [ "$STOCK_CONTAINERD" != "stock-only" ]; then
     $SCRIPTS/setup_firecracker_containerd.sh
 fi
 
 $SCRIPTS/install_stock.sh
 
-if [ $1 != "no-vhive" ]; then
+if [ "$STOCK_CONTAINERD" != "stock-only" ]; then
     $SCRIPTS/create_devmapper.sh
 fi
 

@@ -125,6 +125,10 @@ sudo PATH=$PATH /usr/local/bin/firecracker-containerd --config /etc/firecracker-
 source /etc/profile && go build && sudo ./vhive
 ./scripts/cluster/create_one_node_cluster.sh
 ```
+### Clean up
+```bash
+./scripts/github_runner/clean_cri_runner.sh
+```
 
 ## CloudLab deployment notes
 
