@@ -28,8 +28,14 @@ SCRIPTS=$ROOT/scripts
 
 source $SCRIPTS/install_go.sh
 $SCRIPTS/setup_system.sh
-$SCRIPTS/setup_firecracker_containerd.sh
+
+if [ $1 != "no-vhive" ]; then
+    $SCRIPTS/setup_firecracker_containerd.sh
+fi
 
 $SCRIPTS/install_stock.sh
-$SCRIPTS/create_devmapper.sh
+
+if [ $1 != "no-vhive" ]; then
+    $SCRIPTS/create_devmapper.sh
+fi
 

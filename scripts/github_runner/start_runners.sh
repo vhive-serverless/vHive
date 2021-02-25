@@ -65,7 +65,7 @@ do
             vhiveease/integ_test_runner)
         ;;
     "cri")
-        ~/kind/kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${number}"
+        kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${number}"
         sleep 2m
         docker exec -it \
             -e RUNNER_ALLOW_RUNASROOT=1 \
