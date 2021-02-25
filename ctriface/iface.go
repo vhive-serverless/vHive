@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -291,6 +293,21 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
+	//using googleDNS as a backup
+	dnsIPs := []string{"8.8.8.8"}
+	//get k8s DNS clusterIP
+	cmd := exec.Command(
+		"kubectl", "get", "service", "-n", "kube-system", "kube-dns", "-o=custom-columns=:.spec.clusterIP", "--no-headers",
+	)
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Warnf("Failed to Fetch k8s dns clusterIP %v\n%s\n", err, stdoutStderr)
+		log.Warnf("Using google dns %s\n", dnsIPs[0])
+	} else {
+		//adding k8s DNS clusterIP to the list
+		dnsIPs = []string{strings.TrimSpace(string(stdoutStderr)), dnsIPs[0]}
+	}
+
 	return &proto.CreateVMRequest{
 		VMID:           vm.ID,
 		TimeoutSeconds: 100,
@@ -306,7 +323,7 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 				IPConfig: &proto.IPConfiguration{
 					PrimaryAddr: vm.Ni.PrimaryAddress + vm.Ni.Subnet,
 					GatewayAddr: vm.Ni.GatewayAddress,
-					Nameservers: []string{"10.96.0.10", "8.8.8.8"},
+					Nameservers: dnsIPs,
 				},
 			},
 		}},
