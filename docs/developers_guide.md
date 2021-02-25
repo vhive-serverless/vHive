@@ -26,6 +26,24 @@ kind delete cluster --name <name>
 
 Once the container is up and running, follow [this](./quickstart_guide.md#setup-a-single-node-cluster-master-and-worker-functionality-on-the-same-node) guide to setup a single node vHive cluster.
 
+## Testing stock Knative images
+
+If you need to test your Knative images on stock Knative environment, use the commands below to setup an environment for that.
+```bash
+git clone https://github.com/ease-lab/vhive
+cd vhive
+./scripts/cloudlab/setup_node.sh stock-only
+sudo containerd
+./scripts/cluster/create_one_node_cluster.sh stock-only
+# wait for the containers to boot up using 
+watch kubectl get pods -A
+# once all the containers are ready/complete, you may start Knative functions
+kn service apply
+```
+### Clean up
+```bash
+./scripts/github_runner/clean_cri_runner.sh stock-only
+```
 
 ## High-level features
 

@@ -25,10 +25,12 @@ set -x
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 
-# Create kubelet service
-$DIR/setup_worker_kubelet.sh $1
+STOCK_CONTAINERD=$1
 
-if [ $1 == "no-vhive" ]; then
+# Create kubelet service
+$DIR/setup_worker_kubelet.sh $STOCK_ONLY
+
+if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     CRI_SOCK="/run/containerd/containerd.sock"
 else
     CRI_SOCK="/etc/firecracker-containerd/fccd-cri.sock"
@@ -49,4 +51,4 @@ fi
 # Untaint master (allow pods to be scheduled on master) 
 kubectl taint nodes --all node-role.kubernetes.io/master-
 
-$DIR/setup_master_node.sh
+$DIR/setup_master_node.sh $STOCK_CONTAINERD
