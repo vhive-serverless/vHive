@@ -105,86 +105,58 @@ func createBridge(bridgeName, gatewayAddr string) {
 }
 
 //ConfigIPtables Configures IP tables for internet access inside VM
-func ConfigIPtables(tapName string) {
+func ConfigIPtables(tapName string) error {
 
-	var ethernetID string
+	var hostIface = ""
+
 	out, err := exec.Command(
 		"route",
 	).Output()
 	if err != nil {
-		log.Warnf("Failed to fetch net interfaces %v\n%s\n", err, out)
+		log.Warnf("Failed to fetch host net interfaces %v\n%s\n", err, out)
+		return err
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(out))
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "default") {
-			ethernetID = line[strings.LastIndex(line, " ")+1:]
+			hostIface = line[strings.LastIndex(line, " ")+1:]
 		}
 	}
+
 	cmd := exec.Command(
-		"sudo",
-		"iptables",
-		"-t",
-		"nat",
-		"-A",
-		"POSTROUTING",
-		"-o",
-		ethernetID,
-		"-j",
-		"MASQUERADE",
+		"sudo", "iptables", "-t", "nat", "-A", "POSTROUTING", "-o", hostIface, "-j", "MASQUERADE",
 	)
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Warnf("Failed to configure NAT %v\n%s\n", err, stdoutStderr)
+		return err
 	}
 	cmd = exec.Command(
-		"sudo",
-		"iptables",
-		"-A",
-		"FORWARD",
-		"-i",
-		tapName,
-		"-o",
-		ethernetID,
-		"-j",
-		"ACCEPT",
+		"sudo", "iptables", "-A", "FORWARD", "-i", tapName, "-o", hostIface, "-j", "ACCEPT",
 	)
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Warnf("Failed to setup forwarding into tap %v\n%s\n", err, stdoutStderr)
+		return err
 	}
 	cmd = exec.Command(
-		"sudo",
-		"iptables",
-		"-A",
-		"FORWARD",
-		"-o",
-		tapName,
-		"-i",
-		ethernetID,
-		"-j",
-		"ACCEPT",
+		"sudo", "iptables", "-A", "FORWARD", "-o", tapName, "-i", hostIface, "-j", "ACCEPT",
 	)
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Warnf("Failed to setup forwarding out from tap %v\n%s\n", err, stdoutStderr)
+		return err
 	}
 	cmd = exec.Command(
-		"sudo",
-		"iptables",
-		"-A",
-		"FORWARD",
-		"-m",
-		"conntrack",
-		"--ctstate",
-		"RELATED,ESTABLISHED",
-		"-j",
-		"ACCEPT",
+		"sudo", "iptables", "-A", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT",
 	)
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Warnf("Failed to configure conntrack %v\n%s\n", err, stdoutStderr)
+		return err
 	}
+	return nil
 }
 
 // AddTap Creates a new tap and returns the corresponding network interface
@@ -206,8 +178,11 @@ func (tm *TapManager) AddTap(tapName string) (*NetworkInterface, error) {
 			if err == nil {
 				tm.Lock()
 				tm.createdTaps[tapName] = ni
-				ConfigIPtables(tapName)
 				tm.Unlock()
+				err := ConfigIPtables(tapName)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			return ni, err
