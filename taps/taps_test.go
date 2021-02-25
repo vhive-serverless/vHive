@@ -66,7 +66,7 @@ func TestCreateRemoveTaps(t *testing.T) {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
-				tm.AddTap(fmt.Sprintf("tap_%d", i))
+				tm.AddTap(fmt.Sprintf("tap_%d", i), "")
 			}(i)
 		}
 		wg.Wait()
@@ -91,7 +91,7 @@ func TestCreateRemoveExtra(t *testing.T) {
 	defer tm.RemoveBridges()
 
 	for i := 0; i < tapsNum; i++ {
-		_, err := tm.AddTap(fmt.Sprintf("tap_%d", i))
+		_, err := tm.AddTap(fmt.Sprintf("tap_%d", i), "")
 		if i < tm.numBridges*TapsPerBridge {
 			require.NoError(t, err, "Failed to create tap")
 		} else {

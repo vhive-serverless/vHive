@@ -105,25 +105,24 @@ func createBridge(bridgeName, gatewayAddr string) {
 }
 
 //ConfigIPtables Configures IP tables for internet access inside VM
-func ConfigIPtables(tapName string) error {
+func ConfigIPtables(tapName, hostIface string) error {
 
-	var hostIface = ""
-
-	out, err := exec.Command(
-		"route",
-	).Output()
-	if err != nil {
-		log.Warnf("Failed to fetch host net interfaces %v\n%s\n", err, out)
-		return err
-	}
-	scanner := bufio.NewScanner(bytes.NewReader(out))
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "default") {
-			hostIface = line[strings.LastIndex(line, " ")+1:]
+	if hostIface == "" {
+		out, err := exec.Command(
+			"route",
+		).Output()
+		if err != nil {
+			log.Warnf("Failed to fetch host net interfaces %v\n%s\n", err, out)
+			return err
+		}
+		scanner := bufio.NewScanner(bytes.NewReader(out))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "default") {
+				hostIface = line[strings.LastIndex(line, " ")+1:]
+			}
 		}
 	}
-
 	cmd := exec.Command(
 		"sudo", "iptables", "-t", "nat", "-A", "POSTROUTING", "-o", hostIface, "-j", "MASQUERADE",
 	)
@@ -160,7 +159,7 @@ func ConfigIPtables(tapName string) error {
 }
 
 // AddTap Creates a new tap and returns the corresponding network interface
-func (tm *TapManager) AddTap(tapName string) (*NetworkInterface, error) {
+func (tm *TapManager) AddTap(tapName, hostIface string) (*NetworkInterface, error) {
 	tm.Lock()
 
 	if ni, ok := tm.createdTaps[tapName]; ok {
@@ -179,7 +178,7 @@ func (tm *TapManager) AddTap(tapName string) (*NetworkInterface, error) {
 				tm.Lock()
 				tm.createdTaps[tapName] = ni
 				tm.Unlock()
-				err := ConfigIPtables(tapName)
+				err := ConfigIPtables(tapName, hostIface)
 				if err != nil {
 					return nil, err
 				}

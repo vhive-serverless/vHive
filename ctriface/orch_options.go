@@ -72,3 +72,11 @@ func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
 		o.isMetricsMode = isMetricsMode
 	}
 }
+
+// WithCustomHostIface Sets the custom host net interface
+// for the VMs to link to
+func WithCustomHostIface(hostIface string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.hostIface = hostIface
+	}
+}

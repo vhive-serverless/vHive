@@ -60,6 +60,7 @@ var (
 	servedThreshold    *uint64
 	pinnedFuncNum      *int
 	criSock            *string
+	hostIface          *string
 )
 
 func main() {
@@ -78,6 +79,7 @@ func main() {
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 	criSock = flag.String("criSock", "/etc/firecracker-containerd/fccd-cri.sock", "Socket address for CRI service")
+	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 
 	flag.Parse()
 
@@ -119,6 +121,7 @@ func main() {
 
 	orch = ctriface.NewOrchestrator(
 		*snapshotter,
+		*hostIface,
 		ctriface.WithTestModeOn(testModeOn),
 		ctriface.WithSnapshots(*isSnapshotsEnabled),
 		ctriface.WithUPF(*isUPFEnabled),
