@@ -10,7 +10,7 @@ replace github.com/ease-lab/vhive/metrics => ../../metrics
 require (
 	github.com/ease-lab/vhive/metrics v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.0
 	golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3
 	gonum.org/v1/gonum v0.8.2
 )
