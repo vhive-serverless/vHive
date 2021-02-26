@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Yuchen Niu
+// Copyright (c) 2020 Yuchen Niu and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,23 +45,27 @@ import (
 )
 
 var (
-	// shared arguments
+	// arguments for TestProfileSingleConfiguration, TestProfileSingleConfiguration and TestColocateVMsOnSameCPU
 	warmUpTime   = flag.Float64("warmUpTime", 5, "The warm up time before profiling in seconds")
-	coolDownTime = flag.Float64("coolDownTime", 1, "The cool down time after profiling in seconds")
 	profileTime  = flag.Float64("profileTime", 10, "The profiling time in seconds")
+	coolDownTime = flag.Float64("coolDownTime", 1, "The cool down time after profiling in seconds")
+	loadStep     = flag.Float64("loadStep", 5, "The percentage of target RPS the benchmark loads at every step")
 	funcNames    = flag.String("funcNames", "helloworld", "Names of the functions to benchmark, separated by comma")
-	isBindSocket = flag.Bool("bindSocket", false, "Bind all VMs to socket 1")
+	isBindSocket = flag.Bool("bindSocket", false, "Bind all VMs to socket 1 and profile one physical core only "+
+		"(only compatible with a 2x 16-core machine or above)")
 
+	// arguments work for TestProfileSingleConfiguration only
 	vmNum     = flag.Int("vm", 2, "TestProfileSingleConfiguration: The number of VMs")
 	targetRPS = flag.Int("rps", 10, "TestProfileSingleConfiguration: The target requests per second")
 
+	// arguments work for TestProfileIncrementConfiguration only
 	vmIncrStep = flag.Int("vmIncrStep", 4, "TestProfileIncrementConfiguration: The increment VM number")
 	maxVMNum   = flag.Int("maxVMNum", 100, "TestProfileIncrementConfiguration: The maximum VM number")
 
 	// profiler arguments
-	profilerLevel    = flag.Int("l", 1, "Profile level (-l flag)")
-	profilerInterval = flag.Uint64("I", 500, "Print count deltas every N milliseconds (-I flag)")
-	profilerNodes    = flag.String("nodes", "", "Include or exclude nodes (with "+
+	profilerLevel    = flag.Int("l", 1, "Profile level")
+	profilerInterval = flag.Uint64("I", 500, "Print count deltas every N milliseconds")
+	profilerMetrics  = flag.String("metrics", "", "Include or exclude nodes (with "+
 		"+ to add, "+
 		"-|^ to remove, "+
 		"comma separated list, wildcards allowed, "+
@@ -71,6 +75,9 @@ var (
 		"start with ! to only include specified nodes)")
 )
 
+// TestProfileIncrementConfiguration loads requests to VMs and increments VM number after loads start to violate time latency constraint.
+// It also profile counters and RPS at each step. After iteration finishes, it saves results in bench.csv under benchDir folder and
+// plots each counters which are also saved under benchDir folder
 func TestProfileIncrementConfiguration(t *testing.T) {
 	var (
 		idx, rps      int
@@ -78,20 +85,19 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 		startVMID     int
 		servedTh      uint64
 		isSyncOffload bool = true
-		metrFile           = "benchRPS.csv"
+		metrFile           = "bench.csv"
 		images             = getImages(t)
 		cores              = runtime.NumCPU()
 		metrics            = make([]map[string]float64, *maxVMNum / *vmIncrStep)
 	)
 	log.SetLevel(log.InfoLevel)
 
-	checkInputValidation(t)
+	validateRuntimeArguments(t)
 
 	createResultsDir()
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	plrfncPid := pullImages(t, images)
 	for vmNum := *vmIncrStep; vmNum <= *maxVMNum; vmNum += *vmIncrStep {
 		if vmNum < cores {
 			rps = calculateRPS(vmNum)
@@ -101,18 +107,20 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 
 		log.Infof("vmNum: %d, Target RPS: %d", vmNum, rps)
 
-		bootVMs(t, images, startVMID, vmNum, plrfncPid)
+		bootVMs(t, images, startVMID, vmNum)
 		metrics[idx] = loadAndProfile(t, images, vmNum, rps, isSyncOffload)
 		startVMID = vmNum
 		idx++
 	}
 
 	dumpMetrics(t, metrics, metrFile)
-	profile.CSVPlotter(*vmIncrStep, *benchDir, metrFile)
+	profile.PlotCVS(*vmIncrStep, *benchDir, metrFile, "the number of VM")
 
 	tearDownVMs(t, images, startVMID, isSyncOffload)
 }
 
+// TestProfileSingleConfiguration loads requests to fixed number of VMs until loads start to violate tail latency constraint
+// and then saves the results in bench.csv under benchDir folder
 func TestProfileSingleConfiguration(t *testing.T) {
 	var (
 		servedTh      uint64
@@ -128,39 +136,116 @@ func TestProfileSingleConfiguration(t *testing.T) {
 
 	log.SetLevel(log.InfoLevel)
 
-	checkInputValidation(t)
+	validateRuntimeArguments(t)
 
 	createResultsDir()
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
-	plrfncPid := pullImages(t, images)
-
-	bootVMs(t, images, 0, *vmNum, plrfncPid)
+	bootVMs(t, images, 0, *vmNum)
 
 	serveMetrics := loadAndProfile(t, images, *vmNum, *targetRPS, isSyncOffload)
 
 	tearDownVMs(t, images, *vmNum, isSyncOffload)
 
-	dumpMetrics(t, []map[string]float64{serveMetrics}, "benchRPS.csv")
+	dumpMetrics(t, []map[string]float64{serveMetrics}, "bench.csv")
 }
 
-// Pull a list of images
-func pullImages(t *testing.T, images []string) string {
-	for _, imageName := range images {
-		resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
-		require.NoError(t, err, "Function returned error")
-		require.Equal(t, resp.Payload, "Hello, record_response!")
+// TestColocateVMsOnSameCPU measures the differences between 2 VMs on the same core and 2VMs on different cores
+// Only works for a 2x 16-core machine or above
+func TestColocateVMsOnSameCPU(t *testing.T) {
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+		isSyncOffload bool = true
+		metrFile           = "bench.csv"
+		cpuList            = []int{13, 45}
+		images             = getImages(t)
+		metrics            = make([]map[string]float64, 2)
+	)
+
+	log.SetLevel(log.InfoLevel)
+
+	validateRuntimeArguments(t)
+
+	createResultsDir()
+
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+
+	bootVMs(t, images, 0, 2)
+
+	*isBindSocket = true
+	for i := 0; i < 2; i++ {
+		pidBytes, err := getFirecrackerPid()
+		require.NoError(t, err, "Cannot get Firecracker PID")
+		vmPidList := strings.Split(string(pidBytes), " ")
+		for i, vm := range vmPidList {
+			vm = strings.TrimSpace(vm)
+			err := bindProcessToCPU(strconv.Itoa(cpuList[i]), vm)
+			require.NoError(t, err, "Cannot run taskset")
+		}
+
+		metrics[i] = loadAndProfile(t, images, 2, calculateRPS(2), isSyncOffload)
+		cpuList[1] = 15
 	}
 
-	pidBytes, err := getFirecrackerPid()
-	require.NoError(t, err, "Cannot get firecracker pid")
-	pid := strings.TrimSpace(strings.Split(string(pidBytes), "\n")[0])
-	return pid
+	dumpMetrics(t, metrics, metrFile)
+
+	profile.PlotCVS(1, *benchDir, metrFile, "the number of cores")
+
+	tearDownVMs(t, images, 2, isSyncOffload)
 }
 
-// Boot a range of VMs with given images
-func bootVMs(t *testing.T, images []string, startVMID, endVMID int, omittedPid string) {
+func TestBindSocket(t *testing.T) {
+	var (
+		servedTh      uint64
+		pinnedFuncNum int
+		isSyncOffload bool = true
+		testImage          = []string{"vhiveease/helloworld:var_workload"}
+	)
+
+	type testCase struct {
+		vmNum    int
+		expected []string
+	}
+
+	cases := []testCase{
+		{vmNum: 1, expected: []string{"13"}},
+		{vmNum: 4, expected: []string{"13", "1,3,5,7,9,11,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43," +
+			"47,49,51,53,55,57,59,61,63"}},
+	}
+
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	*isBindSocket = true
+
+	for _, tCase := range cases {
+		testName := fmt.Sprintf("vmNum=%d", tCase.vmNum)
+		t.Run(testName, func(t *testing.T) {
+			bootVMs(t, testImage, 0, tCase.vmNum)
+
+			pidBytes, err := getFirecrackerPid()
+			require.NoError(t, err, "Cannot get Firecracker PID")
+			vmPidList := strings.Split(string(pidBytes), " ")
+
+			cpuBytes, err := exec.Command("taskset", "-cp", strings.TrimSpace(vmPidList[0])).Output()
+			require.NoError(t, err, "Cannot get CPU affinity")
+			cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])
+			require.Equal(t, tCase.expected, cpuAffinity[0], "VM was not binded to CPU 13")
+			for _, vm := range vmPidList[1:] {
+				vm = strings.TrimSpace(vm)
+				cpuBytes, err := exec.Command("taskset", "-cp", vm).Output()
+				require.NoError(t, err, "Cannot get CPU affinity")
+				cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])
+				require.Equal(t, tCase.expected, cpuAffinity[1], "VM was not binded to socket 1")
+			}
+
+			tearDownVMs(t, testImage, tCase.vmNum, isSyncOffload)
+		})
+	}
+}
+
+// bootVMs boots a range of VMs with given images
+func bootVMs(t *testing.T, images []string, startVMID, endVMID int) {
 	for i := startVMID; i < endVMID; i++ {
 		vmIDString := strconv.Itoa(i)
 		_, err := funcPool.AddInstance(vmIDString, images[i%len(images)])
@@ -169,19 +254,20 @@ func bootVMs(t *testing.T, images []string, startVMID, endVMID int, omittedPid s
 
 	if *isBindSocket {
 		log.Debugf("Binding socket 1")
-		err := bindSocket(omittedPid)
+		err := bindSocket()
 		require.NoError(t, err, "Bind Socket returned error")
 	}
 }
 
-// Inject many requests per second to VMs and profile
+// loadAndProfile loads from 5% to 100% of input target RPS and profile counters iteratively
 func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncOffload bool) map[string]float64 {
 	var (
 		pmuMetric      *metrics.Metric
 		vmGroup        sync.WaitGroup
 		isProfile      = false
 		cores          = runtime.NumCPU()
-		threshold      = 5 * getUnloadServiceTime() // for the constraint of tail latency
+		stepSize       = *loadStep / 100.
+		threshold      = 10 * getUnloadedServiceTime() // for the constraint of tail latency
 		injectDuration = *warmUpTime + *profileTime + *coolDownTime
 	)
 
@@ -191,7 +277,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		rpsPerCore  = "RPS-per-Core"
 	)
 
-	for step := 0.05; step < 1.05; step += 0.05 {
+	for step := stepSize; step < 1+stepSize; step += stepSize {
 		var (
 			vmID, requestID             int
 			invokExecTime, realRequests int64
@@ -199,7 +285,8 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			rps                         = int64(step * float64(targetRPS))
 			totalRequests               = injectDuration * float64(rps)
 			remainingRequests           = totalRequests
-			profiler                    = profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel, *profilerNodes, "profile", *isBindSocket)
+			profiler                    = profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel,
+				*profilerMetrics, "profile", *isBindSocket)
 		)
 
 		if rps <= 0 {
@@ -212,11 +299,11 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 
 		tStart := time.Now()
 		latencyCh := make(chan LatencyStat)
-		go latencyMeasurement(t, vmNum, images, &isProfile, latencyCh)
+		go measureTailLatency(t, vmNum, images, &isProfile, latencyCh)
 
 		err := profiler.Run()
 		require.NoError(t, err, "Run profiler returned error")
-		go profileControl(&isProfile, profiler)
+		go configureProfiler(&isProfile, profiler)
 
 		for remainingRequests > 0 {
 			if tickerT := <-ticker.C; !tickerT.IsZero() {
@@ -225,7 +312,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 
 				imageName := images[vmID%len(images)]
 
-				go loadVM(t, &vmGroup, vmID, requestID, imageName, isSyncOffload, &isProfile, &invokExecTime, &realRequests)
+				go loadVMs(t, &vmGroup, vmID, requestID, imageName, isSyncOffload, &isProfile, &invokExecTime, &realRequests)
 				requestID++
 
 				vmID = (vmID + 1) % vmNum
@@ -270,8 +357,9 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 	return pmuMetric.MetricMap
 }
 
-// Goroutine function: serve VM, record real RPS and exection time
-func loadVM(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageName string, isSyncOffload bool, isProfile *bool, execTime, realRequests *int64) {
+// loadVMs load requests to VMs every second and records completed requests and exection time
+func loadVMs(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageName string,
+	isSyncOffload bool, isProfile *bool, execTime, realRequests *int64) {
 	defer vmGroup.Done()
 
 	vmIDString := strconv.Itoa(vmID)
@@ -293,8 +381,8 @@ func loadVM(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageNam
 	}
 }
 
-// Goroutine function: Control start and end of profiling
-func profileControl(isProfile *bool, profiler *profile.Profiler) {
+// configureProfiler controls the time duration of profiling for loadVMs and profiler
+func configureProfiler(isProfile *bool, profiler *profile.Profiler) {
 	time.Sleep(time.Duration(*warmUpTime) * time.Second)
 	*isProfile = true
 	profiler.SetWarmUpTime()
@@ -310,15 +398,20 @@ type LatencyStat struct {
 	tailLatency float64
 }
 
-// Goroutine function: measure tail latency
-func latencyMeasurement(t *testing.T, vmNum int, images []string, isProfile *bool, latencyCh chan LatencyStat) {
+// measureTailLatency measures tail latency by sampling 20-100 requests and loading a request at least every 500ms
+func measureTailLatency(t *testing.T, vmNum int, images []string, isProfile *bool, latencyCh chan LatencyStat) {
 	var (
 		vmID         int
 		serviceTimes []float64
 		vmGroup      sync.WaitGroup
-		duration     = time.Duration(*profileTime * 1000 / 50)
-		ticker       = time.NewTicker(duration * time.Millisecond)
+		duraInMs     = *profileTime * 1000 / 100
 	)
+
+	if duraInMs*float64(vmNum) < 500 {
+		duraInMs = 500
+	}
+	duration := time.Duration(duraInMs)
+	ticker := time.NewTicker(duration * time.Millisecond)
 
 	for {
 		if tickerT := <-ticker.C; *isProfile && !tickerT.IsZero() {
@@ -356,7 +449,7 @@ func latencyMeasurement(t *testing.T, vmNum int, images []string, isProfile *boo
 	}
 }
 
-// Tear down VMs
+// tearDownVMs removes instances from 0 to input VM number
 func tearDownVMs(t *testing.T, images []string, vmNum int, isSyncOffload bool) {
 	for i := 0; i < vmNum; i++ {
 		log.Infof("Shutting down VM %d, images: %s", i, images[i%len(images)])
@@ -366,7 +459,7 @@ func tearDownVMs(t *testing.T, images []string, vmNum int, isSyncOffload bool) {
 	}
 }
 
-// Returns a list of image names
+// getImages Returns of the supported images' names
 func getImages(t *testing.T) []string {
 	var (
 		images = map[string]string{
@@ -392,6 +485,7 @@ func getImages(t *testing.T) []string {
 	return result
 }
 
+// dumpMetrics writes metrics to file
 func dumpMetrics(t *testing.T, metrics []map[string]float64, outfile string) {
 	outFile := getOutFile(outfile)
 
@@ -435,7 +529,7 @@ func dumpMetrics(t *testing.T, metrics []map[string]float64, outfile string) {
 }
 
 // getCPUIntenseRPS returns the number of requests per second that stress CPU for each image.
-func getCPUIntenseRPS() int {
+func getCloseLoopRPS() int {
 	var (
 		sum, result int
 		values      []int
@@ -464,7 +558,7 @@ func getCPUIntenseRPS() int {
 	return result
 }
 
-func getUnloadServiceTime() float64 {
+func getUnloadedServiceTime() float64 {
 	var (
 		sum         float64
 		funcs       = strings.Split(*funcNames, ",")
@@ -488,61 +582,14 @@ func getUnloadServiceTime() float64 {
 }
 
 func calculateRPS(vmNum int) int {
-	baseRPS := getCPUIntenseRPS()
+	baseRPS := getCloseLoopRPS()
 	return vmNum * baseRPS
 }
 
-func TestBindSocket(t *testing.T) {
+func bindSocket() error {
 	var (
-		servedTh      uint64
-		pinnedFuncNum int
-		isSyncOffload bool = true
-		testImage          = []string{"vhiveease/helloworld:var_workload"}
-	)
-
-	type testCase struct {
-		vmNum    int
-		expected string
-	}
-
-	cases := []testCase{
-		{vmNum: 1, expected: "13"},
-		{vmNum: 32, expected: "1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63"},
-	}
-
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
-	plrfncPid := pullImages(t, testImage)
-
-	*isBindSocket = true
-
-	for _, tCase := range cases {
-		testName := fmt.Sprintf("vmNum=%d", tCase.vmNum)
-		t.Run(testName, func(t *testing.T) {
-			bootVMs(t, testImage, 0, tCase.vmNum, plrfncPid)
-
-			pidBytes, err := getFirecrackerPid()
-			require.NoError(t, err, "Cannot get Firecracker PID")
-			vmPidList := strings.Split(string(pidBytes), " ")
-
-			for _, vm := range vmPidList {
-				vm = strings.TrimSpace(vm)
-				if vm != plrfncPid {
-					cpuBytes, err := exec.Command("taskset", "-cp", vm).Output()
-					require.NoError(t, err, "Cannot get VM PID")
-					cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])
-					require.Equal(t, tCase.expected, cpuAffinity, "VM was not binded to socket 1")
-				}
-			}
-
-			tearDownVMs(t, testImage, tCase.vmNum, isSyncOffload)
-		})
-	}
-}
-
-func bindSocket(omittedPid string) error {
-	var (
-		core1Free = true
-		cores     = 32
+		coreFree = true
+		cores    = 32
 	)
 	pidBytes, err := getFirecrackerPid()
 	if err != nil {
@@ -552,28 +599,23 @@ func bindSocket(omittedPid string) error {
 	vmPidList := strings.Split(string(pidBytes), " ")
 	for _, vm := range vmPidList {
 		vm = strings.TrimSpace(vm)
-		if vm != omittedPid {
-			if cores > len(vmPidList) {
-				if core1Free {
-					log.Debugf("binding pid: %s to core 1", vm)
-					cmd := exec.Command("taskset", "--all-tasks", "-cp", "13", vm)
-					if err := cmd.Run(); err != nil {
-						return err
-					}
-					core1Free = false
-				} else {
-					log.Debugf("binding pid: %s", vm)
-					cmd := exec.Command("taskset", "--all-tasks", "-cp", "1-11:2,15-63:2", vm)
-					if err := cmd.Run(); err != nil {
-						return err
-					}
-				}
-			} else {
-				log.Debugf("binding pid: %s", vm)
-				cmd := exec.Command("taskset", "--all-tasks", "-cp", "1-63:2", vm)
-				if err := cmd.Run(); err != nil {
+		if cores > len(vmPidList) {
+			if coreFree {
+				log.Debugf("binding pid: %s to core 13", vm)
+				if err := bindProcessToCPU("13", vm); err != nil {
 					return err
 				}
+				coreFree = false
+			} else {
+				log.Debugf("binding pid: %s", vm)
+				if err := bindProcessToCPU("1-11:2,15-43:2,47-63:2", vm); err != nil {
+					return err
+				}
+			}
+		} else {
+			log.Debugf("binding pid: %s", vm)
+			if err := bindProcessToCPU("1-63:2", vm); err != nil {
+				return err
 			}
 		}
 	}
@@ -581,15 +623,25 @@ func bindSocket(omittedPid string) error {
 	return nil
 }
 
-func checkInputValidation(t *testing.T) {
-	require.Truef(t, *profileTime >= 0, "profile time = %f is less than 0s", *profileTime)
-	require.Truef(t, *warmUpTime >= 0, "warm up time = %f is less than 0s", *warmUpTime)
-	require.Truef(t, *coolDownTime >= 0, "cool down time = %f is less than 0s", *coolDownTime)
-	require.Truef(t, *profilerInterval >= 10, "profiler print interval = %d is less than 10ms", *profilerInterval)
-	require.Truef(t, *profilerLevel > 0, "profiler level = %d is less than 1", *profilerLevel)
-	require.Truef(t, *vmNum > 0, "VM number = %d is less than 1", *vmNum)
-	require.Truef(t, *targetRPS > 0, "requests per second = %d is less than 0", *targetRPS)
-	require.Truef(t, *vmIncrStep >= 0, "negative increment step of VM number = %d", *vmIncrStep)
-	require.Truef(t, *maxVMNum >= 0, "the maximum VM number = %d is less than 0", *maxVMNum)
-	require.Truef(t, *maxVMNum >= *vmIncrStep, "the maximum VM number = %d is less than the increment step = %d", *maxVMNum, *vmIncrStep)
+func bindProcessToCPU(cpuList, pid string) error {
+	cmd := exec.Command("taskset", "--all-tasks", "-cp", cpuList, pid)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateRuntimeArguments(t *testing.T) {
+	require.Truef(t, *profileTime >= 0, "Profile time = %f must be no less than 0s", *profileTime)
+	require.Truef(t, *warmUpTime >= 0, "Warm-up time = %f must be no less than 0s", *warmUpTime)
+	require.Truef(t, *coolDownTime >= 0, "Cool-down time = %f must be no less than 0s", *coolDownTime)
+	require.Truef(t, *profilerInterval >= 10, "Profiler print interval = %d must be no less than 10ms", *profilerInterval)
+	require.Truef(t, *profilerLevel > 0, "Profiler level = %d must be more than 0", *profilerLevel)
+	require.Truef(t, *vmNum > 0, "VM number = %d must be more than 0", *vmNum)
+	require.Truef(t, *targetRPS >= 0, "RPS = %d must be no less than 0", *targetRPS)
+	require.Truef(t, *vmIncrStep >= 0, "Increment step of VM number = %d must be no less than 0", *vmIncrStep)
+	require.Truef(t, *maxVMNum >= 0, "Maximum VM number = %d must be no less than 0", *maxVMNum)
+	require.Truef(t, *maxVMNum >= *vmIncrStep, "Maximum VM number = %d must be no less than increment step = %d", *maxVMNum, *vmIncrStep)
+	require.Truef(t, *loadStep > 0 && *loadStep <= 100, "Load step = %f must be between 0 and 1", *loadStep)
 }

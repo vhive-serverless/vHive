@@ -3,7 +3,7 @@
 ## Methodology
 
 The tool is for benchmarking vHive instances by recording hardware counters, requests per second
- (RPS) and execution time for functions runing inside instances.
+ (RPS) and execution time for functions running inside instances.
 
 The tool includes following components: 
 - A loader function loads requests to vHive round by round (increment 5% of input RPS each round 
@@ -18,7 +18,7 @@ The tool includes following components:
 
 A load step divides into three parts: warm-up, profiling and cool-down. During the profile 
 period, the benchmark records the average execution time of invocations and how many invocations 
-return successfully. Durint the profile period, it also invokes [pmu-tools](https://github.com/andikleen/pmu-tools) 
+return successfully. During the profile period, it also invokes [pmu-tools](https://github.com/andikleen/pmu-tools) 
 to profile user-defined counters followed by [TopDown method](https://ieeexplore.ieee.org/document/6844459). 
 After the measurement finishes, completed RPS per core, average execution time and the average 
 counters will save in the `profile.csv`.
