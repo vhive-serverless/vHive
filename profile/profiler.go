@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2021 Yuchen Niu and EASE lab
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 package profile
 
 import (
@@ -48,7 +70,11 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		"-o", profiler.outFile)
 
 	if isBind {
-		profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S1-C3") // equivalent to CPU 13
+		// only measure CPU 13 since the benchmark binds one VM on it.
+		profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S1-C3")
+	} else {
+		// hide idle CPUs that are <50% of busiest.
+		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "50")
 	}
 
 	// pass `profilerNodes` to pmu-tool if it is not empty, it controls specific metric/metrics to profile.
