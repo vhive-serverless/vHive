@@ -23,6 +23,7 @@
 package profile
 
 import (
+	"bufio"
 	"encoding/csv"
 	"errors"
 	"io"
@@ -49,7 +50,7 @@ type Profiler struct {
 }
 
 // NewProfiler returns a new instance of profiler
-func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string, isBind bool) *Profiler {
+func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string, cpu int) (*Profiler, error) {
 	profiler := new(Profiler)
 	profiler.execTime = executionTime
 	profiler.interval = printInterval
@@ -69,9 +70,12 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		"-I", strconv.FormatUint(printInterval, 10),
 		"-o", profiler.outFile)
 
-	if isBind {
-		// only measure CPU 13 since the benchmark binds one VM on it.
-		profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S1-C3")
+	if cpu > -1 {
+		core, err := GetPhysicalCore(cpu)
+		if err != nil {
+			return nil, err
+		}
+		profiler.cmd.Args = append(profiler.cmd.Args, "--core", core)
 	} else {
 		// hide idle CPUs that are <50% of busiest.
 		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "50")
@@ -86,7 +90,7 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 
 	log.Debugf("Profiler command: %s", profiler.cmd)
 
-	return profiler
+	return profiler, nil
 }
 
 // Run checks environment and arguments and executes command
@@ -108,7 +112,7 @@ func (p *Profiler) Run() error {
 	}
 
 	if p.interval < 100 {
-		log.Warn("print interval < 100ms. The overhead percentage could be high in some cases. Please proceed with caution.")
+		log.Warn("print interval < 100ms. The overhead may be high in some cases. Please proceed with caution.")
 	}
 
 	if err := p.cmd.Start(); err != nil {
@@ -153,14 +157,14 @@ func (p *Profiler) GetResult() (map[string]float64, error) {
 	timeLeft := p.execTime - time.Since(p.tStart).Seconds() + 5
 	time.Sleep(time.Duration(timeLeft) * time.Second)
 
-	log.Debugf("Warm time: %f, Teardown time: %f", p.warmTime, p.tearDownTime)
+	log.Debugf("Warm time: %.2f, Teardown time: %.2f", p.warmTime, p.tearDownTime)
 	return p.readCSV()
 }
 
 // PrintBottlenecks prints the bottlenecks during profiling
 func (p *Profiler) PrintBottlenecks() {
 	for k, v := range p.bottlenecks {
-		log.Infof("Bottleneck %s with value %f", k, v)
+		log.Infof("Bottleneck %s with value %.2f", k, v)
 	}
 }
 
@@ -308,4 +312,62 @@ func isPerfInstalled() bool {
 	}
 
 	return len(b) != 0
+}
+
+// CPUInfo represents the information of one processor
+type CPUInfo struct {
+	Processor string
+	Socket    string
+	CoreID    string
+}
+
+// GetAllCPUs returns a list of CPU information
+func GetAllCPUs() ([]CPUInfo, error) {
+	var (
+		proc, socket string
+		cpuList      []CPUInfo
+	)
+
+	file, err := os.Open("/proc/cpuinfo")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "processor") {
+			proc = strings.TrimSpace(strings.Split(line, ":")[1])
+		} else if strings.HasPrefix(line, "physical id") {
+			socket = strings.TrimSpace(strings.Split(line, ":")[1])
+		} else if strings.HasPrefix(line, "core id") {
+			coreID := strings.TrimSpace(strings.Split(line, ":")[1])
+			cpuList = append(cpuList, CPUInfo{
+				Processor: proc,
+				Socket:    socket,
+				CoreID:    coreID,
+			})
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return cpuList, nil
+}
+
+// GetPhysicalCore returns the physical core ID in Sx-Cx format
+func GetPhysicalCore(processor int) (string, error) {
+	allCPUs, err := GetAllCPUs()
+	if err != nil {
+		return "", err
+	}
+	for _, cpuInfo := range allCPUs {
+		if cpuInfo.Processor == strconv.Itoa(processor) {
+			return "S" + cpuInfo.Socket + "-" + "C" + cpuInfo.CoreID, nil
+		}
+	}
+	return "", errors.New("processor is not found")
 }
