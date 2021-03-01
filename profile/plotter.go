@@ -86,7 +86,7 @@ func PlotCVS(xStep int, filePath, inFile, xLable string) {
 	log.Info("Plot counters finished.")
 }
 
-// retrieve data from csv file
+// readResultCSV retrieves data from csv file
 func readResultCSV(filePath, inFile string) [][]string {
 	fileName := filepath.Join(filePath, inFile)
 	f, err := os.Open(fileName)
