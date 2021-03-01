@@ -34,7 +34,6 @@ import (
 func TestReadPerfData(t *testing.T) {
 	var (
 		fileName = "test"
-		p        = NewProfiler(0, 100, 0, 1, "", fileName, false)
 		result   = []map[string]float64{
 			{
 				"Frontend_Bound": 2,
@@ -47,6 +46,9 @@ func TestReadPerfData(t *testing.T) {
 				"Backend_Bound":  4},
 		}
 	)
+
+	p, err := NewProfiler(0, 100, 0, 1, "", fileName, -1)
+	require.NoError(t, err, "Cannot create a profiler instance")
 
 	type testCase struct {
 		warmTime, tearDownTime float64
@@ -62,7 +64,7 @@ func TestReadPerfData(t *testing.T) {
 	for _, tCase := range cases {
 		err := createData()
 		require.NoError(t, err, "Failed creating test file")
-		testName := fmt.Sprintf("%f,%f", tCase.warmTime, tCase.tearDownTime)
+		testName := fmt.Sprintf("%.2f,%.2f", tCase.warmTime, tCase.tearDownTime)
 
 		t.Run(testName, func(t *testing.T) {
 			p.warmTime = tCase.warmTime
@@ -78,23 +80,22 @@ func TestReadPerfData(t *testing.T) {
 func TestProfilerRun(t *testing.T) {
 	fileName := "testFile"
 
-	p := NewProfiler(-1, 100, 0, 1, "", fileName, false)
-	err := p.Run()
+	p, err := NewProfiler(-1, 100, 0, 1, "", fileName, -1)
+	require.NoError(t, err, "Cannot create a profiler instance")
+	err = p.Run()
 	require.EqualError(t, err, "profiler execution time is less than 0s", "Failed creating perf stat")
 
-	p = NewProfiler(0, 1, 0, 1, "", fileName, false)
+	p, err = NewProfiler(0, 1, 0, 1, "", fileName, -1)
+	require.NoError(t, err, "Cannot create a profiler instance")
 	err = p.Run()
 	require.EqualError(t, err, "profiler print interval is less than 10ms", "Failed creating perf stat")
 
-	p = NewProfiler(0, 100, 0, 1, "", fileName, false)
-
+	p, err = NewProfiler(0, 100, 0, 1, "", fileName, -1)
+	require.NoError(t, err, "Cannot create a profiler instance")
 	err = p.Run()
 	require.NoError(t, err, "profiler run returned error: %v.", err)
 
 	time.Sleep(1 * time.Second)
-
-	err = os.Remove(fileName + ".csv")
-	require.NoError(t, err, "Failed removing test file.")
 }
 
 func createData() error {
