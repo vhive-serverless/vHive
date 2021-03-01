@@ -29,6 +29,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -71,7 +72,11 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		"-o", profiler.outFile)
 
 	if cpu > -1 {
-		core, err := GetPhysicalCore(cpu)
+		cpus, err := GetCPUInfo()
+		if err != nil {
+			return nil, err
+		}
+		core, err := cpus.GetSocketCoreInString(cpu)
 		if err != nil {
 			return nil, err
 		}
@@ -314,23 +319,40 @@ func isPerfInstalled() bool {
 	return len(b) != 0
 }
 
-// CPUInfo represents the information of one processor
+// CPUInfo contains sockets and processor to socket and core map
 type CPUInfo struct {
-	Processor string
-	Socket    string
-	CoreID    string
+	sockets    []socket
+	processors map[int]processor
 }
 
-// GetAllCPUs returns a list of CPU information
-func GetAllCPUs() ([]CPUInfo, error) {
+// socket contains its cores ID
+type socket struct {
+	cores []core
+}
+
+// core contains its processors ID
+type core struct {
+	processors []int
+}
+
+// processor contains its socket ID and physical core ID
+type processor struct {
+	socket int
+	core   int
+}
+
+// GetCPUInfo returns a instance of CPUInfo
+func GetCPUInfo() (CPUInfo, error) {
 	var (
-		proc, socket string
-		cpuList      []CPUInfo
+		procID, socketID int
+		cpuInfo          CPUInfo
 	)
+
+	cpuInfo.processors = make(map[int]processor)
 
 	file, err := os.Open("/proc/cpuinfo")
 	if err != nil {
-		return nil, err
+		return cpuInfo, err
 	}
 	defer file.Close()
 
@@ -338,36 +360,117 @@ func GetAllCPUs() ([]CPUInfo, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "processor") {
-			proc = strings.TrimSpace(strings.Split(line, ":")[1])
+			procID, err = strconv.Atoi(strings.TrimSpace(strings.Split(line, ":")[1]))
+			if err != nil {
+				return cpuInfo, err
+			}
 		} else if strings.HasPrefix(line, "physical id") {
-			socket = strings.TrimSpace(strings.Split(line, ":")[1])
+			socketID, err = strconv.Atoi(strings.TrimSpace(strings.Split(line, ":")[1]))
+			if err != nil {
+				return cpuInfo, err
+			}
+			for i := len(cpuInfo.sockets); i <= socketID; i++ {
+				cpuInfo.sockets = append(cpuInfo.sockets, socket{})
+			}
 		} else if strings.HasPrefix(line, "core id") {
-			coreID := strings.TrimSpace(strings.Split(line, ":")[1])
-			cpuList = append(cpuList, CPUInfo{
-				Processor: proc,
-				Socket:    socket,
-				CoreID:    coreID,
-			})
+			coreID, err := strconv.Atoi(strings.TrimSpace(strings.Split(line, ":")[1]))
+			if err != nil {
+				return cpuInfo, err
+			}
+			for i := len(cpuInfo.sockets[socketID].cores); i <= coreID; i++ {
+				cpuInfo.sockets[socketID].cores = append(cpuInfo.sockets[socketID].cores, core{})
+			}
+			cpuInfo.sockets[socketID].cores[coreID].processors = append(cpuInfo.sockets[socketID].cores[coreID].processors, procID)
+			cpuInfo.processors[procID] = processor{socket: socketID, core: coreID}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return cpuInfo, err
 	}
 
-	return cpuList, nil
+	return cpuInfo, nil
 }
 
-// GetPhysicalCore returns the physical core ID in Sx-Cx format
-func GetPhysicalCore(processor int) (string, error) {
-	allCPUs, err := GetAllCPUs()
-	if err != nil {
-		return "", err
+// GetSocketCoreInString returns the physical core ID in Sx-Cx format
+func (c *CPUInfo) GetSocketCoreInString(processor int) (string, error) {
+	proc, isPresent := c.processors[processor]
+	if !isPresent {
+		return "", errors.New("processor is not found")
 	}
-	for _, cpuInfo := range allCPUs {
-		if cpuInfo.Processor == strconv.Itoa(processor) {
-			return "S" + cpuInfo.Socket + "-" + "C" + cpuInfo.CoreID, nil
+	return "S" + strconv.Itoa(proc.socket) + "-" + "C" + strconv.Itoa(proc.core), nil
+}
+
+// GetSocketID returns the socket ID
+func (c *CPUInfo) GetSocketID(processor int) (int, error) {
+	proc, isPresent := c.processors[processor]
+	if !isPresent {
+		return 0, errors.New("processor is not found")
+	}
+	return proc.socket, nil
+}
+
+// GetCoreID returns the physical core ID
+func (c *CPUInfo) GetCoreID(processor int) (int, error) {
+	proc, isPresent := c.processors[processor]
+	if !isPresent {
+		return 0, errors.New("processor is not found")
+	}
+	return proc.core, nil
+}
+
+// GetSibling returns the sibling processor
+func (c *CPUInfo) GetSibling(processor int) (int, error) {
+	proc, isPresent := c.processors[processor]
+	if !isPresent {
+		return 0, errors.New("processor is not found")
+	}
+
+	core := c.sockets[proc.socket].cores[proc.core]
+	if core.processors[0] == processor {
+		return core.processors[1], nil
+	}
+
+	return core.processors[0], nil
+}
+
+// SocketCPUs returns a list of processors of the socket
+func (c *CPUInfo) SocketCPUs(socket int) ([]int, error) {
+	var result []int
+	if socket >= len(c.sockets) {
+		return nil, errors.New("socket ID is larger than the number of sockets")
+	}
+
+	for _, core := range c.sockets[socket].cores {
+		for _, proc := range core.processors {
+			result = append(result, proc)
 		}
 	}
-	return "", errors.New("processor is not found")
+	sort.Ints(result)
+	return result, nil
+}
+
+// NumSocket returns the number of sockets.
+func (c *CPUInfo) NumSocket() int {
+	return len(c.sockets)
+}
+
+// AllCPUs returns the list of all logcial CPUs.
+func (c *CPUInfo) AllCPUs() []int {
+	var result []int
+
+	for _, socket := range c.sockets {
+		for _, core := range socket.cores {
+			for _, proc := range core.processors {
+				result = append(result, proc)
+			}
+		}
+	}
+	sort.Ints(result)
+	return result
+}
+
+// NumCPU returns the number of logcial CPUs.
+func (c *CPUInfo) NumCPU() int {
+	return len(c.processors)
 }
