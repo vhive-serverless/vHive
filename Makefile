@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-SUBDIRS:=ctriface taps misc
+SUBDIRS:=ctriface taps misc profile
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
 EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go
@@ -101,13 +101,9 @@ bench:
 
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestProfileSingleConfiguration -args -loadStep 1 && sudo rm -rf bench_results
-	./scripts/clean_fcctr.sh
 
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestProfileSingleConfiguration -args -vmIncrStep 4 -maxVMNum 4 -loadStep 1 && sudo rm -rf bench_results
-	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestProfileIncrementConfiguration -args -vmIncrStep 4 -maxVMNum 4 -loadStep 1 && sudo rm -rf bench_results
 
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBindSocket
 	./scripts/clean_fcctr.sh
 
