@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -89,7 +88,6 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 		isSyncOffload bool = true
 		metrFile           = "bench.csv"
 		images             = getImages(t)
-		cores              = runtime.NumCPU()
 		metrics            = make([]map[string]float64, *maxVMNum / *vmIncrStep)
 	)
 	log.SetLevel(log.InfoLevel)
@@ -100,6 +98,8 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
+	cores, err := cpuNum()
+	require.NoError(t, err, "Cannot get the number of CPU")
 	for vmNum := *vmIncrStep; vmNum <= *maxVMNum; vmNum += *vmIncrStep {
 		if vmNum < cores {
 			rps = calculateRPS(vmNum)
@@ -153,15 +153,14 @@ func TestProfileSingleConfiguration(t *testing.T) {
 	dumpMetrics(t, []map[string]float64{serveMetrics}, "bench.csv")
 }
 
-// TestColocateVMsOnSameCPU measures the differences between 2 VMs on the same core and 2VMs on
-// different cores. Only campatible with 45-cores machine or more cores.
+// TestColocateVMsOnSameCPU measures the differences between 2 VMs on the same core and 2VMs on different cores,
+// controlled by *profileCPU
 func TestColocateVMsOnSameCPU(t *testing.T) {
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
 		isSyncOffload bool = true
 		metrFile           = "bench.csv"
-		cpuList            = []int{13, 45}
 		images             = getImages(t)
 		metrics            = make([]map[string]float64, 2)
 	)
@@ -176,30 +175,33 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 
 	bootVMs(t, images, 0, 2)
 
-	*profileCPU = 13
-	for i := 0; i < 2; i++ {
-		pidBytes, err := getFirecrackerPid()
-		require.NoError(t, err, "Cannot get Firecracker PID")
-		vmPidList := strings.Split(string(pidBytes), " ")
-		for i, vm := range vmPidList {
-			vm = strings.TrimSpace(vm)
-			err := bindProcessToCPU(strconv.Itoa(cpuList[i]), vm)
-			require.NoError(t, err, "Cannot run taskset")
-		}
+	metrics[0] = loadAndProfile(t, images, 2, calculateRPS(2), isSyncOffload)
 
-		metrics[i] = loadAndProfile(t, images, 2, calculateRPS(2), isSyncOffload)
-		cpuList[1] = 15
+	cpuInfo, err := profile.GetCPUInfo()
+	require.NoError(t, err, "Cannot get CPU info")
+	sibling, err := cpuInfo.GetSibling(*profileCPU)
+	require.NoError(t, err, "Cannot run taskset")
+	cpuList := []int{*profileCPU, sibling}
+	pidBytes, err := getFirecrackerPid()
+	require.NoError(t, err, "Cannot get Firecracker PID")
+	vmPidList := strings.Split(string(pidBytes), " ")
+	for i, vm := range vmPidList {
+		vm = strings.TrimSpace(vm)
+		err := bindProcessToCPU(vm, cpuList[i])
+		require.NoError(t, err, "Cannot run taskset")
 	}
+	metrics[1] = loadAndProfile(t, images, 2, calculateRPS(2), isSyncOffload)
 
 	dumpMetrics(t, metrics, metrFile)
 
-	profile.PlotCVS(1, *benchDir, metrFile, "the number of cores")
+	profile.PlotCVS(1, *benchDir, metrFile, "Different Cores -> Same Core")
 
 	tearDownVMs(t, images, 2, isSyncOffload)
 }
 
 func TestBindSocket(t *testing.T) {
 	var (
+		procStr, sep  string
 		servedTh      uint64
 		pinnedFuncNum int
 		isSyncOffload bool = true
@@ -216,14 +218,19 @@ func TestBindSocket(t *testing.T) {
 	*profileCPU = 0
 	*bindSocket = 0
 
-	socketCPUs, err := getSocketCPUs()
+	cpuInfo, err := profile.GetCPUInfo()
+	require.NoError(t, err, "Cannot get CPU info")
+	socketCPUs, err := cpuInfo.SocketCPUs(*bindSocket)
 	require.NoError(t, err, "Cannot get CPUs of the socket")
-	subCPUs, err := deleteProfileCore(socketCPUs)
+	subCPUs, err := deleteProfileCore(cpuInfo, socketCPUs)
 	require.NoError(t, err, "Cannot delete profile core from the CPU list")
-
+	for _, proc := range subCPUs {
+		procStr += sep + strconv.Itoa(proc)
+		sep = ","
+	}
 	cases := []testCase{
 		{vmNum: 1, expected: []string{strconv.Itoa(*profileCPU)}},
-		{vmNum: 4, expected: []string{strconv.Itoa(*profileCPU), strings.Join(subCPUs, ",")}},
+		{vmNum: 4, expected: []string{strconv.Itoa(*profileCPU), procStr}},
 	}
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
@@ -276,7 +283,6 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		pmuMetric      *metrics.Metric
 		vmGroup        sync.WaitGroup
 		isProfile      = false
-		cores          = runtime.NumCPU()
 		stepSize       = *loadStep / 100.
 		threshold      = 10 * getUnloadedServiceTime() // for the constraint of tail latency
 		injectDuration = *warmUpTime + *profileTime + *coolDownTime
@@ -287,6 +293,9 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		avgExecTime = "average-execution-time"
 		rpsPerCore  = "RPS-per-Core"
 	)
+
+	cores, err := cpuNum()
+	require.NoError(t, err, "Cannot get the number of CPU")
 
 	for step := stepSize; step < 1+stepSize; step += stepSize {
 		var (
@@ -598,21 +607,23 @@ func calculateRPS(vmNum int) int {
 }
 
 func bindVMsToSocket() error {
-	var (
-		coreFree = true
-		cores    = runtime.NumCPU()
-	)
+	coreFree := true
 	pidBytes, err := getFirecrackerPid()
 	if err != nil {
 		return err
 	}
 
-	socketCPUs, err := getSocketCPUs()
+	cpuInfo, err := profile.GetCPUInfo()
 	if err != nil {
 		return err
 	}
 
-	subSocketCPUs, err := deleteProfileCore(socketCPUs)
+	cpus, err := cpuInfo.SocketCPUs(*bindSocket)
+	if err != nil {
+		return err
+	}
+
+	subCPUs, err := deleteProfileCore(cpuInfo, cpus)
 	if err != nil {
 		return err
 	}
@@ -620,19 +631,19 @@ func bindVMsToSocket() error {
 	vmPidList := strings.Split(string(pidBytes), " ")
 	for _, vm := range vmPidList {
 		vm = strings.TrimSpace(vm)
-		if cores > len(vmPidList) {
+		if len(cpus) > len(vmPidList) {
 			if coreFree && *profileCPU > -1 {
-				if err := bindProcessToCPU(strconv.Itoa(*profileCPU), vm); err != nil {
+				if err := bindProcessToCPU(vm, *profileCPU); err != nil {
 					return err
 				}
 				coreFree = false
 			} else {
-				if err := bindProcessToCPU(strings.Join(subSocketCPUs, ","), vm); err != nil {
+				if err := bindProcessToCPU(vm, subCPUs...); err != nil {
 					return err
 				}
 			}
 		} else {
-			if err := bindProcessToCPU(strings.Join(socketCPUs, ","), vm); err != nil {
+			if err := bindProcessToCPU(vm, cpus...); err != nil {
 				return err
 			}
 		}
@@ -641,58 +652,56 @@ func bindVMsToSocket() error {
 	return nil
 }
 
-func bindProcessToCPU(processors, pid string) error {
-	log.Debugf("binding pid %s to processor %s", pid, processors)
-	if err := exec.Command("taskset", "--all-tasks", "-cp", processors, pid).Run(); err != nil {
+func bindProcessToCPU(pid string, processors ...int) error {
+	var procStr, sep string
+	for _, proc := range processors {
+		procStr += sep + strconv.Itoa(proc)
+		sep = ","
+	}
+	log.Debugf("binding pid %s to processor %v", pid, processors)
+	if err := exec.Command("taskset", "--all-tasks", "-cp", procStr, pid).Run(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func getSocketCPUs() ([]string, error) {
-	var cpus []string
-	allCPUs, err := profile.GetAllCPUs()
+func deleteProfileCore(cpuInfo profile.CPUInfo, cpus []int) ([]int, error) {
+	var subList []int
+
+	sibling, err := cpuInfo.GetSibling(*profileCPU)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, cpu := range allCPUs {
-		if cpu.Socket == strconv.Itoa(*bindSocket) {
-			cpus = append(cpus, cpu.Processor)
+	for _, cpu := range cpus {
+		if *profileCPU != cpu && sibling != cpu {
+			subList = append(subList, cpu)
 		}
-	}
-
-	return cpus, nil
-}
-
-func deleteProfileCore(cpus []string) ([]string, error) {
-	var subList []string
-	if *profileCPU > -1 {
-		profileCore, err := profile.GetPhysicalCore(*profileCPU)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, cpuStr := range cpus {
-			cpuID, err := strconv.Atoi(cpuStr)
-			physicalCore, err := profile.GetPhysicalCore(cpuID)
-			if err != nil {
-				return nil, err
-			}
-			if physicalCore != profileCore {
-				subList = append(subList, cpuStr)
-			}
-		}
-	} else {
-		return cpus, nil
 	}
 
 	return subList, nil
 }
 
+func cpuNum() (int, error) {
+	cpuInfo, err := profile.GetCPUInfo()
+	if err != nil {
+		return 0, err
+	}
+	if *bindSocket > -1 {
+		cores, err := cpuInfo.SocketCPUs(*bindSocket)
+		if err != nil {
+			return 0, err
+		}
+		return len(cores), nil
+	}
+	cores := cpuInfo.AllCPUs()
+	return len(cores), nil
+}
+
 func validateRuntimeArguments(t *testing.T) {
-	var cores = runtime.NumCPU()
+	cpuInfo, err := profile.GetCPUInfo()
+	require.NoError(t, err, "Cannot get CPU info")
 	require.Truef(t, *profileTime >= 0, "Profile time = %.2f must be no less than 0s", *profileTime)
 	require.Truef(t, *warmUpTime >= 0, "Warm-up time = %.2f must be no less than 0s", *warmUpTime)
 	require.Truef(t, *coolDownTime >= 0, "Cool-down time = %.2f must be no less than 0s", *coolDownTime)
@@ -704,23 +713,15 @@ func validateRuntimeArguments(t *testing.T) {
 	require.Truef(t, *maxVMNum >= 0, "Maximum VM number = %d must be no less than 0", *maxVMNum)
 	require.Truef(t, *maxVMNum >= *vmIncrStep, "Maximum VM number = %d must be no less than increment step = %d", *maxVMNum, *vmIncrStep)
 	require.Truef(t, *loadStep > 0 && *loadStep <= 100, "Load step = %.2f must be between 0 and 1", *loadStep)
-	require.Truef(t, *profileCPU < cores, "profile CPUID = %d must be smaller than the number of cores %d", *profileCPU, cores)
-	sockets, err := getAvailableSocketNum()
-	require.NoError(t, err, "Cannot get the number of available nodes")
+	sockets := cpuInfo.NumSocket()
 	require.Truef(t, *bindSocket < sockets, "Socket %d must be smaller than the number of nodes %d", *bindSocket, sockets)
+	var cpus []int
+	if *bindSocket > -1 {
+		cpus, err = cpuInfo.SocketCPUs(*bindSocket)
+	} else {
+		cpus = cpuInfo.AllCPUs()
+	}
+	cpus = append(cpus, -1)
+	require.Containsf(t, cpus, *profileCPU, "profile CPU ID = %d must be in CPUs %v", *profileCPU, cpus)
 	require.Truef(t, *latSamples > 0 && *latSamples < 101, "Latency samples = %d must be between 0 and 100", *latSamples)
-}
-
-func getAvailableSocketNum() (int, error) {
-	sockets := make(map[string]bool)
-	allCPUs, err := profile.GetAllCPUs()
-	if err != nil {
-		return 0, err
-	}
-
-	for _, cpu := range allCPUs {
-		sockets[cpu.Socket] = true
-	}
-
-	return len(sockets), nil
 }
