@@ -51,21 +51,22 @@ var (
 	coolDownTime = flag.Float64("coolDownTime", 1, "The cool down time after profiling in seconds")
 	loadStep     = flag.Float64("loadStep", 5, "The percentage of target RPS the benchmark loads at every step")
 	funcNames    = flag.String("funcNames", "helloworld", "Names of the functions to benchmark, separated by comma")
-	isBindSocket = flag.Bool("bindSocket", false, "Bind all VMs to socket 1 and profile one physical core only "+
-		"(only compatible with a 2x 16-core machine or above)")
+	profileCPU   = flag.Int("profileCPU", -1, "Bind only one VM to the CPU and profile the physical core only")
+	bindSocket   = flag.Int("bindSocket", -1, "Bind all VMs to socket number apart from the profile CPU")
+	latSamples   = flag.Int("latSamples", 100, "The number of latency measurements during one profiling period")
 
 	// arguments work for TestProfileSingleConfiguration only
 	vmNum     = flag.Int("vm", 2, "TestProfileSingleConfiguration: The number of VMs")
 	targetRPS = flag.Int("rps", 10, "TestProfileSingleConfiguration: The target requests per second")
 
 	// arguments work for TestProfileIncrementConfiguration only
-	vmIncrStep = flag.Int("vmIncrStep", 4, "TestProfileIncrementConfiguration: The increment VM number")
+	vmIncrStep = flag.Int("vmIncrStep", 1, "TestProfileIncrementConfiguration: The increment VM number")
 	maxVMNum   = flag.Int("maxVMNum", 100, "TestProfileIncrementConfiguration: The maximum VM number")
 
 	// profiler arguments
 	profilerLevel    = flag.Int("l", 1, "Profile level")
 	profilerInterval = flag.Uint64("I", 500, "Print count deltas every N milliseconds")
-	profilerMetrics  = flag.String("metrics", "", "Include or exclude nodes (with "+
+	profilerNodes    = flag.String("nodes", "", "Include or exclude nodes (with "+
 		"+ to add, "+
 		"-|^ to remove, "+
 		"comma separated list, wildcards allowed, "+
@@ -75,9 +76,10 @@ var (
 		"start with ! to only include specified nodes)")
 )
 
-// TestProfileIncrementConfiguration loads requests to VMs and increments VM number after loads start to violate time latency constraint.
-// It also profile counters and RPS at each step. After iteration finishes, it saves results in bench.csv under benchDir folder and
-// plots each counters which are also saved under benchDir folder
+// TestProfileIncrementConfiguration issues requests to VMs and increments VM number after loads
+// start to violate time latency threshold. It also profile counters and RPS at each step. After
+// iteration finishes, it saves results in bench.csv under *benchDir folder and plots each
+// counters which are also saved under *benchDir folder
 func TestProfileIncrementConfiguration(t *testing.T) {
 	var (
 		idx, rps      int
@@ -119,8 +121,8 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 	tearDownVMs(t, images, startVMID, isSyncOffload)
 }
 
-// TestProfileSingleConfiguration loads requests to fixed number of VMs until loads start to violate tail latency constraint
-// and then saves the results in bench.csv under benchDir folder
+// TestProfileSingleConfiguration issues requests to a fixed number of VMs until requests start
+// to violate tail latency threshold and then saves the results in bench.csv under *benchDir folder
 func TestProfileSingleConfiguration(t *testing.T) {
 	var (
 		servedTh      uint64
@@ -151,8 +153,8 @@ func TestProfileSingleConfiguration(t *testing.T) {
 	dumpMetrics(t, []map[string]float64{serveMetrics}, "bench.csv")
 }
 
-// TestColocateVMsOnSameCPU measures the differences between 2 VMs on the same core and 2VMs on different cores
-// Only works for a 2x 16-core machine or above
+// TestColocateVMsOnSameCPU measures the differences between 2 VMs on the same core and 2VMs on
+// different cores. Only campatible with 45-cores machine or more cores.
 func TestColocateVMsOnSameCPU(t *testing.T) {
 	var (
 		servedTh      uint64
@@ -174,7 +176,7 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 
 	bootVMs(t, images, 0, 2)
 
-	*isBindSocket = true
+	*profileCPU = 13
 	for i := 0; i < 2; i++ {
 		pidBytes, err := getFirecrackerPid()
 		require.NoError(t, err, "Cannot get Firecracker PID")
@@ -209,14 +211,22 @@ func TestBindSocket(t *testing.T) {
 		expected []string
 	}
 
+	log.SetLevel(log.InfoLevel)
+
+	*profileCPU = 0
+	*bindSocket = 0
+
+	socketCPUs, err := getSocketCPUs()
+	require.NoError(t, err, "Cannot get CPUs of the socket")
+	subCPUs, err := deleteProfileCore(socketCPUs)
+	require.NoError(t, err, "Cannot delete profile core from the CPU list")
+
 	cases := []testCase{
-		{vmNum: 1, expected: []string{"13"}},
-		{vmNum: 4, expected: []string{"13", "1,3,5,7,9,11,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43," +
-			"47,49,51,53,55,57,59,61,63"}},
+		{vmNum: 1, expected: []string{strconv.Itoa(*profileCPU)}},
+		{vmNum: 4, expected: []string{strconv.Itoa(*profileCPU), strings.Join(subCPUs, ",")}},
 	}
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
-	*isBindSocket = true
 
 	for _, tCase := range cases {
 		testName := fmt.Sprintf("vmNum=%d", tCase.vmNum)
@@ -230,13 +240,13 @@ func TestBindSocket(t *testing.T) {
 			cpuBytes, err := exec.Command("taskset", "-cp", strings.TrimSpace(vmPidList[0])).Output()
 			require.NoError(t, err, "Cannot get CPU affinity")
 			cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])
-			require.Equal(t, tCase.expected, cpuAffinity[0], "VM was not binded to CPU 13")
+			require.Equal(t, tCase.expected[0], cpuAffinity, "VM was not binded correctly")
 			for _, vm := range vmPidList[1:] {
 				vm = strings.TrimSpace(vm)
 				cpuBytes, err := exec.Command("taskset", "-cp", vm).Output()
 				require.NoError(t, err, "Cannot get CPU affinity")
 				cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])
-				require.Equal(t, tCase.expected, cpuAffinity[1], "VM was not binded to socket 1")
+				require.Equal(t, tCase.expected[1], cpuAffinity, "VM was not binded correctly")
 			}
 
 			tearDownVMs(t, testImage, tCase.vmNum, isSyncOffload)
@@ -252,14 +262,15 @@ func bootVMs(t *testing.T, images []string, startVMID, endVMID int) {
 		require.NoError(t, err, "Function returned error")
 	}
 
-	if *isBindSocket {
-		log.Debugf("Binding socket 1")
-		err := bindSocket()
+	if *profileCPU > -1 || *bindSocket > -1 {
+		log.Debugf("Binding VMs")
+		err := bindVMsToSocket()
 		require.NoError(t, err, "Bind Socket returned error")
 	}
 }
 
-// loadAndProfile loads from 5% to 100% of input target RPS and profile counters iteratively
+// loadAndProfile issues requests at B% to 100% of the maximum RPS (measured separately), where B is *loadStep/100
+// and collects counters iteratively
 func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncOffload bool) map[string]float64 {
 	var (
 		pmuMetric      *metrics.Metric
@@ -285,14 +296,14 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			rps                         = int64(step * float64(targetRPS))
 			totalRequests               = injectDuration * float64(rps)
 			remainingRequests           = totalRequests
-			profiler                    = profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel,
-				*profilerMetrics, "profile", *isBindSocket)
 		)
 
 		if rps <= 0 {
 			continue
 		}
-
+		profiler, err := profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel,
+			*profilerNodes, "profile", *profileCPU)
+		require.NoError(t, err, "Cannot create a profiler instance")
 		ticker := time.NewTicker(time.Duration(time.Second.Nanoseconds() / rps))
 
 		log.Infof("Current RPS: %d", rps)
@@ -301,7 +312,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		latencyCh := make(chan LatencyStat)
 		go measureTailLatency(t, vmNum, images, &isProfile, latencyCh)
 
-		err := profiler.Run()
+		err = profiler.Run()
 		require.NoError(t, err, "Run profiler returned error")
 		go configureProfiler(&isProfile, profiler)
 
@@ -322,7 +333,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		vmGroup.Wait()
 		log.Debugf("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
 		latencies := <-latencyCh
-		log.Debugf("Mean Latency: %f, Tail Latency: %f", latencies.meanLatency, latencies.tailLatency)
+		log.Debugf("Mean Latency: %.2f, Tail Latency: %.2f", latencies.meanLatency, latencies.tailLatency)
 
 		// Collect results
 		serveMetric.MetricMap[avgExecTime] = float64(invokExecTime) / float64(realRequests)
@@ -337,14 +348,14 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		log.Debugf("%d cores are recorded: %v", len(profiledCores), profiledCores)
 		require.NoError(t, err, "Stopping profiler returned error: %v", err)
 		for eventName, value := range result {
-			log.Debugf("%s: %f", eventName, value)
+			log.Debugf("%s: %.2f", eventName, value)
 			serveMetric.MetricMap[eventName] = value
 		}
-		log.Debugf("%s: %f", avgExecTime, serveMetric.MetricMap[avgExecTime])
-		log.Debugf("%s: %f", rpsPerCore, serveMetric.MetricMap[rpsPerCore])
+		log.Debugf("%s: %.2f", avgExecTime, serveMetric.MetricMap[avgExecTime])
+		log.Debugf("%s: %.2f", rpsPerCore, serveMetric.MetricMap[rpsPerCore])
 		profiler.PrintBottlenecks()
 
-		// if tail latency violates the contraints that it should be less than 5x service time,
+		// if tail latency violates the threshold that it should be less than 10x service time,
 		// it returns the metric before tail latency violation.
 		if latencies.tailLatency > threshold {
 			require.NotNil(t, pmuMetric, "The tail latency of first round is larger than the constraint")
@@ -381,7 +392,7 @@ func loadVMs(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageNa
 	}
 }
 
-// configureProfiler controls the time duration of profiling for loadVMs and profiler
+// configureProfiler controls the time duration of profiling for the loadVMs function and the profiler
 func configureProfiler(isProfile *bool, profiler *profile.Profiler) {
 	time.Sleep(time.Duration(*warmUpTime) * time.Second)
 	*isProfile = true
@@ -398,17 +409,17 @@ type LatencyStat struct {
 	tailLatency float64
 }
 
-// measureTailLatency measures tail latency by sampling 20-100 requests and loading a request at least every 500ms
+// measureTailLatency measures tail latency by sampling at least every 500ms for a VM
 func measureTailLatency(t *testing.T, vmNum int, images []string, isProfile *bool, latencyCh chan LatencyStat) {
 	var (
 		vmID         int
 		serviceTimes []float64
 		vmGroup      sync.WaitGroup
-		duraInMs     = *profileTime * 1000 / 100
+		duraInMs     = *profileTime * 1000 / float64(*latSamples)
 	)
-
 	if duraInMs*float64(vmNum) < 500 {
 		duraInMs = 500
+		log.Warnf("Too many latency samples for %d VMs, measure %.0f samples instead.", vmNum, *profileTime*1000/duraInMs)
 	}
 	duration := time.Duration(duraInMs)
 	ticker := time.NewTicker(duration * time.Millisecond)
@@ -459,7 +470,7 @@ func tearDownVMs(t *testing.T, images []string, vmNum int, isSyncOffload bool) {
 	}
 }
 
-// getImages Returns of the supported images' names
+// getImages returns of the supported images' names
 func getImages(t *testing.T) []string {
 	var (
 		images = map[string]string{
@@ -485,7 +496,7 @@ func getImages(t *testing.T) []string {
 	return result
 }
 
-// dumpMetrics writes metrics to file
+// dumpMetrics writes metrics to a file
 func dumpMetrics(t *testing.T, metrics []map[string]float64, outfile string) {
 	outFile := getOutFile(outfile)
 
@@ -586,12 +597,22 @@ func calculateRPS(vmNum int) int {
 	return vmNum * baseRPS
 }
 
-func bindSocket() error {
+func bindVMsToSocket() error {
 	var (
 		coreFree = true
-		cores    = 32
+		cores    = runtime.NumCPU()
 	)
 	pidBytes, err := getFirecrackerPid()
+	if err != nil {
+		return err
+	}
+
+	socketCPUs, err := getSocketCPUs()
+	if err != nil {
+		return err
+	}
+
+	subSocketCPUs, err := deleteProfileCore(socketCPUs)
 	if err != nil {
 		return err
 	}
@@ -600,21 +621,18 @@ func bindSocket() error {
 	for _, vm := range vmPidList {
 		vm = strings.TrimSpace(vm)
 		if cores > len(vmPidList) {
-			if coreFree {
-				log.Debugf("binding pid: %s to core 13", vm)
-				if err := bindProcessToCPU("13", vm); err != nil {
+			if coreFree && *profileCPU > -1 {
+				if err := bindProcessToCPU(strconv.Itoa(*profileCPU), vm); err != nil {
 					return err
 				}
 				coreFree = false
 			} else {
-				log.Debugf("binding pid: %s", vm)
-				if err := bindProcessToCPU("1-11:2,15-43:2,47-63:2", vm); err != nil {
+				if err := bindProcessToCPU(strings.Join(subSocketCPUs, ","), vm); err != nil {
 					return err
 				}
 			}
 		} else {
-			log.Debugf("binding pid: %s", vm)
-			if err := bindProcessToCPU("1-63:2", vm); err != nil {
+			if err := bindProcessToCPU(strings.Join(socketCPUs, ","), vm); err != nil {
 				return err
 			}
 		}
@@ -623,19 +641,61 @@ func bindSocket() error {
 	return nil
 }
 
-func bindProcessToCPU(cpuList, pid string) error {
-	cmd := exec.Command("taskset", "--all-tasks", "-cp", cpuList, pid)
-	if err := cmd.Run(); err != nil {
+func bindProcessToCPU(processors, pid string) error {
+	log.Debugf("binding pid %s to processor %s", pid, processors)
+	if err := exec.Command("taskset", "--all-tasks", "-cp", processors, pid).Run(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
+func getSocketCPUs() ([]string, error) {
+	var cpus []string
+	allCPUs, err := profile.GetAllCPUs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cpu := range allCPUs {
+		if cpu.Socket == strconv.Itoa(*bindSocket) {
+			cpus = append(cpus, cpu.Processor)
+		}
+	}
+
+	return cpus, nil
+}
+
+func deleteProfileCore(cpus []string) ([]string, error) {
+	var subList []string
+	if *profileCPU > -1 {
+		profileCore, err := profile.GetPhysicalCore(*profileCPU)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, cpuStr := range cpus {
+			cpuID, err := strconv.Atoi(cpuStr)
+			physicalCore, err := profile.GetPhysicalCore(cpuID)
+			if err != nil {
+				return nil, err
+			}
+			if physicalCore != profileCore {
+				subList = append(subList, cpuStr)
+			}
+		}
+	} else {
+		return cpus, nil
+	}
+
+	return subList, nil
+}
+
 func validateRuntimeArguments(t *testing.T) {
-	require.Truef(t, *profileTime >= 0, "Profile time = %f must be no less than 0s", *profileTime)
-	require.Truef(t, *warmUpTime >= 0, "Warm-up time = %f must be no less than 0s", *warmUpTime)
-	require.Truef(t, *coolDownTime >= 0, "Cool-down time = %f must be no less than 0s", *coolDownTime)
+	var cores = runtime.NumCPU()
+	require.Truef(t, *profileTime >= 0, "Profile time = %.2f must be no less than 0s", *profileTime)
+	require.Truef(t, *warmUpTime >= 0, "Warm-up time = %.2f must be no less than 0s", *warmUpTime)
+	require.Truef(t, *coolDownTime >= 0, "Cool-down time = %.2f must be no less than 0s", *coolDownTime)
 	require.Truef(t, *profilerInterval >= 10, "Profiler print interval = %d must be no less than 10ms", *profilerInterval)
 	require.Truef(t, *profilerLevel > 0, "Profiler level = %d must be more than 0", *profilerLevel)
 	require.Truef(t, *vmNum > 0, "VM number = %d must be more than 0", *vmNum)
@@ -643,5 +703,24 @@ func validateRuntimeArguments(t *testing.T) {
 	require.Truef(t, *vmIncrStep >= 0, "Increment step of VM number = %d must be no less than 0", *vmIncrStep)
 	require.Truef(t, *maxVMNum >= 0, "Maximum VM number = %d must be no less than 0", *maxVMNum)
 	require.Truef(t, *maxVMNum >= *vmIncrStep, "Maximum VM number = %d must be no less than increment step = %d", *maxVMNum, *vmIncrStep)
-	require.Truef(t, *loadStep > 0 && *loadStep <= 100, "Load step = %f must be between 0 and 1", *loadStep)
+	require.Truef(t, *loadStep > 0 && *loadStep <= 100, "Load step = %.2f must be between 0 and 1", *loadStep)
+	require.Truef(t, *profileCPU < cores, "profile CPUID = %d must be smaller than the number of cores %d", *profileCPU, cores)
+	sockets, err := getAvailableSocketNum()
+	require.NoError(t, err, "Cannot get the number of available nodes")
+	require.Truef(t, *bindSocket < sockets, "Socket %d must be smaller than the number of nodes %d", *bindSocket, sockets)
+	require.Truef(t, *latSamples > 0 && *latSamples < 101, "Latency samples = %d must be between 0 and 100", *latSamples)
+}
+
+func getAvailableSocketNum() (int, error) {
+	sockets := make(map[string]bool)
+	allCPUs, err := profile.GetAllCPUs()
+	if err != nil {
+		return 0, err
+	}
+
+	for _, cpu := range allCPUs {
+		sockets[cpu.Socket] = true
+	}
+
+	return len(sockets), nil
 }
