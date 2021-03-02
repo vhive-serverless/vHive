@@ -37,6 +37,13 @@ jobs:
     - name: Build
       run: go build -race -v -a ./...
 
+    - name: Install PMU-Tools
+    - uses: actions/github-script@v3
+       with:
+          script: |
+            const script = require(`${process.env.GITHUB_WORKSPACE}/scripts/install_pmutools.sh`)
+            console.log(script({github, context}))
+
     - name: Run vHive end-to-end tests
       run: make ${{ matrix.test-name }}
 
