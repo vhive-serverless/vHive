@@ -63,7 +63,7 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 	}
 	profiler.outFile = outFile + ".csv"
 
-	profiler.cmd = exec.Command("toplev.py",
+	profiler.cmd = exec.Command("/usr/local/pmu-tools/toplev",
 		"-v",
 		"--no-desc",
 		"-x", ",",
@@ -300,7 +300,7 @@ func (p *Profiler) parseMetric(lines []pmuLine) map[string]float64 {
 }
 
 func isPmuToolInstalled() bool {
-	cmd := exec.Command("toplev.py", "--version")
+	cmd := exec.Command("/usr/local/pmu-tools/toplev", "--version")
 	b, err := cmd.Output()
 	if err != nil {
 		log.Error(err)

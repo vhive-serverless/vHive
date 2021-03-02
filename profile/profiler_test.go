@@ -83,12 +83,12 @@ func TestProfilerRun(t *testing.T) {
 	p, err := NewProfiler(-1, 100, 0, 1, "", fileName, -1)
 	require.NoError(t, err, "Cannot create a profiler instance")
 	err = p.Run()
-	require.EqualError(t, err, "profiler execution time is less than 0s", "Failed creating perf stat")
+	require.EqualError(t, err, "profiler execution time is less than 0s", "Failed running profiler")
 
 	p, err = NewProfiler(0, 1, 0, 1, "", fileName, -1)
 	require.NoError(t, err, "Cannot create a profiler instance")
 	err = p.Run()
-	require.EqualError(t, err, "profiler print interval is less than 10ms", "Failed creating perf stat")
+	require.EqualError(t, err, "profiler print interval is less than 10ms", "Failed running profiler")
 
 	p, err = NewProfiler(0, 100, 0, 1, "", fileName, -1)
 	require.NoError(t, err, "Cannot create a profiler instance")

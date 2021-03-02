@@ -428,7 +428,7 @@ func measureTailLatency(t *testing.T, vmNum int, images []string, isProfile *boo
 	)
 	if duraInMs*float64(vmNum) < 500 {
 		duraInMs = 500
-		log.Warnf("Too many latency samples for %d VMs, measure %.0f samples instead.", vmNum, *profileTime*1000/duraInMs)
+		log.Warnf("Too many latency samples for %d VM, measure %.0f samples instead.", vmNum, *profileTime*1000/duraInMs)
 	}
 	duration := time.Duration(duraInMs)
 	ticker := time.NewTicker(duration * time.Millisecond)
@@ -607,7 +607,10 @@ func calculateRPS(vmNum int) int {
 }
 
 func bindVMsToSocket() error {
-	coreFree := true
+	var (
+		subCPUs  []int
+		coreFree = true
+	)
 	pidBytes, err := getFirecrackerPid()
 	if err != nil {
 		return err
@@ -623,7 +626,7 @@ func bindVMsToSocket() error {
 		return err
 	}
 
-	subCPUs, err := deleteProfileCore(cpuInfo, cpus)
+	subCPUs, err = deleteProfileCore(cpuInfo, cpus)
 	if err != nil {
 		return err
 	}
@@ -658,7 +661,7 @@ func bindProcessToCPU(pid string, processors ...int) error {
 		procStr += sep + strconv.Itoa(proc)
 		sep = ","
 	}
-	log.Debugf("binding pid %s to processor %v", pid, processors)
+	log.Infof("binding pid %s to processor %v", pid, processors)
 	if err := exec.Command("taskset", "--all-tasks", "-cp", procStr, pid).Run(); err != nil {
 		return err
 	}
@@ -667,13 +670,18 @@ func bindProcessToCPU(pid string, processors ...int) error {
 }
 
 func deleteProfileCore(cpuInfo profile.CPUInfo, cpus []int) ([]int, error) {
-	var subList []int
+	var (
+		sibling int = -1
+		subList []int
+	)
 
-	sibling, err := cpuInfo.GetSibling(*profileCPU)
-	if err != nil {
-		return nil, err
+	if *profileCPU > -1 {
+		cpu, err := cpuInfo.GetSibling(*profileCPU)
+		if err != nil {
+			return nil, err
+		}
+		sibling = cpu
 	}
-
 	for _, cpu := range cpus {
 		if *profileCPU != cpu && sibling != cpu {
 			subList = append(subList, cpu)
