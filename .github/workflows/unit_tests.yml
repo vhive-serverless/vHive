@@ -44,13 +44,8 @@ jobs:
     - uses: actions/github-script@v3
        with:
           script: |
-            const script = require(`${process.env.GITHUB_WORKSPACE}/scripts/install_pmutool.sh`)
+            const script = require(`${process.env.GITHUB_WORKSPACE}/scripts/install_pmutools.sh`)
             console.log(script({github, context}))
-
-    - name: Install linux tools package
-      uses: mstksg/get-package@v1
-      with:
-        apt-get: linux-tools-`uname -r`
 
     - name: Run tests in submodules
       env:
