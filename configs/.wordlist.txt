@@ -104,6 +104,7 @@ Lorem
 Lotfi
 MECS
 MSI
+MUX
 Mangione
 Manycore
 Margaritov
@@ -231,6 +232,7 @@ cni
 cnn
 coderay
 colocated
+colocating
 config
 configs
 congrats
