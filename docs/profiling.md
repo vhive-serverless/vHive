@@ -1,21 +1,23 @@
 # vHive profiling tool
 
-The tool focus on the performance characteristics of vHive framework. It uses a practical method, 
-[the TopDown method](https://ieeexplore.ieee.org/document/6844459), to identify potential 
-performance bottlenecks by colocating VMs on a single host. The tool issues requests to VMs in
-Round-Robin and takes metrics from the VMs, such as RPS per CPU, hardware counters, etc. If multiple
-groups of metrics are collected, then line charts can be drawn for each attribute of metrics. An example 
-is shown in the [section](###TestProfileIncrementConfiguration-function) below.
+This tool allows its users to study the performance characteristics of serverless functions
+in a highly multi-tenant environment. The tool relies on 
+[the TopDown method](https://ieeexplore.ieee.org/document/6844459), to identify performance bottlenecks
+that arise when colocating VMs on a single host. The tool issues requests to VMs in Round-Robin 
+and collects various high-level and low level metrics, including requests-per-second (RPS)
+ per core, tail latency, hardware counters, plotting the collected metrics in a set of charts.
+An example chart is shown in the [section](###TestProfileIncrementConfiguration-function).
 
 ## Methodology
 
 The tool includes the following components:
-- ***A loader function*** issues requests to vHive step by step until the RPS reaches the maximum. 
-  At each step, the function issues a percentage of the maximum RPS (e.g., 5% of the maximum RPS) 
-  and profile counters.
-- ***A latency measurement goroutine*** measures the latency by injecting requests in 
-  Round-Robin and measures runtimes of requests to compute the mean latency and the 
-  90-percentile latency.
+- ***A loader function*** issues requests to functions, running in VMs, in an open loop.
+The load on VMs increases step by step until the tail latency constraint, provided by the user,
+is violated. The tool collects the metrics from the last step of the load that satisfies
+the latency constraint.
+- ***A latency measurement goroutine*** measures the latency by injecting requests
+at a low rate in  Round-Robin and measures the service time of these requests to compute 
+the mean latency and the tail latency (90-percentile).
 - ***A bind function*** binds VMs in two ways:
   -  If profile CPU ID is set, the tool allocates only one VM to the physical core where the CPU is
      and profiler only collects counters from the core.
@@ -78,7 +80,7 @@ scripts/install_pmutool.sh
 
 ## Quick-start guide
 ### TestProfileSingleConfiguration function
-`TestProfileSingleConfiguration` is for collecting counters from a fixed number of VMs and RPS 
+`TestProfileSingleConfiguration` is for collecting the TopDown metrics from a fixed number of VMs and RPS 
 setting during the profiling period.
 
 Profile a single VM with `helloworld` image and 20 RPS at TopDown level 1 :
@@ -86,7 +88,7 @@ Profile a single VM with `helloworld` image and 20 RPS at TopDown level 1 :
 sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileSingleConfiguration \
 -args -funcNames helloworld -vm 1 -rps 20 -l 1
 ```
-Bottleneck counters are printed out with their value at each step during 
+Bottleneck counters are printed out with their values at each step during 
 execution, such as:
 ```
 ...
@@ -95,27 +97,35 @@ INFO[] Bottleneck Backend_Bound with value 75.695000
 ...
 ```
     
-To study microarchitectural bottlenecks in more detail, profile the same configuration with sub-level counters. 
-For example, the bottleneck is in the backend bound at level 1 and now we want to profile level 2 of the backend bound:
+To study microarchitectural bottlenecks in a more detail, one needs to profile the same
+configuration at the lower level. 
+For example, if the bottleneck is in the backend at level 1, one should profile level 2
+of the backend category:
 ```
 sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileSingleConfiguration \ 
 -args -funcNames helloworld -vm 1 -rps 20 -nodes '!+Backend_Bound*/2,+MUX'
 ```
 
 ### TestProfileIncrementConfiguration function
-`TestProfileIncrementConfiguration` increments the number of VMs by user-defined number until it 
-reaches the user-defined maximum. At each step, the maximum RPS is the upper bound of RPS for 
-the number of VMs at the step. For instance, there are 4 VMs with `helloworld` images. The 
-unloaded service time of the image is 1 millisecond. So, the maximum RPS is around 4000. The 
-request issue and profiling part of this function behave as same as `TestProfileSingleConfiguration`.
+`TestProfileIncrementConfiguration` increments the number of VMs by a user-defined number,
+further referred to as the increment, until the number of active VMs reaches the user-defined
+maximum. At each step, the maximum RPS is projected based on the independently measured
+average unloaded service time of the deployed functions, and the number of cores that are
+available for the VMs to run on. For instance, let us assume that there are 4 VMs running
+a `helloworld` function. The unloaded service time of this function is 1 millisecond, thus
+the maximum RPS is 4000, assuming that there are more than 4 cores in the CPU. 
+The tool would start at 5% of 4000 RPS (i.e., 200) and collect the metrics at each step,
+gradually incrementing the RPS until reaching the maximum RPS without violating
+the tail latency constraint. Then, the tool starts more VMs, according to the increment's
+value, and repeats this procedure.
 
 Profile from 1 VMs to 32 VMs (increment step is 1) with `helloworld` image at TopDown level 1:
 ```
 sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileIncrementConfiguration \ 
 -args -funcNames cnn_serving -vmIncrStep 1 -maxVMNum 32 -l 1
 ```
-Once the profiling iteration finishes, all results are saved in the `profile.csv`. Then, the plotter retrieves 
-the contents in the file and plots according to the attributes. Here is a sample image of RPS per physical core 
-as the number of VMs increases from 1 to 32:
+Once the profiling iteration finishes, all results are saved in the `profile.csv`, and
+the tool plots the TopDown metrics in a set of charts. Here is a sample image of
+RPS per physical core as the number of VMs increases from 1 to 32:
 
 ![RPS per physical core](figures/RPS-per-Core.png)
