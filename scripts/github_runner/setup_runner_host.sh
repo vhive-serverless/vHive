@@ -45,6 +45,7 @@ sudo apt-get install --yes docker-ce docker-ce-cli containerd.io >> /dev/null
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 $PWD/../install_go.sh
+$PWD/../install_pmutools.sh
 
 # install kind from ease-lab/kind
 rm -rf /tmp/kind/
