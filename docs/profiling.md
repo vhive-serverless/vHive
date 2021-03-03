@@ -115,7 +115,7 @@ available for the VMs to run on. For instance, let us assume that there are 4 VM
 a `helloworld` function. The unloaded service time of this function is 1 millisecond, thus
 the maximum RPS is 4000, assuming that there are more than 4 cores in the CPU. 
 The tool would start at 5% of 4000 RPS (i.e., 200) and collect the metrics at each step,
-gradually incrementing the RPS until reaching the maximum RPS without violating
+gradually increasing the RPS until reaching the maximum RPS without violating
 the tail latency constraint. Then, the tool starts more VMs, according to the increment's
 value, and repeats this procedure.
 
