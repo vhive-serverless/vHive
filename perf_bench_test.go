@@ -95,7 +95,7 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 	)
 	log.SetLevel(log.InfoLevel)
 
-	validateRuntimeArguments(t)
+	checkInputValidation(t)
 
 	createResultsDir()
 
@@ -141,7 +141,7 @@ func TestProfileSingleConfiguration(t *testing.T) {
 
 	log.SetLevel(log.InfoLevel)
 
-	validateRuntimeArguments(t)
+	checkInputValidation(t)
 
 	createResultsDir()
 
@@ -170,7 +170,7 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 
 	log.SetLevel(log.InfoLevel)
 
-	validateRuntimeArguments(t)
+	checkInputValidation(t)
 
 	createResultsDir()
 
@@ -305,7 +305,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			vmID, requestID             int
 			invokExecTime, realRequests int64
 			serveMetric                 = metrics.NewMetric()
-			rps                         = int64(step * float64(targetRPS))
+			rps                         = int64(step * targetRPS)
 			totalRequests               = injectDuration * float64(rps)
 			remainingRequests           = totalRequests
 		)
@@ -712,7 +712,7 @@ func cpuNum() (int, error) {
 	return len(cores), nil
 }
 
-func validateRuntimeArguments(t *testing.T) {
+func checkInputValidation(t *testing.T) {
 	cpuInfo, err := profile.GetCPUInfo()
 	require.NoError(t, err, "Cannot get CPU info")
 	require.Truef(t, *profileTime >= 0, "Profile time = %.2f must be no less than 0s", *profileTime)
@@ -731,6 +731,7 @@ func validateRuntimeArguments(t *testing.T) {
 	var cpus []int
 	if *bindSocket > -1 {
 		cpus, err = cpuInfo.SocketCPUs(*bindSocket)
+		require.NoError(t, err, "Cannot get CPU list of the socket")
 	} else {
 		cpus = cpuInfo.AllCPUs()
 	}
