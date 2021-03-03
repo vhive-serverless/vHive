@@ -73,7 +73,10 @@ jobs:
       run: sudo containerd &
 
     - name: Create k8s cluster
-      run: ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
+      run: ./scripts/cluster/create_one_node_cluster.sh stock-only 
+      
+    - name: Deploy zipkin
+      run: ./scripts/setup_zipkin.sh && sleep 2m
     
     - name: Create helloworld container
       run: KUBECONFIG=/etc/kubernetes/admin.conf kn service create helloworld-go --image gcr.io/knative-samples/helloworld-go --env TARGET="vHive CRI test"

@@ -5,7 +5,8 @@
 ### Added
 - Support for MinIO S3 storage (non-replicated, non-distributed).
 - MicroVMs can now access the internet by default using custom host interface. (default route interface is used if no argument is provided)
-- Knative serving now can be tested separately from vHive. More info [here](https://github.com/ease-lab/vhive/wiki/Debugging-Knative-functions).
+- Knative serving now can be tested separately from vHive. More info [here](./docs/developers_guide.md#Testing-stock-Knative-images).
+- Zipkin support added for tracing Knative function call requests. More info [here](./docs/developers_guide.md#Knative-request-tracing)
 
 ### Changed
 

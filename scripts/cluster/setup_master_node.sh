@@ -41,8 +41,11 @@ kubectl create secret generic -n metallb-system memberlist --from-literal=secret
 kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
 # istio
+cd $ROOT
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.7.1 TARGET_ARCH=x86_64 sh -
-./istio-1.7.1/bin/istioctl install -f $ROOT/configs/istio/istio-minimal-operator.yaml
+export PATH=$PATH:$ROOT/istio-1.7.1/bin
+sudo sh -c  "echo 'export PATH=$PATH:$ROOT/istio-1.7.1/bin' >> /etc/profile"
+istioctl install -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
 # Install KNative in the cluster
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
