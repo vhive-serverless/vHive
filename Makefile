@@ -102,7 +102,7 @@ bench:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestProfileSingleConfiguration -args -loadStep 1 && sudo rm -rf bench_results
 
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestProfileIncrementConfiguration -args -vmIncrStep 4 -maxVMNum 4 -loadStep 1 && sudo rm -rf bench_results
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestProfileIncrementConfiguration -args -vmIncrStep 4 -maxVMNum 4 -loadStep 100 && sudo rm -rf bench_results
 
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBindSocket
 	./scripts/clean_fcctr.sh

@@ -10,8 +10,8 @@ The tool is for benchmarking vHive instances by recording hardware counters, req
  (RPS) and execution time for functions running inside instances.
 
 The tool includes the following components:
-- A loader function issues requests to vHive step by step until the RPS reaches the maximum. At 
-  each step, the function issues a percentage of the maximum RPS (e.g., 5% of the maximum RPS) 
+- A loader function issues requests to vHive step by step until the RPS reaches the maximum. 
+  At each step, the function issues a percentage of the maximum RPS (e.g., 5% of the maximum RPS) 
   and profile counters. If tail latency violates 10x image unloaded service time at a step, the 
   function stops the iteration and returns the metric before it. If the function reaches the 
   maximum RPS, it returns the metric from the maximum RPS step. 
