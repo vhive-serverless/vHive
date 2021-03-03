@@ -1,39 +1,41 @@
 # vHive profiling tool
 
-The tool focus on the performance characteristics of vHive framework and identify potential 
-performance bottleneck of colocating VMs on a single host by [the TopDown method](https://ieeexplore.ieee.org/document/6844459). 
-
+The tool focus on the performance characteristics of vHive framework. It uses a practical method, 
+[the TopDown method](https://ieeexplore.ieee.org/document/6844459), to identify potential 
+performance bottlenecks by colocating VMs on a single host. The tool issues requests to VMs in
+Round-Robin and takes metrics from the VMs, such as RPS per CPU, hardware counters, etc. If multiple
+groups of metrics are collected, then line charts can be drawn for each attribute of metrics. An example 
+is shown in the [section](###TestProfileIncrementConfiguration-function) below.
 
 ## Methodology
 
-The tool is for benchmarking vHive instances by recording hardware counters, requests per second
- (RPS) and execution time for functions running inside instances.
-
 The tool includes the following components:
-- A loader function issues requests to vHive step by step until the RPS reaches the maximum. 
+- ***A loader function*** issues requests to vHive step by step until the RPS reaches the maximum. 
   At each step, the function issues a percentage of the maximum RPS (e.g., 5% of the maximum RPS) 
-  and profile counters. If tail latency violates 10x image unloaded service time at a step, the 
-  function stops the iteration and returns the metric before it. If the function reaches the 
-  maximum RPS, it returns the metric from the maximum RPS step. 
-- A single latency measurement goroutine measures the latency by injecting requests in 
+  and profile counters.
+- ***A latency measurement goroutine*** measures the latency by injecting requests in 
   Round-Robin and measures runtimes of requests to compute the mean latency and the 
   90-percentile latency.
-- The tool can bind 1 VM to a core for profiling. If profile core is set, the tool allocate only 
-  one VM to the core and profiler only collects counters from the core.
-- The tool can bind all VMs to a socket. If profile core is set at the same time, the profile core
-  must be in the socket. Then, only one VM runs on the profile core and others run on other cores.
-- A profiler invokes [toplev](https://github.com/andikleen/pmu-tools) to collect hardware counters.
+- ***A bind function*** binds VMs in two ways:
+  -  If profile CPU ID is set, the tool allocates only one VM to the physical core where the CPU is
+     and profiler only collects counters from the core.
+  -  It can bind all VMs to a socket. If profile CPU ID is set at the same time, it must be in the
+     socket. Then, only one VM runs on the profile core and others run on other cores.
+- ***A profiler*** invokes [toplev](https://github.com/andikleen/pmu-tools) to collect hardware counters.
   if profiling core is not set, it hides idle CPUs that are less than 50% of the busiest.
-- A plotter plots line charts. The X-axis is the number of VMs and Y-axis is the value of a metric.
+- ***A plotter*** plots line charts. The X-axis is the number of VMs usually and Y-axis is the value 
+  of a metric.
 
-A load step is divided into three phases: warm-up, profiling and cool-down. The warm-up period is 
-for serving the first few requests because they take a longer time for the FaaS framework to run. 
-The cool-down period is because the requests are issued in Round-Robin, there are some requests 
-that serve last on some VMs. So, the system runs more stably in the profiling period.
+In ***the loader function***, a load step is divided into three phases: warm-up, profiling and cool-down. 
+The warm-up period is for serving the first few requests because they take a longer time for the FaaS 
+framework to run. The cool-down period is because the requests are issued in Round-Robin, there are some 
+requests that serve last on some VMs. So, the system runs more stably in the profiling period.
 
 During the profile period, the loader function records the average execution time of invocations and 
-how many invocations return successfully.it also invokes profiler to profile user-defined counters. 
-After the iteration stops, completed RPS per core, average execution time and the average 
+how many invocations return successfully. The Profiler and latency measurement goroutine also measures 
+hardware counters and latencies at this phase. 
+
+If tail latency violates 10x image unloaded service time at a RPS step, the function stops the iteration and returns the metric before it. If the function reaches the maximum RPS, it returns the metric from the maximum RPS step. After the iteration stops, completed RPS per CPU, average execution time and the average 
 counters are saved in the `profile.csv`.
 
 ## Runtime Arguments
@@ -44,7 +46,7 @@ General:
 -coolDownTime FLOAT  The cool down time after profiling in seconds (default 1)
 -loadStep     INT    The percentage of target RPS the benchmark loads at every step (default 5)
 -funcNames    STR    Names of the functions to benchmark, separated by comma (default helloworld)
--profileCPU   INT    Bind only one VM to the CPU and profile the physical core only (default -1)
+-profileCPUID INT    Bind one VM to the core of the CPU and profile the core only (default -1)
 -bindSocket   INT    Bind all VMs to socket number apart from the profile CPU (default -1)
 -latSamples   INT    The number of latency measurements during one profiling period (default 100)
 
@@ -60,11 +62,11 @@ Profiler:
 -l            INT    Profile level (default 1)
 -I            UINT   Print count deltas every N milliseconds (default 500)
 -nodes        STR    Include or exclude nodes (with + to add, -|^ to remove,
-                     comma separated list, wildcards allowed [+Frontend_Bound,-Backend_Bound], 
+                     comma separated list, wildcards allowed [+Fetch_Latency,-Backend_Bound], 
                      add * to include all children/siblings [+Frontend_Bound*], 
                      add /level to specify highest level node to match [Frontend_Bound*/2], 
                      add ^ to match related siblings and metrics [^Frontend_Bound], 
-                     start with ! to only include specified nodes [!Frontend_Bound])
+                     start with ! to only include specified nodes ['!Frontend_Bound'])
 ```
 
 ## Pre-requisites
