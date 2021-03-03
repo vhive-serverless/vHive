@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2020 Plamen Petrov and EASE lab
+# Copyright (c) 2020 Shyam Jesalpura and EASE lab
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,29 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-EXTRAGOARGS:=-v -race -cover
-CTRDLOGDIR:=/tmp/ctrd-logs
-test:
-	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
-	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
-	sleep 1s
-	sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
-	sleep 1s
-	sudo ./../vhive 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
-	sleep 1s
+#!/bin/bash
 
-	./../scripts/cluster/create_one_node_cluster.sh
-	./../scripts/setup_zipkin.sh
-	sleep 2m
+# install zipkin pods
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.9/samples/addons/extras/zipkin.yaml
 
-	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
-	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
-	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
-	sleep 1m
-
-	go test ./ $(EXTRAGOARGS)
-
-test-man:
-	echo "Nothing to test manually"
-
-.PHONY: test test-man
+# enable tracing in Knative
+kubectl patch configmap/config-tracing \
+  -n knative-serving \
+  --type merge \
+  -p '{"data":{"backend":"zipkin","zipkin-endpoint":"http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans","debug":"true"}}'

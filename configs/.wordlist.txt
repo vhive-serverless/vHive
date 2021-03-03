@@ -132,6 +132,7 @@ Ipsum
 ISA
 ISCA
 ISPASS
+istioctl
 jekyll
 Jevdjic
 Joshi
@@ -165,6 +166,7 @@ Lim
 Linearizable
 linter
 LLC
+localhost
 Lorem
 Lotfi
 lsi
@@ -335,3 +337,5 @@ yaml
 yml
 YY
 Zhu
+zipkin
+Zipkin

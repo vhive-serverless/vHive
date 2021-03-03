@@ -107,6 +107,12 @@ A test that is integrated with vHive-CRI orchestrator via a programmatic interfa
 allows to analyze latency breakdown of boot-based and snapshot cold starts,
 using detailed latency and memory footprint metrics.
 
+## Knative request tracing
+Knative function call requests can now be traced & visualized using [zipkin](https://zipkin.io/). Zipkin is a distributed tracing system featuring easy collection and lookup of tracing data. Checkout [this](https://www.scalyr.com/blog/zipkin-tutorial-distributed-tracing/) for a quickstart guide.
+
+* Once the zipkin container is running, start the dashboard using `istioctl dashboard zipkin`.
+* To access requests remotely, run `ssh -L 9411:127.0.0.1:9411 <Host_IP>` for port forwarding.
+* Go to your browser and enter [localhost:9411](http://localhost:9411) for the dashboard.
 
 ## Dependencies and binaries
 
