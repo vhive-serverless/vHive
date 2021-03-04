@@ -4,7 +4,7 @@ This tool allows its users to study the performance characteristics of serverles
 in a highly multi-tenant environment. The tool relies on 
 [the TopDown method](https://ieeexplore.ieee.org/document/6844459), to identify performance bottlenecks
 that arise when colocating VMs on a single host. The tool issues requests to VMs in Round-Robin 
-and collects various high-level and low level metrics, including requests-per-second (RPS)
+and collects various high-level and low-level metrics, including requests-per-second (RPS)
  per core, tail latency, hardware counters, plotting the collected metrics in a set of charts.
 An example chart is shown in the [section](###TestProfileIncrementConfiguration-function).
 
@@ -18,11 +18,6 @@ the latency constraint.
 - ***A latency measurement goroutine*** measures the latency by injecting requests
 at a low rate in  Round-Robin and measures the service time of these requests to compute 
 the mean latency and the tail latency (90-percentile).
-- ***A bind function*** binds VMs in two ways:
-  -  If profile CPU ID is set, the tool allocates only one VM to the physical core where the CPU is
-     and profiler only collects counters from the core.
-  -  It can bind all VMs to a socket. If profile CPU ID is set at the same time, it must be in the
-     socket. Then, only one VM runs on the profile core and others run on other cores.
 - ***A profiler*** invokes [toplev](https://github.com/andikleen/pmu-tools) to collect hardware counters.
   if profiling core is not set, it hides idle CPUs that are less than 50% of the busiest.
 - ***A plotter*** plots line charts. The X-axis is the number of VMs usually and Y-axis is the value 
@@ -37,8 +32,17 @@ During the profile period, the loader function records the average execution tim
 how many invocations return successfully. The Profiler and latency measurement goroutine also measures 
 hardware counters and latencies at this phase. 
 
-If tail latency violates 10x image unloaded service time at a RPS step, the function stops the iteration and returns the metric before it. If the function reaches the maximum RPS, it returns the metric from the maximum RPS step. After the iteration stops, completed RPS per CPU, average execution time and the average 
-counters are saved in the `profile.csv`.
+If tail latency violates 10x image unloaded service time at an RPS step, the function stops the iteration 
+and returns the metric before it. If the function reaches the maximum RPS, it returns the metric from 
+the maximum RPS step. After the iteration stops, completed RPS per CPU, average execution time and the 
+average counters are saved in the `profile.csv`.
+
+For stable and accurate measurements, there are two ways of binding VMs. If all VMs are running the same image,
+only one VM needs to be measured to get rid of potential noises from global measurement. User can set profile CPU 
+ID and the tool allocates only one VM to the physical core of the CPU. Then, the profiler collects counters from the core.
+
+While the vHive is running, Other processes may interfer the framework. Therefore, all VMs can be bind to a socket. 
+If both profile CPU ID and bind socket are set, the CPU ID must be in the socket.
 
 ## Runtime Arguments
 ```
