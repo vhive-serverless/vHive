@@ -253,7 +253,22 @@ func TestBindSocket(t *testing.T) {
 				cpuBytes, err := exec.Command("taskset", "-cp", vm).Output()
 				require.NoError(t, err, "Cannot get CPU affinity")
 				cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])
-				require.Equal(t, tCase.expected[1], cpuAffinity, "VM was not binded correctly")
+				var result, sep string
+				if strings.ContainsAny(cpuAffinity, "-") {
+					subSets := strings.Split(cpuAffinity, ",")
+					for _, t := range subSets {
+						set := strings.Split(t, "-")
+						start, _ := strconv.Atoi(set[0])
+						end, _ := strconv.Atoi(set[1])
+						for i := start; i < end+1; i++ {
+							result += sep + strconv.Itoa(i)
+							sep = ","
+						}
+					}
+				} else {
+					result = cpuAffinity
+				}
+				require.Equal(t, tCase.expected[1], result, "VM was not binded correctly")
 			}
 
 			tearDownVMs(t, testImage, tCase.vmNum, isSyncOffload)
