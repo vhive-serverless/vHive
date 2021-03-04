@@ -49,8 +49,9 @@ replace (
 
 require (
 	github.com/ease-lab/vhive/ctriface v0.0.0-00010101000000-000000000000
-	github.com/sirupsen/logrus v1.7.0
-	github.com/stretchr/testify v1.6.1
+	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
+	github.com/sirupsen/logrus v1.8.0
+	github.com/stretchr/testify v1.7.0
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.0.0-00010101000000-000000000000
