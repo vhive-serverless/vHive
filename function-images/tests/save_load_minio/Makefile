@@ -24,7 +24,10 @@ all: local push_docker
 
 .PHONY: proto_gen
 proto_gen:
-	GO111MODULE="on" protoc proto/save_load.proto \
+	GO111MODULE="on" go get google.golang.org/protobuf/cmd/protoc-gen-go \
+        google.golang.org/grpc/cmd/protoc-gen-go-grpc \
+		github.com/a8m/envsubst/cmd/envsubst
+	GO111MODULE="on" PATH="$$PATH:$$(go env GOPATH)/bin" protoc proto/save_load.proto \
 	    --proto_path=./proto \
 	    --go_out=./proto_gen --go-grpc_out=./proto_gen \
 	    --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative
@@ -45,3 +48,4 @@ build_docker: proto_gen
 
 clean:
 	rm -rf bins
+	rm -rf /minio-storage

@@ -7,6 +7,7 @@
 - MicroVMs can now access the internet by default using custom host interface. (default route interface is used if no argument is provided)
 - Knative serving now can be tested separately from vHive. More info [here](./docs/developers_guide.md#Testing-stock-Knative-images).
 - Zipkin support added for tracing Knative function call requests. More info [here](./docs/developers_guide.md#Knative-request-tracing)
+- added support for MinIO object store. More info [here](./docs/developers_guide.md#MinIO-S3-service)
 
 ### Changed
 
