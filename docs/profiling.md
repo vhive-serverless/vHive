@@ -41,7 +41,7 @@ For stable and accurate measurements, there are two ways of binding VMs. If all 
 only one VM needs to be measured to get rid of potential noises from global measurement. User can set profile CPU 
 ID and the tool allocates only one VM to the physical core of the CPU. Then, the profiler collects counters from the core.
 
-While the vHive is running, Other processes may interfer the framework. Therefore, all VMs can be bind to a socket. 
+While the vHive is running, Other processes may interfere the framework. Therefore, all VMs can be bind to a socket. 
 If both profile CPU ID and bind socket are set, the CPU ID must be in the socket.
 
 ## Runtime Arguments
@@ -71,7 +71,7 @@ Profiler:
                      comma separated list, wildcards allowed [+Fetch_Latency,-Backend_Bound], 
                      add * to include all children/siblings [+Frontend_Bound*], 
                      add /level to specify highest level node to match [Frontend_Bound*/2], 
-                     add ^ to match related siblings and metrics [^Frontend_Bound], 
+                     add ^ to match related siblings and metrics [+Frontend_Bound^], 
                      start with ! to only include specified nodes ['!Frontend_Bound'])
 ```
 

@@ -76,7 +76,7 @@ var (
 		"comma separated list, wildcards allowed [+Fetch_Latency,-Backend_Bound], "+
 		"add * to include all children/siblings [+Frontend_Bound*], "+
 		"add /level to specify highest level node to match [+Frontend_Bound*/2], "+
-		"add ^ to match related siblings and metrics [^Frontend_Bound], "+
+		"add ^ to match related siblings and metrics [+Frontend_Bound^], "+
 		"start with ! to only include specified nodes ['!Frontend_Bound'])")
 )
 
@@ -483,13 +483,12 @@ func measureTailLatency(t *testing.T, vmNum int, images []string, latencyCh chan
 				}(idx)
 				idx = idx + 1
 			case <-done:
+				ticker.Stop()
 				return
-
 			}
 		}
 	}()
 	time.Sleep(time.Duration(*profileTime) * time.Second)
-	ticker.Stop()
 	done <- true
 	vmGroup.Wait()
 	log.Info(times)
@@ -502,7 +501,6 @@ func measureTailLatency(t *testing.T, vmNum int, images []string, latencyCh chan
 		meanLatency: mean,
 		tailLatency: percentile,
 	}
-	return
 }
 
 // tearDownVMs removes instances from 0 to input VM number
