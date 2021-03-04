@@ -8,6 +8,7 @@
 - Knative serving now can be tested separately from vHive. More info [here](./docs/developers_guide.md#Testing-stock-Knative-images).
 - Zipkin support added for tracing Knative function call requests. More info [here](./docs/developers_guide.md#Knative-request-tracing)
 - added support for MinIO object store. More info [here](./docs/developers_guide.md#MinIO-S3-service)
+- Added an automated tail-latency-aware profiler that collects the metrics for [TopDown](https://ieeexplore.ieee.org/document/6844459) characterization from Intel.
 
 ### Changed
 
@@ -23,7 +24,6 @@
 - Extended the developers guide on the modes of operation, performance analysis and vhive development environment inside containers.
 - Added a slide deck of Dmitrii's talk at Amazon.
 - Added a commit linter and a spell checker for `*.md` files.
-- Added an automated tail-latency-aware profiler that collects the metrics for [TopDown](https://ieeexplore.ieee.org/document/6844459) characterization from Intel.
 
 ### Changed
 

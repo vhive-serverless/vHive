@@ -210,6 +210,7 @@ WOOT
 WoNDP
 YY
 Zhu
+Zipkin
 al
 amna
 analytics
@@ -273,6 +274,7 @@ inproceedings
 integ
 invoker
 io
+istioctl
 jekyll
 jpg
 json
@@ -288,6 +290,7 @@ latencies
 ldquo
 linter
 loadStep
+localhost
 lsi
 lsquo
 margaritov
@@ -320,6 +323,7 @@ pre
 preconfigured
 priyank
 profileCPU
+profileCPUID
 profileTime
 profiler
 ps
@@ -369,3 +373,4 @@ xml
 xyz
 yaml
 yml
+zipkin

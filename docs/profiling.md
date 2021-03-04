@@ -29,7 +29,7 @@ framework to run. The cool-down period is because the requests are issued in Rou
 requests that serve last on some VMs. So, the system runs more stably in the profiling period.
 
 During the profile period, the loader function records the average execution time of invocations and 
-how many invocations return successfully. The Profiler and latency measurement goroutine also measures 
+how many invocations return successfully. The Profiler and latency measurement goroutine also measure 
 hardware counters and latencies at this phase. 
 
 If tail latency violates 10x image unloaded service time at an RPS step, the function stops the iteration 
@@ -38,11 +38,13 @@ the maximum RPS step. After the iteration stops, completed RPS per CPU, average 
 average counters are saved in the `profile.csv`.
 
 For stable and accurate measurements, there are two ways of binding VMs. If all VMs are running the same image,
-only one VM needs to be measured to get rid of potential noises from global measurement. User can set profile CPU 
+only one VM needs to be measured to get rid of potential noises from the global measurement. User can set profile CPU 
 ID and the tool allocates only one VM to the physical core of the CPU. Then, the profiler collects counters from the core.
 
-While the vHive is running, Other processes may interfere the framework. Therefore, all VMs can be bind to a socket. 
-If both profile CPU ID and bind socket are set, the CPU ID must be in the socket.
+While the tool is running, one may want to bind the VMs to a single socket to exclude
+the interference of the processes that are running on the same CPU, e.g.,
+the loader functionality. If both parameters, `-profileCPUID` and `-bindSocket`,
+are defined, the former should point to a core in the same socket.
 
 ## Runtime Arguments
 ```
@@ -101,7 +103,7 @@ INFO[] Bottleneck Backend_Bound with value 75.695000
 ...
 ```
     
-To study microarchitectural bottlenecks in a more detail, one needs to profile the same
+To study microarchitectural bottlenecks in more detail, one needs to profile the same
 configuration at the lower level. 
 For example, if the bottleneck is in the backend at level 1, one should profile level 2
 of the backend category:
@@ -114,7 +116,7 @@ sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileSingleConfigura
 `TestProfileIncrementConfiguration` increments the number of VMs by a user-defined number,
 further referred to as the increment, until the number of active VMs reaches the user-defined
 maximum. At each step, the maximum RPS is projected based on the independently measured
-average unloaded service time of the deployed functions, and the number of cores that are
+average unloaded service time of the deployed functions and the number of cores that are
 available for the VMs to run on. For instance, let us assume that there are 4 VMs running
 a `helloworld` function. The unloaded service time of this function is 1 millisecond, thus
 the maximum RPS is 4000, assuming that there are more than 4 cores in the CPU. 
