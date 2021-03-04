@@ -27,6 +27,7 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -56,6 +57,7 @@ var (
 	// must be in the socket. Then, only one VM runs on the *profileCPUID and others run on other cores.
 	bindSocket = flag.Int("bindSocket", -1, "Bind all VMs to socket number apart from the profile CPU")
 	latSamples = flag.Int("latSamples", 100, "The number of latency measurements during one profiling period")
+	isTest     = flag.Bool("test", false, "Tail latency threshold is larger if test is true")
 
 	// arguments work for TestProfileSingleConfiguration only
 	vmNum     = flag.Int("vm", 2, "TestProfileSingleConfiguration: The number of VMs")
@@ -280,10 +282,10 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 	var (
 		pmuMetric      *metrics.Metric
 		vmGroup        sync.WaitGroup
-		isProfile      int32 = 0
-		stepSize             = *loadStep / 100.
-		threshold            = 10 * getUnloadedServiceTime() // for the constraint of tail latency
-		injectDuration       = *warmUpTime + *profileTime + *coolDownTime
+		threshold      float64 // for the constraint of tail latency
+		isProfile      int32   = 0
+		stepSize               = float64(*loadStep) / 100
+		injectDuration         = *warmUpTime + *profileTime + *coolDownTime
 	)
 
 	// the constants for metric names
@@ -292,22 +294,27 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		rpsPerCPU   = "RPS-per-CPU"
 	)
 
+	if *isTest {
+		threshold = math.MaxInt64 * getUnloadedServiceTime()
+	} else {
+		threshold = 10 * getUnloadedServiceTime()
+	}
+
 	cpus, err := cpuNum()
 	require.NoError(t, err, "Cannot get the number of CPU")
-
 	for step := stepSize; step < 1+stepSize; step += stepSize {
 		var (
 			vmID, requestID             int
 			invokExecTime, realRequests int64
 			serveMetric                 = metrics.NewMetric()
-			rps                         = int64(step * targetRPS)
+			rps                         = int64(step * float64(targetRPS))
 			totalRequests               = injectDuration * float64(rps)
 			remainingRequests           = totalRequests
 			latencyCh                   = make(chan LatencyStat)
 			profileCh                   = make(chan bool)
 		)
-
 		if rps <= 0 {
+			log.Debugf("Current RPS %d is less than 0. Skip this step", rps)
 			continue
 		}
 		profiler, err := profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel,
@@ -367,7 +374,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		// if tail latency violates the threshold that it should be less than 10x service time,
 		// it returns the metric before tail latency violation.
 		if latencies.tailLatency > threshold {
-			require.NotNil(t, pmuMetric, "The tail latency of first round is larger than the constraint")
+			require.NotNil(t, pmuMetric, "The tail latency of first round %.0f is larger than the threshold %.0f", latencies.tailLatency, threshold)
 			return pmuMetric.MetricMap
 		}
 
@@ -472,7 +479,7 @@ func measureTailLatency(t *testing.T, vmNum int, images []string, latencyCh chan
 	vmGroup.Wait()
 	log.Info(times)
 	data := stats.LoadRawData(times)
-	mean, err := stats.Percentile(data, 50)
+	mean, err := stats.Mean(data)
 	require.NoError(t, err, "Compute mean returned error")
 	percentile, err := stats.Percentile(data, 90)
 	require.NoError(t, err, "Compute 90 percentile returned error")
