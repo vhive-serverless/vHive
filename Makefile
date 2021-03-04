@@ -53,6 +53,11 @@ test:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
 	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test -short $(EXTRAGOARGS) -run TestProfileSingleConfiguration -args -test -loadStep 100 && sudo rm -rf bench_results
+	sudo env "PATH=$(PATH)" go test -short $(EXTRAGOARGS) -run TestProfileIncrementConfiguration -args -test -vmIncrStep 4 -maxVMNum 4 -loadStep 100 && sudo rm -rf bench_results
+	sudo env "PATH=$(PATH)" go test -short $(EXTRAGOARGS) -run TestBindSocket
+	./scripts/clean_fcctr.sh
 
 test-man:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_man_travis.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_man_travis.err &
@@ -97,14 +102,6 @@ bench:
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHLAZY) -benchDirTest configLazy -metricsTest -funcName helloworld && sudo rm -rf configLazy
-	./scripts/clean_fcctr.sh
-
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestProfileSingleConfiguration -args -loadStep 100 && sudo rm -rf bench_results
-
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestProfileIncrementConfiguration -args -vmIncrStep 4 -maxVMNum 4 -loadStep 100 && sudo rm -rf bench_results
-
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBindSocket
 	./scripts/clean_fcctr.sh
 
 test-man-bench:
