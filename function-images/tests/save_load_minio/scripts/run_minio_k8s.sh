@@ -48,7 +48,7 @@ mc mb myminio/mybucket
 
 echo Deploying the gRPC server as a function
 kn service apply \
-    minio_test -f $DIR/../../../configs/knative_workloads/tests/minio.yaml \
+    minio-test -f $DIR/../../../../configs/knative_workloads/tests/minio.yaml \
     --concurrency-target 1 --scale=1
 
 $DIR/../bins/client -d \
