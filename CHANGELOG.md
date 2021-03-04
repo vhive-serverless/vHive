@@ -23,6 +23,7 @@
 - Extended the developers guide on the modes of operation, performance analysis and vhive development environment inside containers.
 - Added a slide deck of Dmitrii's talk at Amazon.
 - Added a commit linter and a spell checker for `*.md` files.
+- Added an automated tail-latency-aware profiler that collects the metrics for [TopDown](https://ieeexplore.ieee.org/document/6844459) characterization from Intel.
 
 ### Changed
 
