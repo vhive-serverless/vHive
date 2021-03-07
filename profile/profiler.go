@@ -51,7 +51,7 @@ type Profiler struct {
 }
 
 // NewProfiler returns a new instance of profiler
-func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string, cpu int) (*Profiler, error) {
+func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string, socket, cpu int) (*Profiler, error) {
 	profiler := new(Profiler)
 	profiler.execTime = executionTime
 	profiler.interval = printInterval
@@ -82,6 +82,9 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		}
 		profiler.cmd.Args = append(profiler.cmd.Args, "--core", core)
 	} else {
+		if socket > -1 {
+			profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S"+strconv.Itoa(socket))
+		}
 		// hide idle CPUs that are <50% of busiest.
 		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "50")
 	}
@@ -427,6 +430,10 @@ func (c *CPUInfo) GetSibling(processor int) (int, error) {
 	}
 
 	core := c.sockets[proc.socket].cores[proc.core]
+	if len(core.processors) == 1 {
+		return -1, nil
+	}
+
 	if core.processors[0] == processor {
 		return core.processors[1], nil
 	}
@@ -437,7 +444,7 @@ func (c *CPUInfo) GetSibling(processor int) (int, error) {
 // SocketCPUs returns a list of processors of the socket
 func (c *CPUInfo) SocketCPUs(socket int) ([]int, error) {
 	var result []int
-	if socket >= len(c.sockets) {
+	if socket >= len(c.sockets) || socket < 0 {
 		return nil, errors.New("socket ID is larger than the number of sockets")
 	}
 

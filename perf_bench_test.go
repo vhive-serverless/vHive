@@ -181,7 +181,9 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 	require.NoError(t, err, "Cannot get CPU info")
 	sibling, err := cpuInfo.GetSibling(*profileCPUID)
 	require.NoError(t, err, "Cannot run taskset")
-	require.NotEqual(t, sibling, -1, "SMT is off. Cannot allocate two VMs on a single core")
+	if sibling < 0 {
+		sibling = *profileCPUID
+	}
 	cpuList := []int{*profileCPUID, sibling}
 	pidBytes, err := getFirecrackerPid()
 	require.NoError(t, err, "Cannot get Firecracker PID")
@@ -223,9 +225,7 @@ func TestBindSocket(t *testing.T) {
 	require.NoError(t, err, "Cannot get CPU info")
 	socketCPUs, err := cpuInfo.SocketCPUs(*bindSocket)
 	require.NoError(t, err, "Cannot get CPUs of the socket")
-	subCPUs, err := getCoresExceptProfiled(cpuInfo, socketCPUs)
-	require.NoError(t, err, "Cannot delete profile core from the CPU list")
-	for _, proc := range subCPUs {
+	for _, proc := range socketCPUs {
 		procStr += sep + strconv.Itoa(proc)
 		sep = ","
 	}
@@ -287,7 +287,7 @@ func bootVMs(t *testing.T, images []string, startVMID, endVMID int) {
 
 	if *profileCPUID > -1 || *bindSocket > -1 {
 		log.Debugf("Binding VMs")
-		err := bindVMsToSocket()
+		err := bindVMs()
 		require.NoError(t, err, "Bind Socket returned error")
 	}
 }
@@ -641,9 +641,9 @@ func calculateRPS(vmNum int) int {
 	return vmNum * baseRPS
 }
 
-func bindVMsToSocket() error {
+func bindVMs() error {
 	var (
-		subCPUs  []int
+		cpus     []int
 		coreFree = true
 	)
 	pidBytes, err := getFirecrackerPid()
@@ -656,30 +656,23 @@ func bindVMsToSocket() error {
 		return err
 	}
 
-	cpus, err := cpuInfo.SocketCPUs(*bindSocket)
-	if err != nil {
-		return err
-	}
-
-	subCPUs, err = getCoresExceptProfiled(cpuInfo, cpus)
-	if err != nil {
-		return err
+	if *bindSocket > -1 {
+		cpus, err = cpuInfo.SocketCPUs(*bindSocket)
+		if err != nil {
+			return err
+		}
+	} else {
+		cpus = cpuInfo.AllCPUs()
 	}
 
 	vmPidList := strings.Split(string(pidBytes), " ")
 	for _, vm := range vmPidList {
 		vm = strings.TrimSpace(vm)
-		if len(cpus) > len(vmPidList) {
-			if coreFree && *profileCPUID > -1 {
-				if err := bindProcessToCPU(vm, *profileCPUID); err != nil {
-					return err
-				}
-				coreFree = false
-			} else {
-				if err := bindProcessToCPU(vm, subCPUs...); err != nil {
-					return err
-				}
+		if len(cpus) > len(vmPidList) && coreFree && *profileCPUID > -1 {
+			if err := bindProcessToCPU(vm, *profileCPUID); err != nil {
+				return err
 			}
+			coreFree = false
 		} else {
 			if err := bindProcessToCPU(vm, cpus...); err != nil {
 				return err
@@ -702,28 +695,6 @@ func bindProcessToCPU(pid string, processors ...int) error {
 	}
 
 	return nil
-}
-
-func getCoresExceptProfiled(cpuInfo profile.CPUInfo, cpus []int) ([]int, error) {
-	var (
-		sibling int = -1
-		subList []int
-	)
-
-	if *profileCPUID > -1 {
-		cpu, err := cpuInfo.GetSibling(*profileCPUID)
-		if err != nil {
-			return nil, err
-		}
-		sibling = cpu
-	}
-	for _, cpu := range cpus {
-		if *profileCPUID != cpu && sibling != cpu {
-			subList = append(subList, cpu)
-		}
-	}
-
-	return subList, nil
 }
 
 // cpuNum returns the total number of CPUs of the host if *bindSocket is not set,
@@ -757,7 +728,7 @@ func checkInputValidation(t *testing.T) {
 	require.Truef(t, *vmIncrStep >= 0, "Increment step of VM number = %d must be no less than 0", *vmIncrStep)
 	require.Truef(t, *maxVMNum >= 0, "Maximum VM number = %d must be no less than 0", *maxVMNum)
 	require.Truef(t, *maxVMNum >= *vmIncrStep, "Maximum VM number = %d must be no less than increment step = %d", *maxVMNum, *vmIncrStep)
-	require.Truef(t, *loadStep > 0 && *loadStep <= 100, "Load step = %d must be between 0 and 100", *loadStep)
+	require.Truef(t, *loadStep > 0 && *loadStep <= 100, "Load step = %d must be between 0% and 100%", *loadStep)
 	sockets := cpuInfo.NumSocket()
 	require.Truef(t, *bindSocket < sockets, "Socket %d must be smaller than the number of nodes %d", *bindSocket, sockets)
 	var cpus []int
