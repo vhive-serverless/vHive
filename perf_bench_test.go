@@ -181,6 +181,7 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 	require.NoError(t, err, "Cannot get CPU info")
 	sibling, err := cpuInfo.GetSibling(*profileCPUID)
 	require.NoError(t, err, "Cannot run taskset")
+	require.NotEqual(t, sibling, -1, "SMT is off. Cannot allocate two VMs on a single core")
 	cpuList := []int{*profileCPUID, sibling}
 	pidBytes, err := getFirecrackerPid()
 	require.NoError(t, err, "Cannot get Firecracker PID")
@@ -333,7 +334,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			continue
 		}
 		profiler, err := profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel,
-			*profilerNodes, "profile", *profileCPUID)
+			*profilerNodes, "profile", *bindSocket, *profileCPUID)
 		require.NoError(t, err, "Cannot create a profiler instance")
 		ticker := time.NewTicker(time.Duration(time.Second.Nanoseconds() / rps))
 
@@ -361,9 +362,9 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		}
 		ticker.Stop()
 		vmGroup.Wait()
-		log.Infof("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
+		log.Debugf("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
 		latencies := <-latencyCh
-		log.Infof("Mean Latency: %.2f, Tail Latency: %.2f", latencies.meanLatency, latencies.tailLatency)
+		log.Debugf("Mean Latency: %.2f, Tail Latency: %.2f", latencies.meanLatency, latencies.tailLatency)
 		<-profileCh
 
 		// Collect results
@@ -375,9 +376,9 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			serveMetric.MetricMap[rpsPerCPU] /= float64(cpus)
 		}
 		result, err := profiler.GetResult()
+		require.NoError(t, err, "Stopping profiler returned error: %v", err)
 		profiledCores := profiler.GetCores()
 		log.Debugf("%d cores are recorded: %v", len(profiledCores), profiledCores)
-		require.NoError(t, err, "Stopping profiler returned error: %v", err)
 		for eventName, value := range result {
 			log.Debugf("%s: %.2f", eventName, value)
 			serveMetric.MetricMap[eventName] = value
@@ -401,13 +402,14 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 
 // loadVMs load requests to VMs every second and records completed requests and exection time
 func loadVMs(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageName string,
-	isSyncOffload bool, isProfile *int32, execTime, realRequests *int64) {
+	isSyncOffload bool, isProfile *int32, totalTime, realRequests *int64) {
 	defer vmGroup.Done()
 
 	vmIDString := strconv.Itoa(vmID)
 	log.Debugf("VM %s: requestID %d", vmIDString, requestID)
 	tStart := time.Now()
 	resp, _, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
+	execTime := time.Since(tStart).Milliseconds()
 	require.Equal(t, resp.IsColdStart, false)
 	if err == nil {
 		if resp.Payload != "Hello, replay_response!" {
@@ -415,8 +417,8 @@ func loadVMs(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageNa
 		}
 		if atomic.LoadInt32(isProfile) != 0 {
 			atomic.AddInt64(realRequests, 1)
-			atomic.AddInt64(execTime, time.Since(tStart).Milliseconds())
-			log.Debugf("VM %s: requestID %d completed in %d milliseconds", vmIDString, requestID, time.Since(tStart).Milliseconds())
+			atomic.AddInt64(totalTime, execTime)
+			log.Debugf("VM %s: requestID %d completed in %d milliseconds", vmIDString, requestID, execTime)
 		}
 	} else {
 		log.Debugf("VM %s: Function returned error %v", vmIDString, err)
@@ -491,7 +493,6 @@ func measureTailLatency(t *testing.T, vmNum int, images []string, latencyCh chan
 	time.Sleep(time.Duration(*profileTime) * time.Second)
 	done <- true
 	vmGroup.Wait()
-	log.Info(times)
 	data := stats.LoadRawData(times)
 	mean, err := stats.Mean(data)
 	require.NoError(t, err, "Compute mean returned error")
@@ -695,7 +696,7 @@ func bindProcessToCPU(pid string, processors ...int) error {
 		procStr += sep + strconv.Itoa(proc)
 		sep = ","
 	}
-	log.Infof("binding pid %s to processor %v", pid, processors)
+	log.Debugf("binding pid %s to processor %v", pid, processors)
 	if err := exec.Command("taskset", "--all-tasks", "-cp", procStr, pid).Run(); err != nil {
 		return err
 	}
@@ -756,7 +757,7 @@ func checkInputValidation(t *testing.T) {
 	require.Truef(t, *vmIncrStep >= 0, "Increment step of VM number = %d must be no less than 0", *vmIncrStep)
 	require.Truef(t, *maxVMNum >= 0, "Maximum VM number = %d must be no less than 0", *maxVMNum)
 	require.Truef(t, *maxVMNum >= *vmIncrStep, "Maximum VM number = %d must be no less than increment step = %d", *maxVMNum, *vmIncrStep)
-	require.Truef(t, *loadStep > 0 && *loadStep <= 100, "Load step = %.2f must be between 0 and 1", *loadStep)
+	require.Truef(t, *loadStep > 0 && *loadStep <= 100, "Load step = %d must be between 0 and 100", *loadStep)
 	sockets := cpuInfo.NumSocket()
 	require.Truef(t, *bindSocket < sockets, "Socket %d must be smaller than the number of nodes %d", *bindSocket, sockets)
 	var cpus []int
