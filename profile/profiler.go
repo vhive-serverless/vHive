@@ -83,6 +83,7 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		profiler.cmd.Args = append(profiler.cmd.Args, "--core", core)
 	} else {
 		if socket > -1 {
+			// monitor the input socket only
 			profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S"+strconv.Itoa(socket))
 		}
 		// hide idle CPUs that are <50% of busiest.
@@ -431,7 +432,7 @@ func (c *CPUInfo) GetSibling(processor int) (int, error) {
 
 	core := c.sockets[proc.socket].cores[proc.core]
 	if len(core.processors) == 1 {
-		return -1, nil
+		return -1, errors.New("processor does not have a sibling")
 	}
 
 	if core.processors[0] == processor {
@@ -445,7 +446,7 @@ func (c *CPUInfo) GetSibling(processor int) (int, error) {
 func (c *CPUInfo) SocketCPUs(socket int) ([]int, error) {
 	var result []int
 	if socket >= len(c.sockets) || socket < 0 {
-		return nil, errors.New("socket ID is larger than the number of sockets")
+		return nil, errors.New("socket ID is out of bound")
 	}
 
 	for _, core := range c.sockets[socket].cores {
