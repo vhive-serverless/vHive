@@ -32,3 +32,10 @@ if [ 64 -eq ${#CONTAINERID} ]; then
 fi
 
 /create_devmapper.sh
+
+sudo apt-get install linux-tools-`uname -r` -y
+
+if [ ! -d "/usr/local/pmu-tools" ]; then
+  ln -s /usr/bin/python3 /usr/bin/python
+  /install_pmutools.sh
+fi

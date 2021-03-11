@@ -80,8 +80,10 @@ Profiler:
 ## Pre-requisites
 At the root of this repository, please run the following script to install the essential tools
 for profiling and binding.
-```
-scripts/install_pmutool.sh 
+```bash
+scripts/install_pmutool.sh
+# disabling nmi watchdog to minimize multiplexing
+sudo echo 0 > /proc/sys/kernel/nmi_watchdog
 ```
 
 ## Quick-start guide

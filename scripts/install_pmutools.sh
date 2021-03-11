@@ -24,14 +24,12 @@
 
 set -e
 
-sudo apt-get install linux-tools-`uname -r` -y
-sudo apt install numactl
+sudo apt-get install numactl \
+    linux-tools-`uname -r`  -y
 
 sudo git clone https://github.com/andikleen/pmu-tools /usr/local/pmu-tools
 
 sudo sysctl -w kernel.perf_event_paranoid=-1
-export PATH=$PATH:/usr/local/pmu-tools
-sudo sh -c  "echo 'export PATH=\$PATH:/usr/local/pmu-tools' >> /etc/profile"
 
 # first run, download essential files
-toplev --print > /dev/null
+/usr/local/pmu-tools/toplev --print > /dev/null

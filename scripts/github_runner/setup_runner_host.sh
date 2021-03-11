@@ -45,7 +45,6 @@ sudo apt-get install --yes docker-ce docker-ce-cli containerd.io >> /dev/null
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 $PWD/../install_go.sh
-$PWD/../install_pmutools.sh
 
 # install kind from ease-lab/kind
 rm -rf /tmp/kind/
@@ -56,6 +55,9 @@ sudo mv kind /usr/local/bin/
 
 sudo usermod -aG docker $USER
 newgrp docker
+
+# Allow profiling using Perf / PMU tools
+sudo sysctl -w kernel.perf_event_paranoid=-1
 
 #setup crontab for nightly reboots
 TMPFILE=$(mktemp)

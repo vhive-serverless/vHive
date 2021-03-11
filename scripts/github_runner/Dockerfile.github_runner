@@ -45,6 +45,7 @@ RUN apt-get update && \
     bc \
     dmsetup \
     gnupg-agent \
+    numactl \
     software-properties-common && \
     sudo sysctl -w net.ipv4.conf.all.forwarding=1 && \
     sudo sysctl net.ipv4.ip_forward=1 && \
@@ -56,6 +57,7 @@ RUN apt-get update && \
 
 COPY scripts/github_runner/setup_runner.sh /setup_runner.sh
 COPY scripts/create_devmapper.sh /create_devmapper.sh
+COPY scripts/install_pmutools.sh /install_pmutools.sh
 COPY bin/firecracker /usr/local/bin/
 COPY bin/jailer /usr/local/bin/
 COPY bin/containerd-shim-aws-firecracker /usr/local/bin/
