@@ -308,6 +308,7 @@ multithreaded
 namespaces
 nd
 neuroevolution
+nmi
 noicon
 nr
 orchestrator
@@ -322,6 +323,7 @@ pragmas
 pre
 preconfigured
 priyank
+proc
 profileCPU
 profileCPUID
 profileTime
@@ -348,6 +350,7 @@ snapshotting
 stateful
 sudo
 svc
+sys
 th
 toc
 toml
