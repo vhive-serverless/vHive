@@ -180,8 +180,9 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 	cpuInfo, err := profile.GetCPUInfo()
 	require.NoError(t, err, "Cannot get CPU info")
 	sibling, err := cpuInfo.GetSibling(*profileCPUID)
-	require.NoError(t, err, "Cannot run taskset")
-	if sibling < 0 {
+	require.EqualErrorf(t, err, "processor does not have a sibling", "Invalid input processor ID")
+	// SMT is off, set sibling to its own
+	if err != nil {
 		sibling = *profileCPUID
 	}
 	cpuList := []int{*profileCPUID, sibling}
@@ -306,8 +307,9 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 
 	// the constants for metric names
 	const (
-		avgExecTime = "average-execution-time"
-		rpsPerCPU   = "RPS-per-CPU"
+		avgExecTime = "average_execution_time"
+		rpsPerCPU   = "RPS_per_CPU"
+		rpsHost     = "Overall_RPS"
 	)
 
 	if *isTest {
@@ -318,6 +320,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 
 	cpus, err := cpuNum()
 	require.NoError(t, err, "Cannot get the number of CPU")
+	log.Debugf("CPU number is %d", cpus)
 	for step := stepSize; step < 1+stepSize; step += stepSize {
 		var (
 			vmID, requestID             int
@@ -369,11 +372,11 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 
 		// Collect results
 		serveMetric.MetricMap[avgExecTime] = float64(invokExecTime) / float64(realRequests)
-		serveMetric.MetricMap[rpsPerCPU] = float64(realRequests) / (profiler.GetCoolDownTime() - profiler.GetWarmUpTime())
+		serveMetric.MetricMap[rpsHost] = float64(realRequests) / (profiler.GetCoolDownTime() - profiler.GetWarmUpTime())
 		if cpus > vmNum {
-			serveMetric.MetricMap[rpsPerCPU] /= float64(vmNum)
+			serveMetric.MetricMap[rpsPerCPU] = serveMetric.MetricMap[rpsHost] / float64(vmNum)
 		} else {
-			serveMetric.MetricMap[rpsPerCPU] /= float64(cpus)
+			serveMetric.MetricMap[rpsPerCPU] = serveMetric.MetricMap[rpsHost] / float64(cpus)
 		}
 		result, err := profiler.GetResult()
 		require.NoError(t, err, "Stopping profiler returned error: %v", err)
@@ -384,6 +387,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			serveMetric.MetricMap[eventName] = value
 		}
 		log.Debugf("%s: %.2f", avgExecTime, serveMetric.MetricMap[avgExecTime])
+		log.Debugf("%s: %.2f", rpsHost, serveMetric.MetricMap[rpsHost])
 		log.Debugf("%s: %.2f", rpsPerCPU, serveMetric.MetricMap[rpsPerCPU])
 		profiler.PrintBottlenecks()
 
@@ -641,6 +645,9 @@ func calculateRPS(vmNum int) int {
 	return vmNum * baseRPS
 }
 
+// bindVMs binds VMs to *bindSocket and/or binds a VM to *profileCPUID.
+// If *bindSocket is set, it binds all VMs to the socket. If *profileCPUID
+// is set, it always pin a VM to the CPU for profiler to measure its physical core.
 func bindVMs() error {
 	var (
 		cpus     []int
