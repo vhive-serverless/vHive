@@ -288,7 +288,7 @@ func bootVMs(t *testing.T, images []string, startVMID, endVMID int) {
 
 	if *profileCPUID > -1 || *bindSocket > -1 {
 		log.Debugf("Binding VMs")
-		err := bindVMs()
+		err := bindVMs(*bindSocket, *profileCPUID)
 		require.NoError(t, err, "Bind Socket returned error")
 	}
 }
@@ -307,7 +307,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 
 	// the constants for metric names
 	const (
-		avgExecTime = "average_execution_time"
+		avgExecTime = "Average_execution_time"
 		rpsPerCPU   = "RPS_per_CPU"
 		rpsHost     = "Overall_RPS"
 	)
@@ -336,7 +336,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 			log.Debugf("Current RPS %d is less than 0. Skip this step", rps)
 			continue
 		}
-		profiler, err := profile.NewProfiler(injectDuration, *profilerInterval, vmNum, *profilerLevel,
+		profiler, err := profile.NewProfiler(injectDuration, *profilerInterval, *profilerLevel,
 			*profilerNodes, "profile", *bindSocket, *profileCPUID)
 		require.NoError(t, err, "Cannot create a profiler instance")
 		ticker := time.NewTicker(time.Duration(time.Second.Nanoseconds() / rps))
@@ -645,14 +645,12 @@ func calculateRPS(vmNum int) int {
 	return vmNum * baseRPS
 }
 
-// bindVMs binds VMs to *bindSocket and/or binds a VM to *profileCPUID.
-// If *bindSocket is set, it binds all VMs to the socket. If *profileCPUID
-// is set, it always pin a VM to the CPU for profiler to measure its physical core.
-func bindVMs() error {
-	var (
-		cpus     []int
-		coreFree = true
-	)
+// bindVMs can bind VMs to cores.
+// If socket is set to a socket ID, it binds all VMs to the socket.
+// If profileCPU is set to a CPU ID, it binds one VM to the CPU for profiling.
+// If both are set, it binds one VM to profile CPU in the socket and other VMs to the socket
+func bindVMs(socket, profileCPU int) error {
+	var cpus []int
 	pidBytes, err := getFirecrackerPid()
 	if err != nil {
 		return err
@@ -663,8 +661,10 @@ func bindVMs() error {
 		return err
 	}
 
-	if *bindSocket > -1 {
-		cpus, err = cpuInfo.SocketCPUs(*bindSocket)
+	// If socket ID is not negative, it collects CPUID on the socket,
+	// else it collects CPUID of the host.
+	if socket > -1 {
+		cpus, err = cpuInfo.SocketCPUs(socket)
 		if err != nil {
 			return err
 		}
@@ -673,30 +673,31 @@ func bindVMs() error {
 	}
 
 	vmPidList := strings.Split(string(pidBytes), " ")
-	for _, vm := range vmPidList {
+
+	// bind the first firecracker process to profile CPU
+	profileVM := strings.TrimSpace(vmPidList[0])
+	if err := bindProcessToCPU(profileVM, profileCPU); err != nil {
+		return err
+	}
+	// loop over rest pids of firecracker processes
+	for _, vm := range vmPidList[1:] {
 		vm = strings.TrimSpace(vm)
-		if len(cpus) > len(vmPidList) && coreFree && *profileCPUID > -1 {
-			if err := bindProcessToCPU(vm, *profileCPUID); err != nil {
-				return err
-			}
-			coreFree = false
-		} else {
-			if err := bindProcessToCPU(vm, cpus...); err != nil {
-				return err
-			}
+		if err := bindProcessToCPU(vm, cpus...); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func bindProcessToCPU(pid string, processors ...int) error {
+// bindProcessToCPU changes the CPU affinity of a process to input cpus
+func bindProcessToCPU(pid string, cpus ...int) error {
 	var procStr, sep string
-	for _, proc := range processors {
+	for _, proc := range cpus {
 		procStr += sep + strconv.Itoa(proc)
 		sep = ","
 	}
-	log.Debugf("binding pid %s to processor %v", pid, processors)
+	log.Debugf("binding pid %s to processor %v", pid, cpus)
 	if err := exec.Command("taskset", "--all-tasks", "-cp", procStr, pid).Run(); err != nil {
 		return err
 	}

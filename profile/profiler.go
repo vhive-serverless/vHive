@@ -81,8 +81,8 @@ func NewProfiler(executionTime float64, printInterval uint64, level int, nodes, 
 		}
 		profiler.cmd.Args = append(profiler.cmd.Args, "--core", core)
 	} else {
+		// monitor the input socket only. the socket value should be negative if profiler measures globally.
 		if socket > -1 {
-			// monitor the input socket only
 			profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S"+strconv.Itoa(socket))
 		}
 		// hide idle CPUs that are <50% of busiest.
@@ -425,6 +425,7 @@ func (c *CPUInfo) GetSibling(processor int) (int, error) {
 	}
 
 	core := c.sockets[proc.socket].cores[proc.core]
+	// check if the core has two logical processors
 	if len(core.processors) == 1 {
 		return -1, errors.New("processor does not have a sibling")
 	}
