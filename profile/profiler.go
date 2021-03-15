@@ -26,7 +26,6 @@ import (
 	"bufio"
 	"encoding/csv"
 	"errors"
-	"io"
 	"os"
 	"os/exec"
 	"sort"
@@ -51,7 +50,7 @@ type Profiler struct {
 }
 
 // NewProfiler returns a new instance of profiler
-func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string, socket, cpu int) (*Profiler, error) {
+func NewProfiler(executionTime float64, printInterval uint64, level int, nodes, outFile string, socket, cpu int) (*Profiler, error) {
 	profiler := new(Profiler)
 	profiler.execTime = executionTime
 	profiler.interval = printInterval
@@ -166,7 +165,7 @@ func (p *Profiler) GetResult() (map[string]float64, error) {
 	timeLeft := p.execTime - time.Since(p.tStart).Seconds() + 5
 	time.Sleep(time.Duration(timeLeft) * time.Second)
 
-	log.Debugf("Warm time: %.2f, Teardown time: %.2f", p.warmTime, p.tearDownTime)
+	log.Debugf("Warm time since start: %.2fs, Teardown time since start: %.2fs", p.warmTime, p.tearDownTime)
 	return p.readCSV()
 }
 
@@ -203,19 +202,14 @@ func (p *Profiler) readCSV() (map[string]float64, error) {
 
 	// Read File into a Variable
 	reader := csv.NewReader(f)
-	headers, err := reader.Read()
+	reader.Comment = '#'
+	lines, err := reader.ReadAll()
+	headers := lines[0]
 	if err != nil {
 		return nil, err
 	}
 	headerIdxMap := headerPos(headers)
-	for {
-		line, err := reader.Read()
-		if err != nil {
-			if err == io.EOF || strings.HasPrefix(line[0], "#") {
-				break
-			}
-			return nil, err
-		}
+	for _, line := range lines[1:] {
 		record, err := p.splitLine(headerIdxMap, line)
 		if err != nil {
 			return nil, err

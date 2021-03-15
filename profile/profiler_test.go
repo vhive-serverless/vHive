@@ -50,7 +50,7 @@ func TestReadPerfData(t *testing.T) {
 		}
 	)
 
-	p, err := NewProfiler(0, 100, 0, 1, "", fileName, -1, -1)
+	p, err := NewProfiler(0, 100, 1, "", fileName, -1, -1)
 	require.NoError(t, err, "Cannot create a profiler instance")
 
 	type testCase struct {
@@ -83,17 +83,17 @@ func TestReadPerfData(t *testing.T) {
 func TestProfilerRun(t *testing.T) {
 	fileName := "testFile"
 
-	p, err := NewProfiler(-1, 100, 0, 1, "", fileName, -1, -1)
+	p, err := NewProfiler(-1, 100, 1, "", fileName, -1, -1)
 	require.NoError(t, err, "Cannot create a profiler instance")
 	err = p.Run()
 	require.EqualError(t, err, "profiler execution time is less than 0s", "Failed running profiler")
 
-	p, err = NewProfiler(0, 1, 0, 1, "", fileName, -1, -1)
+	p, err = NewProfiler(0, 1, 1, "", fileName, -1, -1)
 	require.NoError(t, err, "Cannot create a profiler instance")
 	err = p.Run()
 	require.EqualError(t, err, "profiler print interval is less than 10ms", "Failed running profiler")
 
-	p, err = NewProfiler(0, 100, 0, 1, "", fileName, -1, -1)
+	p, err = NewProfiler(0, 100, 1, "", fileName, -1, -1)
 	require.NoError(t, err, "Cannot create a profiler instance")
 	err = p.Run()
 	require.NoError(t, err, "profiler run returned error: %v.", err)
@@ -114,7 +114,8 @@ func createData() error {
 		"0.503247704,C0,Retiring,97,% Slots <,,,0.0,3.99,,Y",
 		"1.503247704,C1,Frontend_Bound,3,% Slots <,,,0.0,3.99,,Y",
 		"1.503247704,C1,Backend_Bound,4,% Slots,,,0.0,3.99,<==,Y",
-		"1.503247704,C1,Retiring,93,% Slots,,,0.0,3.99,<==,Y"}
+		"1.503247704,C1,Retiring,93,% Slots,,,0.0,3.99,<==,Y",
+		"#..."}
 
 	for _, line := range lines {
 		_, err := f.WriteString(line + "\n")
