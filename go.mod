@@ -59,7 +59,7 @@ require (
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/montanaflynn/stats v0.6.5
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.8.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	gonum.org/v1/plot v0.0.0-20190515093506-e2840ee46a6b
