@@ -60,4 +60,15 @@ fi
 kubectl apply --filename $ROOT/configs/knative_yamls/serving-default-domain.yaml
 
 kubectl apply --filename https://github.com/knative/net-istio/releases/download/v0.19.0/release.yaml
+
+# install knative eventing
+kubectl apply --filename https://github.com/knative/eventing/releases/download/v0.21.0/eventing-crds.yaml
+kubectl apply --filename https://github.com/knative/eventing/releases/download/v0.21.0/eventing-core.yaml
+
+# install a default Channel (messaging) layer
+kubectl apply --filename https://github.com/knative/eventing/releases/download/v0.21.0/in-memory-channel.yaml
+
+# install a Broker (eventing) layer:
+kubectl apply --filename https://github.com/knative/eventing/releases/download/v0.21.0/mt-channel-broker.yaml
+
 kubectl --namespace istio-system get service istio-ingressgateway
