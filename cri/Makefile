@@ -32,8 +32,9 @@ test:
 	sleep 1s
 
 	./../scripts/cluster/create_one_node_cluster.sh
-	./../scripts/setup_zipkin.sh
 	sleep 2m
+	KUBECONFIG=/etc/kubernetes/admin.conf ./../scripts/setup_zipkin.sh
+	sleep 5s
 
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml

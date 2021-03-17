@@ -47,10 +47,11 @@ export PATH=$PATH:$ROOT/istio-1.7.1/bin
 sudo sh -c  "echo 'export PATH=$PATH:$ROOT/istio-1.7.1/bin' >> /etc/profile"
 istioctl install -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
+KNATIVE_VERSION=v0.21.0
 # Install KNative in the cluster
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
-    kubectl apply --filename https://github.com/knative/serving/releases/download/v0.21.0/serving-crds.yaml
-    kubectl apply --filename https://github.com/knative/serving/releases/download/v0.21.0/serving-core.yaml
+    kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-crds.yaml
+    kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-core.yaml
 else
     kubectl apply --filename $ROOT/configs/knative_yamls/serving-crds.yaml
     kubectl apply --filename $ROOT/configs/knative_yamls/serving-core.yaml
@@ -62,13 +63,14 @@ kubectl apply --filename $ROOT/configs/knative_yamls/serving-default-domain.yaml
 kubectl apply --filename https://github.com/knative/net-istio/releases/download/v0.19.0/release.yaml
 
 # install knative eventing
-kubectl apply --filename https://github.com/knative/eventing/releases/download/v0.21.0/eventing-crds.yaml
-kubectl apply --filename https://github.com/knative/eventing/releases/download/v0.21.0/eventing-core.yaml
+kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/eventing-crds.yaml
+kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/eventing-core.yaml
 
+# todo: need to replace this with Kafka
 # install a default Channel (messaging) layer
-kubectl apply --filename https://github.com/knative/eventing/releases/download/v0.21.0/in-memory-channel.yaml
+kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/in-memory-channel.yaml
 
 # install a Broker (eventing) layer:
-kubectl apply --filename https://github.com/knative/eventing/releases/download/v0.21.0/mt-channel-broker.yaml
+kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/mt-channel-broker.yaml
 
 kubectl --namespace istio-system get service istio-ingressgateway
