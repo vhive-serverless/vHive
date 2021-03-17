@@ -22,8 +22,11 @@
 
 #!/bin/bash
 
+set -e
 # install zipkin pods
 kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.9/samples/addons/extras/zipkin.yaml
+
+sleep 10s
 
 # enable tracing in Knative
 kubectl patch configmap/config-tracing \

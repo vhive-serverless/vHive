@@ -9,6 +9,7 @@
 - Zipkin support added for tracing Knative function call requests. More info [here](./docs/developers_guide.md#Knative-request-tracing)
 - added support for MinIO object store. More info [here](./docs/developers_guide.md#MinIO-S3-service)
 - Added an automated tail-latency-aware profiler that collects the metrics for [TopDown](https://ieeexplore.ieee.org/document/6844459) characterization from Intel.
+- [alpha] Added knative eventing support using In-Memory Channel and MT-Channel-broker. Integration tests missing and Apache Kafka support coming soon.
 
 ### Changed
 
