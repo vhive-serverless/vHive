@@ -141,6 +141,8 @@ jobs:
       run: sleep 1m && make -C ./function-images/tests/save_load_minio local
 
     - name: Test minio
+      env:
+        KUBECONFIG: /etc/kubernetes/admin.conf
       run: ./function-images/tests/save_load_minio/scripts/run_minio_k8s.sh
     
     - name: Cleaning
