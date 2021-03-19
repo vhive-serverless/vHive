@@ -121,7 +121,8 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 	}
 
 	dumpMetrics(t, metrics, metrFile)
-	profile.PlotCVS(*vmIncrStep, *benchDir, metrFile, "the number of VM")
+	profile.PlotLineCharts(*vmIncrStep, *benchDir, metrFile, "the number of VM")
+	profile.PlotStackCharts(*vmIncrStep, "profile/toplev_metrics.json", *benchDir, metrFile, "the number of VM")
 
 	tearDownVMs(t, images, startVMID, isSyncOffload)
 }
@@ -198,7 +199,7 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 
 	dumpMetrics(t, metrics, metrFile)
 
-	profile.PlotCVS(1, *benchDir, metrFile, "Different Cores -> Same Core")
+	profile.PlotLineCharts(1, *benchDir, metrFile, "Different Cores -> Same Core")
 
 	tearDownVMs(t, images, 2, isSyncOffload)
 }
