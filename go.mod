@@ -61,6 +61,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.7.0
+	github.com/wcharczuk/go-chart v2.0.1+incompatible
+	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	gonum.org/v1/plot v0.0.0-20190515093506-e2840ee46a6b
 	google.golang.org/grpc v1.33.1

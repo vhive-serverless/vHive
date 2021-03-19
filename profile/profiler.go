@@ -445,10 +445,9 @@ func (c *CPUInfo) SocketCPUs(socket int) ([]int, error) {
 	}
 
 	for _, core := range c.sockets[socket].cores {
-		for _, proc := range core.processors {
-			result = append(result, proc)
-		}
+		result = append(result, core.processors...)
 	}
+
 	sort.Ints(result)
 	return result, nil
 }
@@ -464,9 +463,7 @@ func (c *CPUInfo) AllCPUs() []int {
 
 	for _, socket := range c.sockets {
 		for _, core := range socket.cores {
-			for _, proc := range core.processors {
-				result = append(result, proc)
-			}
+			result = append(result, core.processors...)
 		}
 	}
 	sort.Ints(result)
