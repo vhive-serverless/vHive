@@ -19,8 +19,19 @@ jobs:
       with:
         go-version: 1.15
 
+    - name: Upgrade git
+      run: |
+        sudo add-apt-repository ppa:git-core/ppa -y
+        sudo apt update
+        sudo apt install git -y
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+      with:
+        lfs: true
+    
+    - name: Pull binaries
+      run: ./scripts/setup_firecracker_containerd.sh
 
     - name: Build
       run: go build -race -v -a ./...
