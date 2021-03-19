@@ -25,6 +25,7 @@ package profile
 import (
 	"encoding/csv"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -58,7 +59,7 @@ func TestCreatingPlotter(t *testing.T) {
 	err := createTestFile(fileName)
 	require.NoError(t, err, "Failed creating test file")
 
-	PlotCVS(4, "", fileName, "X-axis")
+	PlotLineCharts(4, "", fileName, "X-axis")
 
 	plotNames := []string{"field1.png", "field2.png", "field-3.png"}
 	for _, fname := range plotNames {
@@ -72,6 +73,23 @@ func TestCreatingPlotter(t *testing.T) {
 		err = os.Remove(fname)
 		require.NoError(t, err, "Failed deleting plot %s", fname)
 	}
+}
+
+func TestFindMetricGroup(t *testing.T) {
+	metrics, err := loadMetrics("toplev_metrics.json")
+	require.NoError(t, err, "Failed reading json file")
+
+	testFields := map[string]int{"L1_Bound": 0, "L2_Bound": 0, "L3_Bound": 0, "DRAM_Bound": 0, "Store_Bound": 0,
+		"Frontend_Bound": 0, "Bad_Speculation": 0, "Backend_Bound": 0, "Retiring": 0}
+	expected := map[string][]string{
+		"Level_1":      {"Backend_Bound", "Bad_Speculation", "Frontend_Bound", "Retiring"},
+		"Memory_Bound": {"DRAM_Bound", "L1_Bound", "L2_Bound", "L3_Bound", "Store_Bound"},
+	}
+	results := findMetricGroup(metrics, testFields)
+	for _, v := range results {
+		sort.Strings(v)
+	}
+	require.Equal(t, expected, results, "returned wrong metric groups")
 }
 
 func createTestFile(filePath string) error {

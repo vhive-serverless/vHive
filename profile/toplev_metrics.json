@@ -1,0 +1,107 @@
+{"Level_1": 
+    {
+        "Frontend_Bound": {
+            "Fetch_Latency": {
+                "ICache_Misses": {},
+                "ITLB_Misses": {},
+                "Branch_Resteers": {
+                    "Mispredicts_Resteers": {},
+                    "Clears_Resteers": {},
+                    "Unknown_Branches": {}
+                },
+                "DSB_Switches": {},
+                "LCP": {},
+                "MS_Switches": {}
+            },
+            "Fetch_Bandwidth": {
+                "MITE": {},
+                "DSB": {}
+            }
+        },
+        "Bad_Speculation": {
+            "Branch_Mispredicts": {},
+            "Machine_Clears": {}
+        },
+        "Backend_Bound": {
+            "Memory_Bound": {
+                "L1_Bound": {
+                    "DTLB_Load": {
+                        "Load_STLB_Hit": {},
+                        "Load_STLB_Miss": {}
+                    },
+                    "Store_Fwd_Blk": {},
+                    "Lock_Latency": {},
+                    "Split_Loads": {},
+                    "4K_Aliasing": {},
+                    "FB_Full": {}
+                },
+                "L2_Bound": {},
+                "L3_Bound": {
+                    "Contested_Accesses": {},
+                    "Data_Sharing": {},
+                    "L3_Hit_Latency": {},
+                    "SQ_Full": {}
+                },
+                "DRAM_Bound": {
+                    "MEM_Bandwidth": {},
+                    "MEM_Latency": {
+                        "Local_DRAM": {},
+                        "Remote_DRAM": {},
+                        "Remote_Cache": {}
+                    }
+                },
+                "Store_Bound": {
+                    "Store_Latency": {},
+                    "False_Sharing": {},
+                    "Split_Stores": {},
+                    "DTLB_Store": {
+                        "Store_STLB_Hit": {},
+                        "Store_STLB_Miss": {}
+                    }
+                }
+            },
+            "Core_Bound": {
+                "Divider": {},
+                "Ports_Utilization": {
+                    "Ports_Utilized_0": {
+                        "Serializing_Operation": {},
+                        "Mixing_Vectors": {}
+                    },
+                    "Ports_Utilized_1": {},
+                    "Ports_Utilized_2": {},
+                    "Ports_Utilized_3m": {
+                        "ALU_Op_Utilization": {
+                            "Port_0": {},
+                            "Port_1": {},
+                            "Port_5": {},
+                            "Port_6": {}
+                        },
+                        "Load_Op_Utilization": {
+                            "Port_2": {},
+                            "Port_3": {}
+                        },
+                        "Store_Op_Utilization": {
+                            "Port_4": {},
+                            "Port_7": {}
+                        }
+                    }
+                }
+            }
+        },
+        "Retiring": {
+            "Light_Operations": {
+                "FP_Arith": {
+                    "X87_Use": {},
+                    "FP_Scalar": {},
+                    "FP_Vector": {}
+                },
+                "Other": {}
+            },
+            "Heavy_Operations": {
+                "Microcode_Sequencer": {
+                    "Assists": {}
+                }
+            }
+        }
+    }
+}
