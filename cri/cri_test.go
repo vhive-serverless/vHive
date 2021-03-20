@@ -59,19 +59,19 @@ func TestSingleInvoke(t *testing.T) {
 	invoke(t, functionURL)
 }
 
+func TestSingleInvokeLocal(t *testing.T) {
+	functionURL := getFuncURL("helloworldlocal")
+	invoke(t, functionURL)
+}
+
 func TestParallelInvoke(t *testing.T) {
 	functionURL := getFuncURL("helloworld")
-	n := 50
-	var wg sync.WaitGroup
+	parallelInvoke(t, functionURL)
+}
 
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			invoke(t, functionURL)
-		}()
-	}
-	wg.Wait()
+func TestParallelInvokeLocal(t *testing.T) {
+	functionURL := getFuncURL("helloworldlocal")
+	parallelInvoke(t, functionURL)
 }
 
 func TestAutoscaler(t *testing.T) {
@@ -118,6 +118,7 @@ func TestMultipleFuncInvoke(t *testing.T) {
 	var wg sync.WaitGroup
 	funcs := []string{
 		"helloworld",
+		"helloworldlocal"
 		"pyaes",
 		// "rnnserving",
 		// This function deployment fails on cri test container
@@ -167,6 +168,20 @@ func invoke(t *testing.T, functionURL string) {
 	resp, err := client.SayHello(ctxFwd, &hpb.HelloRequest{Name: reqPayload})
 	require.NoError(t, err, "Failed to get response from function")
 	require.Equal(t, respPayload, resp.Message, "Incorrect response payload")
+}
+
+func parallelInvoke(t *testing.T, functionURL string) {
+	n := 50
+	var wg sync.WaitGroup
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			invoke(t, functionURL)
+		}()
+	}
+	wg.Wait()
 }
 
 func getClient(functionURL string) (hpb.GreeterClient, *grpc.ClientConn, error) {
