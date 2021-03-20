@@ -26,6 +26,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 
 STOCK_CONTAINERD=$1
+REPO_VOL_SIZE=5Gi
 
 # Install Calico network add-on
 kubectl apply -f $ROOT/configs/calico/canal.yaml
@@ -59,7 +60,7 @@ fi
 
 # Install local cluster registry
 kubectl create namespace registry
-kubectl create --filename $ROOT/configs/registry/repository-volume.yaml
+REPO_VOL_SIZE=$REPO_VOL_SIZE envsubst < $ROOT/configs/registry/repository-volume.yaml | kubectl create --filename -
 kubectl create --filename $ROOT/configs/registry/docker-registry.yaml
 kubectl apply --filename $ROOT/configs/registry/repository-update-hosts.yaml 
 

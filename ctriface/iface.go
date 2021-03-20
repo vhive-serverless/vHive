@@ -276,6 +276,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	return nil
 }
 
+// Checks whether a URL has a .local domain
 func isLocalDomain(s string) (bool, error) {
 	if ! strings.Contains(s, "://") {
 		s = "dummy://" + s
@@ -297,12 +298,13 @@ func isLocalDomain(s string) (bool, error) {
 	return tld == "local", nil
 }
 
-func getImageURL(s string) string {
+// Converts an image name to a url if it is not a URL
+func getImageURL(image string) string {
 	// Pull from dockerhub by default if not specified (default k8s behavior)
-	if strings.Contains(s, ".") {
-		return s
+	if strings.Contains(image, ".") {
+		return image
 	}
-	return "docker.io/" + s
+	return "docker.io/" + image
 	
 }
 

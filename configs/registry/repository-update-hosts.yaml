@@ -49,3 +49,4 @@ spec:
       - name: etchosts
         hostPath:
           path: /etc/hosts
+          
