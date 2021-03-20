@@ -297,13 +297,13 @@ func isLocalDomain(s string) (bool, error) {
 	return tld == "local", nil
 }
 
-func getImageUrl(s string) string {
+func getImageURL(s string) string {
 	// Pull from dockerhub by default if not specified (default k8s behavior)
 	if strings.Contains(s, ".") {
 		return s
-	} else {
-		return "docker.io/" + s
 	}
+	return "docker.io/" + s
+	
 }
 
 func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*containerd.Image, error) {
@@ -312,8 +312,8 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 		var err error
 		log.Debug(fmt.Sprintf("Pulling image %s", imageName))
 
-		imageUrl := getImageUrl(imageName)
-		local, _ := isLocalDomain(imageUrl)
+		imageURL := getImageURL(imageName)
+		local, _ := isLocalDomain(imageURL)
 		if local {
 			// Pull local image using HTTP
 			resolver := docker.NewResolver(docker.ResolverOptions{
@@ -322,14 +322,14 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 					docker.WithPlainHTTP(docker.MatchAllHosts),
 				),
 			})
-			image, err = o.client.Pull(ctx, imageUrl,
+			image, err = o.client.Pull(ctx, imageURL,
 				containerd.WithPullUnpack,
 				containerd.WithPullSnapshotter(o.snapshotter),
 				containerd.WithResolver(resolver),
 			)
 		} else {
 			// Pull remote image
-			image, err = o.client.Pull(ctx, imageUrl,
+			image, err = o.client.Pull(ctx, imageURL,
 				containerd.WithPullUnpack,
 				containerd.WithPullSnapshotter(o.snapshotter),
 			)
