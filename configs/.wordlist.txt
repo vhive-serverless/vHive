@@ -274,6 +274,7 @@ htaccess
 html
 http
 https
+imageFile
 init
 inproceedings
 integ
