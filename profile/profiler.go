@@ -26,7 +26,6 @@ import (
 	"bufio"
 	"encoding/csv"
 	"errors"
-	"io"
 	"os"
 	"os/exec"
 	"sort"
@@ -51,7 +50,7 @@ type Profiler struct {
 }
 
 // NewProfiler returns a new instance of profiler
-func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, nodes, outFile string, cpu int) (*Profiler, error) {
+func NewProfiler(executionTime float64, printInterval uint64, level int, nodes, outFile string, socket, cpu int) (*Profiler, error) {
 	profiler := new(Profiler)
 	profiler.execTime = executionTime
 	profiler.interval = printInterval
@@ -82,6 +81,10 @@ func NewProfiler(executionTime float64, printInterval uint64, vmNum, level int, 
 		}
 		profiler.cmd.Args = append(profiler.cmd.Args, "--core", core)
 	} else {
+		// monitor the input socket only. the socket value should be negative if profiler measures globally.
+		if socket > -1 {
+			profiler.cmd.Args = append(profiler.cmd.Args, "--core", "S"+strconv.Itoa(socket))
+		}
 		// hide idle CPUs that are <50% of busiest.
 		profiler.cmd.Args = append(profiler.cmd.Args, "--idle-threshold", "50")
 	}
@@ -162,7 +165,7 @@ func (p *Profiler) GetResult() (map[string]float64, error) {
 	timeLeft := p.execTime - time.Since(p.tStart).Seconds() + 5
 	time.Sleep(time.Duration(timeLeft) * time.Second)
 
-	log.Debugf("Warm time: %.2f, Teardown time: %.2f", p.warmTime, p.tearDownTime)
+	log.Debugf("Warm time since start: %.2fs, Teardown time since start: %.2fs", p.warmTime, p.tearDownTime)
 	return p.readCSV()
 }
 
@@ -199,19 +202,14 @@ func (p *Profiler) readCSV() (map[string]float64, error) {
 
 	// Read File into a Variable
 	reader := csv.NewReader(f)
-	headers, err := reader.Read()
+	reader.Comment = '#'
+	lines, err := reader.ReadAll()
+	headers := lines[0]
 	if err != nil {
 		return nil, err
 	}
 	headerIdxMap := headerPos(headers)
-	for {
-		line, err := reader.Read()
-		if err != nil {
-			if err == io.EOF || strings.HasPrefix(line[0], "#") {
-				break
-			}
-			return nil, err
-		}
+	for _, line := range lines[1:] {
 		record, err := p.splitLine(headerIdxMap, line)
 		if err != nil {
 			return nil, err
@@ -427,6 +425,11 @@ func (c *CPUInfo) GetSibling(processor int) (int, error) {
 	}
 
 	core := c.sockets[proc.socket].cores[proc.core]
+	// check if the core has two logical processors
+	if len(core.processors) == 1 {
+		return -1, errors.New("processor does not have a sibling")
+	}
+
 	if core.processors[0] == processor {
 		return core.processors[1], nil
 	}
@@ -437,8 +440,8 @@ func (c *CPUInfo) GetSibling(processor int) (int, error) {
 // SocketCPUs returns a list of processors of the socket
 func (c *CPUInfo) SocketCPUs(socket int) ([]int, error) {
 	var result []int
-	if socket >= len(c.sockets) {
-		return nil, errors.New("socket ID is larger than the number of sockets")
+	if socket >= len(c.sockets) || socket < 0 {
+		return nil, errors.New("socket ID is out of bound")
 	}
 
 	for _, core := range c.sockets[socket].cores {

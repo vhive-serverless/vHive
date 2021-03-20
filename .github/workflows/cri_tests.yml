@@ -73,10 +73,12 @@ jobs:
       run: sudo containerd &
 
     - name: Create k8s cluster
-      run: ./scripts/cluster/create_one_node_cluster.sh stock-only 
+      run: ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
       
     - name: Deploy zipkin
-      run: ./scripts/setup_zipkin.sh && sleep 2m
+      env:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      run: ./scripts/setup_zipkin.sh && sleep 5s
     
     - name: Create helloworld container
       run: KUBECONFIG=/etc/kubernetes/admin.conf kn service create helloworld-go --image gcr.io/knative-samples/helloworld-go --env TARGET="vHive CRI test"
@@ -139,6 +141,8 @@ jobs:
       run: sleep 1m && make -C ./function-images/tests/save_load_minio local
 
     - name: Test minio
+      env:
+        KUBECONFIG: /etc/kubernetes/admin.conf
       run: ./function-images/tests/save_load_minio/scripts/run_minio_k8s.sh
     
     - name: Cleaning

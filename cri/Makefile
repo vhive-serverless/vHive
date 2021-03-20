@@ -32,8 +32,9 @@ test:
 	sleep 1s
 
 	./../scripts/cluster/create_one_node_cluster.sh
-	./../scripts/setup_zipkin.sh
 	sleep 2m
+	KUBECONFIG=/etc/kubernetes/admin.conf ./../scripts/setup_zipkin.sh
+	sleep 5s
 
 	go run ./../examples/registry/populate_registry.go -imageFile ./../examples/registry/images.txt
 	sleep 1s

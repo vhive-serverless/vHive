@@ -10,6 +10,7 @@ Amna
 Amna's
 Analytics
 Antonis
+Apache
 Artemiy
 Artemiy's
 Asheim
@@ -77,6 +78,7 @@ ISA
 ISCA
 ISPASS
 Idgunji
+In-Memory
 InfiniBand
 Initializr
 Ipsum
@@ -84,6 +86,7 @@ Jevdjic
 Joshi
 KNOC
 KVM
+Kafka
 Kamran
 Katebzadeh
 Katsarakis
@@ -115,6 +118,7 @@ Microarchitecture
 MinIO
 Mirzadeh
 Mutlu
+MT-Channel-broker
 NEURALWALKER
 NOC
 NOCOUT
@@ -254,6 +258,7 @@ env
 envsubst
 et
 eval
+eventing
 faldu
 faldupriyank
 fccd
@@ -308,6 +313,7 @@ multithreaded
 namespaces
 nd
 neuroevolution
+nmi
 noicon
 nr
 orchestrator
@@ -322,6 +328,7 @@ pragmas
 pre
 preconfigured
 priyank
+proc
 profileCPU
 profileCPUID
 profileTime
@@ -348,6 +355,7 @@ snapshotting
 stateful
 sudo
 svc
+sys
 th
 toc
 toml
