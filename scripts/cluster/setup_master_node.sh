@@ -57,6 +57,12 @@ else
     kubectl apply --filename $ROOT/configs/knative_yamls/serving-core.yaml
 fi
 
+# Install local cluster registry
+kubectl create namespace registry
+kubectl create --filename $ROOT/configs/registry/repository-volume.yaml
+kubectl create --filename $ROOT/configs/registry/docker-registry.yaml
+kubectl apply --filename $ROOT/configs/registry/repository-update-hosts.yaml 
+
 # magic DNS
 kubectl apply --filename $ROOT/configs/knative_yamls/serving-default-domain.yaml
 

@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: docker-registry-pod
+  namespace: registry
+  labels:
+    app: registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registry
+  template:
+    metadata:
+      labels:
+        app: registry
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: registry
+        image: registry:2.6.2
+        volumeMounts:
+        - name: repo-vol
+          mountPath: "/var/lib/registry"
+        ports:
+            - containerPort: 5000
+      volumes:
+      - name: repo-vol
+        persistentVolumeClaim:
+          claimName: docker-repo-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docker-registry
+  namespace: registry
+  labels:
+    authenticated: "false"
+spec:
+  selector:
+    app: registry
+  ports:
+  - port: 5000
+    targetPort: 5000

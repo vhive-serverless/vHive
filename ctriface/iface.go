@@ -31,6 +31,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"net"
+	"net/url"
+	"net/http"
 
 	log "github.com/sirupsen/logrus"
 
@@ -38,6 +41,7 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/remotes/docker"
 
 	"github.com/firecracker-microvm/firecracker-containerd/proto" // note: from the original repo
 	"github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
@@ -272,15 +276,65 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	return nil
 }
 
+func isLocalDomain(s string) (bool, error) {
+	if ! strings.Contains(s, "://") {
+		s = "dummy://" + s
+	}
+
+	u, err := url.Parse(s)
+	if err != nil {
+		return false, err
+	}
+
+	host, _, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		host = u.Host
+	}
+
+	i := strings.LastIndex(host, ".")
+	tld := host[i+1:]
+
+	return tld == "local", nil
+}
+
+func getImageUrl(s string) string {
+	// Pull from dockerhub by default if not specified (default k8s behavior)
+	if strings.Contains(s, ".") {
+		return s
+	} else {
+		return "docker.io/" + s
+	}
+}
+
 func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*containerd.Image, error) {
 	image, found := o.cachedImages[imageName]
 	if !found {
 		var err error
 		log.Debug(fmt.Sprintf("Pulling image %s", imageName))
-		image, err = o.client.Pull(ctx, "docker.io/"+imageName,
-			containerd.WithPullUnpack,
-			containerd.WithPullSnapshotter(o.snapshotter),
-		)
+
+		imageUrl := getImageUrl(imageName)
+		local, _ := isLocalDomain(imageUrl)
+		if local {
+			// Pull local image using HTTP
+			resolver := docker.NewResolver(docker.ResolverOptions{
+				Client: http.DefaultClient,
+				Hosts: docker.ConfigureDefaultRegistries(
+					docker.WithPlainHTTP(docker.MatchAllHosts),
+				),
+			})
+			image, err = o.client.Pull(ctx, imageUrl,
+				containerd.WithPullUnpack,
+				containerd.WithPullSnapshotter(o.snapshotter),
+				containerd.WithResolver(resolver),
+			)
+		} else {
+			// Pull remote image
+			image, err = o.client.Pull(ctx, imageUrl,
+				containerd.WithPullUnpack,
+				containerd.WithPullSnapshotter(o.snapshotter),
+			)
+		}
+
 		if err != nil {
 			return &image, err
 		}
