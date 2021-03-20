@@ -6,7 +6,7 @@ metadata:
     usage: registry
 spec:
   capacity:
-    storage: 5Gi # TODO: size
+    storage: ${REPO_VOL_SIZE}
   accessModes:
   - ReadWriteOnce
   hostPath:
@@ -22,7 +22,8 @@ spec:
   - ReadWriteOnce
   resources:
     requests:
-      storage: 5Gi # TODO: change size?
+      storage: ${REPO_VOL_SIZE}
   selector:
     matchLabels:
       usage: registry
+      

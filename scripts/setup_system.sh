@@ -22,6 +22,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Add skopeo sources
+. /etc/os-release
+echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+
 sudo apt-get update >> /dev/null
 
 sudo apt-get -y install \
@@ -37,20 +42,8 @@ sudo apt-get -y install \
     bc \
     dmsetup \
     gnupg-agent \
-    software-properties-common >> /dev/null
-
-# Install Skopeo (ubuntu 18.04+ or Debian 10)
-if [ "$(grep -Ei 'buntu' /etc/os-release)" ]; then
-   . /etc/os-release
-    echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
-else
-    echo 'deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_10/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_10/Release.key | sudo apt-key add -
-fi
-sudo apt-get update
-sudo apt-get -y upgrade
-sudo apt-get -y install skopeo
+    software-properties-common \
+    skopeo >> /dev/null
 
 # stack size, # of open files, # of pids
 sudo sh -c "echo \"* soft nofile 1000000\" >> /etc/security/limits.conf"
