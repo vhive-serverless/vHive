@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -104,12 +105,13 @@ func PlotLineCharts(xStep int, filePath, inFile, xLable string) {
 // PlotStackCharts plots stack charts if any metric group exists in the csv file
 func PlotStackCharts(xStep int, metricFile, inFilePath, inFile, xLable string) {
 	var (
-		xMax, yMax   int
-		records      = readResultCSV(inFilePath, inFile)
-		rows         = len(records)
-		fields       = field2idx(records[0])
-		strokeColors = getStrokeColors()
-		fillColors   = getFillColors()
+		xMax, yMax     int
+		records        = readResultCSV(inFilePath, inFile)
+		rows           = len(records)
+		ticks, xValues = ticks(rows, xStep)
+		fields         = field2idx(records[0])
+		strokeColors   = getStrokeColors()
+		fillColors     = getFillColors()
 	)
 
 	// if the number of rows is less than 3, which means the file contains the
@@ -152,19 +154,17 @@ func PlotStackCharts(xStep int, metricFile, inFilePath, inFile, xLable string) {
 				log.Fatalf("Failed cumulatively summing list: %v", err)
 			}
 			if values[idx][len(line)-1] > float64(yMax) {
-				yMax = int(values[idx][len(line)-1])
+				yMax = int(math.Round(values[idx][len(line)-1]))
 			}
 		}
 		// feed data to series
 		for idx, metric := range metrics {
 			var (
 				vmNum   = xStep
-				xValues []float64
 				yValues []float64
 			)
-			for _, row := range values {
-				xValues = append(xValues, float64(vmNum))
-				yValues = append(yValues, row[idx])
+			for _, line := range values {
+				yValues = append(yValues, line[idx])
 				vmNum += xStep
 			}
 			series[idx] = continuousSeries(metric, strokeColors[idx], fillColors[idx], xValues, yValues)
@@ -175,7 +175,7 @@ func PlotStackCharts(xStep int, metricFile, inFilePath, inFile, xLable string) {
 			series[i], series[j] = series[j], series[i]
 		}
 
-		graph := stackGraph(xLable, name, float64(xStep), float64(xMax), 0, float64(yMax), series)
+		graph := stackGraph(xLable, name, float64(xStep), float64(xMax), 0, float64(yMax), series, ticks)
 		fileName := filepath.Join(inFilePath, name+".png")
 		pngFile, err := os.Create(fileName)
 		if err != nil {
@@ -191,16 +191,31 @@ func PlotStackCharts(xStep int, metricFile, inFilePath, inFile, xLable string) {
 	log.Info("Plot stack charts finished.")
 }
 
+// ticks returns ticks on x-axis and corresponding values
+func ticks(rows, xStep int) ([]chart.Tick, []float64) {
+	var (
+		vmNum   = xStep
+		ticks   []chart.Tick
+		xValues []float64
+	)
+	for i := 1; i < rows; i++ {
+		val := float64(vmNum)
+		xValues = append(xValues, val)
+		valStr := fmt.Sprintf("%.0f", math.Round(val))
+		ticks = append(ticks, chart.Tick{
+			Value: val,
+			Label: valStr,
+		})
+		vmNum += xStep
+	}
+
+	return ticks, xValues
+}
+
 // continuousSeries returns a instance of chart.ContinuousSeries
 func continuousSeries(name string, strokeColor, fillColor drawing.Color, xValues, yValues []float64) chart.ContinuousSeries {
 	return chart.ContinuousSeries{
 		Name: name,
-		XValueFormatter: func(v interface{}) string {
-			if vf, isFloat := v.(float64); isFloat {
-				return fmt.Sprintf("%.0f", vf)
-			}
-			return ""
-		},
 		Style: chart.Style{
 			Show:        true,
 			StrokeWidth: 5,
@@ -213,7 +228,7 @@ func continuousSeries(name string, strokeColor, fillColor drawing.Color, xValues
 }
 
 // stackGraph returns a instance of chart.Chart
-func stackGraph(xLabel, yLabel string, xMin, xMax, yMin, yMax float64, series []chart.Series) chart.Chart {
+func stackGraph(xLabel, yLabel string, xMin, xMax, yMin, yMax float64, series []chart.Series, ticks []chart.Tick) chart.Chart {
 	graph := chart.Chart{
 		Background: chart.Style{
 			Padding: chart.Box{
@@ -228,6 +243,7 @@ func stackGraph(xLabel, yLabel string, xMin, xMax, yMin, yMax float64, series []
 				Min: xMin,
 				Max: xMax,
 			},
+			Ticks: ticks,
 		},
 		YAxis: chart.YAxis{
 			Name:      yLabel,

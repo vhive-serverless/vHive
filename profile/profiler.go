@@ -204,10 +204,10 @@ func (p *Profiler) readCSV() (map[string]float64, error) {
 	reader := csv.NewReader(f)
 	reader.Comment = '#'
 	lines, err := reader.ReadAll()
-	headers := lines[0]
 	if err != nil {
 		return nil, err
 	}
+	headers := lines[0]
 	headerIdxMap := headerPos(headers)
 	for _, line := range lines[1:] {
 		record, err := p.splitLine(headerIdxMap, line)
