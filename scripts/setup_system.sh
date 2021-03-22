@@ -40,6 +40,8 @@ sudo apt-get -y install \
     net-tools \
     git-lfs \
     bc \
+    gettext-base \
+    jq \
     dmsetup \
     gnupg-agent \
     software-properties-common \
