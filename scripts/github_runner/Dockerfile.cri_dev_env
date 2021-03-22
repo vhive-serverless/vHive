@@ -44,7 +44,12 @@ RUN apt-get update && \
     socat \
     util-linux \
     ipvsadm \
+    gettext-base \
     tmux vim && \
+    wget https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_18.04/all/containers-common_1-14_all.deb && \
+    sudo apt install ./containers-common_1-14_all.deb -y && \
+    wget https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_18.04/amd64/skopeo_1.2.2-2_amd64.deb && \
+    sudo apt install ./skopeo_1.2.2-2_amd64.deb -y && \
     sudo wget -O /usr/local/bin/kn -c "https://github.com/knative/client/releases/download/v0.20.0/kn-linux-amd64" && \
     sudo chmod +x /usr/local/bin/kn && \
     mkdir /scripts
