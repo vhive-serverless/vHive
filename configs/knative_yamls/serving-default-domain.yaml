@@ -33,7 +33,7 @@ spec:
         - name: default-domain
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/default-domain-dd6f55160290a90018ba318b624be12e@sha256:bd9c4b9bd2b21feb36f00d703d3bd36228964bd3b379ab56dde03b050eed8ce0
+          image: docker.io/vhiveease/default-domain-dd6f55160290a90018ba318b624be12e:998c8975f56b3b45059fd709d3776062b51cb1aa84921d4d7a85c0315d9cd0f0
           args: ["-magic-dns=xip.io"]
           ports:
             - name: http
