@@ -43,6 +43,7 @@ sudo apt-get -y install \
     dmsetup \
     gnupg-agent \
     software-properties-common \
+    gettext-base \
     skopeo >> /dev/null
 
 # stack size, # of open files, # of pids

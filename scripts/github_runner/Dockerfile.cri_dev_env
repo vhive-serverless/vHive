@@ -44,6 +44,7 @@ RUN apt-get update && \
     socat \
     util-linux \
     ipvsadm \
+    gettext-base \
     tmux vim && \
     sudo wget -O /usr/local/bin/kn -c "https://github.com/knative/client/releases/download/v0.20.0/kn-linux-amd64" && \
     sudo chmod +x /usr/local/bin/kn && \
