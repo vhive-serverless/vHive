@@ -104,6 +104,6 @@ func pullImage(image string, sourceRepo string, destRepo string) {
 	)
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Warnf("Failed to pull image %s: %v\n%s\n", image, err, stdoutStderr)
+		log.Fatalf("Failed to pull image %s: %v\n%s\n", image, err, stdoutStderr)
 	}
 }
