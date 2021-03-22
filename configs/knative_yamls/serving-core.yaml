@@ -947,7 +947,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:74582aa3dcf654d6f664280c6cdd596559f2e31e668ce66fbfc0def704402760
+  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6:c3d2e0ad00457c972b642a1b6cf7c67ac1a58a5dcb83207e244c3cf6e19befbe
 
 ---
 # Copyright 2018 The Knative Authors
@@ -972,7 +972,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "1d830d9e"
+    knative.dev/example-checksum: "604cb513"
 data:
   _example: |
     ################################
@@ -1090,7 +1090,8 @@ data:
     enable-scale-to-zero: "true"
 
     # Scale to zero grace period is the time an inactive revision is left
-    # running before it is scaled to zero (min: 6s).
+    # running before it is scaled to zero (must be positive, but recommended
+    # at least a few seconds if running with mesh networking).
     # This is the upper limit and is provided not to enforce timeout after
     # the revision stopped receiving requests for stable window, but to
     # ensure network reprogramming to put activator in the path has completed.
@@ -1310,11 +1311,11 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "52900e59"
+    knative.dev/example-checksum: "fa67b403"
 data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:74582aa3dcf654d6f664280c6cdd596559f2e31e668ce66fbfc0def704402760
+  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6:c3d2e0ad00457c972b642a1b6cf7c67ac1a58a5dcb83207e244c3cf6e19befbe
   _example: |
     ################################
     #                              #
@@ -1332,7 +1333,7 @@ data:
     # to actually change the configuration.
 
     # List of repositories for which tag to digest resolving should be skipped
-    registriesSkippingTagResolving: "kind.local,ko.local,dev.local"
+    registriesSkippingTagResolving: "kind.local,ko.local,docker.io/vhiveease,dev.local"
 
     # digestResolutionTimeout is the maximum time allowed for an image's
     # digests to be resolved.
@@ -1340,7 +1341,7 @@ data:
 
     # ProgressDeadline is the duration we wait for the deployment to
     # be ready before considering it failed.
-    progressDeadline: "120s"
+    progressDeadline: "600s"
 
     # queueSidecarCPURequest is the requests.cpu to set for the queue proxy sidecar container.
     # If omitted, a default value (currently "25m"), is used.
@@ -1454,7 +1455,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "2d4c16b9"
+    knative.dev/example-checksum: "4437b773"
 data:
   _example: |
     ################################
@@ -1483,6 +1484,12 @@ data:
     # WARNING: Cannot safely be disabled once enabled.
     # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-node-affinity
     kubernetes.podspec-affinity: "disabled"
+
+    # Indicates whether Kubernetes hostAliases support is enabled
+    #
+    # WARNING: Cannot safely be disabled once enabled.
+    # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-host-aliases
+    kubernetes.podspec-hostaliases: "disabled"
 
     # Indicates whether Kubernetes nodeSelector support is enabled
     #
@@ -1579,7 +1586,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "4b89cfa0"
+    knative.dev/example-checksum: "e6149382"
 data:
   _example: |
     ################################
@@ -1597,30 +1604,10 @@ data:
     # this example block and unindented to be in the data block
     # to actually change the configuration.
 
-    # Delay after revision creation before considering it for GC
-    stale-revision-create-delay: "48h"
-
-    # Duration since a route has pointed at the revision before it
-    # should be GC'd.
-    # This minus lastpinned-debounce must be longer than the controller
-    # resync period (10 hours).
-    stale-revision-timeout: "15h"
-
-    # Minimum number of generations of non-active revisions to keep before
-    # considering them for GC.
-    stale-revision-minimum-generations: "20"
-
-    # To avoid constant updates, we allow an existing annotation to be stale by this
-    # amount before we update the timestamp.
-    stale-revision-lastpinned-debounce: "5h"
-
 
     # ---------------------------------------
-    # V2 Garbage Collector Settings
+    # Garbage Collector Settings
     # ---------------------------------------
-    #
-    # These settings are enabled via the "responsive-revision-gc" feature flag.
-    # ALPHA NOTE: This feature is still experimental and under active development.
     #
     # Active
     #   * Revisions which are referenced by a Route are considered active.
@@ -1757,7 +1744,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "23eed3d8"
+    knative.dev/example-checksum: "d9570453"
 data:
   _example: |
     ################################
@@ -1784,11 +1771,11 @@ data:
         "errorOutputPaths": ["stderr"],
         "encoding": "json",
         "encoderConfig": {
-          "timeKey": "ts",
-          "levelKey": "level",
+          "timeKey": "timestamp",
+          "levelKey": "severity",
           "nameKey": "logger",
           "callerKey": "caller",
-          "messageKey": "msg",
+          "messageKey": "message",
           "stacktraceKey": "stacktrace",
           "lineEnding": "",
           "levelEncoder": "",
@@ -1799,9 +1786,9 @@ data:
       }
 
     # Log level overrides
-    # For all components except the autoscaler and queue proxy,
-    # changes are be picked up immediately.
-    # For autoscaler and queue proxy, changes require recreation of the pods.
+    # For all components except the queue proxy,
+    # changes are picked up immediately.
+    # For queue proxy, changes require recreation of the pods.
     loglevel.controller: "info"
     loglevel.autoscaler: "info"
     loglevel.queueproxy: "info"
@@ -1835,7 +1822,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "5e3df87d"
+    knative.dev/example-checksum: "14cd8fa3"
 data:
   _example: |
     ################################
@@ -1919,6 +1906,21 @@ data:
     # 3. Redirected: The Knative ingress will send a 302 redirect for all
     # http connections, asking the clients to use HTTPS.
     httpProtocol: "Enabled"
+
+    # rolloutDuration contains the minimal duration in seconds over which the
+    # Configuration traffic targets are rolled out to the newest revision.
+    rolloutDuration: "0"
+
+    # autocreateClusterDomainClaims controls whether ClusterDomainClaims should
+    # be automatically created (and deleted) as needed when DomainMappings are
+    # reconciled.
+    #
+    # If this is "false", the cluster administrator is responsible for creating
+    # ClusterDomainClaims and delegating them to namespaces via their
+    # spec.Namespace field. This is useful for multitenant environments
+    # which need to control which namespace can use a particular domain name in
+    # a domain mapping.
+    autocreateClusterDomainClaims: "true"
 
 ---
 # Copyright 2018 The Knative Authors
@@ -2115,7 +2117,7 @@ data:
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: autoscaling/v2beta1
+apiVersion: autoscaling/v2beta2
 kind: HorizontalPodAutoscaler
 metadata:
   name: activator
@@ -2133,8 +2135,10 @@ spec:
     - type: Resource
       resource:
         name: cpu
-        # Percentage of the requested CPU
-        targetAverageUtilization: 100
+        target:
+          type: Utilization
+          # Percentage of the requested CPU
+          averageUtilization: 100
 ---
 # Activator PDB. Currently we permit unavailability of 20% of tasks at the same time.
 # Given the subsetting and that the activators are partially stateful systems, we want
@@ -2193,7 +2197,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:c3b8ab928c2f2091a0aad250b7a24596a33e088e0b7631122c389d64ecd50825
+          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86:ea7e4efd04c423e61db1d61413b83846ea4e60ab5fb462b7b4158087e05c49b9
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -2343,7 +2347,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:7418ee24eab1525b12ef2770bee963d978c64aa76254ae546a22c16959148cbc
+          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13:ed088b9ad53598cb94549c88fd9341ebacc15c839782ccc794426aec707deeb4
           resources:
             requests:
               cpu: 30m
@@ -2471,7 +2475,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:64de6a6d6ef64342a0294a85b670dec72bed04cc4cd1b16e715a4272eb8953bc
+          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720:8bf1baacb77d24520a10468fa341c762a5e571b6d212f587855241e036418b68
           resources:
             requests:
               cpu: 100m
@@ -2543,7 +2547,7 @@ spec:
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: autoscaling/v2beta1
+apiVersion: autoscaling/v2beta2
 kind: HorizontalPodAutoscaler
 metadata:
   name: webhook
@@ -2561,8 +2565,10 @@ spec:
     - type: Resource
       resource:
         name: cpu
-        # Percentage of the requested CPU
-        targetAverageUtilization: 100
+        target:
+          type: Utilization
+          # Percentage of the requested CPU
+          averageUtilization: 100
 ---
 # Webhook PDB.
 apiVersion: policy/v1beta1
@@ -2629,7 +2635,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:ecf5577478db77fe48c5f2b001da279ad20537bd2eb7635f1062fc5f8b7dc3b4
+          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c:c7df35daa883e2b9f571e20f62d379206ff49ba218391563c5d15f5e69267f9a
           resources:
             requests:
               cpu: 100m
@@ -2650,11 +2656,13 @@ spec:
               value: config-logging
             - name: CONFIG_OBSERVABILITY_NAME
               value: config-observability
+            - name: WEBHOOK_NAME
+              value: webhook
             - name: WEBHOOK_PORT
               value: "8443"
             # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
             - name: METRICS_DOMAIN
-              value: knative.dev/serving
+              value: knative.dev/internal/serving
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
