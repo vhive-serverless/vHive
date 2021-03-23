@@ -1,6 +1,6 @@
-## vHive CI guide
+# vHive CI guide
 
-## deploying GitHub self-hosted runners
+## Deploying GitHub self-hosted runners
 * Create Create GitHub personal access token for your repo with [these](https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token) scopes.
 ```bash
 # clone your repo

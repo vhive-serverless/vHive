@@ -3,19 +3,43 @@
 ## [Unreleased]
 
 ### Added
-- Support for MinIO S3 storage (non-replicated, non-distributed).
-- MicroVMs can now access the internet by default using custom host interface. (default route interface is used if no argument is provided)
-- Knative serving now can be tested separately from vHive. More info [here](./docs/developers_guide.md#Testing-stock-Knative-images).
-- Zipkin support added for tracing Knative function call requests. More info [here](./docs/developers_guide.md#Knative-request-tracing)
-- added support for MinIO object store. More info [here](./docs/developers_guide.md#MinIO-S3-service)
-- Added an automated tail-latency-aware profiler that collects the metrics for [TopDown](https://ieeexplore.ieee.org/document/6844459) characterization from Intel.
-- [alpha] Added knative eventing support using In-Memory Channel and MT-Channel-broker. Integration tests missing and Apache Kafka support coming soon.
-- [beta] Added an automated tail-latency-aware profiler that collects the metrics for [TopDown](https://ieeexplore.ieee.org/document/6844459) characterization from Intel.
 
 ### Changed
 
 ### Fixed
 
+
+## v1.2
+
+### Added
+
+Features for **performance analysis**
+- Zipkin support added for tracing and breaking down latencies in a distributed vHive setting (e.g., across Istio and Knative services).
+More info [here](./docs/developers_guide.md#Knative-request-tracing)
+- [beta] Added a profiler that collects low-level microarchitectural metrics,
+using the Intel [TopDown](https://ieeexplore.ieee.org/document/6844459) method.
+The tool aims at studying the implications of multi-tenancy, i.e., the VM number,  on the the tail latency and throughput.
+
+Features for **benchmarking at scale** and **multi-function applications**
+- Added cluster-local container registry support to avoid DockerHub bottleneck. Contributed by @amohoste from ETH Zurich.
+- [alpha] Added Knative eventing support using In-Memory Channel and MT-Channel-broker.
+Integration tests and Apache Kafka support coming soon.
+- Added support for MinIO object store (non-replicated, non-distributed).
+More info [here](./docs/developers_guide.md#MinIO-S3-service)
+
+Other
+- vHive now also supports vanilla Knative benchmarking and testing (i.e., using containers for function sandboxes).
+More info [here](./docs/developers_guide.md#Testing-stock-Knative-images).
+
+
+### Changed
+- Bumped up the Firecracker version to v0.24 with REAP snapshots support.
+- Bumped up all Knative components to version v0.21.
+- MicroVMs have network access to all services deployed in a vHive/k8s cluster and the Internet by default,
+using an automatically detected, or a user-specified, host interface.
+
+### Fixed
+- CI pulls the latest binaries from git-lfs when running tests on self-hosted runners.
 
 ## v1.1
 
