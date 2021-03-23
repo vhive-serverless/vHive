@@ -1,0 +1,48 @@
+name: stock Containerd CRI tests
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+  workflow_dispatch:
+
+env:
+  GOOS: linux
+  GO111MODULE: on
+
+jobs:
+  stock-containerd-test:
+    name: Stock Containerd test
+    runs-on: [self-hosted, cri]
+
+    steps:
+    - name: Setup TMPDIR
+      run: mkdir -p $HOME/tmp
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Start Containerd
+      run: sudo containerd &
+
+    - name: Create k8s cluster
+      run: ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
+      
+    - name: Deploy zipkin
+      env:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      run: ./scripts/setup_zipkin.sh && sleep 5s
+    
+    - name: Create helloworld container
+      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service create helloworld-go --image gcr.io/knative-samples/helloworld-go --env TARGET="vHive CRI test"
+
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/github_runner/clean_cri_runner.sh stock-only
