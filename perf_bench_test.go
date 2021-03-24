@@ -57,7 +57,7 @@ var (
 	// must be in the socket. Then, only one VM runs on the *profileCPUID and others run on other cores.
 	bindSocket = flag.Int("bindSocket", -1, "Bind all VMs to socket number apart from the profile CPU")
 	latSamples = flag.Int("latSamples", 100, "The number of latency measurements during one profiling period")
-	isTest     = flag.Bool("test", false, "Tail latency threshold is larger if test is true")
+	isTest     = flag.Bool("test", false, "Tail latency threshold is ignored if test is true")
 
 	// arguments work for TestProfileSingleConfiguration only
 	vmNum     = flag.Int("vm", 2, "TestProfileSingleConfiguration: The number of VMs")
@@ -121,8 +121,8 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 	}
 
 	dumpMetrics(t, metrics, metrFile)
-	profile.PlotLineCharts(*vmIncrStep, *benchDir, metrFile, "the number of VM")
-	profile.PlotStackCharts(*vmIncrStep, "profile/toplev_metrics.json", *benchDir, metrFile, "the number of VM")
+	profile.PlotLineCharts(*vmIncrStep, *benchDir, metrFile, "the number of tenants")
+	profile.PlotStackCharts(*vmIncrStep, "profile/toplev_metrics.json", *benchDir, metrFile, "the number of tenants")
 
 	tearDownVMs(t, images, startVMID, isSyncOffload)
 }
