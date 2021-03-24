@@ -20,8 +20,9 @@ at a low rate in  Round-Robin and measures the service time of these requests to
 the mean latency and the tail latency (90-percentile).
 - ***A profiler*** invokes [toplev](https://github.com/andikleen/pmu-tools) to collect hardware counters.
   if profiling core is not set, it hides idle CPUs that are less than 50% of the busiest.
-- ***A plotter*** plots line charts. The X-axis is the number of VMs usually and Y-axis is the value 
-  of a metric.
+- ***A plotter*** plots two types of charts, one is the line chart for each metric, another is 
+  the stack chart for each metric group. The X-axis is the number of VMs usually and Y-axis is 
+  the value of a metric. 
 
 In ***the loader function***, a load step is divided into three phases: warm-up, profiling and cool-down. 
 The warm-up period is for serving the first few requests because they take a longer time for the FaaS 
@@ -57,6 +58,7 @@ General:
 -profileCPUID INT    Bind one VM to the core of the CPU and profile the core only (default -1)
 -bindSocket   INT    Bind all VMs to socket number apart from the profile CPU (default -1)
 -latSamples   INT    The number of latency measurements during one profiling period (default 100)
+-test         BOOL   Tail latency threshold is ignored if test is true
 
 TestProfileSingleConfiguration:
 -vm           INT    The number of VMs (default 2)
@@ -82,8 +84,6 @@ At the root of this repository, please run the following script to install the e
 for profiling and binding.
 ```bash
 scripts/install_pmutool.sh
-# disabling nmi watchdog to minimize multiplexing
-sudo echo 0 > /proc/sys/kernel/nmi_watchdog
 ```
 
 ## Quick-start guide
@@ -130,10 +130,19 @@ value, and repeats this procedure.
 Profile from 1 VMs to 32 VMs (increment step is 1) with `helloworld` image at TopDown level 1:
 ```
 sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileIncrementConfiguration \ 
--args -funcNames cnn_serving -vmIncrStep 1 -maxVMNum 32 -l 1
+-args -funcNames helloworld -vmIncrStep 1 -maxVMNum 32 -l 1
 ```
 Once the profiling iteration finishes, all results are saved in the `profile.csv`, and
 the tool plots the TopDown metrics in a set of charts. Here is a sample image of
-RPS per physical core as the number of VMs increases from 1 to 32:
+RPS per logical thread as the number of VMs increases from 1 to 32:
+![RPS per logical thread](figures/RPS_per_CPU.png)
 
-![RPS per physical core](figures/RPS-per-Core.png)
+Because we profiled the entire TopDown level 1 metrics, a stack plot is saved for level 1:
+![Level 1 stack chart](figures/Level_1.png) 
+
+Similar plots are saved if any metric at sub-level is profiled along with its siblings. For example, profiling from 4 VMs to 32 VMs (increment step is 4) with `helloworld` image at TopDown level 3 of Memory_Bound:
+```
+sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileIncrementConfiguration \
+ -args -funcNames helloworld -vmIncrStep 4 -maxVMNum 32 -nodes '!+Memory_Bound*/3,+MUX'
+```
+![Memory Bound stack chart](figures/Memory_Bound.png) 
