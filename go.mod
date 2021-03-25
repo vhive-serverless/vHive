@@ -64,7 +64,7 @@ require (
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	gonum.org/v1/plot v0.0.0-20190515093506-e2840ee46a6b
+	gonum.org/v1/plot v0.9.0
 	google.golang.org/grpc v1.33.1
 	k8s.io/cri-api v0.16.16-rc.0 // indirect
 )

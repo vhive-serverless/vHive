@@ -62,10 +62,7 @@ func PlotLineCharts(xStep int, filePath, inFile, xLable string) {
 
 	for col := 0; col < cols; col++ {
 		// create a new plot for a metric
-		p, err := plot.New()
-		if err != nil {
-			log.Fatalf("Failed creating plot: %v", err)
-		}
+		p := plot.New()
 
 		p.X.Label.Text = xLable
 		p.Y.Label.Text = records[0][col]
@@ -87,7 +84,7 @@ func PlotLineCharts(xStep int, filePath, inFile, xLable string) {
 			vmNum += xStep
 		}
 
-		err = plotutil.AddLinePoints(p, pts)
+		err := plotutil.AddLinePoints(p, pts)
 		if err != nil {
 			log.Fatalf("Failed plotting data: %v", err)
 		}
