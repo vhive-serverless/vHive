@@ -41,6 +41,14 @@ sudo rm /etc/firecracker-containerd/fccd-cri.sock
 rm ${HOME}/.kube/config
 sudo rm -rf ${HOME}/tmp
 
+echo Cleaning /var/lib/firecracker-containerd/*
+for d in containerd shim-base snapshotter; do sudo rm -rf /var/lib/firecracker-containerd/$d; done
+
+echo Cleaning /run/firecracker-containerd/*
+sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
+    /run/firecracker-containerd/io.containerd.runtime.v1.linux \
+    /run/firecracker-containerd/io.containerd.runtime.v2.task
+
 ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 bridge -j vlan |jq -r '.[].ifname'| while read line ; do sudo ip link delete "$line" ; done
