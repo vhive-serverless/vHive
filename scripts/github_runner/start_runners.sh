@@ -74,7 +74,7 @@ do
             ./config.sh \
                 --url "${_SHORT_URL}" \
                 --token "${RUNNER_TOKEN}" \
-                --name "cri-test-github-runner-${number}-control-plane" \
+                --name "cri-test-github-runner-${HOSTNAME}-${number}" \
                 --work "/root/_work" \
                 --labels "cri" \
                 --unattended \
