@@ -50,16 +50,15 @@ docker pull vhiveease/cri_test_runner
 
 
 
-for number in $(seq 1 $1)
-do
-    case "$4" in
-    "integ")
-        
-        if [ "$5" == "restart" ]; then
-            docker container stop $(docker ps --format "{{.Names}}" | grep integration_test-github_runner)
-            docker container rm $(docker ps -a --format "{{.Names}}" | grep integration_test-github_runner)
-        fi
-        
+case "$4" in
+"integ")
+
+    if [ "$5" == "restart" ]; then
+        docker container stop $(docker ps --format "{{.Names}}" | grep integration_test-github_runner)
+        docker container rm $(docker ps -a --format "{{.Names}}" | grep integration_test-github_runner)
+    fi
+    for number in $(seq 1 $1)
+    do
         # create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
         CONTAINERID=$(docker run -d --restart always --privileged \
             --name "integration_test-github_runner-${number}" \
@@ -71,13 +70,15 @@ do
             --volume /dev:/dev \
             --volume /run/udev/control:/run/udev/control \
             vhiveease/integ_test_runner)
-        ;;
-    "cri")
+    done
+    ;;
+"cri")
 
-        if [ "$5" == "restart" ]; then
-            kind get clusters | while read line ; do kind delete cluster --name "$line" ; done
-        fi
-
+    if [ "$5" == "restart" ]; then
+        kind get clusters | while read line ; do kind delete cluster --name "$line" ; done
+    fi
+    for number in $(seq 1 $1)
+    do
         kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${number}"
         sleep 2m
         docker exec -it \
@@ -99,11 +100,9 @@ do
         docker exec -it \
             "cri-test-github-runner-${number}-control-plane" \
             systemctl enable connect_github_runner --now
-        ;;
-    *)
-        echo "Invalid label"
-        ;;
-    esac
-
-    
-done
+    done
+    ;;
+*)
+    echo "Invalid label"
+    ;;
+esac
