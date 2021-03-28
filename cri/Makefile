@@ -21,14 +21,14 @@
 # SOFTWARE.
 
 EXTRAGOARGS:=-v -race -cover
-CTRDLOGDIR:=/tmp/ctrd-logs
+CTRDLOGDIR:=/tmp/ctrd-logs/${GITHUB_RUN_ID}
 test:
 	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
 	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
 	sleep 1s
 	sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
 	sleep 1s
-	sudo ./../vhive 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
+	sudo ./../vhive -dbg 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
 	sleep 1s
 
 	./../scripts/cluster/create_one_node_cluster.sh
