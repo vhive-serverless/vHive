@@ -61,7 +61,7 @@ case "$4" in
     do
         # create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
         CONTAINERID=$(docker run -d --restart always --privileged \
-            --name "integration_test-github_runner-${number}" \
+            --name "integration_test-github_runner-${HOSTNAME}-${number}" \
             -e REPO_URL="${_SHORT_URL}" \
             -e ACCESS_TOKEN="${ACCESS_TOKEN}" \
             -e LABELS="${3}" \
@@ -79,12 +79,12 @@ case "$4" in
     fi
     for number in $(seq 1 $1)
     do
-        kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${number}"
+        kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${HOSTNAME}-${number}"
         sleep 2m
         docker exec -it \
             -e RUNNER_ALLOW_RUNASROOT=1 \
             -w /root/actions-runner \
-            "cri-test-github-runner-${number}-control-plane" \
+            "cri-test-github-runner-${HOSTNAME}-${number}-control-plane" \
             ./config.sh \
                 --url "${_SHORT_URL}" \
                 --token "${RUNNER_TOKEN}" \
@@ -95,10 +95,10 @@ case "$4" in
                 --replace
         sleep 20s
         docker exec -it \
-            "cri-test-github-runner-${number}-control-plane" \
+            "cri-test-github-runner-${HOSTNAME}-${number}-control-plane" \
             systemctl daemon-reload
         docker exec -it \
-            "cri-test-github-runner-${number}-control-plane" \
+            "cri-test-github-runner-${HOSTNAME}-${number}-control-plane" \
             systemctl enable connect_github_runner --now
     done
     ;;
