@@ -28,6 +28,10 @@ if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ]; then
     exit -1
 fi
 
+NUM_OF_RUNNERS=$1
+RUNNER_LABEL=$4
+RESTART_FLAG=$5
+
 # fetch runner token using access token
 ACCESS_TOKEN=$3
 API_VERSION=v3
@@ -50,21 +54,21 @@ docker pull vhiveease/cri_test_runner
 
 
 
-case "$4" in
+case "$RUNNER_LABEL" in
 "integ")
 
-    if [ "$5" == "restart" ]; then
+    if [ "$RESTART_FLAG" == "restart" ]; then
         docker container stop $(docker ps --format "{{.Names}}" | grep integration_test-github_runner)
         docker container rm $(docker ps -a --format "{{.Names}}" | grep integration_test-github_runner)
     fi
-    for number in $(seq 1 $1)
+    for number in $(seq 1 $NUM_OF_RUNNERS)
     do
         # create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
         CONTAINERID=$(docker run -d --restart always --privileged \
             --name "integration_test-github_runner-${HOSTNAME}-${number}" \
             -e REPO_URL="${_SHORT_URL}" \
             -e ACCESS_TOKEN="${ACCESS_TOKEN}" \
-            -e LABELS="${3}" \
+            -e LABELS="${RUNNER_LABEL}" \
             --ipc=host \
             -v /var/run/docker.sock:/var/run/docker.sock \
             --volume /dev:/dev \
@@ -74,10 +78,10 @@ case "$4" in
     ;;
 "cri")
 
-    if [ "$5" == "restart" ]; then
+    if [ "$RESTART_FLAG" == "restart" ]; then
         kind get clusters | while read line ; do kind delete cluster --name "$line" ; done
     fi
-    for number in $(seq 1 $1)
+    for number in $(seq 1 $NUM_OF_RUNNERS)
     do
         kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${HOSTNAME}-${number}"
         sleep 2m
