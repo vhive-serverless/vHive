@@ -41,6 +41,12 @@ sudo rm /etc/firecracker-containerd/fccd-cri.sock
 rm ${HOME}/.kube/config
 sudo rm -rf ${HOME}/tmp
 
+# Remove the taps and bridges that were created for MicroVMs
+ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
+ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
+sudo ip link delete br0
+sudo ip link delete br1
+
 echo Cleaning /var/lib/firecracker-containerd/*
 for d in containerd shim-base snapshotter; do sudo rm -rf /var/lib/firecracker-containerd/$d; done
 
