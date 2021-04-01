@@ -26,7 +26,7 @@ jobs:
 
     - name: Host Info
       env:
-          GITHUB_RUN_ID: ${{ github.run_id }}-${{ github.run_number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
       run: |
         echo $HOSTNAME
         echo $GITHUB_RUN_ID
@@ -60,7 +60,7 @@ jobs:
           TMPDIR: /root/tmp/
           GOCACHE: /root/tmp/gocache
           GOPATH: /root/tmp/gopath
-          GITHUB_RUN_ID: ${{ github.run_id }}-${{ github.run_number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
       run: make test-cri
 
     - name: Archive log artifacts
