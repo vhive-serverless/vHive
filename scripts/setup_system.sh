@@ -45,6 +45,7 @@ sudo apt-get -y install \
     dmsetup \
     gnupg-agent \
     software-properties-common \
+    iproute2 \
     skopeo >> /dev/null
 
 # stack size, # of open files, # of pids
