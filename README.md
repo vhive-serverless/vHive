@@ -93,7 +93,7 @@ The statistics of this repository's views, clones, forks is available by the fol
 
 We would be happy to answer any questions in GitHub Issues and encourage the open-source community
 to submit new Issues, assist in addressing existing issues and limitations, and contribute their code with Pull Requests.
-You can also talk to us on the official [Firecracker Slack](https://firecracker-microvm.slack.com) in the **#firecracker-vHive-research** channel.
+You can also talk to us on the official [Firecracker Slack](https://join.slack.com/t/firecracker-microvm/shared_invite/zt-oxbm7tqt-GLlze9zZ7sdRSDY6OnXXHg) in the **#firecracker-vHive-research** channel.
 
 
 ## License and copyright
