@@ -118,16 +118,27 @@ kn service delete --all
 
 ## Setup a single-node cluster (master and worker functionality on the same node)
 
-```
+### Manual
+Start each component separately.
+
+```bash
 ./scripts/cloudlab/setup_node.sh
 sudo containerd
 sudo PATH=$PATH /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml
 source /etc/profile && go build && sudo ./vhive
 ./scripts/cluster/create_one_node_cluster.sh
 ```
+
 ### Clean up
 ```bash
 ./scripts/github_runner/clean_cri_runner.sh
+```
+
+### Using a script
+This script stops the existing cluster if any, cleans up and then starts a fresh single-node cluster.
+
+```bash
+scripts/cloudlab/start_onenode_vhive_cluster.sh <folder to store logs>
 ```
 
 ## CloudLab deployment notes

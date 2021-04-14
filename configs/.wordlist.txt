@@ -23,6 +23,7 @@ ASBD
 Asheim
 ASPLOS
 autoscaling
+autostart
 backend
 Backend
 baseurl
@@ -240,6 +241,7 @@ NUMA
 OCI
 Ocin
 OneLab
+onenode
 Onur
 OpenCV
 orchestrator
