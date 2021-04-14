@@ -23,15 +23,9 @@
 EXTRAGOARGS:=-v -race -cover
 CTRDLOGDIR:=/tmp/ctrd-logs/${GITHUB_RUN_ID}
 test:
-	sudo mkdir -p -m777 -p $(CTRDLOGDIR)
-	sudo containerd 1>$(CTRDLOGDIR)/ctrd.out 2>$(CTRDLOGDIR)/ctrd.err &
-	sleep 1s
-	sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd.out 2>$(CTRDLOGDIR)/fccd.err &
-	sleep 1s
-	sudo ./../vhive -dbg 1>$(CTRDLOGDIR)/orch.out 2>$(CTRDLOGDIR)/orch.err &
-	sleep 1s
 
-	./../scripts/cluster/create_one_node_cluster.sh
+	./../scripts/cloudlab/start_onenode_vhive_cluster.sh
+
 	sleep 2m
 	KUBECONFIG=/etc/kubernetes/admin.conf ./../scripts/setup_zipkin.sh
 	sleep 5s
