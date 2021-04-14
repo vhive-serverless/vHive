@@ -28,10 +28,21 @@ SCRIPTS=$ROOT/scripts
 
 $SCRIPTS/github_runner/clean_cri_runner.sh
 
-CTRDLOGDIR=/tmp/ctrd-logs/$GITHUB_RUN_ID
+CTRDLOGDIR=$1
+
+if [ -z $CTRDLOGDIR ] && [ -z "$GITHUB_RUN_ID" ] ; then
+    echo "[ERROR]: The log-directory argument is missing"
+    echo "USAGE: start_onenode_vhive_cluster.sh <Directory to store logs>" 
+    exit -1
+else
+    if [ -z "$CTRDLOGDIR" ]; then
+        CTRDLOGDIR=/tmp/ctrd-logs/$GITHUB_RUN_ID
+    fi
+fi
+
+echo "using $CTRDLOGDIR for storing logs"
 
 sudo mkdir -p -m777 -p $CTRDLOGDIR
-
 sudo containerd 1>$CTRDLOGDIR/ctrd.out 2>$CTRDLOGDIR/ctrd.err &
 sleep 1s
 sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &

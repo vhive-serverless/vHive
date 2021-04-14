@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added [script](./scripts/cloudlab/start_onenode_vhive_cluster.sh) to (re)start vHive single node cluster in a push-button.
+- CRI test logs are now stored as GitHub artifacts.
+
 ### Changed
 
 ### Fixed
@@ -30,7 +33,6 @@ More info [here](./docs/developers_guide.md#MinIO-S3-service)
 Other
 - vHive now also supports vanilla Knative benchmarking and testing (i.e., using containers for function sandboxes).
 More info [here](./docs/developers_guide.md#Testing-stock-Knative-images).
-
 
 ### Changed
 - Bumped up the Firecracker version to v0.24 with REAP snapshots support.
