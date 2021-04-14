@@ -47,20 +47,8 @@ jobs:
           GOPATH: /root/tmp/gopath
       run: go build
 
-    - name: Create logdir
-      run: mkdir -p -m777 -p /tmp/ctrd-logs/${{ github.run_id }}
-      
-    - name: Start Containerd
-      run: sudo containerd 1>/tmp/ctrd-logs/${{ github.run_id }}/ctrd.out 2>/tmp/ctrd-logs/${{ github.run_id }}/ctrd.err &
-
-    - name: Start Firecracker-containerd
-      run: sleep 1s && sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>/tmp/ctrd-logs/${{ github.run_id }}/fccd.out 2>/tmp/ctrd-logs/${{ github.run_id }}/fccd.err &
-
-    - name: Start vHive
-      run: sleep 1s && sudo ./vhive -dbg 1>/tmp/ctrd-logs/${{ github.run_id }}/fccd.out 2>/tmp/ctrd-logs/${{ github.run_id }}/fccd.err &
-      
-    - name: Create k8s cluster
-      run: sleep 1s && ./scripts/cluster/create_one_node_cluster.sh
+    - name: Start vHive cluster
+      run: ./scripts/cloudlab/start_onenode_vhive_cluster.sh
 
     - name: modify $PATH
       env:

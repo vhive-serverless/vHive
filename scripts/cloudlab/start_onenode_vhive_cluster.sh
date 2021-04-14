@@ -28,14 +28,21 @@ SCRIPTS=$ROOT/scripts
 
 $SCRIPTS/github_runner/clean_cri_runner.sh
 
-if [ ! -d "$HOME/ctrd-logs" ]; then
-    $SCRIPTS/cloudlab/setup_node.sh
-    mkdir -p ~/ctrd-logs
+CTRDLOGDIR=/tmp/ctrd-logs/$GITHUB_RUN_ID
+
+sudo mkdir -p -m777 -p $CTRDLOGDIR
+
+sudo containerd 1>$CTRDLOGDIR/ctrd.out 2>$CTRDLOGDIR/ctrd.err &
+sleep 1s
+sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &
+sleep 1s
+
+if [ ! -f "$ROOT/vhive" ]; then
+    source /etc/profile && cd $ROOT && go build
 fi
+sleep 1s
 
-sudo containerd 1>~/ctrd-logs/ctrd.out 2>~/ctrd-logs/ctrd.err &
-sudo firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>~/ctrd-logs/fccd.out 2>~/ctrd-logs/fccd.err &
-source /etc/profile && cd $ROOT && go build && sudo ./vhive 1>~/ctrd-logs/orch.out 2>~/ctrd-logs/orch.err &
+cd $ROOT && sudo ./vhive -dbg 1>$CTRDLOGDIR/orch.out 2>$CTRDLOGDIR/orch.err &
+sleep 1s
+
 $SCRIPTS/cluster/create_one_node_cluster.sh
-
-
