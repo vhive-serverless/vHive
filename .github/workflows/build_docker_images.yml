@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        ref: master
+        ref: main
     - name: docker build images
     # Consecutive COPY commands in Dockerfile fail on github runners
     # Added "DOCKER_BUILDKIT=1" as a temporary fix
@@ -37,7 +37,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        ref: master
+        ref: main
     - name: pull binaries
       run: |
         git lfs pull
