@@ -26,34 +26,31 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 SCRIPTS=$ROOT/scripts
 
+echo Clean up host resources if left after previous runs
 $SCRIPTS/github_runner/clean_cri_runner.sh
 
-CTRDLOGDIR=$1
-
-if [ -z $CTRDLOGDIR ] && [ -z "$GITHUB_RUN_ID" ] ; then
-    echo "[ERROR]: The log-directory argument is missing"
-    echo "USAGE: start_onenode_vhive_cluster.sh <Directory to store logs>" 
-    exit -1
-else
-    if [ -z "$CTRDLOGDIR" ]; then
-        CTRDLOGDIR=/tmp/ctrd-logs/$GITHUB_RUN_ID
-    fi
-fi
-
-echo "using $CTRDLOGDIR for storing logs"
-
+CTRDLOGDIR=/tmp/ctrd-logs/$GITHUB_RUN_ID
 sudo mkdir -p -m777 -p $CTRDLOGDIR
+
+echo Run the stock containerd daemon
 sudo containerd 1>$CTRDLOGDIR/ctrd.out 2>$CTRDLOGDIR/ctrd.err &
 sleep 1s
-sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &
+
+echo Run the firecracker-containerd daemon
+sudo /usr/local/bin/firecracker-containerd && \
+    --config /etc/firecracker-containerd/config.toml && \
+    1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &
 sleep 1s
 
-if [ ! -f "$ROOT/vhive" ]; then
-    source /etc/profile && cd $ROOT && go build
-fi
-sleep 1s
+echo Build vHive
+cd $ROOT
+source /etc/profile && go build
 
-cd $ROOT && sudo ./vhive -dbg 1>$CTRDLOGDIR/orch.out 2>$CTRDLOGDIR/orch.err &
+echo Running vHive with \"${GITHUB_RUNNER_VHIVE_ARGS}\" arguments
+sudo ./vhive ${GITHUB_RUNNER_VHIVE_ARGS} && \
+    1>$CTRDLOGDIR/orch.out 2>$CTRDLOGDIR/orch.err &
 sleep 1s
 
 $SCRIPTS/cluster/create_one_node_cluster.sh
+
+echo All logs are stored in $CTRDLOGDIR
