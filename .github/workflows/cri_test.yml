@@ -21,12 +21,13 @@ jobs:
   cri-tests:
     name: CRI tests
     runs-on: [self-hosted, cri]
-    
+
     steps:
 
     - name: Host Info
       env:
           GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUNNER_VHIVE_ARGS: "-dbg"
       run: |
         echo $HOSTNAME
         echo $GITHUB_RUN_ID
@@ -70,7 +71,7 @@ jobs:
         name: ctrd-logs
         path: |
           /tmp/ctrd-logs/${{ github.run_id }}
-    
+
     - name: Cleaning
       if: ${{ always() }}
       run: ./scripts/github_runner/clean_cri_runner.sh
