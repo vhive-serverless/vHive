@@ -66,9 +66,6 @@ fi
 echo Cleaning /var/lib/firecracker-containerd/*
 for d in containerd shim-base snapshotter; do sudo rm -rf /var/lib/firecracker-containerd/$d; done
 
-echo Creating a fresh devmapper
-source $DIR/create_devmapper.sh
-
 echo Cleaning /run/firecracker-containerd/*
 sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
     /run/firecracker-containerd/io.containerd.runtime.v1.linux \
@@ -78,3 +75,5 @@ echo Cleaning CNI state, e.g., allocated addresses
 sudo rm /var/lib/cni/networks/fcnet*/last_reserved_ip.0 || echo clean already
 sudo rm /var/lib/cni/networks/fcnet*/19* || echo clean already
 
+echo Creating a fresh devmapper
+source $DIR/create_devmapper.sh
