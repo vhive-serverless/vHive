@@ -37,9 +37,7 @@ sudo containerd 1>$CTRDLOGDIR/ctrd.out 2>$CTRDLOGDIR/ctrd.err &
 sleep 1s
 
 echo Run the firecracker-containerd daemon
-sudo /usr/local/bin/firecracker-containerd && \
-    --config /etc/firecracker-containerd/config.toml && \
-    1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &
+sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &
 sleep 1s
 
 echo Build vHive
@@ -47,8 +45,7 @@ cd $ROOT
 source /etc/profile && go build
 
 echo Running vHive with \"${GITHUB_VHIVE_ARGS}\" arguments
-sudo ./vhive ${GITHUB_VHIVE_ARGS} && \
-    1>$CTRDLOGDIR/orch.out 2>$CTRDLOGDIR/orch.err &
+sudo ./vhive ${GITHUB_VHIVE_ARGS} 1>$CTRDLOGDIR/orch.out 2>$CTRDLOGDIR/orch.err &
 sleep 1s
 
 $SCRIPTS/cluster/create_one_node_cluster.sh
