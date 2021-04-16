@@ -138,7 +138,8 @@ source /etc/profile && go build && sudo ./vhive
 This script stops the existing cluster if any, cleans up and then starts a fresh single-node cluster.
 
 ```bash
-scripts/cloudlab/start_onenode_vhive_cluster.sh <folder to store logs>
+export GITHUB_RUNNER_VHIVE_ARGS="[-dbg] [-snapshots] [-upf]" # specify if to enable debug logs; cold starts: snapshots, REAP snapshots (optional)
+scripts/cloudlab/start_onenode_vhive_cluster.sh
 ```
 
 ## CloudLab deployment notes
