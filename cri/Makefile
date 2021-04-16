@@ -21,7 +21,6 @@
 # SOFTWARE.
 
 EXTRAGOARGS:=-v -race -cover
-CTRDLOGDIR:=/tmp/ctrd-logs/${GITHUB_RUN_ID}
 test:
 
 	./../scripts/cloudlab/start_onenode_vhive_cluster.sh
