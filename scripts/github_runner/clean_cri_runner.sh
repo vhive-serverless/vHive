@@ -36,7 +36,26 @@ sudo pkill -INT vhive
 sudo pkill -9 firecracker-containerd
 sudo pkill -9 firecracker
 sudo pkill -9 containerd
-$PWD/../create_devmapper.sh
+
+ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
+ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
+bridge -j vlan |jq -r '.[].ifname'| while read line ; do sudo ip link delete "$line" ; done
+
+# When executed inside a docker container, this command returns the container ID of the container.
+# on a non container environment, this returns "/".
+CONTAINERID=$(basename $(cat /proc/1/cpuset))
+
+# Docker container ID is 64 characters long.
+if [ 64 -eq ${#CONTAINERID} ]; then
+    echo Removing devmapper devices for the current container
+    for de in `sudo dmsetup ls| cut -f1|grep $CONTAINERID |grep snap`; do sudo dmsetup remove $de && echo Removed $de; done
+    sudo dmsetup remove "${CONTAINERID}_thinpool"
+else
+    echo Removing devmapper devices
+    for de in `sudo dmsetup ls| cut -f1|grep thinpool`; do sudo dmsetup remove $de && echo Removed $de; done
+    sudo dmsetup remove fc-dev-thinpool
+fi
+
 sudo rm /etc/firecracker-containerd/fccd-cri.sock
 rm ${HOME}/.kube/config
 sudo rm -rf ${HOME}/tmp
@@ -49,6 +68,5 @@ sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
     /run/firecracker-containerd/io.containerd.runtime.v1.linux \
     /run/firecracker-containerd/io.containerd.runtime.v2.task
 
-ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
-ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
-bridge -j vlan |jq -r '.[].ifname'| while read line ; do sudo ip link delete "$line" ; done
+echo Creating a fresh devmapper
+$PWD/../create_devmapper.sh
