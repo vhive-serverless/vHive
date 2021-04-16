@@ -27,7 +27,6 @@ jobs:
     - name: Host Info
       env:
           GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUNNER_VHIVE_ARGS: "-dbg"
       run: |
         echo $HOSTNAME
         echo $GITHUB_RUN_ID
@@ -62,6 +61,7 @@ jobs:
           GOCACHE: /root/tmp/gocache
           GOPATH: /root/tmp/gopath
           GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_VHIVE_ARGS: "-dbg"
       run: make test-cri
 
     - name: Archive log artifacts

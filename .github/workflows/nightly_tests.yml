@@ -56,7 +56,6 @@ jobs:
     - name: Host Info
       env:
           GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUNNER_VHIVE_ARGS: $${{ matrix.vhive_args }}
       run: |
         echo $HOSTNAME
         echo $GITHUB_RUN_ID
@@ -91,7 +90,10 @@ jobs:
           GOCACHE: /root/tmp/gocache
           GOPATH: /root/tmp/gopath
           GITHUB_RUN_ID: ${{ github.run_id }}
-      run: make test-cri
+          GITHUB_VHIVE_ARGS: $${{ matrix.vhive_args }}
+      run: |
+        echo vHive args are $GITHUB_VHIVE_ARGS
+        make test-cri
 
     - name: Archive log artifacts
       if: ${{ always() }}

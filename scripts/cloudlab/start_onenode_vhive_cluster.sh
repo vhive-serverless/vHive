@@ -46,8 +46,8 @@ echo Build vHive
 cd $ROOT
 source /etc/profile && go build
 
-echo Running vHive with \"${GITHUB_RUNNER_VHIVE_ARGS}\" arguments
-sudo ./vhive ${GITHUB_RUNNER_VHIVE_ARGS} && \
+echo Running vHive with \"${GITHUB_VHIVE_ARGS}\" arguments
+sudo ./vhive ${GITHUB_VHIVE_ARGS} && \
     1>$CTRDLOGDIR/orch.out 2>$CTRDLOGDIR/orch.err &
 sleep 1s
 
