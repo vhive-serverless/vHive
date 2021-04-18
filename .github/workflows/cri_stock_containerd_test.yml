@@ -8,6 +8,7 @@ on:
 env:
   GOOS: linux
   GO111MODULE: on
+  TMPDIR: /root/tmp/
 
 jobs:
   stock-containerd-test:
@@ -16,7 +17,7 @@ jobs:
 
     steps:
     - name: Setup TMPDIR
-      run: mkdir -p $HOME/tmp
+      run: mkdir -p $TMPDIR
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2

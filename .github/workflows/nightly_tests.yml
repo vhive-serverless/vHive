@@ -8,12 +8,19 @@ on:
 env:
   GOOS: linux
   GO111MODULE: on
+  TMPDIR: /root/tmp/
+  GOCACHE: /root/tmp/gocache
+  GOPATH: /root/tmp/gopath
+  GOROOT: $HOME/go
 
 jobs:
   integration-tests:
     name: Test all functions
     runs-on: [self-hosted, nightly, integ]
     steps:
+    - name: Setup TMPDIR
+      run: mkdir -p $TMPDIR
+
     - name: Set up Go 1.15
       uses: actions/setup-go@v2
       with:
@@ -50,24 +57,23 @@ jobs:
       fail-fast: false
       matrix:
         vhive_args: ["-dbg", "-dbg -snapshots", "-dbg -snapshots -upf"]
+    env:
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_JOB: ${{ github.job }}
+        GITHUB_VHIVE_ARGS: ${{ matrix.vhive_args }}
 
     steps:
 
     - name: Host Info
-      env:
-          GITHUB_RUN_ID: ${{ github.run_id }}
       run: |
-        echo $HOSTNAME
-        echo $GITHUB_RUN_ID
+        echo HOSTNAME=$HOSTNAME
+        echo GITHUB_RUN_ID=$GITHUB_RUN_ID
+        echo GITHUB_JOB=$GITHUB_JOB
 
     - name: Setup TMPDIR
-      run: mkdir -p $HOME/tmp
+      run: mkdir -p $TMPDIR
 
     - name: Set up Go 1.15
-      env:
-          GOROOT: $HOME/go
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
       uses: actions/setup-go@v2
       with:
         go-version: 1.15
@@ -79,18 +85,9 @@ jobs:
       run: ./scripts/setup_firecracker_containerd.sh
 
     - name: Build
-      env:
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
       run: go build
 
     - name: Run vHive CRI tests
-      env:
-          TMPDIR: /root/tmp/
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_VHIVE_ARGS: $${{ matrix.vhive_args }}
       run: |
         echo vHive args are $GITHUB_VHIVE_ARGS
         make test-cri
@@ -99,7 +96,7 @@ jobs:
       if: ${{ always() }}
       uses: actions/upload-artifact@v2
       with:
-        name: ctrd-logs
+        name: ${{ github.job }}-${{ matrix.vhive_args }}-ctrd-logs
         path: |
           /tmp/ctrd-logs/${{ github.run_id }}
 
