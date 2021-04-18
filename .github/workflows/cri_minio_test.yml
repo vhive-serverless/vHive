@@ -8,6 +8,10 @@ on:
 env:
   GOOS: linux
   GO111MODULE: on
+  TMPDIR: /root/tmp/
+  GOCACHE: /root/tmp/gocache
+  GOPATH: /root/tmp/gopath
+  GOROOT: $HOME/go
 
 jobs:
   minio-test:
@@ -16,13 +20,9 @@ jobs:
 
     steps:
     - name: Setup TMPDIR
-      run: mkdir -p $HOME/tmp
+      run: mkdir -p $TMPDIR
 
     - name: Set up Go 1.15
-      env:
-          GOROOT: $HOME/go
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
       uses: actions/setup-go@v2
       with:
         go-version: 1.15
@@ -34,24 +34,15 @@ jobs:
       run: ./scripts/setup_firecracker_containerd.sh
 
     - name: Build
-      env:
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
       run: go build
 
     - name: Start vHive cluster
       run: ./scripts/cloudlab/start_onenode_vhive_cluster.sh
 
     - name: modify $PATH
-      env:
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
       run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
     - name: Setup minio
-      env:
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
       run: sleep 1m && make -C ./function-images/tests/save_load_minio local
 
     - name: Test minio

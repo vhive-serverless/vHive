@@ -16,29 +16,29 @@ on:
 env:
   GOOS: linux
   GO111MODULE: on
+  TMPDIR: /root/tmp/
+  GOCACHE: /root/tmp/gocache
+  GOPATH: /root/tmp/gopath
 
 jobs:
   cri-tests:
     name: CRI tests
+    env:
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_VHIVE_ARGS: "-dbg"
     runs-on: [self-hosted, cri]
 
     steps:
 
     - name: Host Info
-      env:
-          GITHUB_RUN_ID: ${{ github.run_id }}
       run: |
         echo $HOSTNAME
         echo $GITHUB_RUN_ID
 
     - name: Setup TMPDIR
-      run: mkdir -p $HOME/tmp
+      run: mkdir -p $TMPDIR
 
     - name: Set up Go 1.15
-      env:
-          GOROOT: $HOME/go
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
       uses: actions/setup-go@v2
       with:
         go-version: 1.15
@@ -50,18 +50,9 @@ jobs:
       run: ./scripts/setup_firecracker_containerd.sh
 
     - name: Build
-      env:
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
       run: go build
 
     - name: Run vHive CRI tests
-      env:
-          TMPDIR: /root/tmp/
-          GOCACHE: /root/tmp/gocache
-          GOPATH: /root/tmp/gopath
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_VHIVE_ARGS: "-dbg"
       run: make test-cri
 
     - name: Archive log artifacts
