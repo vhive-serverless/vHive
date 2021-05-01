@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM myoung34/github-runner:ubuntu-bionic
+FROM ubuntu:bionic
 
 RUN apt-get update && \
     apt-get install --yes \
@@ -58,12 +58,6 @@ RUN apt-get update && \
 COPY scripts/github_runner/setup_runner.sh /setup_runner.sh
 COPY scripts/create_devmapper.sh /create_devmapper.sh
 COPY scripts/install_pmutools.sh /install_pmutools.sh
-COPY bin/firecracker /usr/local/bin/
-COPY bin/jailer /usr/local/bin/
-COPY bin/containerd-shim-aws-firecracker /usr/local/bin/
-COPY bin/firecracker-containerd /usr/local/bin/
-COPY bin/firecracker-ctr /usr/local/bin/
-COPY bin/default-rootfs.img /var/lib/firecracker-containerd/runtime/
 COPY configs/firecracker-containerd/config.toml /etc/firecracker-containerd/
 COPY configs/firecracker-containerd/firecracker-runtime.json /etc/containerd/
-ENTRYPOINT /setup_runner.sh ; /entrypoint.sh
+ENTRYPOINT /setup_runner.sh

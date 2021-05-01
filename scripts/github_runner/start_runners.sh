@@ -64,16 +64,18 @@ case "$RUNNER_LABEL" in
     for number in $(seq 1 $NUM_OF_RUNNERS)
     do
         # create access token as mentioned here (https://github.com/myoung34/docker-github-actions-runner#create-github-personal-access-token)
-        CONTAINERID=$(docker run -d --restart always --privileged \
+        docker run -d --restart always --privileged \
             --name "integration_test-github_runner-${HOSTNAME}-${number}" \
-            -e REPO_URL="${_SHORT_URL}" \
-            -e ACCESS_TOKEN="${ACCESS_TOKEN}" \
+            -e _SHORT_URL="${_SHORT_URL}" \
+            -e RUNNER_TOKEN="${RUNNER_TOKEN}" \
             -e LABELS="${RUNNER_LABEL}" \
+            -e HOSTNAME="${HOSTNAME}" \
+            -e NUMBER="${number}" \
             --ipc=host \
             -v /var/run/docker.sock:/var/run/docker.sock \
             --volume /dev:/dev \
             --volume /run/udev/control:/run/udev/control \
-            vhiveease/integ_test_runner)
+            vhiveease/integ_test_runner:ubuntu18base
     done
     ;;
 "cri")
