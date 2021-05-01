@@ -39,3 +39,27 @@ if [ ! -d "/usr/local/pmu-tools" ]; then
   ln -s /usr/bin/python3 /usr/bin/python
   /install_pmutools.sh
 fi
+
+# setup github runner
+cd $HOME
+if [ ! -d "$HOME/actions-runner" ]; then
+    mkdir actions-runner && cd actions-runner
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep 'browser_' | cut -d\" -f4 | grep linux-x64)
+    curl -o actions-runner-linux-x64.tar.gz -L -C - $LATEST_VERSION
+    tar xzf "./actions-runner-linux-x64.tar.gz"
+    rm actions-runner-linux-x64.tar.gz
+    chmod +x ./config.sh
+    chmod +x ./run.sh
+    RUNNER_ALLOW_RUNASROOT=1 ./config.sh --url "${_SHORT_URL}" \
+                    --token "${RUNNER_TOKEN}" \
+                    --name "integ-test-github-runner-${HOSTNAME}-${NUMBER}" \
+                    --work "/root/_work" \
+                    --labels "integ" \
+                    --unattended \
+                    --replace
+
+fi
+
+cd $HOME/actions-runner
+RUNNER_ALLOW_RUNASROOT=1 ./run.sh
+
