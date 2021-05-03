@@ -49,7 +49,7 @@ RUNNER_TOKEN="$(curl -XPOST -fsSL \
 | jq -r '.token')"
 
 # pull latest images
-docker pull vhiveease/integ_test_runner
+docker pull vhiveease/integ_test_runner:ubuntu18base
 docker pull vhiveease/cri_test_runner
 
 
