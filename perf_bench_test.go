@@ -85,6 +85,9 @@ var (
 // iteration finishes, it saves results in bench.csv under *benchDir folder and plots each
 // counters which are also saved under *benchDir folder
 func TestProfileIncrementConfiguration(t *testing.T) {
+
+	t.Skip("Skipping TestProfileIncrementConfiguration")
+
 	var (
 		idx, rps      int
 		pinnedFuncNum int
@@ -130,6 +133,9 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 // TestProfileSingleConfiguration issues requests to a fixed number of VMs until requests start
 // to violate tail latency threshold and then saves the results in bench.csv under *benchDir folder
 func TestProfileSingleConfiguration(t *testing.T) {
+
+	t.Skip("Skipping TestProfileSingleConfiguration")
+
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
