@@ -155,7 +155,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7:b5a9f131839f5bc4bb2a22a71307f1b3c2ff6ef65ae6a83db66644def1ef37ce
+          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:4a6beaa4584119fbf93b94e8c7ee3f7d6d8a30f0dd21a1b50b86c474150280f7
           resources:
             requests:
               cpu: 30m
@@ -239,7 +239,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824:290976dcccdc9b10f00f23b3c46c62ec38e2b2702583584bf66671941327acb2
+          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:967b389f96e77f2b5b2bd93a79fbdbaf7bad2e77720f2f16f0b0b26fab51c928
           resources:
             requests:
               cpu: 100m
