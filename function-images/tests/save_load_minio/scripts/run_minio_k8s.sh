@@ -52,5 +52,5 @@ kn service apply \
     --concurrency-target 1 --scale=1
 
 $DIR/../bins/client -d \
-    --addr="minio-test.default.192.168.1.240.xip.io:80" \
+    --addr="minio-test.default.192.168.1.240.nip.io:80" \
     --minioAddr="10.96.0.46:9000" -size=1024
