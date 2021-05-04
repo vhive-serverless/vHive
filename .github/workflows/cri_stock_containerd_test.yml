@@ -36,6 +36,9 @@ jobs:
     - name: Create helloworld container
       run: KUBECONFIG=/etc/kubernetes/admin.conf kn service create helloworld-go --image gcr.io/knative-samples/helloworld-go --env TARGET="vHive CRI test"
 
+    - name: Invoke the deployed function
+      run: curl http://helloworld-go.default.192.168.1.240.nip.io
+
     - name: Cleaning
       if: ${{ always() }}
       run: ./scripts/github_runner/clean_cri_runner.sh stock-only
