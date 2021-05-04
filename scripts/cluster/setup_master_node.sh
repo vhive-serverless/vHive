@@ -67,7 +67,7 @@ kubectl apply --filename $ROOT/configs/registry/repository-update-hosts.yaml
 # magic DNS
 kubectl apply --filename $ROOT/configs/knative_yamls/serving-default-domain.yaml
 
-kubectl apply --filename https://github.com/knative/net-istio/releases/download/v0.19.0/release.yaml
+kubectl apply --filename https://github.com/knative/net-istio/releases/download/$KNATIVE_VERSION/release.yaml
 
 # install knative eventing
 kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/eventing-crds.yaml
