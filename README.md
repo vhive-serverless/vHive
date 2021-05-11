@@ -38,6 +38,8 @@ The details of the vHive architecture can be found in our ASPLOS'21 paper
 
 * [Slides](docs/talks/vHive_REAP_@AWS_04_02_2021.pdf) from
 [Dmitrii](http://homepages.inf.ed.ac.uk/s1373190/)'s talk at AWS on Feb, 4th 2021.
+* ASPLOS'21 talks on YouTube:
+[short](https://www.youtube.com/watch?v=w1vGb0X0SUQ), [long](https://www.youtube.com/watch?v=zfLd_MTGOA8).
 
 
 ## Referencing our work

@@ -43,6 +43,8 @@ jobs:
 
     - name: Check code
       uses: golangci/golangci-lint-action@v2
+      with:
+        args: --timeout 5m
 
     - name: Get dependencies
       run: |

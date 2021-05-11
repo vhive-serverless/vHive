@@ -6,9 +6,8 @@
 
 You can use the image to build/test/develop vHive inside a container. This image is preconfigured to run a single node Kubernetes cluster inside a container and contains packages to setup vHive on top of it. 
 ```bash
-git clone -b custom_docker_params_for_vHive https://github.com/ease-lab/kind
-# build kind
-cd kind && go build
+# Set up the host (the same script as for the self-hosted GitHub CI runner)
+./scripts/github_runner/setup_runner_host.sh
 # pull latest image
 docker pull vhiveease/vhive_dev_env
 # Start a container 
