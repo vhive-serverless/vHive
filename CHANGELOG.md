@@ -9,7 +9,11 @@
 
 ### Changed
 
+- Kubernetes version frozen to 1.20.6-00.
+
 ### Fixed
+
+- Fixed stock knative cluster startup.
 
 
 ## v1.2

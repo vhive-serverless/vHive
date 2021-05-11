@@ -28,7 +28,7 @@ ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 STOCK_CONTAINERD=$1
 
 # Create kubelet service
-$DIR/setup_worker_kubelet.sh $STOCK_ONLY
+$DIR/setup_worker_kubelet.sh $STOCK_CONTAINERD
 
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     CRI_SOCK="/run/containerd/containerd.sock"
