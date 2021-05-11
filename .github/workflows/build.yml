@@ -22,7 +22,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go: ['1.13', '1.14', '1.15']
+        go: ['1.13', '1.14', '1.15', '1.16']
       # Build all variants regardless of failures
       fail-fast: false
 
@@ -42,7 +42,7 @@ jobs:
         fetch-depth: 21
 
     - name: Check code
-      uses: Jerome1337/golint-action@v1.0.2
+      uses: golangci/golangci-lint-action@v2
 
     - name: Get dependencies
       run: |
