@@ -58,12 +58,3 @@ newgrp docker
 
 # Allow profiling using Perf / PMU tools
 sudo sysctl -w kernel.perf_event_paranoid=-1
-
-#setup crontab for nightly reboots
-TMPFILE=$(mktemp)
-#write out current crontab
-sudo crontab -l > $TMPFILE
-#echo new cron into cron file
-sudo echo "00 02 * * * shutdown -r 0" >> $TMPFILE
-#install new cron file
-sudo crontab $TMPFILE
