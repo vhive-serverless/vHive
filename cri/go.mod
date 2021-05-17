@@ -53,6 +53,6 @@ require (
 	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
-	google.golang.org/grpc v1.33.1
+	google.golang.org/grpc v1.37.1
 	k8s.io/cri-api v0.0.0-00010101000000-000000000000
 )
