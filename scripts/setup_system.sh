@@ -24,8 +24,8 @@
 
 # Add skopeo sources
 . /etc/os-release
-echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list > /dev/null
+curl --silent --show-error -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
 
 sudo apt-get update >> /dev/null
 
@@ -62,14 +62,14 @@ sudo sh -c "echo \"* hard stack 65536\" >> /etc/security/limits.conf"
 sudo sh -c "echo \"root soft stack 65536\" >> /etc/security/limits.conf"
 sudo sh -c "echo \"root hard stack 65536\" >> /etc/security/limits.conf"
 
-sudo sysctl -w net.ipv4.conf.all.forwarding=1
+sudo sysctl --quiet -w net.ipv4.conf.all.forwarding=1
 # Avoid "neighbour: arp_cache: neighbor table overflow!"
-sudo sysctl -w net.ipv4.neigh.default.gc_thresh1=1024
-sudo sysctl -w net.ipv4.neigh.default.gc_thresh2=2048
-sudo sysctl -w net.ipv4.neigh.default.gc_thresh3=4096
-sudo sysctl -w net.ipv4.ip_local_port_range="32769 65535"
-sudo sysctl -w kernel.pid_max=4194303
-sudo sysctl -w kernel.threads-max=999999999
+sudo sysctl --quiet -w net.ipv4.neigh.default.gc_thresh1=1024
+sudo sysctl --quiet -w net.ipv4.neigh.default.gc_thresh2=2048
+sudo sysctl --quiet -w net.ipv4.neigh.default.gc_thresh3=4096
+sudo sysctl --quiet -w net.ipv4.ip_local_port_range="32769 65535"
+sudo sysctl --quiet -w kernel.pid_max=4194303
+sudo sysctl --quiet -w kernel.threads-max=999999999
 sudo swapoff -a
-sudo sysctl net.ipv4.ip_forward=1
-sudo sysctl --system
+sudo sysctl --quiet net.ipv4.ip_forward=1
+sudo sysctl --quiet --system

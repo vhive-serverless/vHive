@@ -24,7 +24,7 @@
 
 set -e
 
-wget https://golang.org/dl/go1.15.8.linux-amd64.tar.gz
+wget --continue --quiet https://golang.org/dl/go1.15.8.linux-amd64.tar.gz
 
 sudo tar -C /usr/local -xzf go1.15.8.linux-amd64.tar.gz
 
