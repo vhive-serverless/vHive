@@ -73,7 +73,7 @@ type functionType struct {
 }
 
 func getFuncSlice(file string) []functionType {
-	log.Debugf("Opening JSON file with functions: %s\n", file)
+	log.Debug("Opening JSON file with functions: ", file)
 	jsonFile, err := os.Open(file)
 	if err != nil {
 		log.Fatal(err)
@@ -138,14 +138,14 @@ func deployFunction(funcName, filePath string) {
 		log.Warnf("Failed to deploy function %s, %s: %v\n%s\n", funcName, filePath, err, stdoutStderr)
 	}
 
-	log.Info("Deployed function", funcName)
+	log.Info("Deployed function ", funcName)
 }
 
 func writeURLs(filePath string, urls []string) {
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
-		log.Fatalf("failed creating file: %s", err)
+		log.Fatal("Failed creating file: ", err)
 	}
 
 	datawriter := bufio.NewWriter(file)
