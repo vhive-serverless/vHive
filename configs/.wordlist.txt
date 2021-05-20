@@ -299,6 +299,7 @@ rdquo
 repo
 roadmap
 rperf
+RPerf
 RPERF
 rsquo
 runtime

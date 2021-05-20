@@ -147,8 +147,7 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
 ### CloudLab Profile
 
 It is recommended to use a base Ubuntu 18.04 image for each node and connect the nodes in a LAN.
-You can use our CloudLab profile that is called [plamenpp/knative-fccd](https://www.cloudlab.us/show-profile.php?uuid=c8fb47db-2013-11eb-b7c5-e4434b2381fc).
-This profile allocates 200GB on ```/fccd```, which is helpful because CloudLab provides 16GB on ```/```.
+You can use our CloudLab profile that is called [RPerf/vHive-cluster-env](https://www.cloudlab.us/p/RPerf/vHive-cluster-env).
 
 ### Nodes to Rent
 SSD-equipped nodes are highly recommended. We suggest renting nodes on CloudLab as their service is available to researchers world-wide. Full list of CloudLab nodes can be found [here](https://docs.cloudlab.us/hardware.html).
