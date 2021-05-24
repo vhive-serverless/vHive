@@ -44,3 +44,17 @@ jobs:
     - name: docker build images
       run: |
         DOCKER_BUILDKIT=1 docker build --file ./scripts/github_runner/Dockerfile.${{ matrix.image }} .
+  compose_images:
+    name: Build docker-compose function images
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [tests/producer-consumer]
+    steps:
+    - uses: actions/checkout@v2
+    - name: docker-compose build images
+      run: |
+        cd ./function-images/${{ matrix.image }}
+        docker-compose up -d
+        
