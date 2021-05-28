@@ -40,7 +40,7 @@ func TestParallelServe(t *testing.T) {
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
 	// Pull image to work around parallel pulling limitation
-	resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", testImageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), "plr-fnc", testImageName, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 	// -----------------------------------------------------

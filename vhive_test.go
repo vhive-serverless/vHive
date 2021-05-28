@@ -168,7 +168,7 @@ func TestStartSendStopTwice(t *testing.T) {
 }
 
 func TestStatsNotNumericFunction(t *testing.T) {
-	fID := "not_cld"
+	fID := "not-cld"
 	var (
 		servedTh      uint64 = 1
 		pinnedFuncNum int    = 2

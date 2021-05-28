@@ -68,7 +68,7 @@ func TestBenchParallelServe(t *testing.T) {
 	createResultsDir()
 
 	// Pull image
-	resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+	resp, _, err := funcPool.Serve(context.Background(), "plr-fnc", imageName, "record")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, record_response!")
 
@@ -112,7 +112,7 @@ func TestBenchParallelServe(t *testing.T) {
 		require.NoError(t, err, "Function returned error, "+message)
 
 		if *isUPFEnabledTest {
-			memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "_0")
+			memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "-0")
 			require.NoError(t, err, "Failed to ge tupf metrics")
 			require.Equal(t, len(memManagerMetrics), 1, "wrong length")
 			upfMetrics[i] = memManagerMetrics[0]
@@ -177,7 +177,7 @@ func TestBenchWarmServe(t *testing.T) {
 		err = funcPool.DumpUPFPageStats(vmIDString, imageName, *funcName, getOutFile("pageStats.csv"))
 		require.NoError(t, err, "Failed to dump page stats for"+*funcName)
 
-		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "_0")
+		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "-0")
 		require.NoError(t, err, "Failed to dump get stats for "+*funcName)
 		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
 	}
@@ -206,7 +206,7 @@ func TestBenchServe(t *testing.T) {
 	createResultsDir()
 
 	// Pull image
-	resp, _, err := funcPool.Serve(context.Background(), "plr_fnc", imageName, "record")
+	resp, _, err := funcPool.Serve(context.Background(), "plr-fnc", imageName, "record")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, record_response!")
 
@@ -244,7 +244,7 @@ func TestBenchServe(t *testing.T) {
 		err = funcPool.DumpUPFPageStats(vmIDString, imageName, *funcName, getOutFile("pageStats.csv"))
 		require.NoError(t, err, "Failed to dump page stats for"+*funcName)
 
-		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "_0")
+		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "-0")
 		require.NoError(t, err, "Failed to dump get stats for "+*funcName)
 		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
 	}
