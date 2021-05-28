@@ -517,7 +517,7 @@ func (f *Function) ZeroServedStat() {
 
 // getVMID Creates the vmID for the function
 func (f *Function) getVMID() string {
-	return fmt.Sprintf("%s_%d", f.fID, f.lastInstanceID)
+	return fmt.Sprintf("%s-%d", f.fID, f.lastInstanceID)
 }
 
 func (f *Function) getFuncClient() (hpb.GreeterClient, error) {
