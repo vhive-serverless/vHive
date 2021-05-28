@@ -27,7 +27,7 @@ sudo apt-get update >> /dev/null
 sudo apt-get -y install btrfs-tools pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
 
 wget --continue --quiet https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
-sudo unzip -q protoc-3.11.4-linux-x86_64.zip -d /usr/local
+sudo unzip -o -q protoc-3.11.4-linux-x86_64.zip -d /usr/local
 
 wget --continue --quiet https://github.com/containerd/containerd/releases/download/v1.4.1/containerd-1.4.1-linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf containerd-1.4.1-linux-amd64.tar.gz
