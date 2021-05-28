@@ -1,0 +1,137 @@
+# MIT License
+#
+# Copyright (c) 2021 Mert Bora Alper and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# This configuration uses auto-scaling Knative services in contrast to
+# Kubernetes services.
+
+# Broker: my-broker
+# =================
+apiVersion: eventing.knative.dev/v1
+kind: Broker
+metadata:
+  name: my-broker
+
+---
+
+# Knative Service: ease-pipeline-server
+# =====================================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ease-pipeline-server
+spec:
+  template:
+    spec:
+      containers:
+        - image: docker.io/vhiveease/ease-pipeline-server:latest
+          imagePullPolicy: Always
+          ports:
+            # For `h2c`, see https://knative.tips/networking/http2/
+            - name: h2c
+              containerPort: 8080
+
+---
+
+# SinkBinding: ease-pipeline-server
+# =================================
+apiVersion: sources.knative.dev/v1
+kind: SinkBinding
+metadata:
+  name: bind-ease-pipeline-server
+spec:
+  subject:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    name: ease-pipeline-server
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: my-broker
+
+---
+
+# Knative Service: ease-temp-consumer
+# ===================================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ease-pipeline-temp-consumer
+spec:
+  template:
+    spec:
+      containers:
+        - image: docker.io/vhiveease/ease-pipeline-temp-consumer:latest
+          imagePullPolicy: Always
+
+---
+
+# Knative Service: ease-overheat-consumer
+# =======================================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ease-pipeline-overheat-consumer
+spec:
+  template:
+    spec:
+      containers:
+        - image: docker.io/vhiveease/ease-pipeline-overheat-consumer:latest
+          imagePullPolicy: Always
+
+---
+
+# Trigger: for temp-consumer
+# ==========================
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: temp-consumer-trigger
+spec:
+  broker: my-broker
+  filter:
+    attributes:
+      type: temp
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: ease-pipeline-temp-consumer
+
+---
+
+# Trigger: for overheat-consumer
+# ==============================
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: overheat-consumer-trigger
+spec:
+  broker: my-broker
+  filter:
+    attributes:
+      type: overheat
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: ease-pipeline-overheat-consumer

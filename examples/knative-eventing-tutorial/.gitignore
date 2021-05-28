@@ -1,0 +1,4 @@
+# Ignore the executables
+./server
+./overheat-consumer
+./temp-consumer
