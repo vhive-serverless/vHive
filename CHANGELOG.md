@@ -6,6 +6,7 @@
 
 - Added [script](./scripts/cloudlab/start_onenode_vhive_cluster.sh) to (re)start vHive single node cluster in a push-button.
 - CRI test logs are now stored as GitHub artifacts.
+- Added Knative Eventing Tutorial: [documentation](./docs/knative/eventing.md) and [example](./examples/knative-eventing-tutorial).
 
 ### Changed
 

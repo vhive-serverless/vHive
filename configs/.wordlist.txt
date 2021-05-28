@@ -23,8 +23,10 @@ ARXIV
 ASBD
 Asheim
 ASPLOS
+Atamel
 autoscaling
 autostart
+aws
 backend
 Backend
 baseurl
@@ -43,10 +45,14 @@ CCNoC
 CCNOC
 ccNUMA
 cd
+celsius
 Changelog
 Chunduri
+CloudEvents
 cloudlab
 CloudLab
+CloudWatch
+cloudwatch
 CMP
 CMPMSI
 cni
@@ -87,6 +93,7 @@ Distributable
 dmitrii
 Dmitrii's
 dmS
+DNS
 DockerHub
 DOCKERHUB
 Dockerized
@@ -95,6 +102,8 @@ Dragojevic
 Drumond
 DVFS
 Edouard
+edu
+ef
 env
 envsubst
 EPFL
@@ -114,6 +123,7 @@ Ferdman
 FETCHDIR
 filesystem
 Frontend
+fullstorydev
 funcNames
 FunctionBench
 Fytraki
@@ -126,6 +136,10 @@ goroutine
 Gratz
 grot
 Grot
+gRPC
+grpcurl
+gz
+Harald
 HDDs
 helloworld
 Hestness
@@ -177,6 +191,7 @@ KNOC
 Kocberber
 Kogias
 kramdown
+ksvc
 kubeadm
 kubectl
 kubelet
@@ -192,6 +207,7 @@ lfs
 Lim
 Linearizable
 linter
+linux
 LLC
 loadStep
 localhost
@@ -217,6 +233,7 @@ minio
 MinIO
 Mirzadeh
 mkdir
+monet
 mr
 MSI
 MT-Channel-broker
@@ -227,6 +244,7 @@ Mutlu
 MUX
 Nagarajan
 namespaces
+namespacing
 nd
 Netrace
 NEURALWALKER
@@ -253,6 +271,7 @@ Ozer
 PageMaker
 params
 Passwordless
+pc
 pdf
 Pejman
 personal_ws-1.1 en 0
@@ -261,6 +280,7 @@ Petrov
 Ph
 Picorel
 Pilani
+plaintext
 Plamen
 plamenpp
 pmu
@@ -290,6 +310,7 @@ PTEMagnet
 pv
 PV
 pvc
+qO
 QoS
 QOS
 quickstart
@@ -299,6 +320,7 @@ Rakesh
 Ranganathan
 RDMA
 rdquo
+ReadTemp
 Rebase
 rebase
 rebasing
@@ -342,6 +364,7 @@ SONI
 SONUMA
 Sotiria
 SPECU
+specversion
 SSD
 stateful
 Stavros
@@ -352,6 +375,7 @@ sudo
 svc
 sys
 TCO
+TempReader
 TestProfileIncrementConfiguration
 TestProfileSingleConfiguration
 th
@@ -363,14 +387,19 @@ TOCS
 toml
 TopDown
 toplev
+topologies
 Topologies
 tsim
 TSIM
 txt
+Uebele
 UINT
 uk
+umass
+Underheat
 upf
 upstreaming
+URI
 url
 urls
 USENIX
@@ -391,6 +420,7 @@ VMs
 Volos
 warmUpTime
 WDDD
+wget
 WIDX
 WIOSCA
 WoNDP
@@ -398,9 +428,11 @@ WOOT
 xl
 xml
 xyz
+xz
 yaml
 yml
 YY
+zA
 Zhu
 zipkin
 Zipkin
