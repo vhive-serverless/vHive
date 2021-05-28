@@ -58,6 +58,14 @@ jobs:
     - name: Run vHive end-to-end tests
       run: make ${{ matrix.test-name }}
 
+    - name: Archive log artifacts
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: ctrd-logs
+        path: |
+          /tmp/ctrd-logs/
+          
     - name: Cleaning
       if: ${{ always() }}
       run: ./scripts/clean_fcctr.sh
