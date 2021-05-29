@@ -2,8 +2,14 @@ module github.com/ease-lab/vhive
 
 go 1.15
 
-// Workaround for github.com/containerd/containerd issue #3031
-replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
+// Copied from firecracker-containerd
+replace (
+	// Pin gPRC-related dependencies as like containerd v1.5.2
+	github.com/gogo/googleapis => github.com/gogo/googleapis v1.3.2
+	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
+	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
+	google.golang.org/grpc => google.golang.org/grpc v1.27.1
+)
 
 replace (
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20161114122254-48702e0da86b
@@ -36,38 +42,32 @@ replace (
 
 replace (
 	github.com/ease-lab/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
-	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152
-	github.com/firecracker-microvm/firecracker-go-sdk => github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
+	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20210618071001-4400afe6e383
 )
 
 require (
-	github.com/containerd/containerd v1.3.6
-	github.com/containerd/continuity v0.1.0 // indirect
-	github.com/containerd/fifo v1.0.0 // indirect
-	github.com/containerd/ttrpc v1.0.2 // indirect
-	github.com/containerd/typeurl v1.0.2 // indirect
+	github.com/containerd/containerd v1.5.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
-	github.com/gogo/googleapis v1.4.1 // indirect
-	github.com/golang/protobuf v1.3.5
+	github.com/gogo/googleapis v1.4.0
+	github.com/golang/protobuf v1.4.3
 	github.com/montanaflynn/stats v0.6.5
-	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
-	github.com/vishvananda/netlink v1.1.0
+	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210304124612-50617c2ba197
+	golang.org/x/sys v0.0.0-20210324051608-47abb6519492
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
-	google.golang.org/grpc v1.33.1
-	k8s.io/cri-api v0.16.16-rc.0
+	google.golang.org/grpc v1.34.0
+	k8s.io/cri-api v0.20.6
 )

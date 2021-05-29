@@ -69,7 +69,8 @@ for d in containerd shim-base snapshotter; do sudo rm -rf /var/lib/firecracker-c
 echo Cleaning /run/firecracker-containerd/*
 sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
     /run/firecracker-containerd/io.containerd.runtime.v1.linux \
-    /run/firecracker-containerd/io.containerd.runtime.v2.task
+    /run/firecracker-containerd/io.containerd.runtime.v2.task \
+    /run/containerd/s
 
 echo Cleaning CNI state, e.g., allocated addresses
 sudo rm /var/lib/cni/networks/fcnet*/last_reserved_ip.0 || echo clean already
