@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # MIT License
 # 
 # Copyright (c) 2020 Dmitrii Ustiugov and EASE lab.
@@ -20,5 +22,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#!/bin/bash
 sudo minio server /data

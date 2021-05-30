@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # MIT License
 # 
 # Copyright (c) 2020 Dmitrii Ustiugov and EASE lab.
@@ -20,7 +22,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SERVERSDIR="$( cd $DIR && cd .. && pwd)"
 
