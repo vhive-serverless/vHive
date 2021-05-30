@@ -6,8 +6,6 @@ go 1.15
 replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
 
 replace (
-	github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601
-
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20161114122254-48702e0da86b
 	k8s.io/api => k8s.io/api v0.16.6
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.16.6
