@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # MIT License
 # 
 # Copyright (c) 2020 Dmitrii Ustiugov and EASE lab.
@@ -20,7 +22,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#!/bin/bash
 wget https://dl.min.io/server/minio/release/linux-amd64/minio
 chmod +x minio
 sudo cp minio /usr/local/bin
