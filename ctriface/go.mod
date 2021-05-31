@@ -18,7 +18,7 @@ replace (
 )
 
 require (
-	github.com/containerd/containerd v1.3.6
+	github.com/containerd/containerd v1.5.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ease-lab/vhive/memory/manager v0.0.0-00010101000000-000000000000
 	github.com/ease-lab/vhive/metrics v0.0.0-00010101000000-000000000000
@@ -28,6 +28,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.7.0
-	google.golang.org/grpc v1.31.0
+	google.golang.org/grpc v1.33.2
 
 )
