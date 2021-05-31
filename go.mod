@@ -48,21 +48,21 @@ replace (
 )
 
 require (
+	github.com/blend/go-sdk v1.20210518.1 // indirect
 	github.com/containerd/containerd v1.3.6
 	github.com/ease-lab/vhive/cri v0.0.0-00010101000000-000000000000
 	github.com/ease-lab/vhive/ctriface v0.0.0-00010101000000-000000000000
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/ease-lab/vhive/metrics v0.0.0-00010101000000-000000000000
 	github.com/ease-lab/vhive/proto v0.0.0-00010101000000-000000000000
-	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/montanaflynn/stats v0.6.5
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.7.0
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	gonum.org/v1/plot v0.9.0
-	google.golang.org/grpc v1.33.1
+	google.golang.org/grpc v1.38.0
 	k8s.io/cri-api v0.16.16-rc.0 // indirect
 )
