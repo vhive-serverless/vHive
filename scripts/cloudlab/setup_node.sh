@@ -28,7 +28,7 @@ SCRIPTS=$ROOT/scripts
 
 STOCK_CONTAINERD=$1
 
-$SCRIPTS/disable_auto_updates.sh
+$SCRIPTS/utils/disable_auto_updates.sh
 
 source $SCRIPTS/install_go.sh
 $SCRIPTS/setup_system.sh
