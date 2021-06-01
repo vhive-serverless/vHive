@@ -1,0 +1,100 @@
+name: Test the entire build and invokation chain of test examples.
+
+on: 
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ main ]
+  
+env:
+  GOOS: linux
+  GO111MODULE: on
+
+jobs:
+  compose_images:
+    name: Build and run chained functions serving
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v2
+    - name: go mod tidy
+      run: |
+        cd ./function-images/tests/chained-function-serving/
+        go mod tidy
+    - name: start multi-container program with docker-compose
+      run: |
+        cd ./function-images/tests/chained-function-serving/
+        docker-compose up -d
+        sleep 15s
+    - name: invoke the client
+      run: |
+        cd ./function-images/tests/chained-function-serving/
+        go run ./client/client.go
+        
+  knative_chain:
+    name: Start up and run the knative chain
+    env:
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        LOGPATH: /tmp/uBench-logs/${{ github.run_id }}
+        GOCACHE: /root/tmp/gocache
+        GOPATH: /root/tmp/gopath
+    runs-on: [self-hosted, cri]
+    strategy:
+      fail-fast: false
+    steps:
+
+    - name: Set up Go 1.15
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15
+
+    - name: Setup LOGPATH
+      run: |
+        mkdir -p /tmp/uBench-logs/${{ github.run_id }}
+
+    - name: Host Info
+      run: |
+        echo $HOSTNAME
+        echo $GITHUB_RUN_ID
+        echo $LOGPATH
+
+    - uses: actions/checkout@v2
+
+    - name: start containerd
+      run: sudo containerd 1>$LOGPATH/uBench.out 2>$LOGPATH/uBench.err &
+
+    - name: start one node cluster
+      run : |
+        ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
+
+    - name: check pods
+      run : KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -A
+
+    - name: start consumer
+      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/chained-function-serving/service-consumer.yaml && sleep 30s
+
+    - name: start producer
+      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/chained-function-serving/service-producer.yaml && sleep 30s
+
+    - name: show services
+      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service list
+
+    - name: run client
+      run: |
+        cd ./function-images/tests/chained-function-serving/client
+        go build client.go
+        cd ..
+        ./client/client --addr producer.default.192.168.1.240.nip.io --pc 80 -s 3
+
+    - name: Archive log artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: test_file
+        path: /tmp/uBench-logs/${{ github.run_id }}
+
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/github_runner/clean_cri_runner.sh stock-only
