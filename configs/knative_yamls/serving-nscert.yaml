@@ -75,7 +75,7 @@ spec:
         - name: networking-nscert
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/nscert-e3625dd01dcb901439f4630ab9789e75:3e711479e172d9d88be9c3a24e4001dbc2aa972fd189c2f6d29b1a75c0d1c5df
+          image: docker.io/vhiveease/nscert-e3625dd01dcb901439f4630ab9789e75@sha256:899378049b5fc9e62f37d9322ef128281889e921c7f3acaf564f689cf1b8d7c3
           resources:
             requests:
               cpu: 30m
