@@ -155,7 +155,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7:b5a9f131839f5bc4bb2a22a71307f1b3c2ff6ef65ae6a83db66644def1ef37ce
+          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:c07127a0532182184345945d07571e50473d56b5cbcb1335cf51028414133eae
           resources:
             requests:
               cpu: 30m
@@ -239,7 +239,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824:290976dcccdc9b10f00f23b3c46c62ec38e2b2702583584bf66671941327acb2
+          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:dfadad5d107eaebeefab4863e7f951690925788dede52e2d65969ff33afa3a56
           resources:
             requests:
               cpu: 100m
@@ -267,6 +267,11 @@ spec:
               value: knative.dev/serving
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - all
           ports:
             - name: metrics
               containerPort: 9090
@@ -344,6 +349,17 @@ webhooks:
     sideEffects: None
     name: webhook.domainmapping.serving.knative.dev
     timeoutSeconds: 10
+    rules:
+      - apiGroups:
+          - serving.knative.dev
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        scope: "*"
+        resources:
+          - domainmappings
 
 ---
 # Copyright 2020 The Knative Authors
@@ -400,5 +416,17 @@ webhooks:
     sideEffects: None
     name: validation.webhook.domainmapping.serving.knative.dev
     timeoutSeconds: 10
+    rules:
+      - apiGroups:
+          - serving.knative.dev
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+          - DELETE
+        scope: "*"
+        resources:
+          - domainmappings
 
 ---

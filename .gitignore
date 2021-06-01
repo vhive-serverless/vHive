@@ -18,5 +18,8 @@
 *.swo
 *.swp
 
+# GoLand
+.idea/
+
 # Binaries
 vhive
