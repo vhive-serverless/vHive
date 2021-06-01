@@ -124,7 +124,7 @@ func ConfigIPtables(tapName, hostIface string) error {
 		}
 	}
 	cmd := exec.Command(
-		"sudo", "iptables", "-t", "nat", "-A", "POSTROUTING", "-o", hostIface, "-j", "MASQUERADE",
+		"sudo", "iptables", "--wait", "-t", "nat", "-A", "POSTROUTING", "-o", hostIface, "-j", "MASQUERADE",
 	)
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
@@ -132,7 +132,7 @@ func ConfigIPtables(tapName, hostIface string) error {
 		return err
 	}
 	cmd = exec.Command(
-		"sudo", "iptables", "-A", "FORWARD", "-i", tapName, "-o", hostIface, "-j", "ACCEPT",
+		"sudo", "iptables", "--wait", "-A", "FORWARD", "-i", tapName, "-o", hostIface, "-j", "ACCEPT",
 	)
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
@@ -140,7 +140,7 @@ func ConfigIPtables(tapName, hostIface string) error {
 		return err
 	}
 	cmd = exec.Command(
-		"sudo", "iptables", "-A", "FORWARD", "-o", tapName, "-i", hostIface, "-j", "ACCEPT",
+		"sudo", "iptables", "--wait", "-A", "FORWARD", "-o", tapName, "-i", hostIface, "-j", "ACCEPT",
 	)
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
@@ -148,7 +148,7 @@ func ConfigIPtables(tapName, hostIface string) error {
 		return err
 	}
 	cmd = exec.Command(
-		"sudo", "iptables", "-A", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT",
+		"sudo", "iptables", "--wait", "-A", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT",
 	)
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
