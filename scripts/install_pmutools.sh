@@ -28,6 +28,8 @@ sudo apt-get install numactl \
     linux-tools-`uname -r`  -y
 
 sudo git clone https://github.com/andikleen/pmu-tools /usr/local/pmu-tools
+# Pin pmu-tools to a specific commit:
+sudo bash -c "cd /usr/local/pmu-tools; git reset --hard 6f54a01fe939e9e11b90272a173a0fdb76969e87"
 
 sudo sysctl -w kernel.perf_event_paranoid=-1
 
