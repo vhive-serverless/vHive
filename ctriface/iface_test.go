@@ -40,6 +40,7 @@ import (
 var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
+	//nolint:deadcode,unused,varcheck
 	isWithCache  = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 )
 

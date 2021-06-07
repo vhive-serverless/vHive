@@ -276,7 +276,9 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	var events [1]syscall.EpollEvent
 
-	s.registerEpoller()
+	if err := s.registerEpoller(); err != nil {
+		logger.Fatalf("register_epoller: %v", err)
+	}
 
 	logger.Debug("Starting polling loop")
 
@@ -456,7 +458,9 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 		src := uint64(uintptr(unsafe.Pointer(&s.workingSet[srcOffset])))
 		dst := regAddress
 
-		installRegion(fd, src, dst, mode, uint64(regLength))
+		if err := installRegion(fd, src, dst, mode, uint64(regLength)); err != nil {
+			log.Fatalf("install_region: %v", err)
+		}
 
 		srcOffset += uint64(regLength) * 4096
 	}
@@ -510,6 +514,7 @@ func wake(fd int, startAddress uint64, len int) {
 	}
 }
 
+//nolint:deadcode,unused
 func registerForUpf(startAddress []byte, len uint64) int {
 	return int(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
 }

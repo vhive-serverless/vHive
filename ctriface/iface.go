@@ -496,7 +496,9 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (*metrics.
 	}
 
 	if o.GetUPFEnabled() {
-		o.memoryManager.FetchState(vmID)
+		if err := o.memoryManager.FetchState(vmID); err != nil {
+			return nil, err
+		}
 	}
 
 	tStart = time.Now()

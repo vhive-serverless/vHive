@@ -84,7 +84,8 @@ func TestBenchmarkStart(t *testing.T) {
 		}
 
 		outFileName := "start.txt"
-		metrics.PrintMeanStd(getOutFile(outFileName), funcName, startMetrics...)
+		err = metrics.PrintMeanStd(getOutFile(outFileName), funcName, startMetrics...)
+		require.NoError(t, err, "Failed to print mean std")
 
 		vmID++
 

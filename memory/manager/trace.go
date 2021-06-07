@@ -91,6 +91,7 @@ func (t *Trace) WriteTrace() {
 }
 
 // readTrace Reads all the records from a CSV file
+//nolint:deadcode,unused
 func (t *Trace) readTrace() {
 	f, err := os.Open(t.traceFileName)
 	if err != nil {
@@ -110,6 +111,7 @@ func (t *Trace) readTrace() {
 }
 
 // readRecord Parses a record from a line
+//nolint:deadcode,unused
 func readRecord(line []string) Record {
 	offset, err := strconv.ParseUint(line[0], 16, 64)
 	if err != nil {
@@ -200,5 +202,7 @@ func (t *Trace) writeWorkingSetPagesToFile(guestMemFileName, WorkingSetPath stri
 		count += regLength
 	}
 
-	fDst.Sync()
+	if err := fDst.Sync(); err != nil {
+		log.Fatalf("Sync file failed for dst")
+	}
 }
