@@ -228,6 +228,7 @@ Micheli
 Microarchitecting
 microarchitectural
 Microarchitecture
+microbenchmark
 microVMs
 minio
 MinIO

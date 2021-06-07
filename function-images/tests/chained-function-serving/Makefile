@@ -20,40 +20,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-apiVersion: serving.knative.dev/v1
-kind: Service
-metadata:
-  name: consumer
-  namespace: default
-spec:
-  template:
-    spec:
-      containers:
-        - image: docker.io/vhiveease/chained-functions-serving-consumer:latest
-          imagePullPolicy: Always
-          ports:
-            # For `h2c`, see https://knative.tips/networking/http2/
-            - name: h2c
-              containerPort: 80
+all: all-image 
+
+all-image: producer-image consumer-image
+
+all-image-push: producer-image-push consumer-image-push
+
+clean:
+	rm -f ./producer-bin ./consumer-bin
 
 
-apiVersion: serving.knative.dev/v1
-kind: Service
-metadata:
-  name: producer
-  namespace: default
-spec:
-  template:
-    spec:
-      containers:
-        - image: docker.io/vhiveease/chained-functions-serving-producer:latest
-          imagePullPolicy: Always
-          ports:
-            # For `h2c`, see https://knative.tips/networking/http2/
-            - name: h2c
-              containerPort: 80
-          env:
-            - name: ADDR
-              value: "localhost"
-            - name: PORT_CLIENT
-              value: "80"
+producer-image: Dockerfile producer/producer.go proto/prodcon.pb.go proto/prodcon_grpc.pb.go
+	docker build --tag vhiveease/chained-functions-serving-producer:latest --build-arg target_arg=producer .
+
+producer-image-push: producer-image
+	docker push vhiveease/chained-functions-serving-producer:latest
+
+
+consumer-image: Dockerfile consumer/consumer.go proto/prodcon.pb.go proto/prodcon_grpc.pb.go
+	docker build --tag vhiveease/chained-functions-serving-consumer:latest --build-arg target_arg=consumer .
+
+consumer-image-push: consumer-image
+	docker push vhiveease/chained-functions-serving-consumer:latest
+
+
+cmd/server/tempReader_grpc.pb.go cmd/server/tempReader.pb.go: cmd/server/tempReader.proto
+	protoc \
+		--go_out=. \
+		--go_opt="paths=source_relative" \
+		--go-grpc_out=. \
+		--go-grpc_opt="paths=source_relative" \
+		cmd/server/tempReader.proto

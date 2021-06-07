@@ -4,3 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
+updates:
+  - package-ecosystem: “gomod”
+    directory: “/function-images/tests/chained-function-serving”
+    schedule:
+      interval: “weekly”

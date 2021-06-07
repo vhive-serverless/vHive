@@ -24,23 +24,22 @@ version: "3.7"
 
 services:
     consumer:
-        build:
-            context: .
-            target: consumer
+        image: vhiveease/chained-functions-serving-consumer
         volumes:
             - log-volume:/log
+        command:
+            - -ps=3030
 
     producer:
-        build:
-            context: .
-            target: producer
+        image: vhiveease/chained-functions-serving-producer
         ports: 
             - "3031:3031"
         volumes:
             - log-volume:/log
-        environment:
-            - ADDR=consumer
-       # command: go run ./producer/producer.go --addr consumer
+        command:
+            - -addr=consumer
+            - -ps=3031
+            - -pc=3030
         depends_on:
             - consumer
 
