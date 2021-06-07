@@ -1,11 +1,10 @@
-name: Test the entire build and invokation chain of test examples.
+name: Function composition tests
 
 on: 
   workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
-    # The branches below must be a subset of the branches above
     branches: [ main ]
   
 env:
@@ -13,29 +12,31 @@ env:
   GO111MODULE: on
 
 jobs:
-  compose_images:
-    name: Build and run chained functions serving
+  docker-compose:
+    name: Serving uBench (docker-compose)
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
     steps:
     - uses: actions/checkout@v2
-    - name: go mod tidy
+
+    - name: Setup grpcurl
       run: |
-        cd ./function-images/tests/chained-function-serving/
-        go mod tidy
+        wget -qO- https://github.com/fullstorydev/grpcurl/releases/download/v1.8.1/grpcurl_1.8.1_linux_x86_64.tar.gz | sudo tar -C /usr/bin/ -xz grpcurl
+
     - name: start multi-container program with docker-compose
       run: |
         cd ./function-images/tests/chained-function-serving/
-        docker-compose up -d
+        docker-compose up &> log_file &
         sleep 15s
-    - name: invoke the client
+    - name: invoke the chain
       run: |
-        cd ./function-images/tests/chained-function-serving/
-        go run ./client/client.go
+        grpcurl -plaintext localhost:3031 helloworld.Greeter.SayHello
+    - name: show docker-compose log
+      run: cat  ./function-images/tests/chained-function-serving/log_file
         
-  knative_chain:
-    name: Start up and run the knative chain
+  knative:
+    name: Serving uBench (knative)
     env:
         GITHUB_RUN_ID: ${{ github.run_id }}
         LOGPATH: /tmp/uBench-logs/${{ github.run_id }}
@@ -46,7 +47,7 @@ jobs:
       fail-fast: false
     steps:
 
-    - name: Set up Go 1.15
+    - name: Set up Golang
       uses: actions/setup-go@v2
       with:
         go-version: 1.15
@@ -63,36 +64,30 @@ jobs:
 
     - uses: actions/checkout@v2
 
-    - name: start containerd
+    - name: Start containerd
       run: sudo containerd 1>$LOGPATH/uBench.out 2>$LOGPATH/uBench.err &
 
-    - name: start one node cluster
+    - name: Start one-node cluster
       run : |
         ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
 
-    - name: check pods
-      run : KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -A
-
-    - name: start consumer
+    - name: Start consumer
       run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/chained-function-serving/service-consumer.yaml && sleep 30s
 
-    - name: start producer
+    - name: Start producer
       run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/chained-function-serving/service-producer.yaml && sleep 30s
 
-    - name: show services
-      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service list
-
-    - name: run client
+    - name: Run invoker client
       run: |
-        cd ./function-images/tests/chained-function-serving/client
+        echo "producer.default.192.168.1.240.sslip.io" > urls.txt
+        cd ./examples/invoker
         go build client.go
-        cd ..
-        ./client/client --addr producer.default.192.168.1.240.nip.io --pc 80 -s 3
-
+        cd ../..
+        ./examples/invoker/client
     - name: Archive log artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: test_file
+        name: logs
         path: /tmp/uBench-logs/${{ github.run_id }}
 
     - name: Cleaning
