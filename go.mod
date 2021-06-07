@@ -35,34 +35,39 @@ replace (
 )
 
 replace (
-	github.com/ease-lab/vhive/cri => ./cri
-	github.com/ease-lab/vhive/ctriface => ./ctriface
 	github.com/ease-lab/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
-	github.com/ease-lab/vhive/memory/manager => ./memory/manager
-	github.com/ease-lab/vhive/metrics => ./metrics
-	github.com/ease-lab/vhive/misc => ./misc
-	github.com/ease-lab/vhive/proto => ./proto
-	github.com/ease-lab/vhive/taps => ./taps
 	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20200804113524-bc259c9e8152
 	github.com/firecracker-microvm/firecracker-go-sdk => github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123
 )
 
 require (
 	github.com/containerd/containerd v1.3.6
-	github.com/ease-lab/vhive/cri v0.0.0-00010101000000-000000000000
-	github.com/ease-lab/vhive/ctriface v0.0.0-00010101000000-000000000000
+	github.com/containerd/continuity v0.1.0 // indirect
+	github.com/containerd/fifo v1.0.0 // indirect
+	github.com/containerd/ttrpc v1.0.2 // indirect
+	github.com/containerd/typeurl v1.0.2 // indirect
+	github.com/davecgh/go-spew v1.1.1
+	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
-	github.com/ease-lab/vhive/metrics v0.0.0-00010101000000-000000000000
-	github.com/ease-lab/vhive/proto v0.0.0-00010101000000-000000000000
-	github.com/golang/protobuf v1.3.5 // indirect
+	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
+	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
+	github.com/go-multierror/multierror v1.0.2
+	github.com/gogo/googleapis v1.4.1 // indirect
+	github.com/golang/protobuf v1.3.5
 	github.com/montanaflynn/stats v0.6.5
+	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.7.0
+	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
+	github.com/vishvananda/netlink v1.1.0
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+	golang.org/x/sys v0.0.0-20210304124612-50617c2ba197
+	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
 	google.golang.org/grpc v1.33.1
-	k8s.io/cri-api v0.16.16-rc.0 // indirect
+	k8s.io/cri-api v0.16.16-rc.0
 )

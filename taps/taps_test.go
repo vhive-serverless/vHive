@@ -66,7 +66,7 @@ func TestCreateRemoveTaps(t *testing.T) {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
-				tm.AddTap(fmt.Sprintf("tap_%d", i), "")
+				_, _ = tm.AddTap(fmt.Sprintf("tap_%d", i), "")
 			}(i)
 		}
 		wg.Wait()
@@ -74,7 +74,7 @@ func TestCreateRemoveTaps(t *testing.T) {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
-				tm.RemoveTap(fmt.Sprintf("tap_%d", i))
+				_ = tm.RemoveTap(fmt.Sprintf("tap_%d", i))
 			}(i)
 		}
 		wg.Wait()
@@ -100,7 +100,6 @@ func TestCreateRemoveExtra(t *testing.T) {
 	}
 
 	for i := 0; i < tapsNum; i++ {
-		tm.RemoveTap(fmt.Sprintf("tap_%d", i))
-
+		_ = tm.RemoveTap(fmt.Sprintf("tap_%d", i))
 	}
 }

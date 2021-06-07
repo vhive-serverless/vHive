@@ -11,6 +11,7 @@
 
 - Kubernetes version frozen to 1.20.6-00.
 - Bumped Knative to v0.23.0.
+- Simplified Go dependencies management by refactoring modules into packages.
 
 ### Fixed
 
