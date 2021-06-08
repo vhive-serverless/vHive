@@ -36,6 +36,7 @@ bgrot
 bindSocket
 booktitle
 BOOL
+Bora
 boris
 Bugnion
 BuMP
@@ -48,6 +49,7 @@ cd
 celsius
 Changelog
 Chunduri
+CloudEvent
 CloudEvents
 cloudlab
 CloudLab
@@ -286,6 +288,7 @@ Plamen
 plamenpp
 pmu
 pmutool
+pn
 Pnevmatikatos
 postfix
 PPoPP
@@ -336,6 +339,7 @@ runtime
 runtimes
 s
 SABRes
+SayHello
 Sazeides
 Scalability
 Scalable
@@ -367,6 +371,7 @@ Sotiria
 SPECU
 specversion
 SSD
+sslip
 stateful
 Stavros
 stderr
@@ -390,6 +395,8 @@ TopDown
 toplev
 topologies
 Topologies
+traceId
+traceid
 tsim
 TSIM
 txt
@@ -407,6 +414,7 @@ USENIX
 usr
 ustiugov
 Ustiugov
+UUID
 vhive
 vHive
 vhiveease
