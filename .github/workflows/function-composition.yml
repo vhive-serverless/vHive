@@ -35,8 +35,8 @@ jobs:
     - name: show docker-compose log
       run: cat  ./function-images/tests/chained-function-serving/log_file
         
-  knative:
-    name: Serving uBench (knative)
+  serving-ubench:
+    name: Serving uBench (Knative)
     env:
         GITHUB_RUN_ID: ${{ github.run_id }}
         LOGPATH: /tmp/uBench-logs/${{ github.run_id }}
@@ -93,3 +93,70 @@ jobs:
     - name: Cleaning
       if: ${{ always() }}
       run: ./scripts/github_runner/clean_cri_runner.sh stock-only
+
+  eventing-ubench:
+    name: Eventing uBench (Knative)
+    env:
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        LOGPATH: /tmp/uBench-logs/${{ github.run_id }}
+        GOCACHE: /root/tmp/gocache
+        GOPATH: /root/tmp/gopath
+    runs-on: [self-hosted, cri]
+    strategy:
+      fail-fast: false
+    steps:
+    - name: Set up Golang
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16
+
+    - name: Setup LOGPATH
+      run: |
+        mkdir -p /tmp/uBench-logs/${{ github.run_id }}
+
+    - name: Host Info
+      run: |
+        echo $HOSTNAME
+        echo $GITHUB_RUN_ID
+        echo $LOGPATH
+
+    - uses: actions/checkout@v2
+
+    - name: Start containerd
+      run: sudo containerd 1>$LOGPATH/containerd.out 2>$LOGPATH/containerd.err &
+
+    - name: Start one-node cluster
+      run : |
+        ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
+
+    - name: Start consumer and producer
+      run: KUBECONFIG=/etc/kubernetes/admin.conf ./function-images/tests/chained-function-eventing/manifests/apply.sh && sleep 30s
+
+    - name: Describe
+      run: |
+        KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing broker
+        KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing sinkbinding
+        KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing ksvc
+        KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing trigger
+
+    - name: Invoke
+      run: "./bin/grpcurl -d '{\"name\": \"Bora\"}' -plaintext producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello"
+    
+    - name: Inspect logs
+      run: |
+        KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=producer
+        KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=consumer
+
+    - name: Archive log artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: logs
+        path: /tmp/uBench-logs/${{ github.run_id }}
+
+    - name: Delete
+      run: KUBECONFIG=/etc/kubernetes/admin.conf ./function-images/tests/chained-function-eventing/manifests/delete.sh
+
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/github_runner/clean_cri_runner.sh stock-only
+

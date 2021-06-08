@@ -1,0 +1,19 @@
+# SinkBinding: sinkbinding
+# ========================
+apiVersion: sources.knative.dev/v1
+kind: SinkBinding
+metadata:
+  name: producer-binding
+  namespace: chained-functions-eventing
+spec:
+  subject:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    name: producer
+    namespace: chained-functions-eventing
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default
+      namespace: chained-functions-eventing

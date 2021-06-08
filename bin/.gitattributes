@@ -4,3 +4,4 @@ firecracker-ctr filter=lfs diff=lfs merge=lfs -text
 jailer filter=lfs diff=lfs merge=lfs -text
 containerd-shim-aws-firecracker filter=lfs diff=lfs merge=lfs -text
 default-rootfs.img filter=lfs diff=lfs merge=lfs -text
+grpcurl filter=lfs diff=lfs merge=lfs -text

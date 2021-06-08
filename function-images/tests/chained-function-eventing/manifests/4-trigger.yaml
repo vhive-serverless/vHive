@@ -1,0 +1,19 @@
+# Trigger: consumer-trigger
+# =========================
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: default-consumer-trigger
+  namespace: chained-functions-eventing
+spec:
+  broker: default
+  filter:
+    attributes:
+      type: greeting
+      source: eventing-producer
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: consumer
+      namespace: chained-functions-eventing
