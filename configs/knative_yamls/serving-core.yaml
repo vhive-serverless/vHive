@@ -3132,7 +3132,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:dc34d7c9228183baee74d59ddadf808f5bfda66e021a6635f499f85fdfa467ec
+  image: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:5fc63c75cc8d3c2a66f00ea9db49f828c8f933d54976f1c6b44162702524933b
 
 ---
 # Copyright 2018 The Knative Authors
@@ -3500,7 +3500,7 @@ metadata:
 data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  queueSidecarImage: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:dc34d7c9228183baee74d59ddadf808f5bfda66e021a6635f499f85fdfa467ec
+  queueSidecarImage: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:5fc63c75cc8d3c2a66f00ea9db49f828c8f933d54976f1c6b44162702524933b
   _example: |
     ################################
     #                              #
@@ -4390,7 +4390,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/activator-ecd51ca5034883acbe737fde417a3d86@sha256:6840d5edfc1eaeb3cd11d01c728e9968738705dd8cc2382910a2287ca9919537
+          image: docker.io/shyamjesal/activator-ecd51ca5034883acbe737fde417a3d86@sha256:e1b769d8170a371d2476bbe73ea01f49a3bd8f6d33c806359e2206cc23ba9534
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -4540,7 +4540,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:dec376ed13e047cd4f6685e1f6026ca3b5753959ee3de28cab53a984c9037f7d
+          image: docker.io/shyamjesal/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:c9aa7746be41c218572047bdc4675188f6fa79b3788aba05279439c728157877
           resources:
             requests:
               cpu: 100m
@@ -4668,7 +4668,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:f7af57a7c4b27fbbb54ede8e07ef879520c8d2cc0db5fa79a87c1cbbd3365efd
+          image: docker.io/shyamjesal/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:b6f211a1e8eef130e0681de14353bb408dd4913e9a44b2263dc99b4f12000e56
           resources:
             requests:
               cpu: 100m
@@ -4828,7 +4828,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:a5db8c47d9fe889296f3475318eecb1e14fb599bde24cec8df1a11f3baa10096
+          image: docker.io/shyamjesal/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:ccdbb5f930b1c397cae28c3ce52949e245ccb789b1c63cd2a234e3c7aeb68311
           resources:
             requests:
               cpu: 100m
