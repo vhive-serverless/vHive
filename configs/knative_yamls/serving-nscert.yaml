@@ -1,3 +1,31 @@
+# Copyright 2020 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: knative-serving-namespace-wildcard-certs
+  labels:
+    serving.knative.dev/release: devel
+    serving.knative.dev/controller: "true"
+    networking.knative.dev/wildcard-certificate-provider: nscert
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces/finalizers"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+
+---
 # Copyright 2019 The Knative Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,26 +43,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: autoscaler-hpa
+  name: networking-ns-cert
   namespace: knative-serving
   labels:
-    autoscaling.knative.dev/autoscaler-provider: hpa
-    app.kubernetes.io/component: autoscaler-hpa
-    app.kubernetes.io/name: knative-serving
-    app.kubernetes.io/version: devel
+    serving.knative.dev/release: devel
+    networking.knative.dev/wildcard-certificate-provider: nscert
 spec:
   selector:
     matchLabels:
-      app: autoscaler-hpa
+      app: networking-ns-cert
   template:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
-        app: autoscaler-hpa
-        app.kubernetes.io/component: autoscaler-hpa
-        app.kubernetes.io/name: knative-serving
-        app.kubernetes.io/version: devel
+        app: networking-ns-cert
+        serving.knative.dev/release: devel
     spec:
       # To avoid node becoming SPOF, spread our replicas to different nodes.
       affinity:
@@ -43,15 +67,15 @@ spec:
             - podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: autoscaler-hpa
+                    app: networking-ns-cert
                 topologyKey: kubernetes.io/hostname
               weight: 100
       serviceAccountName: controller
       containers:
-        - name: autoscaler-hpa
+        - name: networking-nscert
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:d40e656223e1a4dd581949f54b2917ae6fc6a940f62577ee63dfe6a6a9118f32
+          image: docker.io/shyamjesal/nscert-e3625dd01dcb901439f4630ab9789e75@sha256:062292067effc1f89c1986a1e3fa336896423584b86c05615c899975b33493d6
           resources:
             requests:
               cpu: 30m
@@ -88,12 +112,10 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: autoscaler-hpa
-    autoscaling.knative.dev/autoscaler-provider: hpa
-    app.kubernetes.io/component: autoscaler-hpa
-    app.kubernetes.io/name: knative-serving
-    app.kubernetes.io/version: devel
-  name: autoscaler-hpa
+    app: networking-ns-cert
+    serving.knative.dev/release: devel
+    networking.knative.dev/wildcard-certificate-provider: nscert
+  name: networking-ns-cert
   namespace: knative-serving
 spec:
   ports:
@@ -105,6 +127,6 @@ spec:
       port: 8008
       targetPort: 8008
   selector:
-    app: autoscaler-hpa
+    app: networking-ns-cert
 
 ---

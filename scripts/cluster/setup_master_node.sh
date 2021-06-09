@@ -51,8 +51,8 @@ istioctl install -y -f $ROOT/configs/istio/istio-minimal-operator.yaml
 KNATIVE_VERSION="knative-v1.4.0"
 # Install Knative in the cluster
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
-    kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-crds.yaml
-    kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-core.yaml
+    kubectl apply --filename $ROOT/configs/knative_yamls/serving-crds.yaml
+    kubectl apply --filename $ROOT/configs/knative_yamls/serving-core.yaml
 else
     kubectl apply --filename $ROOT/configs/knative_yamls/serving-crds.yaml
     kubectl apply --filename $ROOT/configs/knative_yamls/serving-core.yaml
