@@ -795,17 +795,6 @@ spec:
                                 description: 'Security options the pod should run with. More info: https://kubernetes.io/docs/concepts/policy/security-context/ More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
                                 type: object
                                 properties:
-                                  capabilities:
-                                    description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime.
-                                    type: object
-                                    properties:
-                                      drop:
-                                        description: Removed capabilities
-                                        type: array
-                                        items:
-                                          description: Capability represent POSIX capabilities type
-                                          type: string
-                                    x-kubernetes-preserve-unknown-fields: true
                                   readOnlyRootFilesystem:
                                     description: Whether this container has a read-only root filesystem. Default is false.
                                     type: boolean
@@ -1053,7 +1042,7 @@ spec:
                   description: Conditions the latest available observations of a resource's current state.
                   type: array
                   items:
-                    description: 'Condition defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                    description: 'Conditions defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
                     type: object
                     required:
                       - status
@@ -1238,7 +1227,7 @@ spec:
                   description: Conditions the latest available observations of a resource's current state.
                   type: array
                   items:
-                    description: 'Condition defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                    description: 'Conditions defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
                     type: object
                     required:
                       - status
@@ -1387,7 +1376,7 @@ spec:
                   description: Conditions the latest available observations of a resource's current state.
                   type: array
                   items:
-                    description: 'Condition defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                    description: 'Conditions defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
                     type: object
                     required:
                       - status
@@ -1814,17 +1803,6 @@ spec:
                         description: 'Security options the pod should run with. More info: https://kubernetes.io/docs/concepts/policy/security-context/ More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
                         type: object
                         properties:
-                          capabilities:
-                            description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime.
-                            type: object
-                            properties:
-                              drop:
-                                description: Removed capabilities
-                                type: array
-                                items:
-                                  description: Capability represent POSIX capabilities type
-                                  type: string
-                            x-kubernetes-preserve-unknown-fields: true
                           readOnlyRootFilesystem:
                             description: Whether this container has a read-only root filesystem. Default is false.
                             type: boolean
@@ -2076,7 +2054,7 @@ spec:
                   description: Conditions the latest available observations of a resource's current state.
                   type: array
                   items:
-                    description: 'Condition defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                    description: 'Conditions defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
                     type: object
                     required:
                       - status
@@ -2246,7 +2224,7 @@ spec:
                   description: Conditions the latest available observations of a resource's current state.
                   type: array
                   items:
-                    description: 'Condition defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                    description: 'Conditions defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
                     type: object
                     required:
                       - status
@@ -2785,17 +2763,6 @@ spec:
                                 description: 'Security options the pod should run with. More info: https://kubernetes.io/docs/concepts/policy/security-context/ More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
                                 type: object
                                 properties:
-                                  capabilities:
-                                    description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime.
-                                    type: object
-                                    properties:
-                                      drop:
-                                        description: Removed capabilities
-                                        type: array
-                                        items:
-                                          description: Capability represent POSIX capabilities type
-                                          type: string
-                                    x-kubernetes-preserve-unknown-fields: true
                                   readOnlyRootFilesystem:
                                     description: Whether this container has a read-only root filesystem. Default is false.
                                     type: boolean
@@ -3075,7 +3042,7 @@ spec:
                   description: Conditions the latest available observations of a resource's current state.
                   type: array
                   items:
-                    description: 'Condition defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                    description: 'Conditions defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
                     type: object
                     required:
                       - status
@@ -3165,7 +3132,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:b1d52fca42963022e9545092ef95f27e911de5d0625fae1e5881a7f59fca444a
+  image: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:dc34d7c9228183baee74d59ddadf808f5bfda66e021a6635f499f85fdfa467ec
 
 ---
 # Copyright 2018 The Knative Authors
@@ -3533,7 +3500,7 @@ metadata:
 data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:b1d52fca42963022e9545092ef95f27e911de5d0625fae1e5881a7f59fca444a
+  queueSidecarImage: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:dc34d7c9228183baee74d59ddadf808f5bfda66e021a6635f499f85fdfa467ec
   _example: |
     ################################
     #                              #
@@ -3673,7 +3640,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "8c1f8302"
+    knative.dev/example-checksum: "1bbf8144"
 data:
   _example: |-
     ################################
@@ -3757,12 +3724,6 @@ data:
     # WARNING: Cannot safely be disabled once enabled.
     # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-security-context
     kubernetes.podspec-securitycontext: "disabled"
-
-    # This feature flag allows end-users to add a subset of capabilities on the Pod's SecurityContext.
-    #
-    # When set to "enabled" or "allowed" it allows capabilities to be added to the container.
-    # For a list of possible capabilities, see https://man7.org/linux/man-pages/man7/capabilities.7.html
-    kubernetes.containerspec-addcapabilities: "disabled"
 
     # This feature validates PodSpecs from the validating webhook
     # against the K8s API Server.
@@ -4044,7 +4005,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "386cf23d"
+    knative.dev/example-checksum: "15954d34"
 data:
   _example: |
     ################################
@@ -4125,7 +4086,7 @@ data:
     # It requires autoTLS to be enabled.
     # 1. Enabled: The Knative ingress will be able to serve HTTP connection.
     # 2. Disabled: The Knative ingress will reject HTTP traffic.
-    # 3. Redirected: The Knative ingress will send a 301 redirect for all
+    # 3. Redirected: The Knative ingress will send a 302 redirect for all
     # http connections, asking the clients to use HTTPS.
     httpProtocol: "Enabled"
 
@@ -4429,7 +4390,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:48673f50aff006892bcc519adcf73499899653a0bd8a583c10c0dacb5ce967f3
+          image: docker.io/shyamjesal/activator-ecd51ca5034883acbe737fde417a3d86@sha256:6840d5edfc1eaeb3cd11d01c728e9968738705dd8cc2382910a2287ca9919537
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -4579,7 +4540,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:a1a929b8c5c97bc1e1dc13a3022a0350843017453561eac8b9d037e7ba173c73
+          image: docker.io/shyamjesal/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:dec376ed13e047cd4f6685e1f6026ca3b5753959ee3de28cab53a984c9037f7d
           resources:
             requests:
               cpu: 100m
@@ -4707,7 +4668,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:b785a63511d26c09246c421fed525ea97e4dd702e1d7ace5fd3c3e98d4da035f
+          image: docker.io/shyamjesal/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:f7af57a7c4b27fbbb54ede8e07ef879520c8d2cc0db5fa79a87c1cbbd3365efd
           resources:
             requests:
               cpu: 100m
@@ -4867,7 +4828,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:d9028aeecb0c2fba4462c67e2f0f77295809c3c8e1c70483a0792807e3d00ef8
+          image: docker.io/shyamjesal/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:a5db8c47d9fe889296f3475318eecb1e14fb599bde24cec8df1a11f3baa10096
           resources:
             requests:
               cpu: 100m
