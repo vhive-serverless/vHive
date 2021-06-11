@@ -31,12 +31,14 @@ import (
 	"os"
 
 	"google.golang.org/grpc"
-
 	"google.golang.org/grpc/reflection"
 
 	pb_client "tests/chained-functions-serving/proto"
 
 	pb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
+
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type producerServer struct {
@@ -47,7 +49,7 @@ type producerServer struct {
 
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloReply, error) {
 	// establish a connection
-	conn, err := grpc.Dial(fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort), grpc.WithInsecure())
+	conn, err := grpc.Dial(fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort), grpc.WithInsecure(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	if err != nil {
 		log.Fatalf("[producer] fail to dial: %s", err)
 	}
@@ -56,7 +58,7 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*
 	client := pb_client.NewProducerConsumerClient(conn)
 
 	// send message
-	ack, err := client.ConsumeString(context.Background(), &pb_client.ConsumeStringRequest{Value: "1"})
+	ack, err := client.ConsumeString(ctx, &pb_client.ConsumeStringRequest{Value: "1"})
 	if err != nil {
 		log.Fatalf("[producer] client error in string consumption: %s", err)
 	}
@@ -68,11 +70,15 @@ func main() {
 	flagAddress := flag.String("addr", "consumer.default.192.168.1.240.sslip.io", "Server IP address")
 	flagClientPort := flag.Int("pc", 80, "Client Port")
 	flagServerPort := flag.Int("ps", 80, "Server Port")
+	url := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
 	flag.Parse()
 
 	log.SetOutput(os.Stdout)
 
-	grpcServer := grpc.NewServer()
+	shutdown := tracing.InitBasicTracer(*url, "producer")
+	defer shutdown()
+
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))
 
 	reflection.Register(grpcServer)
 	// err = grpcServer.Serve(lis)
