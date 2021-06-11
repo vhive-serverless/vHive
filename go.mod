@@ -41,6 +41,7 @@ replace (
 )
 
 require (
+	github.com/blend/go-sdk v1.20210603.3 // indirect
 	github.com/containerd/containerd v1.3.6
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
@@ -53,7 +54,7 @@ require (
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
 	github.com/gogo/googleapis v1.4.1 // indirect
-	github.com/golang/protobuf v1.3.5
+	github.com/golang/protobuf v1.4.3
 	github.com/montanaflynn/stats v0.6.5
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1
@@ -63,11 +64,11 @@ require (
 	github.com/vishvananda/netlink v1.1.0
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20210304124612-50617c2ba197
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
-	google.golang.org/grpc v1.33.1
-	k8s.io/cri-api v0.16.16-rc.0
+	google.golang.org/grpc v1.34.0
+	k8s.io/cri-api v0.22.0-alpha.3
 )
