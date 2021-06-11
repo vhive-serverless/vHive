@@ -30,10 +30,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"google.golang.org/grpc"
 
 	pb "tests/chained-functions-serving/proto"
+
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type consumerServer struct {
@@ -60,9 +64,13 @@ func (s *consumerServer) ConsumeStream(stream pb.ProducerConsumer_ConsumeStreamS
 
 func main() {
 	port := flag.Int("ps", 80, "Port")
+	url := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
 	flag.Parse()
 
 	log.SetOutput(os.Stdout)
+
+	shutdown := tracing.InitBasicTracer(*url, "consumer")
+	defer shutdown()
 
 	//set up server
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
@@ -70,7 +78,7 @@ func main() {
 		log.Fatalf("[consumer] failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))
 	s := consumerServer{}
 	pb.RegisterProducerConsumerServer(grpcServer, &s)
 

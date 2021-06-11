@@ -138,5 +138,22 @@ test-cri:
 
 test-cri-travis: # Testing in travis is deprecated
 	$(MAKE) -C cri test-travis
+    
+serving-all-image: serving-producer-image serving-consumer-image
+
+serving-all-image-push: serving-producer-image-push serving-consumer-image-push
+    
+serving-producer-image: ./function-images/tests/chained-function-serving/Dockerfile ./function-images/tests/chained-function-serving/producer/producer.go ./function-images/tests/chained-function-serving/proto/prodcon.pb.go ./function-images/tests/chained-function-serving/proto/prodcon_grpc.pb.go
+	docker build --tag vhiveease/chained-functions-serving-producer:latest --build-arg target_arg=producer -f ./function-images/tests/chained-function-serving/Dockerfile .
+
+serving-producer-image-push: serving-producer-image
+	docker push vhiveease/chained-functions-serving-producer:latest
+
+
+serving-consumer-image: ./function-images/tests/chained-function-serving/Dockerfile ./function-images/tests/chained-function-serving/consumer/consumer.go ./function-images/tests/chained-function-serving/proto/prodcon.pb.go ./function-images/tests/chained-function-serving/proto/prodcon_grpc.pb.go
+	docker build --tag vhiveease/chained-functions-serving-consumer:latest --build-arg target_arg=consumer -f ./function-images/tests/chained-function-serving/Dockerfile .
+
+serving-consumer-image-push: serving-consumer-image
+	docker push vhiveease/chained-functions-serving-consumer:latest
 
 .PHONY: test-orch $(SUBDIRS) test-subdirs

@@ -23,12 +23,19 @@
 version: "3.7"
 
 services:
+    zipkin:
+        image: openzipkin/zipkin
+        ports:
+            - 9411:9411
     consumer:
         image: vhiveease/chained-functions-serving-consumer
         volumes:
             - log-volume:/log
         command:
             - -ps=3030
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        depends_on: 
+            - zipkin
 
     producer:
         image: vhiveease/chained-functions-serving-producer
@@ -40,8 +47,10 @@ services:
             - -addr=consumer
             - -ps=3031
             - -pc=3030
+            - -zipkin=http://zipkin:9411/api/v2/spans
         depends_on:
             - consumer
+            - zipkin
 
 volumes:
     log-volume:
