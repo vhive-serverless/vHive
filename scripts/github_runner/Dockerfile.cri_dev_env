@@ -23,6 +23,11 @@
 FROM kindest/node:v1.20.2
 
 RUN apt-get update && \
+    apt-get install -y gnupg2 && \
+    echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_18.04/ /" | tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list && \
+    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_18.04/Release.key | apt-key add - && \
+    apt-get update && \
+    apt-get upgrade --yes && \
     apt-get install --yes \
     apt-utils && \
     apt-get install --yes \
@@ -45,14 +50,12 @@ RUN apt-get update && \
     util-linux \
     ipvsadm \
     gettext-base \
+    skopeo \
     tmux vim && \
-    wget https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_18.04/all/containers-common_1-14_all.deb && \
-    sudo apt install ./containers-common_1-14_all.deb -y && \
-    wget https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_18.04/amd64/skopeo_1.2.2-2_amd64.deb && \
-    sudo apt install ./skopeo_1.2.2-2_amd64.deb -y && \
     sudo wget -O /usr/local/bin/kn -c "https://github.com/knative/client/releases/download/v0.20.0/kn-linux-amd64" && \
     sudo chmod +x /usr/local/bin/kn && \
     mkdir /scripts
+
 COPY scripts/github_runner/setup_cri_dev_env.sh /scripts/
 COPY scripts/setup_system.sh /scripts/
 COPY scripts/create_devmapper.sh /scripts/
