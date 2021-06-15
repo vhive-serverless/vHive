@@ -155,7 +155,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:b9629edc691f2de6dcf6c2b3ff4f35fb597b530f2da1716600f8d01fa62af1c1
+          image: docker.io/shyamjesal/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:440f4c0bfe55de874c057e3ef3e4455dee2c1644a58c575323bfcfe87dbe2fb9
           resources:
             requests:
               cpu: 30m
@@ -239,7 +239,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:bb3ded0813881f036c7361879f8b0e43b85bfd21cab9aa1f10f5a168d38ddd1e
+          image: docker.io/shyamjesal/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:4b756494928d35877b61c6242fc3ddd2f9d9eac116291971e901a54ae325efc1
           resources:
             requests:
               cpu: 100m
