@@ -1,6 +1,18 @@
 name: MinIO tests
 
 on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *'
