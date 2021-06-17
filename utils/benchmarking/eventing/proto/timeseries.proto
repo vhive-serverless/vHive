@@ -1,0 +1,112 @@
+// MIT License
+//
+// Copyright (c) 2021 Mert Bora Alper and EASE lab
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+syntax = "proto3";
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/ease-lab/vhive/utils/benchmarking/eventing/proto";
+
+/*
+    EXAMPLE USAGE:
+
+    t=0    Invoker ---> Timeseries.StartExperiment(...)
+    t=1    Invoker ---> Producer.Invoke(...)
+    t=X    Invoker ---> Timeseries.EndExperiment()
+ */
+service Timeseries {
+    // Invoker methods
+    // ==============
+    rpc StartExperiment(ExperimentDefinition) returns (google.protobuf.Empty) {}
+    rpc EndExperiment(google.protobuf.Empty) returns (ExperimentResult) {}
+}
+
+enum InvocationStatus {
+    // Status has not been set.
+    NULL = 0;
+    // All the expected completion events have been received on time.
+    COMPLETED = 1;
+    // The experiment has been cancelled manually by the user.
+    CANCELLED = 2;
+}
+
+message EventRecord {
+    // event that is recorded.
+    Event event = 1;
+    // recordedOn is the record timestamp.
+    google.protobuf.Timestamp recordedOn = 2;
+    // isCompletion indicates whether the event was a completion event or not.
+    bool isCompletion = 3;
+}
+
+message Event {
+    VHiveMetadata vHiveMetadata = 1;
+    // extensions is the mapping of extension attribute names to their values.
+    map<string, string> attributes = 2;
+    // data is the main payload of the CloudEvent.
+    bytes data = 3;
+}
+
+message CompletionEventDescriptor {
+    // attrMatchers is a mapping from CloudEvent attribute names to their
+    // values. A given CloudEvent is deemed a *completion event* iff all
+    // the entries in the map match.
+    // EXAMPLE:
+    //     attrMatchers: {
+    //         "source": "/us-east-1.aws.amazon.com/easelab/worker-1",
+    //         "type"  : "com.amazon.aws.ec2.monitoring.iops",
+    //     }
+    map<string, string> attrMatchers = 1;
+}
+
+message ExperimentDefinition {
+    // completionEventDescriptors is the list of descriptors for identifying
+    // completion events.
+    repeated CompletionEventDescriptor completionEventDescriptors = 1;
+}
+
+message ExperimentResult {
+    // invocations is the list of invocations in the experiment.
+    repeated InvocationDescriptor invocations = 1;
+}
+
+message InvocationDescriptor {
+    // id of the invocation.
+    string id = 1;
+    // invokedOn is the timestamp of the starting request to the producer.
+    google.protobuf.Timestamp invokedOn = 2;
+    // duration of the invocation, calculated as:
+    //     MAX{completion event arrivals} - invokedOn
+    google.protobuf.Duration duration = 3;
+    // eventRecords is the list of recorded events with some recording metadata.
+    repeated EventRecord eventRecords = 4;
+    // status of the invocation.
+    InvocationStatus status = 5;
+}
+
+message VHiveMetadata {
+    // id of the invocation.
+    string id = 1;
+    // invokedOn is the timestamp of the starting request to the producer.
+    google.protobuf.Timestamp invokedOn = 2;
+}

@@ -20,9 +20,40 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Namespace: chained-functions-eventing
+# Trigger: default-timeseriesdb-trigger
 # =====================================
-apiVersion: v1
-kind: Namespace
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
 metadata:
-  name: chained-functions-eventing
+  name: default-timeseriesdb-trigger
+  namespace: chained-functions-eventing
+spec:
+  broker: default
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: timeseriesdb
+      namespace: chained-functions-eventing
+
+---
+
+# Trigger: default-consumer-trigger
+# =================================
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: default-consumer-trigger
+  namespace: chained-functions-eventing
+spec:
+  broker: default
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: consumer
+      namespace: chained-functions-eventing
+  filter:
+    attributes:
+      type: greeting
+      source: producer

@@ -27,9 +27,12 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/client"
+	ctrdlog "github.com/containerd/containerd/log"
+	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -49,42 +52,50 @@ type server struct {
 var ceClient client.Client
 
 func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, error) {
-	log.Printf("Producer received an HelloRequest: name=`%s`", req.Name)
-
+	id := uuid.New().String()
 	event := cloudevents.NewEvent("1.0")
+	event.SetID(id)
 	event.SetType("greeting")
-	event.SetSource("eventing-producer")
+	event.SetSource("producer")
+	event.SetExtension(
+		"vhivemetadata",
+		fmt.Sprintf("{\"Id\": \"%s\", \"InvokedOn\": \"%s\"}", id, time.Now().UTC().Format(ctrdlog.RFC3339NanoFixed)),
+	)
+
+	log.Printf("received an HelloRequest: name=`%s` (id=`%s`)", req.Name, id)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, GreetingEventBody{Name: req.Name}); err != nil {
-		log.Fatalf("Producer failed to set CloudEvents data: %s", err)
+		log.Fatalf("failed to set CloudEvents data: %s", err)
 	}
 
 	var env envConfig
 	if err := envconfig.Process("", &env); err != nil {
-		log.Fatalf("Producer failed to process env var: %s", err)
+		log.Fatalf("failed to process env var: %s", err)
 	}
 
 	// Send that Event.
 	if result := ceClient.Send(cloudevents.ContextWithTarget(ctx, env.Sink), event); !cloudevents.IsACK(result) {
-		log.Fatalf("Producer failed to send CloudEvent: %+v", result)
+		log.Fatalf("failed to send CloudEvent: %+v", result)
 	}
 
-	log.Printf("Producer responding to the client")
+	log.Printf("responding to the client")
 	return &HelloReply{Message: fmt.Sprintf("Hello, %s!", req.Name)}, nil
 }
 
 func main() {
-	log.Printf("Producer started")
+	log.SetPrefix("Producer: ")
+	log.SetFlags(log.Lmicroseconds | log.LUTC)
+	log.Printf("started")
 
 	var err error
 	ceClient, err = cloudevents.NewClientHTTP()
 	if err != nil {
-		log.Fatalf("Producer CE client failed to initialize: %v", err)
+		log.Fatalf("failed to initialize CE client: %v", err)
 	}
 
 	lis, err := net.Listen("tcp", "0.0.0.0:8080")
 	if err != nil {
-		log.Fatalf("Producer failed to listen: %s", err)
+		log.Fatalf("failed to listen: %s", err)
 	}
 	defer lis.Close()
 
@@ -95,6 +106,6 @@ func main() {
 	reflection.Register(grpcServer)
 	err = grpcServer.Serve(lis)
 	if err != nil {
-		log.Fatalf("Producer failed to serve: %s", err)
+		log.Fatalf("failed to serve: %s", err)
 	}
 }

@@ -13,6 +13,10 @@ Manifests are split into separate files and are enumerated in the order of their
 ## Running Manually
 ### Starting
 **On the master node**, execute the following instructions below:
+1. Download the programs in `bin/`:
+   ```bash
+   git lfs pull
+   ```
 1. Apply the configuration
    ```bash
    ./function-images/tests/chained-function-eventing/manifests/apply.sh
@@ -20,6 +24,10 @@ Manifests are split into separate files and are enumerated in the order of their
 
 ### Invoking
 **On the master node**, execute the following instructions below:
+1. Start a TimeseriesDB experiment:
+   ```bash
+   ./bin/grpcurl -plaintext 10.96.0.84:90 -d @ Timeseries.StartExperiment < ./function-images/tests/chained-function-eventing/ts-experiment.json
+   ```
 1. Make a gRPC request:
    ```bash
    ./bin/grpcurl -d '{"name": "Bora"}' -plaintext producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
@@ -43,6 +51,14 @@ Manifests are split into separate files and are enumerated in the order of their
    ```bash
    kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=consumer
    ```
+3. Inspect the **timeseriesdb** records:
+   ```bash
+   ./bin/grpcurl -plaintext 10.96.0.84:90 Timeseries.EndExperiment
+   ```
+   - To inspect the logs of **timeseriesdb**:
+     ```bash
+     kubectl logs -n chained-functions-eventing svc/timeseriesdb
+     ```
 
 ### Deleting
 **On the master node**, execute the following instructions below:
