@@ -59,7 +59,7 @@ are given in their appropriate sections.
 
 Since vHive functions use gRPC, for example in both the 
 [serving](/function-images/tests/chained-function-serving/service-producer.yaml) and 
-[eventing examples](/function-images/tests/chained-function-eventing/manifests/2-ksvc.yaml), one will
+[eventing examples](/function-images/tests/chained-function-eventing/manifests/4-ksvc.yaml), one will
 need to include the `h2c` port translation in each relevant manifest.
 
 vHive manifests must follow a specific structure, and they rely on hosting a guest image on a stub 

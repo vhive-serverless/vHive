@@ -20,9 +20,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Namespace: chained-functions-eventing
-# =====================================
 apiVersion: v1
-kind: Namespace
+kind: Service
 metadata:
-  name: chained-functions-eventing
+  name: timeseriesdb
+  namespace: chained-functions-eventing
+spec:
+  clusterIP: 10.96.0.84
+  ports:
+    # CloudEvents Receiver
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: cloudevents
+    # gRPC Server
+    - port: 90
+      targetPort: 9090
+      protocol: TCP
+      name: grpc
+  selector:
+    app: timeseriesdb

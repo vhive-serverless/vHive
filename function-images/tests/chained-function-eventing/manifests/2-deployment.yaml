@@ -20,9 +20,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Namespace: chained-functions-eventing
-# =====================================
-apiVersion: v1
-kind: Namespace
+# Deployment: timeseriesdb
+# ========================
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: chained-functions-eventing
+  name: timeseriesdb
+  namespace: chained-functions-eventing
+spec:
+  replicas: 1
+  selector:
+    matchLabels: &labels
+      app: timeseriesdb
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      containers:
+        - name: timeseriesdb
+          image: docker.io/vhiveease/tsdb-timeseriesdb:latest
+          imagePullPolicy: Always

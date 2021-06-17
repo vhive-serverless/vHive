@@ -20,9 +20,36 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Namespace: chained-functions-eventing
-# =====================================
-apiVersion: v1
-kind: Namespace
+# Knative Service: producer
+# =========================
+apiVersion: serving.knative.dev/v1
+kind: Service
 metadata:
-  name: chained-functions-eventing
+  name: producer
+  namespace: chained-functions-eventing
+spec:
+  template:
+    spec:
+      containers:
+        - image: docker.io/vhiveease/chained-functions-eventing-producer:latest
+          imagePullPolicy: Always
+          ports:
+            # For `h2c`, see https://knative.tips/networking/http2/
+            - name: h2c
+              containerPort: 8080
+
+---
+
+# Knative Service: consumer
+# =========================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: consumer
+  namespace: chained-functions-eventing
+spec:
+  template:
+    spec:
+      containers:
+        - image: docker.io/vhiveease/chained-functions-eventing-consumer:latest
+          imagePullPolicy: Always
