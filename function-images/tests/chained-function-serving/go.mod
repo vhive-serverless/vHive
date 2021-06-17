@@ -3,7 +3,7 @@ module tests/chained-functions-serving
 go 1.16
 
 replace (
-	github.com/ease-lab/vhive/utils/tracing/go => /app/utils/tracing
+	github.com/ease-lab/vhive/utils/tracing/go => ./utils/tracing
 	tests/chained-functions-serving/proto => ./proto
 )
 

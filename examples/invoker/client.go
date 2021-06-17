@@ -36,11 +36,16 @@ import (
 	pb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 var (
-	completed int64
-	latSlice  LatencySlice
+	completed   int64
+	latSlice    LatencySlice
+	port        int
+	withTracing *bool
 )
 
 func main() {
@@ -48,14 +53,23 @@ func main() {
 	rps := flag.Int("rps", 1, "Target requests per second")
 	runDuration := flag.Int("time", 5, "Run the benchmark for X seconds")
 	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
+	portFlag := flag.Int("port", 80, "The port to use for all function invokations")
+	withTracing = flag.Bool("trace", false, "Enable tracing in the client")
+	zipkin := flag.String("zipkin", "http://localhost:9411/api/v2/spans", "zipkin url")
 
 	flag.Parse()
+	port = *portFlag
 
 	log.Info("Reading the URLs from the file: ", *urlFile)
 
 	urls, err := readLines(*urlFile)
 	if err != nil {
 		log.Fatal("Failed to read the URL files: ", err)
+	}
+
+	if *withTracing {
+		shutdown := tracing.InitBasicTracer(*zipkin, "invoker")
+		defer shutdown()
 	}
 
 	realRPS := runBenchmark(urls, *runDuration, *rps)
@@ -108,9 +122,17 @@ func runBenchmark(urls []string, runDuration, targetRPS int) (realRPS float64) {
 func invokeFunction(url string) {
 	defer getDuration(startMeasurement(url)) // measure entire invocation time
 
-	address := fmt.Sprintf("%s:%d", url, 80)
+	address := fmt.Sprintf("%s:%d", url, port)
 
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	fmt.Printf("Address used: %v\n", address)
+
+	var conn *grpc.ClientConn
+	var err error
+	if *withTracing {
+		conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+	} else {
+		conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	}
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

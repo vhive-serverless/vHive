@@ -49,7 +49,8 @@ type producerServer struct {
 
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloReply, error) {
 	// establish a connection
-	conn, err := grpc.Dial(fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort), grpc.WithInsecure(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	if err != nil {
 		log.Fatalf("[producer] fail to dial: %s", err)
 	}
