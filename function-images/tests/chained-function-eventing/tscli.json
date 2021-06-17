@@ -1,0 +1,10 @@
+{
+  "completionEventDescriptors": [
+    {
+      "attrMatchers": {
+        "type": "greeting",
+        "source": "consumer"
+      }
+    }
+  ]
+}

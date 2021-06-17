@@ -33,6 +33,7 @@ aws
 backend
 Backend
 baseurl
+bc
 benchmarking
 Benchmarking
 bgrot
@@ -43,8 +44,8 @@ Bora
 boris
 Bugnion
 BuMP
-Cansu
 callee
+Cansu
 CCKVS
 CCNoC
 CCNOC
@@ -79,9 +80,9 @@ consumerAddr
 consumerPort
 containerd
 Containerd
+containerPort
 coolDownTime
 Costa
-containerPort
 CPUs
 CRC
 crccheck
@@ -101,6 +102,7 @@ debian
 deployer
 dev
 devmapper
+df
 dir
 Distributable
 dmitrii
@@ -118,6 +120,7 @@ doi
 Dragojevic
 Drumond
 DVFS
+eba
 Edouard
 edu
 ef
@@ -186,6 +189,7 @@ InitCustomTracer
 Initializr
 inproceedings
 integ
+InvokedOn
 invoker
 io
 Ipsum
@@ -421,6 +425,8 @@ TempReader
 TestProfileIncrementConfiguration
 TestProfileSingleConfiguration
 th
+timeseriesdb
+timestampdb
 TLB
 tmp
 tmux
@@ -433,6 +439,7 @@ topologies
 Topologies
 traceId
 traceid
+tscli
 tsim
 TSIM
 txt

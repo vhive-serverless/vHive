@@ -34,23 +34,30 @@ import (
 func callback(_ context.Context, event cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
 	var body GreetingEventBody
 	if err := event.DataAs(&body); err != nil {
-		log.Fatalf("Consumer error while extracting CloudEvent data: %s", err)
+		log.Fatalf("failed to extract CloudEvent data: %s", err)
 	}
 
-	log.Printf("Consumer received a GreetingEvent: name=`%s`", body.Name)
+	log.Printf("received a GreetingEvent: name=`%s`", body.Name)
 
-	return nil, nil
+	response := cloudevents.NewEvent("1.0")
+	response.SetID(event.ID())
+	response.SetType("greeting")
+	response.SetSource("consumer")
+	response.SetExtension("vhivemetadata", event.Extensions()["vhivemetadata"])
+	return &response, nil
 }
 
 func main() {
-	log.Println("Consumer started")
+	log.SetPrefix("Consumer: ")
+	log.SetFlags(log.Lmicroseconds | log.LUTC)
+	log.Println("started")
 
 	ceClient, err := cloudevents.NewClientHTTP()
 	if err != nil {
-		log.Fatalf("Consumer failed to create client, %s", err)
+		log.Fatalf("failed to create a CloudEvents client, %s", err)
 	}
 
 	if err := ceClient.StartReceiver(context.Background(), callback); err != nil {
-		log.Fatalf("Consumer receiver failed: %s", err)
+		log.Fatalf("failed to start the receiver: %s", err)
 	}
 }

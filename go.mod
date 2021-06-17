@@ -41,6 +41,7 @@ replace (
 )
 
 require (
+	github.com/cloudevents/sdk-go/v2 v2.4.1
 	github.com/containerd/containerd v1.3.6
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
@@ -53,7 +54,7 @@ require (
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
 	github.com/gogo/googleapis v1.4.1 // indirect
-	github.com/golang/protobuf v1.3.5
+	github.com/golang/protobuf v1.5.0
 	github.com/montanaflynn/stats v0.6.5
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1
@@ -69,5 +70,6 @@ require (
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
 	google.golang.org/grpc v1.33.1
+	google.golang.org/protobuf v1.26.0
 	k8s.io/cri-api v0.16.16-rc.0
 )
