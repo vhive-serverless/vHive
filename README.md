@@ -79,6 +79,8 @@ that describes how to set up an experiment with vHive.
 We provide a basic developer's guide that we plan to extend in future.
 We encourage the community to contribute their analysis scenarios and tools.
 
+You can view the vHive documentation [here](https://pkg.go.dev/github.com/ease-lab/vhive).
+
 ### vHive roadmap
 
 vHive is a community-led project, maintained by the EASE lab.

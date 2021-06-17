@@ -1,6 +1,12 @@
 ﻿# Contributing to vHive
 This document gives a brief overview of how you can contribute to the vHive repository.
 
+## Code Style
+### Comments and Documentation
+All vHive documentation can be found [here](https://pkg.go.dev/github.com/ease-lab/vhive). When contributing code please make sure do document it appropriately, as described in [this guide](https://blog.golang.org/godoc).
+
+There is no need for excessive comments within the code itself and we prefer brevity where possible.
+
 ## Pull Requests
 When contributing to the repository you should work in a separate branch and create a GitHub pull request for your branch. For all pull requests to vHive we require that you do the following:
 - Sync your Repo
