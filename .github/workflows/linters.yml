@@ -35,3 +35,13 @@ jobs:
           --help-url 'https://stackoverflow.com/a/45974435' 
           --from HEAD~1 --to HEAD 
           --verbose
+  markdown-link-check:
+    name: LinkCheck
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@master
+      - uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'yes'
+          config-file: 'configs/.linkcheck.json'
