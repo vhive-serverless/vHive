@@ -1,0 +1,13 @@
+{
+    "ignorePatterns": [
+		{
+			"pattern": "^http://localhost:*"
+		}
+    ],
+    "replacementPatterns": [
+        {
+            "pattern": "^/",
+            "replacement": "/github/workspace/"
+        }
+    ]
+}

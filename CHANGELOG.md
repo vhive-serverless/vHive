@@ -8,6 +8,8 @@
 - CRI test logs are now stored as GitHub artifacts.
 - Added Knative Eventing Tutorial: [documentation](./docs/knative/eventing.md) and [example](./examples/knative-eventing-tutorial).
 - Added a chained functions microbenchmark that uses Knative Serving.
+- Added a linter for link checking in markdown files
+- Added documentation for adding benchmarks to vHive.
 
 ### Changed
 
