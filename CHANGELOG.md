@@ -7,9 +7,10 @@
 - Added [script](./scripts/cloudlab/start_onenode_vhive_cluster.sh) to (re)start vHive single node cluster in a push-button.
 - CRI test logs are now stored as GitHub artifacts.
 - Added Knative Eventing Tutorial: [documentation](./docs/knative/eventing.md) and [example](./examples/knative-eventing-tutorial).
-- Added a chained functions microbenchmark that uses Knative Serving.
+- Added a chained functions microbenchmark that uses Knative Serving with tracing.
 - Added a linter for link checking in markdown files
 - Added documentation for adding benchmarks to vHive.
+- Added a utility for tracing using zipkin.
 
 ### Changed
 
