@@ -42,7 +42,7 @@ replace (
 
 replace (
 	github.com/ease-lab/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
-	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20210618071001-4400afe6e383
+	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20210618165033-6af02db30bc4
 )
 
 require (

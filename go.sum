@@ -297,6 +297,8 @@ github.com/ease-lab/firecracker-containerd v0.0.0-20210529101248-e628ce108f12 h1
 github.com/ease-lab/firecracker-containerd v0.0.0-20210529101248-e628ce108f12/go.mod h1:Uon4eMMkFBsj2aYWnk1wz3xebaKgR3+CCjmc62cCcvo=
 github.com/ease-lab/firecracker-containerd v0.0.0-20210618071001-4400afe6e383 h1:1InfVcrAF4CcJHEOfhTXyWuN7i04Wj9K3oMdPZ6cyUk=
 github.com/ease-lab/firecracker-containerd v0.0.0-20210618071001-4400afe6e383/go.mod h1:Uon4eMMkFBsj2aYWnk1wz3xebaKgR3+CCjmc62cCcvo=
+github.com/ease-lab/firecracker-containerd v0.0.0-20210618165033-6af02db30bc4 h1:aSZHGMFJMcS47URi6xu7n1anJfEHagZjGf6HR8ZHggg=
+github.com/ease-lab/firecracker-containerd v0.0.0-20210618165033-6af02db30bc4/go.mod h1:Uon4eMMkFBsj2aYWnk1wz3xebaKgR3+CCjmc62cCcvo=
 github.com/ease-lab/firecracker-go-sdk v0.20.1-0.20200625102438-8edf287b0123/go.mod h1:zyc9BrKGePpNLbQ5y2ZtdzXEfpMJeHPeFNVpyo0S1WQ=
 github.com/elazarl/goproxy v0.0.0-20170405201442-c4fc26588b6e/go.mod h1:/Zj4wYkgs4iZTTu3o/KG3Itv/qCCa8VVMlb3i9OVuzc=
 github.com/emicklei/go-restful v0.0.0-20170410110728-ff4f55a20633/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
