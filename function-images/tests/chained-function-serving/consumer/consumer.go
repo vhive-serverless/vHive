@@ -27,10 +27,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 
+	ctrdlog "github.com/containerd/containerd/log"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
 	pb "tests/chained-functions-serving/proto"
@@ -44,6 +45,12 @@ type consumerServer struct {
 }
 
 func (s *consumerServer) ConsumeString(ctx context.Context, str *pb.ConsumeStringRequest) (*pb.ConsumeStringReply, error) {
+	span1 := tracing.Span{SpanName: "custom-span-1", TracerName: "tracer"}
+	span2 := tracing.Span{SpanName: "custom-span-2", TracerName: "tracer"}
+	ctx = span1.StartSpan(ctx)
+	ctx = span2.StartSpan(ctx)
+	defer span1.EndSpan()
+	defer span2.EndSpan()
 	log.Printf("[consumer] Consumed %v\n", str.Value)
 	return &pb.ConsumeStringReply{Value: true}, nil
 }
@@ -66,9 +73,16 @@ func main() {
 	url := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
 	flag.Parse()
 
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
 	log.SetOutput(os.Stdout)
 
-	shutdown := tracing.InitBasicTracer(*url, "consumer")
+	shutdown, err := tracing.InitBasicTracer(*url, "consumer")
+	if err != nil {
+		log.Warn(err)
+	}
 	defer shutdown()
 
 	//set up server

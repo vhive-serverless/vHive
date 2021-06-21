@@ -26,10 +26,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os"
 
+	ctrdlog "github.com/containerd/containerd/log"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -74,9 +75,16 @@ func main() {
 	url := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
 	flag.Parse()
 
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
 	log.SetOutput(os.Stdout)
 
-	shutdown := tracing.InitBasicTracer(*url, "producer")
+	shutdown, err := tracing.InitBasicTracer(*url, "producer")
+	if err != nil {
+		log.Warn(err)
+	}
 	defer shutdown()
 
 	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))

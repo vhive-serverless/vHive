@@ -118,6 +118,18 @@ both for code maintenance and in demonstrating how the workload should be deploy
 to as an example in which the demo serving and eventing workloads are ran both "locally" and on
 a Knative cluster.
 
+### Logging
+When including logging within functions, please use `logrus` with the following format:
+```
+log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
+```
+See 
+[this code snippet](https://github.com/ease-lab/vhive/blob/dfa0d400e17595a5fb0009ec8ab3211b5b4b7f9f/vhive.go#L102)
+for an example.
+
 ## Serving
 To compose functions with serving we make use of the 
 [Knative Serving component](https://knative.dev/docs/serving/). Each of the functions will 

@@ -29,7 +29,7 @@ RUN apk add --no-cache make
 ARG target_arg
 ENV target=$target_arg
 COPY ./function-images/tests/chained-function-serving/ ./
-COPY ./utils/tracing/go ./utils/tracing
+COPY ./utils/tracing/go ./utils/tracing/go
 RUN mkdir /log
 RUN go mod download && \
    CGO_ENABLED=0 GOOS=linux go build -v -o ./${target}-bin ./${target}/

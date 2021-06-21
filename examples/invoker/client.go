@@ -33,6 +33,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	ctrdlog "github.com/containerd/containerd/log"
 	pb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -44,7 +45,7 @@ import (
 var (
 	completed   int64
 	latSlice    LatencySlice
-	port        int
+	portFlag    *int
 	withTracing *bool
 )
 
@@ -53,12 +54,24 @@ func main() {
 	rps := flag.Int("rps", 1, "Target requests per second")
 	runDuration := flag.Int("time", 5, "Run the benchmark for X seconds")
 	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
-	portFlag := flag.Int("port", 80, "The port to use for all function invokations")
+	portFlag = flag.Int("port", 80, "The port that functions listen to")
 	withTracing = flag.Bool("trace", false, "Enable tracing in the client")
 	zipkin := flag.String("zipkin", "http://localhost:9411/api/v2/spans", "zipkin url")
+	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	flag.Parse()
-	port = *portFlag
+
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
+	log.SetOutput(os.Stdout)
+	if *debug {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Debug logging is enabled")
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
 
 	log.Info("Reading the URLs from the file: ", *urlFile)
 
@@ -68,7 +81,10 @@ func main() {
 	}
 
 	if *withTracing {
-		shutdown := tracing.InitBasicTracer(*zipkin, "invoker")
+		shutdown, err := tracing.InitBasicTracer(*zipkin, "invoker")
+		if err != nil {
+			log.Print(err)
+		}
 		defer shutdown()
 	}
 
@@ -122,9 +138,8 @@ func runBenchmark(urls []string, runDuration, targetRPS int) (realRPS float64) {
 func invokeFunction(url string) {
 	defer getDuration(startMeasurement(url)) // measure entire invocation time
 
-	address := fmt.Sprintf("%s:%d", url, port)
-
-	fmt.Printf("Address used: %v\n", address)
+	address := fmt.Sprintf("%s:%d", url, *portFlag)
+	log.Debug("Invoking by the address: %v", address)
 
 	var conn *grpc.ClientConn
 	var err error

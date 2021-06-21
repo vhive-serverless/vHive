@@ -72,10 +72,10 @@ jobs:
       uses: docker/setup-buildx-action@v1
 
     - name: Build and push
-      working-directory: .
+      working-directory: ./function-images/tests/chained-function-serving
       run: |
-        make serving-all-image
-        make serving-all-image-push
+        make all-image
+        make all-image-push
 
   push-chained-functions-eventing:
       name: Push chained-functions-eventing-*

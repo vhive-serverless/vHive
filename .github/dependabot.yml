@@ -1,3 +1,4 @@
+# Use https://dependabot.com/docs/config-file/validator/ to check for errors.
 version: 2
 updates:
   - package-ecosystem: "gomod"
@@ -5,21 +6,32 @@ updates:
     schedule:
       interval: "weekly"
 
-updates:
   - package-ecosystem: "gomod"
     directory: "/function-images/tests/chained-function-serving"
     schedule:
       interval: "weekly"
+
   - package-ecosystem: "gomod"
     directory: "/function-images/tests/chained-function-eventing"
     schedule:
       interval: "weekly"
+
   - package-ecosystem: "gomod"
     directory: "/utils/benchmarking/eventing"
     schedule:
       interval: "weekly"
-updates:
+
   - package-ecosystem: "gomod"
     directory: "/utils/tracing/go"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/examples/deployer"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/examples/invoker"
     schedule:
       interval: "weekly"
