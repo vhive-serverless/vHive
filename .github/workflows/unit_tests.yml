@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [taps, misc, profile, utils/tracing/go]
+        module: [taps, misc, profile, utils/tracing/go, utils/tracing/python]
     steps:
     - name: Set up Go 1.15
       uses: actions/setup-go@v2
@@ -46,6 +46,9 @@ jobs:
 
     - name: Install PMU tools
       run: ./scripts/install_pmutools.sh
+
+    - name: Get extra python packages
+      run: pip install -r ./function-images/tests/tracing/python/client-server/requirements.txt
 
     - name: Build
       run: go build -race -v -a ./...
