@@ -4,6 +4,8 @@
 [![vHive CRI tests](https://github.com/ease-lab/vhive/actions/workflows/cri_test.yml/badge.svg)](https://github.com/ease-lab/vhive/actions/workflows/cri_test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ease-lab/vhive)](https://goreportcard.com/report/github.com/ease-lab/vhive)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<a href="https://twitter.com/intent/follow?screen_name=ease_lab" target="_blank">
+<img src="https://img.shields.io/twitter/follow/ease_lab?style=social&logo=twitter" alt="follow on Twitter"></a>
 
 ![vHive Header](docs/figures/vhive_hdr.jpg)
 
