@@ -80,7 +80,7 @@ jobs:
 
     - name: Run invoker client
       run: |
-        echo "producer.default.192.168.1.240.sslip.io" > urls.txt
+        echo '[ { "hostname": "producer.default.192.168.1.240.sslip.io" } ]' > endpoints.json
         cd ./examples/invoker
         go build client.go
         cd ../..
@@ -140,22 +140,19 @@ jobs:
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing ksvc
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing trigger
 
-    - name: Start Experiment
-      run: ./bin/grpcurl -plaintext 10.96.0.84:90 -d @ Timeseries.StartExperiment < ./function-images/tests/chained-function-eventing/ts-experiment.json
-
-    - name: Invoke Thrice
+    - name: Invoke
       run: |
-        ./bin/grpcurl -d '{\"name\": \"Mert\"}'  -plaintext producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
-        ./bin/grpcurl -d '{\"name\": \"Bora\"}'  -plaintext producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
-        ./bin/grpcurl -d '{\"name\": \"Alper\"}' -plaintext producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
+        echo '[ { "hostname": "producer.chained-functions-eventing.192.168.1.240.sslip.io", "eventing": true, "matchers": { "type": "greeting", "source": "consumer" } } ]' > endpoints.json
+        cd ./examples/invoker
+        go build client.go
+        cd ../..
+        ./examples/invoker/client -rps 10
 
     - name: Inspect logs
       run: |
+        cat rps*lat.csv
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=producer
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=consumer
-
-    - name: End Experiment
-      run: ./bin/grpcurl -plaintext 10.96.0.84:90 Timeseries.EndExperiment > $LOGPATH/experiment-results.json
 
     - name: Archive log artifacts
       uses: actions/upload-artifact@v2
