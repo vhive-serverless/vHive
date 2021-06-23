@@ -63,7 +63,7 @@ var (
 func main() {
 	endpointsFile := flag.String("endpointsFile", "endpoints.json", "File with endpoints' metadata")
 	rps := flag.Int("rps", 1, "Target requests per second")
-	runDuration := flag.Int("time", 5, "Run the benchmark for X seconds")
+	runDuration := flag.Int("time", 5, "Run each benchmark for X seconds")
 	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
 	portFlag = flag.Int("port", 80, "The port that functions listen to")
 	withTracing = flag.Bool("trace", false, "Enable tracing in the client")
@@ -116,34 +116,45 @@ func readEndpoints(path string) (endpoints []Endpoint, _ error) {
 }
 
 func runBenchmark(endpoints []Endpoint, runDuration, targetRPS int) (realRPS float64) {
-	timeout := time.After(time.Duration(runDuration) * time.Second)
-	tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
+	for i, endpoint := range endpoints {
+		if endpoint.Eventing {
+			Start(TimeseriesDBAddr, endpoints[0].Matchers)
+		}
 
-	var issued int
-	start := time.Now()
+		issued := 0
+		start := time.Now()
+		timeout := time.After(time.Duration(runDuration) * time.Second)
+		tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
 
-	for {
-		select {
-		case <-timeout:
-			duration := time.Since(start).Seconds()
-			realRPS = float64(completed) / duration
-			log.Infof("Issued / completed requests: %d, %d", issued, completed)
-			log.Infof("Real / target RPS: %.2f / %v", realRPS, targetRPS)
-
-			log.Println("Benchmark finished!")
-
-			return
-		case <-tick:
-			endpoint := endpoints[issued%len(endpoints)]
+		burst:
+		for {
 			if endpoint.Eventing {
 				go invokeEventingFunction(endpoint)
 			} else {
 				go invokeServingFunction(endpoint.Hostname)
 			}
-
 			issued++
+
+			select {
+			case <-timeout:
+				duration := time.Since(start).Seconds()
+				realRPS = float64(completed) / duration
+				log.Infof("Endpoint #%d", i)
+				log.Infof("  Issued / completed requests: %d, %d", issued, completed)
+				log.Infof("  Real / target RPS: %.2f / %v", realRPS, targetRPS)
+				break burst
+			case <-tick:
+				continue
+			}
+		}
+
+		if endpoint.Eventing {
+			addDurations(End())
 		}
 	}
+
+	log.Println("Benchmark finished!")
+	return
 }
 
 func SayHello(address string) {
@@ -174,9 +185,7 @@ func invokeEventingFunction(endpoint Endpoint) {
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
 	log.Debug("Invoking by the address: %v", address)
 
-	End := Start(TimeseriesDBAddr, endpoint.Matchers)
 	SayHello(address)
-	addDuration(End())
 
 	atomic.AddInt64(&completed, 1)
 
@@ -209,12 +218,14 @@ func startMeasurement(msg string) (string, time.Time) {
 func getDuration(msg string, start time.Time) {
 	latency := time.Since(start)
 	log.Debugf("Invoked %v in %v usec\n", msg, latency)
-	addDuration(latency)
+	addDurations([]time.Duration{latency})
 }
 
-func addDuration(d time.Duration) {
+func addDurations(ds []time.Duration) {
 	latSlice.Lock()
-	latSlice.slice = append(latSlice.slice, d.Microseconds())
+	for _, d := range ds {
+		latSlice.slice = append(latSlice.slice, d.Microseconds())
+	}
 	latSlice.Unlock()
 }
 
@@ -225,7 +236,7 @@ func writeLatencies(rps float64, latencyOutputFile string) {
 	fileName := fmt.Sprintf("rps%.2f_%s", rps, latencyOutputFile)
 	log.Info("The measured latencies are saved in ", fileName)
 
-	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
 		log.Fatal("Failed creating file: ", err)
