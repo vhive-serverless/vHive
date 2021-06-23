@@ -29,6 +29,7 @@ import (
 	"net"
 	"time"
 
+	obshttp "github.com/cloudevents/sdk-go/observability/opencensus/v2/http"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/client"
 	ctrdlog "github.com/containerd/containerd/log"
@@ -95,7 +96,9 @@ func main() {
 
 	var err error
 
-	ceClient, err = opencensus.client.NewClientHTTP() // cloudevents.NewClientHTTP()
+	p, err := obshttp.NewObservedHTTP()
+
+	ceClient, err = client.New(p)
 	if err != nil {
 		log.Fatalf("failed to initialize CE client: %v", err)
 	}

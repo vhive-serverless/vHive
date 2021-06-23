@@ -24,14 +24,46 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"reflect"
+	"unsafe"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 
 	. "eventing/eventschemas"
 )
 
-func callback(_ context.Context, event cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
+func printContextInternals(ctx interface{}, inner bool) {
+	contextValues := reflect.ValueOf(ctx).Elem()
+	contextKeys := reflect.TypeOf(ctx).Elem()
+
+	if !inner {
+		fmt.Printf("\nFields for %s.%s\n", contextKeys.PkgPath(), contextKeys.Name())
+	}
+
+	if contextKeys.Kind() == reflect.Struct {
+		for i := 0; i < contextValues.NumField(); i++ {
+			reflectValue := contextValues.Field(i)
+			reflectValue = reflect.NewAt(reflectValue.Type(), unsafe.Pointer(reflectValue.UnsafeAddr())).Elem()
+
+			reflectField := contextKeys.Field(i)
+
+			if reflectField.Name == "Context" {
+				printContextInternals(reflectValue.Interface(), true)
+			} else {
+				fmt.Printf("field name: %+v\n", reflectField.Name)
+				fmt.Printf("value: %+v\n", reflectValue.Interface())
+			}
+		}
+	} else {
+		fmt.Printf("context is empty (int)\n")
+	}
+}
+
+func callback(ctx context.Context, event cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
+	printContextInternals(ctx, false)
+
 	var body GreetingEventBody
 	if err := event.DataAs(&body); err != nil {
 		log.Fatalf("failed to extract CloudEvent data: %s", err)

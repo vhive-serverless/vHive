@@ -3,6 +3,7 @@ module eventing
 go 1.16
 
 require (
+	github.com/cloudevents/sdk-go/observability/opencensus/v2 v2.4.1 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.4.1
 	github.com/containerd/containerd v1.5.2
 	github.com/golang/protobuf v1.5.2 // indirect
