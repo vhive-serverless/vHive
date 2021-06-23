@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -38,9 +39,17 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
-	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
+
+type Endpoint struct {
+	url      string
+	eventing bool
+}
+
+const TimeseriesDBAddr = "10.96.0.84:90"
 
 var (
 	completed   int64
@@ -75,7 +84,7 @@ func main() {
 
 	log.Info("Reading the URLs from the file: ", *urlFile)
 
-	urls, err := readLines(*urlFile)
+	endpoints, err := readEndpoints(*urlFile)
 	if err != nil {
 		log.Fatal("Failed to read the URL files: ", err)
 	}
@@ -88,27 +97,39 @@ func main() {
 		defer shutdown()
 	}
 
-	realRPS := runBenchmark(urls, *runDuration, *rps)
+	realRPS := runBenchmark(endpoints, *runDuration, *rps)
 
 	writeLatencies(realRPS, *latencyOutputFile)
 }
 
-func readLines(path string) ([]string, error) {
+func readEndpoints(path string) (endpoints []Endpoint, _ error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	var lines []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+		tokens := strings.Split(scanner.Text(), "\t")
+		if len(tokens) == 0 {
+			endpoints = append(endpoints, Endpoint{
+				url:      tokens[0],
+				eventing: false,
+			})
+		} else if len(tokens) == 1 && tokens[1] == "eventing" {
+			endpoints = append(endpoints, Endpoint{
+				url:      tokens[0],
+				eventing: true,
+			})
+		} else {
+			log.Fatalf("malformed urls file: %+v", tokens)
+		}
 	}
-	return lines, scanner.Err()
+	return endpoints, scanner.Err()
 }
 
-func runBenchmark(urls []string, runDuration, targetRPS int) (realRPS float64) {
+func runBenchmark(endpoints []Endpoint, runDuration, targetRPS int) (realRPS float64) {
 	timeout := time.After(time.Duration(runDuration) * time.Second)
 	tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
 
@@ -127,27 +148,26 @@ func runBenchmark(urls []string, runDuration, targetRPS int) (realRPS float64) {
 
 			return
 		case <-tick:
-			url := urls[issued%len(urls)]
-			go invokeFunction(url)
+			endpoint := endpoints[issued%len(endpoints)]
+			if endpoint.eventing {
+				go invokeEventingFunction(endpoint.url)
+			} else {
+				go invokeServingFunction(endpoint.url)
+			}
 
 			issued++
 		}
 	}
 }
 
-func invokeFunction(url string) {
-	defer getDuration(startMeasurement(url)) // measure entire invocation time
-
-	address := fmt.Sprintf("%s:%d", url, *portFlag)
-	log.Debug("Invoking by the address: %v", address)
-
-	var conn *grpc.ClientConn
-	var err error
+func SayHello(address string) {
+	var dialOption grpc.DialOption
 	if *withTracing {
-		conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+		dialOption = grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())
 	} else {
-		conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+		dialOption = grpc.WithBlock()
 	}
+	conn, err := grpc.Dial(address, grpc.WithInsecure(), dialOption)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -162,6 +182,28 @@ func invokeFunction(url string) {
 	if err != nil {
 		log.Warnf("Failed to invoke %v, err=%v", address, err)
 	}
+}
+
+func invokeEventingFunction(url string) {
+	address := fmt.Sprintf("%s:%d", url, *portFlag)
+	log.Debug("Invoking by the address: %v", address)
+
+	End := Start(TimeseriesDBAddr)
+	SayHello(address)
+	addDuration(End())
+
+	atomic.AddInt64(&completed, 1)
+
+	return
+}
+
+func invokeServingFunction(url string) {
+	defer getDuration(startMeasurement(url)) // measure entire invocation time
+
+	address := fmt.Sprintf("%s:%d", url, *portFlag)
+	log.Debug("Invoking by the address: %v", address)
+
+	SayHello(address)
 
 	atomic.AddInt64(&completed, 1)
 
@@ -179,11 +221,14 @@ func startMeasurement(msg string) (string, time.Time) {
 }
 
 func getDuration(msg string, start time.Time) {
-	latency := time.Since(start).Microseconds()
+	latency := time.Since(start)
 	log.Debugf("Invoked %v in %v usec\n", msg, latency)
+	addDuration(latency)
+}
 
+func addDuration(d time.Duration) {
 	latSlice.Lock()
-	latSlice.slice = append(latSlice.slice, latency)
+	latSlice.slice = append(latSlice.slice, d.Microseconds())
 	latSlice.Unlock()
 }
 
