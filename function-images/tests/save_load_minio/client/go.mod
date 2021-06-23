@@ -1,6 +1,6 @@
 module main
 
-go 1.15
+go 1.16
 
 replace github.com/ease-lab/vhive/function-images/tests/save_load_minio/proto => ../proto_gen
 

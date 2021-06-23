@@ -1,6 +1,6 @@
 module github.com/ease-lab/vhive
 
-go 1.15
+go 1.16
 
 // Copied from firecracker-containerd
 replace (
