@@ -35,6 +35,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 
 	. "eventing/eventschemas"
@@ -53,6 +54,13 @@ var ceClient client.Client
 
 func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, error) {
 	id := uuid.New().String()
+
+	if headers, ok := metadata.FromIncomingContext(ctx); ok {
+		log.Printf("received an HelloRequest: name=`%s` (id=`%s` traceID=`%s`)", req.Name, id, headers.Get("x-b3-traceid")[0])
+	} else {
+		log.Printf("received an HelloRequest: name=`%s` (id=`%s`)", req.Name, id)
+	}
+
 	event := cloudevents.NewEvent("1.0")
 	event.SetID(id)
 	event.SetType("greeting")
@@ -61,8 +69,6 @@ func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, 
 		"vhivemetadata",
 		fmt.Sprintf("{\"Id\": \"%s\", \"InvokedOn\": \"%s\"}", id, time.Now().UTC().Format(ctrdlog.RFC3339NanoFixed)),
 	)
-
-	log.Printf("received an HelloRequest: name=`%s` (id=`%s`)", req.Name, id)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, GreetingEventBody{Name: req.Name}); err != nil {
 		log.Fatalf("failed to set CloudEvents data: %s", err)
@@ -88,7 +94,8 @@ func main() {
 	log.Printf("started")
 
 	var err error
-	ceClient, err = cloudevents.NewClientHTTP()
+
+	ceClient, err = opencensus.client.NewClientHTTP() // cloudevents.NewClientHTTP()
 	if err != nil {
 		log.Fatalf("failed to initialize CE client: %v", err)
 	}
