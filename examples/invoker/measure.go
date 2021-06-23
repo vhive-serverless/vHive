@@ -12,7 +12,7 @@ import (
 	"eventing/proto"
 )
 
-func Start(tdbAddr string) (End func() time.Duration) {
+func Start(tdbAddr string, matchers map[string]string) (End func() time.Duration) {
 	var dialOption grpc.DialOption
 	if *withTracing {
 		dialOption = grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())
@@ -31,12 +31,7 @@ func Start(tdbAddr string) (End func() time.Duration) {
 	if _, err := client.StartExperiment(ctx, &proto.ExperimentDefinition{
 		CompletionEventDescriptors: []*proto.CompletionEventDescriptor{
 			{
-				AttrMatchers: map[string]string{
-					// TODO: this varies from workload to workload
-					//       a simple urls.txt is no longer sufficient, more metadata is needed
-					"type": "greeting",
-					"source": "consumer",
-				},
+				AttrMatchers: matchers,
 			},
 		},
 	}); err != nil {

@@ -25,11 +25,12 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -45,8 +46,9 @@ import (
 )
 
 type Endpoint struct {
-	url      string
-	eventing bool
+	Hostname string            `json:"hostname"`
+	Eventing bool              `json:"eventing"`
+	Matchers map[string]string `json:"matchers"`
 }
 
 const TimeseriesDBAddr = "10.96.0.84:90"
@@ -59,7 +61,7 @@ var (
 )
 
 func main() {
-	urlFile := flag.String("urlFile", "urls.txt", "File with functions' URLs")
+	endpointsFile := flag.String("endpointsFile", "endpoints.json", "File with endpoints' metadata")
 	rps := flag.Int("rps", 1, "Target requests per second")
 	runDuration := flag.Int("time", 5, "Run the benchmark for X seconds")
 	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
@@ -82,11 +84,11 @@ func main() {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	log.Info("Reading the URLs from the file: ", *urlFile)
+	log.Info("Reading the endpoints from the file: ", *endpointsFile)
 
-	endpoints, err := readEndpoints(*urlFile)
+	endpoints, err := readEndpoints(*endpointsFile)
 	if err != nil {
-		log.Fatal("Failed to read the URL files: ", err)
+		log.Fatal("Failed to read the Hostname files: ", err)
 	}
 
 	if *withTracing {
@@ -103,30 +105,14 @@ func main() {
 }
 
 func readEndpoints(path string) (endpoints []Endpoint, _ error) {
-	file, err := os.Open(path)
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		tokens := strings.Split(scanner.Text(), "\t")
-		if len(tokens) == 0 {
-			endpoints = append(endpoints, Endpoint{
-				url:      tokens[0],
-				eventing: false,
-			})
-		} else if len(tokens) == 1 && tokens[1] == "eventing" {
-			endpoints = append(endpoints, Endpoint{
-				url:      tokens[0],
-				eventing: true,
-			})
-		} else {
-			log.Fatalf("malformed urls file: %+v", tokens)
-		}
+	if err := json.Unmarshal(data, &endpoints); err != nil {
+		return nil, err
 	}
-	return endpoints, scanner.Err()
+	return
 }
 
 func runBenchmark(endpoints []Endpoint, runDuration, targetRPS int) (realRPS float64) {
@@ -149,10 +135,10 @@ func runBenchmark(endpoints []Endpoint, runDuration, targetRPS int) (realRPS flo
 			return
 		case <-tick:
 			endpoint := endpoints[issued%len(endpoints)]
-			if endpoint.eventing {
-				go invokeEventingFunction(endpoint.url)
+			if endpoint.Eventing {
+				go invokeEventingFunction(endpoint)
 			} else {
-				go invokeServingFunction(endpoint.url)
+				go invokeServingFunction(endpoint.Hostname)
 			}
 
 			issued++
@@ -184,11 +170,11 @@ func SayHello(address string) {
 	}
 }
 
-func invokeEventingFunction(url string) {
-	address := fmt.Sprintf("%s:%d", url, *portFlag)
+func invokeEventingFunction(endpoint Endpoint) {
+	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
 	log.Debug("Invoking by the address: %v", address)
 
-	End := Start(TimeseriesDBAddr)
+	End := Start(TimeseriesDBAddr, endpoint.Matchers)
 	SayHello(address)
 	addDuration(End())
 
@@ -197,10 +183,10 @@ func invokeEventingFunction(url string) {
 	return
 }
 
-func invokeServingFunction(url string) {
-	defer getDuration(startMeasurement(url)) // measure entire invocation time
+func invokeServingFunction(hostname string) {
+	defer getDuration(startMeasurement(hostname)) // measure entire invocation time
 
-	address := fmt.Sprintf("%s:%d", url, *portFlag)
+	address := fmt.Sprintf("%s:%d", hostname, *portFlag)
 	log.Debug("Invoking by the address: %v", address)
 
 	SayHello(address)
