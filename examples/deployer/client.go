@@ -74,21 +74,14 @@ type functionType struct {
 
 func getFuncSlice(file string) []functionType {
 	log.Debug("Opening JSON file with functions: ", file)
-	jsonFile, err := os.Open(file)
+	byteValue, err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer jsonFile.Close()
-
-	byteValue, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	var functions Functions
-
-	json.Unmarshal(byteValue, &functions)
-
+	if err := json.Unmarshal(byteValue, &functions); err != nil {
+		log.Fatal(err)
+	}
 	return functions.Functions
 }
 
