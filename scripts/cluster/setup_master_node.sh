@@ -43,9 +43,10 @@ kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
 # istio
 cd $ROOT
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.7.1 TARGET_ARCH=x86_64 sh -
-export PATH=$PATH:$ROOT/istio-1.7.1/bin
-sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-1.7.1/bin' >> /etc/profile"
+ISTIO_VERSION=1.7.8 # Make sure that Zipkin manifest is for the same major version (e.g., 1.7) of Istio
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=${ISTIO_VERSION} TARGET_ARCH=x86_64 sh -
+export PATH=$PATH:$ROOT/istio-${ISTIO_VERION}/bin
+sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-${ISTIO_VERSION}/bin' >> /etc/profile"
 istioctl install -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
 KNATIVE_VERSION=v0.23.0
