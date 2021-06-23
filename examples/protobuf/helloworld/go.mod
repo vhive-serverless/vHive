@@ -1,6 +1,6 @@
 module github.com/ease-lab/vhive/examples/protobuf/helloworld
 
-go 1.15
+go 1.16
 
 require (
 	github.com/golang/protobuf v1.3.3

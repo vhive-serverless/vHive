@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM amd64/golang:1.15.7-alpine3.13 as build
+FROM vhiveease/golang:latest as build
 
 WORKDIR /app
 

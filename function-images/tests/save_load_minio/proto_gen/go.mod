@@ -1,3 +1,3 @@
 module proto_gen
 
-go 1.15
+go 1.16
