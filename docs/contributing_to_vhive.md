@@ -86,3 +86,22 @@ git rebase main
 
 ### Avoiding Merge Commits
 As mentioned throughout this document, merge commits should be avoided. By having a linear commit history the changes made to the project are more clean, readable, and structured, and avoiding merged pull requests also makes the PR easier to incorporate into the main branch. To avoid merge commits one should follow the guidelines described above, particularly taking care to rebase on the main branch and keeping your forks in sync.
+
+## Recommendations
+### Using Go modules with private Git repo
+We might need to use private Go modules in a public repo. This tutorial enables us to inject our private Go module in a public repo without making our code public. This is a simple 2 step process. 
+1. Bypass the default go proxy:
+Set GOPRIVATE environment variable to comma separated list of github repo/account for which are private.
+```bash
+# Source https://medium.com/swlh/go-modules-with-private-git-repository-3940b6835727
+go env -w GOPRIVATE=github.com/user1,github.com/user2/repo
+```
+2. Automating the private repo login during build
+    1. Click [here](https://github.com/settings/tokens) to create a Github personal access token from [here](https://github.com/settings/tokens/new). The token should have enough permissions to read private codebase.
+    2. Execute the following command to use ssh-keys authentication.
+    ```bash
+    # Source https://medium.com/swlh/go-modules-with-private-git-repository-3940b6835727
+    # username is the owner of the repository
+    # access_token is the token created above
+    git config --global url."https://${username}:${access_token}@github.com".insteadOf "https://github.com/${username}"
+    ```

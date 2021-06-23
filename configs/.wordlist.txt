@@ -67,6 +67,7 @@ CNCF
 cni
 CNI
 cnn
+codebase
 coderay
 colocated
 colocating
@@ -157,6 +158,7 @@ GFM
 Ghoshal
 github
 Golang
+GOPRIVATE
 goroutine
 Gratz
 grot
@@ -191,6 +193,7 @@ InitBasicTracer
 InitCustomTracer
 Initializr
 inproceedings
+insteadOf
 integ
 InvokedOn
 invoker
@@ -426,6 +429,7 @@ stdout
 STR
 sudo
 svc
+swlh
 sys
 TCO
 TempReader
