@@ -42,14 +42,9 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
+	. "github.com/ease-lab/vhive/examples/endpoint"
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
-
-type Endpoint struct {
-	Hostname string            `json:"hostname"`
-	Eventing bool              `json:"eventing"`
-	Matchers map[string]string `json:"matchers"`
-}
 
 const TimeseriesDBAddr = "10.96.0.84:90"
 

@@ -23,41 +23,17 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
+
+	. "github.com/ease-lab/vhive/examples/endpoint"
 )
-
-var (
-	gatewayURL    = flag.String("gatewayURL", "192.168.1.240.sslip.io", "URL of the gateway")
-	namespaceName = flag.String("namespace", "default", "name of namespace in which services exists")
-)
-
-func main() {
-	funcPath := flag.String("funcPath", "./configs/knative_workloads", "Path to the folder with *.yml files")
-	funcJSONFile := flag.String("jsonFile", "./examples/deployer/functions.json", "Path to the JSON file with functions to deploy")
-	urlFile := flag.String("urlFile", "urls.txt", "File with functions' URLs")
-	deploymentConcurrency := flag.Int("conc", 5, "Number of functions to deploy concurrently")
-
-	flag.Parse()
-
-	log.Debug("Function files are taken from ", *funcPath)
-
-	funcSlice := getFuncSlice(*funcJSONFile)
-
-	urls := deploy(*funcPath, funcSlice, *deploymentConcurrency)
-
-	writeURLs(*urlFile, urls)
-
-	log.Infoln("Deployment finished")
-}
 
 // Functions is an object for unmarshalled JSON with functions to deploy.
 type Functions struct {
@@ -70,6 +46,33 @@ type functionType struct {
 
 	// number of functions to deploy from the same file (with different names)
 	Count int `json:"count"`
+
+	Eventing bool `json:"eventing"`
+	ApplyScript string `json:"applyScript"`
+}
+
+var (
+	gatewayURL    = flag.String("gatewayURL", "192.168.1.240.sslip.io", "URL of the gateway")
+	namespaceName = flag.String("namespace", "default", "name of namespace in which services exists")
+)
+
+func main() {
+	funcPath := flag.String("funcPath", "./configs/knative_workloads", "Path to the folder with *.yml files")
+	funcJSONFile := flag.String("jsonFile", "./examples/deployer/functions.json", "Path to the JSON file with functions to deploy")
+	endpointsFile := flag.String("endpointsFile", "endpoints.json", "File with endpoints' metadata")
+	deploymentConcurrency := flag.Int("conc", 5, "Number of functions to deploy concurrently (for serving)")
+
+	flag.Parse()
+
+	log.Debug("Function files are taken from ", *funcPath)
+
+	funcSlice := getFuncSlice(*funcJSONFile)
+
+	urls := deploy(*funcPath, funcSlice, *deploymentConcurrency)
+
+	writeEndpoints(*endpointsFile, urls)
+
+	log.Infoln("Deployment finished")
 }
 
 func getFuncSlice(file string) []functionType {
@@ -134,23 +137,20 @@ func deployFunction(funcName, filePath string) {
 	log.Info("Deployed function ", funcName)
 }
 
-func writeURLs(filePath string, urls []string) {
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
-
-	if err != nil {
-		log.Fatal("Failed creating file: ", err)
-	}
-
-	datawriter := bufio.NewWriter(file)
-
+func writeEndpoints(filePath string, urls []string) {
+	var endpoints []Endpoint
 	for _, url := range urls {
-		_, err := datawriter.WriteString(url + "\n")
-		if err != nil {
-			log.Fatal("Failed to write the URLs to a file ", err)
-		}
+		endpoints = append(endpoints, Endpoint{
+			Hostname: url,
+			Eventing: false,
+			Matchers: nil,
+		})
 	}
-
-	datawriter.Flush()
-	file.Close()
-	return
+	data, err := json.MarshalIndent(endpoints, "", "\t")
+	if err != nil {
+		log.Fatalln("failed to marshal", err)
+	}
+	if err := ioutil.WriteFile(filePath, data, 0644); err != nil {
+		log.Fatalln("failed to write", err)
+	}
 }
