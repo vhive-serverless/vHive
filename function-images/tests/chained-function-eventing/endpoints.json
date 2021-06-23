@@ -1,0 +1,10 @@
+[
+  {
+    "hostname": "producer.chained-functions-eventing.192.168.1.240.sslip.io",
+    "eventing": true,
+    "matchers": {
+      "type": "greeting",
+      "source": "consumer"
+    }
+  }
+]
