@@ -43,7 +43,7 @@ kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
 # istio
 cd $ROOT
-ISTIO_VERSION=1.7.8 # Make sure that Zipkin manifest is for the same major version (e.g., 1.7) of Istio
+ISTIO_VERSION=1.7.1 # Make sure that Zipkin manifest is for the same major version (e.g., 1.7) of Istio
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=${ISTIO_VERSION} TARGET_ARCH=x86_64 sh -
 export PATH=$PATH:$ROOT/istio-${ISTIO_VERION}/bin
 sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-${ISTIO_VERSION}/bin' >> /etc/profile"
@@ -82,3 +82,5 @@ kubectl apply --filename https://github.com/knative/eventing/releases/download/$
 kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/mt-channel-broker.yaml
 
 kubectl --namespace istio-system get service istio-ingressgateway
+sleep 2m
+kubectl label namespace default istio-injection=enabled
