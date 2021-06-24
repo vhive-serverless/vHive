@@ -142,17 +142,20 @@ jobs:
 
     - name: Invoke
       run: |
-        echo '[ { "hostname": "producer.chained-functions-eventing.192.168.1.240.sslip.io", "eventing": true, "matchers": { "type": "greeting", "source": "consumer" } } ]' > endpoints.json
         cd ./examples/invoker
-        go build client.go
+        go build github.com/ease-lab/vhive/examples/invoker
         cd ../..
-        ./examples/invoker/client -rps 10
+        ./examples/invoker/invoker -rps 10 -time 5 -endpointsFile ./function-images/tests/chained-function-eventing/endpoints.json
 
     - name: Inspect logs
       run: |
         cat rps*lat.csv
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=producer
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=consumer
+
+    - name: Test results
+      run: |
+        test $(wc -l < rps10.00_lat.csv) -eq 50
 
     - name: Archive log artifacts
       uses: actions/upload-artifact@v2

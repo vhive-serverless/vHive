@@ -49,6 +49,8 @@ type server struct {
 	UnimplementedGreeterServer
 }
 
+const workflowId = "producer.chained-functions-eventing.192.168.1.240.sslip.io"
+
 var ceClient client.Client
 
 func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, error) {
@@ -59,7 +61,10 @@ func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, 
 	event.SetSource("producer")
 	event.SetExtension(
 		"vhivemetadata",
-		fmt.Sprintf("{\"Id\": \"%s\", \"InvokedOn\": \"%s\"}", id, time.Now().UTC().Format(ctrdlog.RFC3339NanoFixed)),
+		fmt.Sprintf(
+			"{\"WorkflowId\": \"%s\", \"InvocationId\": \"%s\", \"InvokedOn\": \"%s\"}",
+			workflowId, id, time.Now().UTC().Format(ctrdlog.RFC3339NanoFixed),
+		),
 	)
 
 	log.Printf("received an HelloRequest: name=`%s` (id=`%s`)", req.Name, id)
