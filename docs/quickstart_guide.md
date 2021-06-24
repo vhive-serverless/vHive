@@ -233,6 +233,8 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
 ```
 
 ## IV. Deploying and Invoking Functions in vHive
+This section is only for synchronous (i.e., Knative Serving) functions. Please refer to [Adding Benchmarks to vHive/Knative and Stock Knative](benchmarking/adding_benchmarks_guide.md) for the asynchronous (i.e., Knative Eventing) case and more details about both.
+
 ### 1. Deploy Functions
 **On the master node**, execute the following instructions below using **bash**:
 
@@ -243,7 +245,7 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
     ```
     > **BEWARE:**
     >
-    > Deployer **cannot be used for Knative eventing** workflows. You need to deploy them manually instead. 
+    > Deployer **cannot be used for Knative eventing** (i.e., asynchronous) workflows. You need to deploy them manually instead. 
    
     > **Note:**
     >
@@ -258,23 +260,6 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
     ```bash
     go run examples/invoker/client.go
     ```
-    > **BEWARE:**
-    >
-    > If you have deployed any Knative Eventing workflows manually, you need to add their endpoint metadata manually to `endpoints.json`. A complete example is below:
-    >
-    > ```json
-    > [
-    >   ...,
-    >   {
-    >     "hostname": "xxx.namespace.192.168.1.240.sslip.io",
-    >     "eventing": true,
-    >     "matchers": {
-    >       "type": "greeting",
-    >       "source": "consumer"
-    >     }
-    >   }
-    > ]
-
 
     > **Note:**
     >
