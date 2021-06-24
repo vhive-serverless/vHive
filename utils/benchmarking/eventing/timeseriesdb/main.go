@@ -43,35 +43,55 @@ import (
 type Server struct {
 	proto.UnimplementedTimeseriesServer
 
+	workflows map[string]*Workflow
+}
+
+type Workflow struct {
+	id                          string
 	completionEventDescriptorsT []*proto.CompletionEventDescriptor
-	completionEventDescriptors  map[string][]*proto.CompletionEventDescriptor
-	invocations                 map[string]*proto.InvocationDescriptor
+	invocations                 map[string]*Invocation
+}
+
+type Invocation struct {
+	completionEventDescriptors []*proto.CompletionEventDescriptor
+	descriptor                 *proto.InvocationDescriptor
 }
 
 func (s *Server) StartExperiment(_ context.Context, definition *proto.ExperimentDefinition) (*empty.Empty, error) {
-	log.Infoln("starting experiment", definition.CompletionEventDescriptors)
+	log.Infoln("starting experiment")
 
-	s.completionEventDescriptorsT = make([]*proto.CompletionEventDescriptor, len(definition.CompletionEventDescriptors))
-	copy(s.completionEventDescriptorsT, definition.CompletionEventDescriptors)
-	s.completionEventDescriptors = make(map[string][]*proto.CompletionEventDescriptor)
-	s.invocations = make(map[string]*proto.InvocationDescriptor)
+	s.workflows = make(map[string]*Workflow)
+	for _, wd := range definition.WorkflowDefinitions {
+		s.workflows[wd.Id] = &Workflow{
+			id:                          wd.Id,
+			completionEventDescriptorsT: make([]*proto.CompletionEventDescriptor, len(wd.CompletionEventDescriptors)),
+			invocations:                 make(map[string]*Invocation),
+		}
+		copy(s.workflows[wd.Id].completionEventDescriptorsT, wd.CompletionEventDescriptors)
+	}
 
 	return &empty.Empty{}, nil
 }
 
 func (s *Server) EndExperiment(_ context.Context, _ *empty.Empty) (*proto.ExperimentResult, error) {
 	log.Infoln("ending current experiment")
-	invocations := make([]*proto.InvocationDescriptor, 0)
-	for _, inv := range s.invocations {
-		invocations = append(invocations, inv)
+	results := make(map[string]*proto.WorkflowResult)
+	for _, wrk := range s.workflows {
+		invocations := make([]*proto.InvocationDescriptor, 0)
+		for _, inv := range wrk.invocations {
+			invocations = append(invocations, inv.descriptor)
+		}
+		results[wrk.id] = &proto.WorkflowResult{Invocations: invocations}
+
 	}
-	return &proto.ExperimentResult{Invocations: invocations}, nil
+	return &proto.ExperimentResult{WorkflowResults: results}, nil
 }
 
 func UnmarshalVHiveMetadata(s string) *proto.VHiveMetadata {
 	var j struct {
-		Id        string `json:"Id"`
-		InvokedOn string `json:"InvokedOn"`
+		WorkflowId   string `json:"WorkflowId"`
+		InvocationId string `json:"InvocationId"`
+		InvokedOn    string `json:"InvokedOn"`
 	}
 	if err := json.Unmarshal([]byte(s), &j); err != nil {
 		log.Fatalln("failed to unmarshal vhivemetadata", err)
@@ -81,8 +101,9 @@ func UnmarshalVHiveMetadata(s string) *proto.VHiveMetadata {
 		log.Fatalln("failed to parse InvokedOn of vhivemetadata", err)
 	}
 	return &proto.VHiveMetadata{
-		Id:        j.Id,
-		InvokedOn: timestamppb.New(invokedOnT),
+		WorkflowId:   j.WorkflowId,
+		InvocationId: j.InvocationId,
+		InvokedOn:    timestamppb.New(invokedOnT),
 	}
 }
 
@@ -121,10 +142,10 @@ func morphCloudEventToProtoEvent(event cloudevents.Event) *proto.Event {
 }
 
 func (s *Server) checkCompletion(event *proto.Event) (int, bool) {
-	invocationId := event.VHiveMetadata.Id
-	for i := 0; i < len(s.completionEventDescriptors[invocationId]); i++ {
+	invocation := s.workflows[event.VHiveMetadata.WorkflowId].invocations[event.VHiveMetadata.InvocationId]
+	for i := 0; i < len(invocation.completionEventDescriptors); i++ {
 		isCompletion := true
-		for attr, expected := range s.completionEventDescriptors[invocationId][i].AttrMatchers {
+		for attr, expected := range invocation.completionEventDescriptors[i].AttrMatchers {
 			if actual, ok := event.Attributes[attr]; !ok {
 				isCompletion = false
 				break
@@ -140,34 +161,38 @@ func (s *Server) checkCompletion(event *proto.Event) (int, bool) {
 	return -1, false
 }
 
-func (s *Server) registerInvocation(vHiveMetadata *proto.VHiveMetadata) *proto.InvocationDescriptor {
-	s.completionEventDescriptors[vHiveMetadata.Id] = make([]*proto.CompletionEventDescriptor, len(s.completionEventDescriptorsT))
-	copy(s.completionEventDescriptors[vHiveMetadata.Id], s.completionEventDescriptorsT)
-	invocation := &proto.InvocationDescriptor{
-		Id:           vHiveMetadata.Id,
-		InvokedOn:    vHiveMetadata.InvokedOn,
-		Duration:     nil,
-		EventRecords: make([]*proto.EventRecord, 0),
-		Status:       proto.InvocationStatus_CANCELLED,
+func (s *Server) registerInvocation(vHiveMetadata *proto.VHiveMetadata) *Invocation {
+	workflow := s.workflows[vHiveMetadata.WorkflowId]
+	workflow.invocations[vHiveMetadata.InvocationId] = &Invocation{
+		completionEventDescriptors: make([]*proto.CompletionEventDescriptor, len(workflow.completionEventDescriptorsT)),
+		descriptor: &proto.InvocationDescriptor{
+			Id:           vHiveMetadata.InvocationId,
+			InvokedOn:    vHiveMetadata.InvokedOn,
+			Duration:     nil,
+			EventRecords: make([]*proto.EventRecord, 0),
+			Status:       proto.InvocationStatus_CANCELLED,
+		},
 	}
-	s.invocations[vHiveMetadata.Id] = invocation
-	return invocation
+	return workflow.invocations[vHiveMetadata.InvocationId]
 }
 
-func (s *Server) onCompletionEvent(invocation *proto.InvocationDescriptor, event *proto.Event, descriptorIdx int, now time.Time) {
-	// Remove the matched event descriptor
-	s.completionEventDescriptors[event.VHiveMetadata.Id] =
-		append(s.completionEventDescriptors[invocation.Id][:descriptorIdx], s.completionEventDescriptors[invocation.Id][descriptorIdx+1:]...)
+func (s *Server) onCompletionEvent(invDesc *proto.InvocationDescriptor, event *proto.Event, descriptorIdx int, now time.Time) {
+	workflow := s.workflows[event.VHiveMetadata.WorkflowId]
+	invocation := workflow.invocations[event.VHiveMetadata.InvocationId]
 
-	// Update invocation duration
+	// Remove the matched event descriptor
+	invocation.completionEventDescriptors =
+		append(invocation.completionEventDescriptors[:descriptorIdx], invocation.completionEventDescriptors[descriptorIdx+1:]...)
+
+	// Update invDesc duration
 	sinceInvocation := now.Sub(event.VHiveMetadata.InvokedOn.AsTime())
-	if invocation.Duration == nil || sinceInvocation > invocation.Duration.AsDuration() {
-		invocation.Duration = durationpb.New(sinceInvocation)
+	if invDesc.Duration == nil || sinceInvocation > invDesc.Duration.AsDuration() {
+		invDesc.Duration = durationpb.New(sinceInvocation)
 	}
 
-	// Mark invocation as COMPLETED if no more completion events are awaited for
-	if len(s.completionEventDescriptors[invocation.Id]) == 0 {
-		invocation.Status = proto.InvocationStatus_COMPLETED
+	// Mark invDesc as COMPLETED if no more completion events are awaited for
+	if len(invocation.completionEventDescriptors) == 0 {
+		invDesc.Status = proto.InvocationStatus_COMPLETED
 	}
 }
 
@@ -176,21 +201,24 @@ func (s *Server) registerEvent(_ context.Context, cloudEvent cloudevents.Event) 
 	event := morphCloudEventToProtoEvent(cloudEvent)
 
 	log.Infof(
-		"registering event invocationId=`%s` id=`%s` source=`%s` type=`%s`\n",
-		event.VHiveMetadata.Id, event.Attributes["id"], event.Attributes["source"], event.Attributes["type"],
+		"registering event workflowId=`%s` invocationId=`%s` id=`%s` source=`%s` type=`%s`\n",
+		event.VHiveMetadata.WorkflowId, event.VHiveMetadata.InvocationId, event.Attributes["id"],
+		event.Attributes["source"], event.Attributes["type"],
 	)
 
-	invocation, ok := s.invocations[event.VHiveMetadata.Id]
+	workflow := s.workflows[event.VHiveMetadata.WorkflowId]
+
+	invocation, ok := workflow.invocations[event.VHiveMetadata.InvocationId]
 	if !ok {
 		invocation = s.registerInvocation(event.VHiveMetadata)
 	}
 
 	descriptorIdx, isCompletion := s.checkCompletion(event)
 	if isCompletion {
-		s.onCompletionEvent(invocation, event, descriptorIdx, now)
+		s.onCompletionEvent(invocation.descriptor, event, descriptorIdx, now)
 	}
 
-	invocation.EventRecords = append(invocation.EventRecords, &proto.EventRecord{
+	invocation.descriptor.EventRecords = append(invocation.descriptor.EventRecords, &proto.EventRecord{
 		Event:        event,
 		RecordedOn:   timestamppb.New(now),
 		IsCompletion: isCompletion,
@@ -232,5 +260,4 @@ func main() {
 	if err := ceClient.StartReceiver(context.Background(), server.registerEvent); err != nil {
 		log.Fatalln("failed to start CloudEvents receiver", err)
 	}
-
 }
