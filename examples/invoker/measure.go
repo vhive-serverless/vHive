@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 
 	"eventing/proto"
+	"github.com/ease-lab/vhive/examples/endpoint"
 )
 
 var (
@@ -19,9 +20,22 @@ var (
 	lock   sync.Mutex
 )
 
-func Start(tdbAddr string, matchers map[string]string) {
+func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
 	lock.Lock()
 	defer lock.Unlock()
+
+	workflowDefinitions := make(map[string]*proto.WorkflowDefinition)
+
+	for _, ep := range endpoints {
+		workflowDefinitions[ep.Hostname] = &proto.WorkflowDefinition{
+			Id:                         ep.Hostname,
+			CompletionEventDescriptors: []*proto.CompletionEventDescriptor{
+				{
+					AttrMatchers: ep.Matchers,
+				},
+			},
+		}
+	}
 
 	var dialOption grpc.DialOption
 	if *withTracing {
@@ -39,13 +53,7 @@ func Start(tdbAddr string, matchers map[string]string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if _, err := client.StartExperiment(ctx, &proto.ExperimentDefinition{
-		CompletionEventDescriptors: []*proto.CompletionEventDescriptor{
-			{
-				AttrMatchers: matchers,
-			},
-		},
-	}); err != nil {
+	if _, err := client.StartExperiment(ctx, &proto.ExperimentDefinition{WorkflowDefinitions: workflowDefinitions}); err != nil {
 		log.Fatalln("failed to start experiment", err)
 	}
 }
@@ -61,12 +69,15 @@ func End() (durations []time.Duration) {
 	if err != nil {
 		log.Fatalln("failed to end experiment", err)
 	}
-	for _, inv := range res.Invocations {
-		// Skip incomplete invocations
-		if inv.Status != proto.InvocationStatus_COMPLETED {
-			continue
+
+	for _, wrk := range res.WorkflowResults {
+		for _, inv := range wrk.Invocations {
+			// Skip incomplete invocations
+			if inv.Status != proto.InvocationStatus_COMPLETED {
+				continue
+			}
+			durations = append(durations, inv.Duration.AsDuration())
 		}
-		durations = append(durations, inv.Duration.AsDuration())
 	}
 	return
 }

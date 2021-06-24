@@ -111,44 +111,40 @@ func readEndpoints(path string) (endpoints []Endpoint, _ error) {
 }
 
 func runBenchmark(endpoints []Endpoint, runDuration, targetRPS int) (realRPS float64) {
-	for i, endpoint := range endpoints {
+	timeout := time.After(time.Duration(runDuration) * time.Second)
+	tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
+
+	var issued int
+	start := time.Now()
+
+	Start(TimeseriesDBAddr, endpoints)
+
+	loop:
+	for {
+		endpoint := endpoints[issued%len(endpoints)]
 		if endpoint.Eventing {
-			Start(TimeseriesDBAddr, endpoints[0].Matchers)
+			go invokeEventingFunction(endpoint)
+		} else {
+			go invokeServingFunction(endpoint.Hostname)
 		}
+		issued++
 
-		issued := 0
-		start := time.Now()
-		timeout := time.After(time.Duration(runDuration) * time.Second)
-		tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
-
-		burst:
-		for {
-			if endpoint.Eventing {
-				go invokeEventingFunction(endpoint)
-			} else {
-				go invokeServingFunction(endpoint.Hostname)
-			}
-			issued++
-
-			select {
-			case <-timeout:
-				duration := time.Since(start).Seconds()
-				realRPS = float64(completed) / duration
-				log.Infof("Endpoint #%d", i)
-				log.Infof("  Issued / completed requests: %d, %d", issued, completed)
-				log.Infof("  Real / target RPS: %.2f / %v", realRPS, targetRPS)
-				break burst
-			case <-tick:
-				continue
-			}
-		}
-
-		if endpoint.Eventing {
-			addDurations(End())
+		select {
+		case <-timeout:
+			break loop
+		case <-tick:
+			continue
 		}
 	}
 
+	duration := time.Since(start).Seconds()
+	realRPS = float64(completed) / duration
+	log.Infof("Issued / completed requests: %d, %d", issued, completed)
+	log.Infof("Real / target RPS: %.2f / %v", realRPS, targetRPS)
+
 	log.Println("Benchmark finished!")
+
+	addDurations(End())
 	return
 }
 

@@ -80,14 +80,12 @@ message CompletionEventDescriptor {
 }
 
 message ExperimentDefinition {
-    // completionEventDescriptors is the list of descriptors for identifying
-    // completion events.
-    repeated CompletionEventDescriptor completionEventDescriptors = 1;
+     map<string, WorkflowDefinition> workflowDefinitions = 1;
 }
 
 message ExperimentResult {
     // invocations is the list of invocations in the experiment.
-    repeated InvocationDescriptor invocations = 1;
+    map<string, WorkflowResult> workflowResults = 1;
 }
 
 message InvocationDescriptor {
@@ -105,8 +103,22 @@ message InvocationDescriptor {
 }
 
 message VHiveMetadata {
+    // id of the workflow.
+    string workflowId = 1;
     // id of the invocation.
-    string id = 1;
+    string invocationId = 2;
     // invokedOn is the timestamp of the starting request to the producer.
-    google.protobuf.Timestamp invokedOn = 2;
+    google.protobuf.Timestamp invokedOn = 3;
+}
+
+message WorkflowDefinition {
+    string id = 1;
+    // completionEventDescriptors is the list of descriptors for identifying
+    // completion events.
+    repeated CompletionEventDescriptor completionEventDescriptors = 2;
+}
+
+message WorkflowResult {
+    // invocations is the list of invocations in the experiment.
+    repeated InvocationDescriptor invocations = 1;
 }
