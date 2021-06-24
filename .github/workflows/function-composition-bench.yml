@@ -12,6 +12,10 @@ env:
   GO111MODULE: on
   VHIVE_GOLANG_VERSION: golang:1.16.4-alpine3.13
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   bench-docker-compose-serving:
     name: Serving uBenchmark (docker-compose)
@@ -142,9 +146,7 @@ jobs:
 
     - name: Invoke
       run: |
-        cd ./examples/invoker
-        go build github.com/ease-lab/vhive/examples/invoker
-        cd ../..
+        (cd examples/invoker; go build github.com/ease-lab/vhive/examples/invoker)
         ./examples/invoker/invoker -rps 10 -time 5 -endpointsFile ./function-images/tests/chained-function-eventing/endpoints.json
 
     - name: Inspect logs

@@ -240,14 +240,16 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
 2. Run the deployer client:
     ```bash
     source /etc/profile && go run examples/deployer/client.go
-    ``` 
+    ```
+    > **BEWARE:**
+    >
+    > Deployer **cannot be used for Knative eventing** workflows. You need to deploy them manually instead. 
+   
     > **Note:**
     >
     > There are runtime arguments that you can specify if necessary. 
     >
-    > The script writes the deployed functions' URLs in a file (`urls.txt` by default).
-
-
+    > The script writes the deployed functions' endpoints in a file (`endpoints.json` by default).
 
 ### 2. Invoke Functions
 **On any node**, execute the following instructions below using **bash**:
@@ -256,11 +258,29 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
     ```bash
     go run examples/invoker/client.go
     ```
+    > **BEWARE:**
+    >
+    > If you have deployed any Knative Eventing workflows manually, you need to add their endpoint metadata manually to `endpoints.json`. A complete example is below:
+    >
+    > ```json
+    > [
+    >   ...,
+    >   {
+    >     "hostname": "xxx.namespace.192.168.1.240.sslip.io",
+    >     "eventing": true,
+    >     "matchers": {
+    >       "type": "greeting",
+    >       "source": "consumer"
+    >     }
+    >   }
+    > ]
+
+
     > **Note:**
     >
     > There are runtime arguments (e.g., RPS or requests-per-second target, experiment duration) that you can specify if necessary.
     >
-    > After invoking the functions from the input file (`urls.txt` by default), the script writes the measured latencies to an output file (`rps<RPS>_lat.csv` by default, where `<RPS>` is the observed requests-per-sec value) for further analysis.
+    > After invoking the functions from the input file (`endpoints.json` by default), the script writes the measured latencies to an output file (`rps<RPS>_lat.csv` by default, where `<RPS>` is the observed requests-per-sec value) for further analysis.
 
 ### 3. Delete Deployed Functions
 **On the master node**, execute the following instructions below using **bash**:

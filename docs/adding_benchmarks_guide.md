@@ -121,10 +121,14 @@ a Knative cluster.
 ### Logging
 When including logging within functions, please use `logrus` with the following format:
 ```
+import (
+	ctrdlog "github.com/containerd/containerd/log"
+)
+
 log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
+	TimestampFormat: ctrdlog.RFC3339NanoFixed,
+	FullTimestamp:   true,
+})
 ```
 See 
 [this code snippet](https://github.com/ease-lab/vhive/blob/dfa0d400e17595a5fb0009ec8ab3211b5b4b7f9f/vhive.go#L102)
@@ -290,6 +294,60 @@ address that the SinkBinding can use.
     that is normal.
 - While deploying a Trigger, best wait until both the _broker_ and the _subscriber_ ("receiver") 
 are ready.
+
+## Benchmarking
+You can use [examples/invoker](../examples/invoker) (the "invoker") to get the end-to-end latencies of your serving and eventing workflows.
+
+**On any node**, execute the following instructions below **at the root of vHive repository** using **bash**:
+1. Build the invoker:
+    ```bash
+    (cd examples/invoker; go build github.com/ease-lab/vhive/examples/invoker)
+    ```
+
+    - Keep the parenthesis so not to change your working directory.
+2. Create your `endpoints.json` file. It is created automatically for
+    you if you use [examples/deployer](../examples/deployer) (the
+    "deployer"), however eventing workflows are not supported by the
+    deployer so the following guide is presented; you may use it for
+    manually deployed serving workflows too.
+
+    `endpoints.json` is a serialization of 
+    **a list of [Endpoint structs](../examples/endpoint/endpoint.go)**
+    with the following fields:
+
+    - **`hostname` string** \
+        Hostname of the starting point of a workflow/pipeline. Its
+        difference from a URL is not containing a port number.
+
+    - **`eventing` bool** \
+        True if the workflow uses Knative Eventing and thus its
+        duration/latency is to be measured using TimeseriesDB.
+        TimeseriesDB must have been deployed and configured correctly! An example can be found in [chained-function-eventing μBenchmark](../function-images/tests/chained-function-eventing)
+
+    - **`matchers` map[string]string** \
+         Only relevant if `eventing` is true, `matchers` is a mapping
+         of CloudEvent attribute names and values that are sought in
+         completion events to exist.
+
+    **Example:**
+    ```json
+    [
+        // This JSON object is an Endpoint:
+        { 
+            "hostname": "xxx.namespace.192.168.1.240.sslip.io",
+            "eventing": true,
+            "matchers": {
+                "type": "greeting",
+                "source": "consumer"
+            }
+        },
+        ...
+    ]
+    ```
+3. Execute the invoker:
+    ```bash
+    ./examples/invoker/invoker
+    ```
 
 ## Other recommendations
 ### Docker Compose
