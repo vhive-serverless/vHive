@@ -89,7 +89,15 @@ jobs:
       run: |
         echo '[ { "hostname": "producer.default.192.168.1.240.sslip.io" } ]' > endpoints.json
         ( cd examples/invoker; go build client.go )
-        ./examples/invoker/client
+        ./examples/invoker/client -rps 10 -time 5
+
+    - name: Test results
+      run: |
+        test $(wc -l < rps10.00_lat.csv) -eq 50
+
+    - name: Inspect logs
+      run: |
+        cat rps*lat.csv
 
     - name: Archive log artifacts
       uses: actions/upload-artifact@v2
