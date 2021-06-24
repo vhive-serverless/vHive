@@ -4,20 +4,34 @@
 
 ### Added
 
-- Added [script](./scripts/cloudlab/start_onenode_vhive_cluster.sh) to (re)start vHive single node cluster in a push-button.
-- CRI test logs are now stored as GitHub artifacts.
+
+### Changed
+
+
+### Fixed
+
+
+## v1.3
+
+### Added
+
+- Added 2 chained-functions microbenchmarks, synchronous and asynchronous, that use Knative Serving and Eventing, correspondingly.
+Tracing is fully supported for Serving function composition, partially supported for Eventing function composition.
+- Added [documentation](./docs/benchmarking/methodology.md) on vHive benchmarking methodology
+for arbitrary serverless deployments.
+- Added [documentation](./docs/benchmarking/adding_benchmarks.md) for adding benchmarks to vHive.
 - Added Knative Eventing Tutorial: [documentation](./docs/knative/eventing.md) and [example](./examples/knative-eventing-tutorial).
-- Added a chained functions microbenchmark that uses Knative Serving with tracing.
-- Added a linter for link checking in markdown files
-- Added documentation for adding benchmarks to vHive.
-- Added a utility for tracing using zipkin.
+- Added a Go module for tracing using zipkin.
+- Improved CI troubleshooting: CRI test logs are now stored as GitHub artifacts.
+- Added [script](./scripts/cloudlab/start_onenode_vhive_cluster.sh) to (re)start vHive single node cluster in a push-button.
+- Added a linter for hyperlink checking in markdown files.
 
 ### Changed
 
 - Bumped Containerd to v1.5.2.
-- Frozen Kubernetes at v1.20.6-00.
 - Bumped Knative to v0.23.0.
 - Bumped Go to v1.16.4.
+- Frozen Kubernetes at v1.20.6-00.
 - Simplified Go dependencies management by refactoring modules into packages.
 
 ### Fixed
@@ -74,5 +88,4 @@ using an automatically detected, or a user-specified, host interface.
 
 ### Fixed
 
-- Fixed the vHive cluster setup issue for clusters with >2 nodes [issue](https://github.com/ease-lab/vhive/issues/94). 
-
+- Fixed the vHive cluster setup issue for clusters with >2 nodes [issue](https://github.com/ease-lab/vhive/issues/94).
