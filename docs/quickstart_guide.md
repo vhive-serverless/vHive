@@ -39,7 +39,7 @@ This guide describes how to set up an _N_-node vHive serverless cluster. See [he
 type `eval "$(ssh-agent -s)" && ssh-add` to allow ssh authentication in the background.
 
 ### 3. CloudLab Deployment Notes
-We suggest renting nodes on [CloudLab](https://www.cloudlab.us) as their service is available to researchers world-wide. 
+We suggest renting nodes on [CloudLab](https://www.cloudlab.us) as their service is available to researchers world-wide.
 
 #### A. CloudLab Profile
 You can use our CloudLab profile [RPerf/vHive-cluster-env](https://www.cloudlab.us/p/RPerf/vHive-cluster-env).
@@ -58,7 +58,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     ```bash
     git clone --depth=1 https://github.com/ease-lab/vhive.git
     ```
-2. Change your working directory to the root of the repository:    
+2. Change your working directory to the root of the repository:
     ```bash
     cd vhive
     ```
@@ -71,7 +71,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     ./scripts/cloudlab/setup_node.sh > >(tee -a /tmp/vhive-logs/setup_node.stdout) 2> >(tee -a /tmp/vhive-logs/setup_node.stderr >&2)
     ```
     > **BEWARE:**
-    > 
+    >
     > This script can print `Command failed` when creating the devmapper at the end. This can be safely ignored.
 
 ### 2. Setup Worker Nodes
@@ -127,7 +127,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     > **Note:**
     >
     > By default, the microVMs are booted, `-snapshots` enables snapshots after the 2nd invocation of each function.
-    > 
+    >
     > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP) technique that we described in our ASPLOS'21 paper ([extended abstract](https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf), [full paper](papers/REAP_ASPLOS21.pdf)).
 
 ### 3. Configure Master Node
@@ -141,14 +141,14 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     ./scripts/cluster/create_multinode_cluster.sh > >(tee -a /tmp/vhive-logs/create_multinode_cluster.stdout) 2> >(tee -a /tmp/vhive-logs/create_multinode_cluster.stderr >&2)
     ```
     > **BEWARE:**
-    > 
+    >
     > The script will ask you the following:
     > ```
     > All nodes need to be joined in the cluster. Have you joined all nodes? (y/n)
     > ```
     > **Leave this hanging in the terminal as we will go back to this later.**
     >
-    > However, in the same terminal you will see a command in following format: 
+    > However, in the same terminal you will see a command in following format:
     > ```
     > kubeadm join 128.110.154.221:6443 --token <token> \
     >     --discovery-token-ca-cert-hash sha256:<hash>
@@ -233,7 +233,7 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
 ```
 
 ## IV. Deploying and Invoking Functions in vHive
-This section is only for synchronous (i.e., Knative Serving) functions. Please refer to [Adding Benchmarks to vHive/Knative and Stock Knative](benchmarking/adding_benchmarks_guide.md) for the asynchronous (i.e., Knative Eventing) case and more details about both.
+This section is only for synchronous (i.e., Knative Serving) functions. Please refer to [Adding Benchmarks to vHive/Knative and Stock Knative](benchmarking/adding_benchmarks.md) for benchmarking asynchronous (i.e., Knative Eventing) case and more details about both.
 
 ### 1. Deploy Functions
 **On the master node**, execute the following instructions below using **bash**:
@@ -245,11 +245,11 @@ This section is only for synchronous (i.e., Knative Serving) functions. Please r
     ```
     > **BEWARE:**
     >
-    > Deployer **cannot be used for Knative eventing** (i.e., asynchronous) workflows. You need to deploy them manually instead. 
-   
+    > Deployer **cannot be used for Knative eventing** (i.e., asynchronous) workflows. You need to deploy them manually instead.
+
     > **Note:**
     >
-    > There are runtime arguments that you can specify if necessary. 
+    > There are runtime arguments that you can specify if necessary.
     >
     > The script writes the deployed functions' endpoints in a file (`endpoints.json` by default).
 
