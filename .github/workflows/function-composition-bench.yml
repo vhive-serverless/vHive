@@ -88,8 +88,8 @@ jobs:
     - name: Run invoker client
       run: |
         echo '[ { "hostname": "producer.default.192.168.1.240.sslip.io" } ]' > endpoints.json
-        ( cd examples/invoker; go build client.go )
-        ./examples/invoker/client -rps 10 -time 5
+        (cd examples/invoker; go build github.com/ease-lab/vhive/examples/invoker)
+        ./examples/invoker/invoker -rps 10 -time 5
 
     - name: Test results
       run: |
