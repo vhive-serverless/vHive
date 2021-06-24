@@ -28,8 +28,14 @@ kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.9/sampl
 
 sleep 10s
 
-# enable tracing in Knative
+# enable tracing in Knative Serving
 kubectl patch configmap/config-tracing \
   -n knative-serving \
+  --type merge \
+  -p '{"data":{"backend":"zipkin","zipkin-endpoint":"http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans","debug":"true"}}'
+
+# enable tracing in Knative Eventing
+kubectl patch configmap/config-tracing \
+  -n knative-eventing \
   --type merge \
   -p '{"data":{"backend":"zipkin","zipkin-endpoint":"http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans","debug":"true"}}'
