@@ -39,6 +39,7 @@ Benchmarking
 bgrot
 bindSocket
 booktitle
+bool
 BOOL
 Bora
 boris
@@ -127,6 +128,7 @@ Edouard
 edu
 ef
 EndExperiment
+endpointsFile
 env
 envsubst
 EPFL
@@ -256,6 +258,7 @@ Manycore
 margaritov
 Margaritov
 Marios
+matchers
 maxVMNum
 md
 MECS
@@ -265,6 +268,7 @@ Microarchitecting
 microarchitectural
 Microarchitecture
 microbenchmark
+microbenchmarks
 microVMs
 minio
 MinIO
@@ -427,6 +431,7 @@ Stavros
 stderr
 stdout
 STR
+structs
 sudo
 svc
 swlh
