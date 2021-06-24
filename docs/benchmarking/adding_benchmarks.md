@@ -111,6 +111,11 @@ The producer in the vHive
 [serving example](/function-images/tests/chained-function-serving/producer/producer.go) 
 gives an example usage of this utility for both server and client behaviour.
 
+Below one can see screenshots from a producer-consumer trace visualized with Zipkin.
+![Tracing chain view](../figures/tracing_chain_view.jpg)
+![Tracing breakdown view](../figures/tracing_breakdown.jpg)
+
+
 ### Continuous Integration
 New vHive workloads should be included in the automatic CI for regular testing, as this is helpful
 both for code maintenance and in demonstrating how the workload should be deployed. The vHive
