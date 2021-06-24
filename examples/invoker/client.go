@@ -52,18 +52,20 @@ var (
 	completed   int64
 	latSlice    LatencySlice
 	portFlag    *int
+	grpcTimeout time.Duration
 	withTracing *bool
 )
 
 func main() {
 	endpointsFile := flag.String("endpointsFile", "endpoints.json", "File with endpoints' metadata")
 	rps := flag.Int("rps", 1, "Target requests per second")
-	runDuration := flag.Int("time", 5, "Run each benchmark for X seconds")
+	runDuration := flag.Int("time", 5, "Run the experiment for X seconds")
 	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
 	portFlag = flag.Int("port", 80, "The port that functions listen to")
 	withTracing = flag.Bool("trace", false, "Enable tracing in the client")
 	zipkin := flag.String("zipkin", "http://localhost:9411/api/v2/spans", "zipkin url")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
+	grpcTimeout = time.Duration(*flag.Int("grpcTimeout", 30, "Timeout in seconds for gRPC requests")) * time.Second
 
 	flag.Parse()
 
@@ -94,7 +96,7 @@ func main() {
 		defer shutdown()
 	}
 
-	realRPS := runBenchmark(endpoints, *runDuration, *rps)
+	realRPS := runExperiment(endpoints, *runDuration, *rps)
 
 	writeLatencies(realRPS, *latencyOutputFile)
 }
@@ -110,42 +112,41 @@ func readEndpoints(path string) (endpoints []Endpoint, _ error) {
 	return
 }
 
-func runBenchmark(endpoints []Endpoint, runDuration, targetRPS int) (realRPS float64) {
-	timeout := time.After(time.Duration(runDuration) * time.Second)
-	tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
-
+func runExperiment(endpoints []Endpoint, runDuration, targetRPS int) (realRPS float64) {
 	var issued int
-	start := time.Now()
 
 	Start(TimeseriesDBAddr, endpoints)
 
-	loop:
-	for {
-		endpoint := endpoints[issued%len(endpoints)]
-		if endpoint.Eventing {
-			go invokeEventingFunction(endpoint)
-		} else {
-			go invokeServingFunction(endpoint.Hostname)
-		}
-		issued++
+	timeout := time.After(time.Duration(runDuration) * time.Second)
+	tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
+	var (
+		start time.Time
+		once  sync.Once
+	)
 
+	for {
 		select {
 		case <-timeout:
-			break loop
+			duration := time.Since(start).Seconds()
+			realRPS = float64(completed) / duration
+			addDurations(End())
+			log.Infof("Issued / completed requests: %d, %d", issued, completed)
+			log.Infof("Real / target RPS: %.2f / %v", realRPS, targetRPS)
+			log.Println("Experiment finished!")
+			return
 		case <-tick:
-			continue
+			once.Do(func() {
+				start = time.Now()
+			})
+			endpoint := endpoints[issued%len(endpoints)]
+			if endpoint.Eventing {
+				go invokeEventingFunction(endpoint)
+			} else {
+				go invokeServingFunction(endpoint.Hostname)
+			}
+			issued++
 		}
 	}
-
-	duration := time.Since(start).Seconds()
-	realRPS = float64(completed) / duration
-	log.Infof("Issued / completed requests: %d, %d", issued, completed)
-	log.Infof("Real / target RPS: %.2f / %v", realRPS, targetRPS)
-
-	log.Println("Benchmark finished!")
-
-	addDurations(End())
-	return
 }
 
 func SayHello(address string) {
@@ -163,7 +164,7 @@ func SayHello(address string) {
 
 	c := pb.NewGreeterClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 
 	_, err = c.SayHello(ctx, &pb.HelloRequest{Name: "faas"})
@@ -174,7 +175,7 @@ func SayHello(address string) {
 
 func invokeEventingFunction(endpoint Endpoint) {
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
-	log.Debug("Invoking by the address: %v", address)
+	log.Debug("Invoking asynchronously by the address: %v", address)
 
 	SayHello(address)
 
@@ -208,7 +209,7 @@ func startMeasurement(msg string) (string, time.Time) {
 
 func getDuration(msg string, start time.Time) {
 	latency := time.Since(start)
-	log.Debugf("Invoked %v in %v usec\n", msg, latency)
+	log.Debugf("Invoked %v in %v usec\n", msg, latency.Microseconds())
 	addDurations([]time.Duration{latency})
 }
 

@@ -87,7 +87,7 @@ func (s *Server) EndExperiment(_ context.Context, _ *empty.Empty) (*proto.Experi
 	return &proto.ExperimentResult{WorkflowResults: results}, nil
 }
 
-func UnmarshalVHiveMetadata(s string) *proto.VHiveMetadata {
+func getProtoEventFromCloudEvent(s string) *proto.VHiveMetadata {
 	var j struct {
 		WorkflowId   string `json:"WorkflowId"`
 		InvocationId string `json:"InvocationId"`
@@ -135,7 +135,7 @@ func morphCloudEventToProtoEvent(event cloudevents.Event) *proto.Event {
 	delete(attributes, "vhivemetadata")
 
 	return &proto.Event{
-		VHiveMetadata: UnmarshalVHiveMetadata(vHiveMetadataString),
+		VHiveMetadata: getProtoEventFromCloudEvent(vHiveMetadataString),
 		Attributes:    attributes,
 		Data:          event.Data(),
 	}

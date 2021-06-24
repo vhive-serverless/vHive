@@ -50,7 +50,7 @@ func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
 	}
 
 	client = proto.NewTimeseriesClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 
 	if _, err := client.StartExperiment(ctx, &proto.ExperimentDefinition{WorkflowDefinitions: workflowDefinitions}); err != nil {
