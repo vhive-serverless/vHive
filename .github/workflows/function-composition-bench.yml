@@ -12,10 +12,6 @@ env:
   GO111MODULE: on
   VHIVE_GOLANG_VERSION: golang:1.16.4-alpine3.13
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   bench-docker-compose-serving:
     name: Serving uBenchmark (docker-compose)
@@ -82,13 +78,19 @@ jobs:
     - name: Start producer
       run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/chained-function-serving/service-producer.yaml && sleep 30s
 
+    # First use grpcurl to invoke and then use the invoker in the same
+    # job, since invoker would consider timeouts as an error so if
+    # function deployment failed, the CI would not catch an error.
+    - name: grpcurl
+      run: |
+        ./bin/grpcurl -d '{\"name\": \"Michal\"}'  -plaintext producer.default.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
+
     - name: Run invoker client
       run: |
         echo '[ { "hostname": "producer.default.192.168.1.240.sslip.io" } ]' > endpoints.json
-        cd ./examples/invoker
-        go build client.go
-        cd ../..
+        ( cd examples/invoker; go build client.go )
         ./examples/invoker/client
+
     - name: Archive log artifacts
       uses: actions/upload-artifact@v2
       with:
@@ -143,6 +145,13 @@ jobs:
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing sinkbinding
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing ksvc
         KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing trigger
+
+    # First use grpcurl to invoke and then use the invoker in the same
+    # job, since invoker would consider timeouts as an error so if
+    # function deployment failed, the CI would not catch an error.
+    - name: grpcurl
+      run: |
+        ./bin/grpcurl -d '{\"name\": \"Bora\"}'  -plaintext producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
 
     - name: Invoke
       run: |
