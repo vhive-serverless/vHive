@@ -163,7 +163,7 @@ func (s *Server) checkCompletion(event *proto.Event) (int, bool) {
 
 func (s *Server) registerInvocation(vHiveMetadata *proto.VHiveMetadata) *Invocation {
 	workflow := s.workflows[vHiveMetadata.WorkflowId]
-	workflow.invocations[vHiveMetadata.InvocationId] = &Invocation{
+	invocation := Invocation{
 		completionEventDescriptors: make([]*proto.CompletionEventDescriptor, len(workflow.completionEventDescriptorsT)),
 		descriptor: &proto.InvocationDescriptor{
 			Id:           vHiveMetadata.InvocationId,
@@ -173,7 +173,9 @@ func (s *Server) registerInvocation(vHiveMetadata *proto.VHiveMetadata) *Invocat
 			Status:       proto.InvocationStatus_CANCELLED,
 		},
 	}
-	return workflow.invocations[vHiveMetadata.InvocationId]
+	copy(invocation.completionEventDescriptors, workflow.completionEventDescriptorsT)
+	workflow.invocations[vHiveMetadata.InvocationId] = &invocation
+	return &invocation
 }
 
 func (s *Server) onCompletionEvent(invDesc *proto.InvocationDescriptor, event *proto.Event, descriptorIdx int, now time.Time) {
