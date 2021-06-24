@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -38,6 +39,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
+
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 
 	. "eventing/eventschemas"
 )
@@ -54,6 +59,10 @@ type server struct {
 var ceClient client.Client
 
 func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, error) {
+	span := tracing.Span{SpanName: "SayHello", TracerName: "producer"}
+	ctx = span.StartSpan(ctx)
+	defer span.EndSpan()
+
 	id := uuid.New().String()
 
 	if headers, ok := metadata.FromIncomingContext(ctx); ok {
@@ -90,11 +99,18 @@ func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, 
 }
 
 func main() {
+	zipkinURL := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
+	flag.Parse()
+
 	log.SetPrefix("Producer: ")
 	log.SetFlags(log.Lmicroseconds | log.LUTC)
 	log.Printf("started")
 
-	var err error
+	shutdown, err := tracing.InitBasicTracer(*zipkinURL, "producer")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer shutdown()
 
 	p, err := obshttp.NewObservedHTTP()
 
@@ -110,8 +126,7 @@ func main() {
 	defer lis.Close()
 
 	var server server
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))
 	RegisterGreeterServer(grpcServer, &server)
 	reflection.Register(grpcServer)
 	err = grpcServer.Serve(lis)

@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"reflect"
@@ -32,6 +33,7 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 
 	. "eventing/eventschemas"
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
 
 func printContextInternals(ctx interface{}, inner bool) {
@@ -62,7 +64,9 @@ func printContextInternals(ctx interface{}, inner bool) {
 }
 
 func callback(ctx context.Context, event cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
-	printContextInternals(ctx, false)
+	span := tracing.Span{SpanName: "SayHello", TracerName: "consumer"}
+	ctx = span.StartSpan(ctx)
+	defer span.EndSpan()
 
 	var body GreetingEventBody
 	if err := event.DataAs(&body); err != nil {
@@ -80,9 +84,18 @@ func callback(ctx context.Context, event cloudevents.Event) (*cloudevents.Event,
 }
 
 func main() {
+	zipkinURL := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
+	flag.Parse()
+
 	log.SetPrefix("Consumer: ")
 	log.SetFlags(log.Lmicroseconds | log.LUTC)
 	log.Println("started")
+
+	shutdown, err := tracing.InitBasicTracer(*zipkinURL, "consumer")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer shutdown()
 
 	ceClient, err := cloudevents.NewClientHTTP()
 	if err != nil {
