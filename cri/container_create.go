@@ -79,20 +79,20 @@ func (s *Service) createUserContainer(ctx context.Context, r *criapi.CreateConta
 		return nil, err
 	}
 
-	funcInst, err := s.coordinator.startVM(context.Background(), guestImage)
+	funcInst, err := s.coordinator.StartSandbox(context.Background(), guestImage)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
 	}
 
-	vmConfig := &VMConfig{guestIP: funcInst.startVMResponse.GuestIP, guestPort: guestPortValue}
+	vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPortValue}
 	s.insertPodVMConfig(r.GetPodSandboxId(), vmConfig)
 
 	// Wait for placeholder UC to be created
 	<-stockDone
 
 	containerdID := stockResp.ContainerId
-	err = s.coordinator.insertActive(containerdID, funcInst)
+	err = s.coordinator.InsertActive(containerdID, funcInst)
 	if err != nil {
 		log.WithError(err).Error("failed to insert active VM")
 		return nil, err
