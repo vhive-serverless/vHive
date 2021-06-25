@@ -38,7 +38,7 @@ test:
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
 	sleep 1m
 
-	go test ./ $(EXTRAGOARGS)
+	go test ./... $(EXTRAGOARGS)
 
 test-man:
 	echo "Nothing to test manually"

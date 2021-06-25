@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package cri
+package firecracker
 
 import (
 	"context"
@@ -30,33 +30,34 @@ import (
 	"sync/atomic"
 	"time"
 
+	genCoor "github.com/ease-lab/vhive/cri/coordinator"
 	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 )
 
-type coordinator struct {
+type FirecrackerCoordinator struct {
 	sync.Mutex
 	orch   *ctriface.Orchestrator
 	nextID uint64
 
-	activeInstances     map[string]*funcInstance
-	idleInstances       map[string][]*funcInstance
+	activeInstances     map[string]*genCoor.FuncInstance
+	idleInstances       map[string][]*genCoor.FuncInstance
 	withoutOrchestrator bool
 }
 
-type coordinatorOption func(*coordinator)
+type coordinatorOption func(*FirecrackerCoordinator)
 
 // withoutOrchestrator is used for testing the coordinator without calling the orchestrator
 func withoutOrchestrator() coordinatorOption {
-	return func(c *coordinator) {
+	return func(c *FirecrackerCoordinator) {
 		c.withoutOrchestrator = true
 	}
 }
 
-func newCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorOption) *coordinator {
-	c := &coordinator{
-		activeInstances: make(map[string]*funcInstance),
-		idleInstances:   make(map[string][]*funcInstance),
+func NewFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorOption) *FirecrackerCoordinator {
+	c := &FirecrackerCoordinator{
+		activeInstances: make(map[string]*genCoor.FuncInstance),
+		idleInstances:   make(map[string][]*genCoor.FuncInstance),
 		orch:            orch,
 	}
 
@@ -67,13 +68,38 @@ func newCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorOption) *coo
 	return c
 }
 
-func (c *coordinator) getIdleInstance(image string) *funcInstance {
+// Implementation of the Coordinator-interface
+
+func (c *FirecrackerCoordinator) StartSandbox(ctx context.Context, image string) (*genCoor.FuncInstance, error) {
+	fi, err := c.startVM(ctx, image)
+	return fi, err
+}
+
+func (c *FirecrackerCoordinator) StopSandbox(ctx context.Context, containerID string) error {
+	return c.stopVM(ctx, containerID)
+}
+
+func (c *FirecrackerCoordinator) InsertActive(containerID string, fi *genCoor.FuncInstance) error {
+	return c.insertActive(containerID, fi)
+}
+
+func (c *FirecrackerCoordinator) RemoveActive(containerID string) {
+	c.Lock()
+	delete(c.activeInstances, containerID)
+	c.Unlock()
+}
+
+func (c *FirecrackerCoordinator) IsActive(containerID string) bool {
+	return c.isActive(containerID)
+}
+
+func (c *FirecrackerCoordinator) getIdleInstance(image string) *genCoor.FuncInstance {
 	c.Lock()
 	defer c.Unlock()
 
 	idles, ok := c.idleInstances[image]
 	if !ok {
-		c.idleInstances[image] = []*funcInstance{}
+		c.idleInstances[image] = []*genCoor.FuncInstance{}
 		return nil
 	}
 
@@ -86,19 +112,19 @@ func (c *coordinator) getIdleInstance(image string) *funcInstance {
 	return nil
 }
 
-func (c *coordinator) setIdleInstance(fi *funcInstance) {
+func (c *FirecrackerCoordinator) setIdleInstance(fi *genCoor.FuncInstance) {
 	c.Lock()
 	defer c.Unlock()
 
-	_, ok := c.idleInstances[fi.image]
+	_, ok := c.idleInstances[fi.Image]
 	if !ok {
-		c.idleInstances[fi.image] = []*funcInstance{}
+		c.idleInstances[fi.Image] = []*genCoor.FuncInstance{}
 	}
 
-	c.idleInstances[fi.image] = append(c.idleInstances[fi.image], fi)
+	c.idleInstances[fi.Image] = append(c.idleInstances[fi.Image], fi)
 }
 
-func (c *coordinator) startVM(ctx context.Context, image string) (*funcInstance, error) {
+func (c *FirecrackerCoordinator) startVM(ctx context.Context, image string) (*genCoor.FuncInstance, error) {
 	if fi := c.getIdleInstance(image); c.orch != nil && c.orch.GetSnapshotsEnabled() && fi != nil {
 		err := c.orchLoadInstance(ctx, fi)
 		return fi, err
@@ -107,7 +133,7 @@ func (c *coordinator) startVM(ctx context.Context, image string) (*funcInstance,
 	return c.orchStartVM(ctx, image)
 }
 
-func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
+func (c *FirecrackerCoordinator) stopVM(ctx context.Context, containerID string) error {
 	c.Lock()
 
 	fi, ok := c.activeInstances[containerID]
@@ -127,7 +153,7 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 }
 
 // for testing
-func (c *coordinator) isActive(containerID string) bool {
+func (c *FirecrackerCoordinator) isActive(containerID string) bool {
 	c.Lock()
 	defer c.Unlock()
 
@@ -135,14 +161,14 @@ func (c *coordinator) isActive(containerID string) bool {
 	return ok
 }
 
-func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
+func (c *FirecrackerCoordinator) insertActive(containerID string, fi *genCoor.FuncInstance) error {
 	c.Lock()
 	defer c.Unlock()
 
-	logger := log.WithFields(log.Fields{"containerID": containerID, "vmID": fi.vmID})
+	logger := log.WithFields(log.Fields{"containerID": containerID, "vmID": fi.VmID})
 
 	if fi, present := c.activeInstances[containerID]; present {
-		logger.Errorf("entry for container already exists with vmID %s" + fi.vmID)
+		logger.Errorf("entry for container already exists with vmID %s" + fi.VmID)
 		return errors.New("entry for container already exists")
 	}
 
@@ -150,7 +176,7 @@ func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
 	return nil
 }
 
-func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInstance, error) {
+func (c *FirecrackerCoordinator) orchStartVM(ctx context.Context, image string) (*genCoor.FuncInstance, error) {
 	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
 	logger := log.WithFields(
 		log.Fields{
@@ -176,50 +202,50 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInsta
 		}
 	}
 
-	fi := newFuncInstance(vmID, image, resp)
+	fi := genCoor.NewFuncInstance(vmID, image, resp)
 	logger.Debug("successfully created fresh instance")
 	return fi, err
 }
 
-func (c *coordinator) orchLoadInstance(ctx context.Context, fi *funcInstance) error {
-	fi.logger.Debug("found idle instance to load")
+func (c *FirecrackerCoordinator) orchLoadInstance(ctx context.Context, fi *genCoor.FuncInstance) error {
+	fi.Logger.Debug("found idle instance to load")
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	if _, err := c.orch.LoadSnapshot(ctxTimeout, fi.vmID); err != nil {
-		fi.logger.WithError(err).Error("failed to load VM")
+	if _, err := c.orch.LoadSnapshot(ctxTimeout, fi.VmID); err != nil {
+		fi.Logger.WithError(err).Error("failed to load VM")
 		return err
 	}
 
-	if _, err := c.orch.ResumeVM(ctxTimeout, fi.vmID); err != nil {
-		fi.logger.WithError(err).Error("failed to load VM")
+	if _, err := c.orch.ResumeVM(ctxTimeout, fi.VmID); err != nil {
+		fi.Logger.WithError(err).Error("failed to load VM")
 		return err
 	}
 
-	fi.logger.Debug("successfully loaded idle instance")
+	fi.Logger.Debug("successfully loaded idle instance")
 	return nil
 }
 
-func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) error {
+func (c *FirecrackerCoordinator) orchCreateSnapshot(ctx context.Context, fi *genCoor.FuncInstance) error {
 	var err error
 
-	fi.onceCreateSnapInstance.Do(
+	fi.OnceCreateSnapInstance.Do(
 		func() {
 			ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
 			defer cancel()
 
-			fi.logger.Debug("creating instance snapshot on first time offloading")
+			fi.Logger.Debug("creating instance snapshot on first time offloading")
 
-			err = c.orch.PauseVM(ctxTimeout, fi.vmID)
+			err = c.orch.PauseVM(ctxTimeout, fi.VmID)
 			if err != nil {
-				fi.logger.WithError(err).Error("failed to pause VM")
+				fi.Logger.WithError(err).Error("failed to pause VM")
 				return
 			}
 
-			err = c.orch.CreateSnapshot(ctxTimeout, fi.vmID)
+			err = c.orch.CreateSnapshot(ctxTimeout, fi.VmID)
 			if err != nil {
-				fi.logger.WithError(err).Error("failed to create snapshot")
+				fi.Logger.WithError(err).Error("failed to create snapshot")
 				return
 			}
 		},
@@ -228,8 +254,8 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 	return err
 }
 
-func (c *coordinator) orchOffloadInstance(ctx context.Context, fi *funcInstance) error {
-	fi.logger.Debug("offloading instance")
+func (c *FirecrackerCoordinator) orchOffloadInstance(ctx context.Context, fi *genCoor.FuncInstance) error {
+	fi.Logger.Debug("offloading instance")
 
 	if err := c.orchCreateSnapshot(ctx, fi); err != nil {
 		return err
@@ -238,8 +264,8 @@ func (c *coordinator) orchOffloadInstance(ctx context.Context, fi *funcInstance)
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	if err := c.orch.Offload(ctxTimeout, fi.vmID); err != nil {
-		fi.logger.WithError(err).Error("failed to offload instance")
+	if err := c.orch.Offload(ctxTimeout, fi.VmID); err != nil {
+		fi.Logger.WithError(err).Error("failed to offload instance")
 	}
 
 	c.setIdleInstance(fi)
@@ -247,13 +273,13 @@ func (c *coordinator) orchOffloadInstance(ctx context.Context, fi *funcInstance)
 	return nil
 }
 
-func (c *coordinator) orchStopVM(ctx context.Context, fi *funcInstance) error {
+func (c *FirecrackerCoordinator) orchStopVM(ctx context.Context, fi *genCoor.FuncInstance) error {
 	if c.withoutOrchestrator {
 		return nil
 	}
 
-	if err := c.orch.StopSingleVM(ctx, fi.vmID); err != nil {
-		fi.logger.WithError(err).Error("failed to stop VM for instance")
+	if err := c.orch.StopSingleVM(ctx, fi.VmID); err != nil {
+		fi.Logger.WithError(err).Error("failed to stop VM for instance")
 		return err
 	}
 

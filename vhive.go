@@ -33,6 +33,7 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	fccdcri "github.com/ease-lab/vhive/cri"
+	fccoor "github.com/ease-lab/vhive/cri/coordinator/firecracker"
 	ctriface "github.com/ease-lab/vhive/ctriface"
 	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 	pb "github.com/ease-lab/vhive/proto"
@@ -152,7 +153,9 @@ func criServe() {
 
 	s := grpc.NewServer()
 
-	criService, err := fccdcri.NewService(orch)
+	coor := fccoor.NewFirecrackerCoordinator(orch)
+
+	criService, err := fccdcri.NewService(coor)
 	if err != nil {
 		log.Fatalf("failed to create CRI service %v", err)
 	}

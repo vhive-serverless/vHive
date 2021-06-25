@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ease-lab/vhive/ctriface"
+	"github.com/ease-lab/vhive/cri/coordinator"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -49,10 +49,11 @@ type Service struct {
 
 	criapi.ImageServiceServer
 	criapi.RuntimeServiceServer
-	orch               *ctriface.Orchestrator
 	stockRuntimeClient criapi.RuntimeServiceClient
 	stockImageClient   criapi.ImageServiceClient
-	coordinator        *coordinator
+
+	// generic coordinator
+	coordinator coordinator.Coordinator
 
 	// to store mapping from pod to guest image and port temporarily
 	podVMConfigs map[string]*VMConfig
@@ -65,9 +66,9 @@ type VMConfig struct {
 }
 
 // NewService initializes the host orchestration state.
-func NewService(orch *ctriface.Orchestrator) (*Service, error) {
-	if orch == nil {
-		return nil, errors.New("orch must be non nil")
+func NewService(coor coordinator.Coordinator) (*Service, error) {
+	if coor == nil {
+		return nil, errors.New("coor must be non nil")
 	}
 
 	stockRuntimeClient, err := newStockRuntimeServiceClient()
@@ -83,10 +84,9 @@ func NewService(orch *ctriface.Orchestrator) (*Service, error) {
 	}
 
 	cs := &Service{
-		orch:               orch,
 		stockRuntimeClient: stockRuntimeClient,
 		stockImageClient:   stockImageClient,
-		coordinator:        newCoordinator(orch),
+		coordinator:        coor,
 		podVMConfigs:       make(map[string]*VMConfig),
 	}
 

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov and EASE lab
+// Copyright (c) 2020 Nathaniel Tornow and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,37 +20,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package cri
+package coordinator
 
 import (
-	"sync"
-
-	"github.com/ease-lab/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
+	"context"
 )
 
-type funcInstance struct {
-	vmID                   string
-	image                  string
-	logger                 *log.Entry
-	onceCreateSnapInstance *sync.Once
-	startVMResponse        *ctriface.StartVMResponse
-}
-
-func newFuncInstance(vmID, image string, startVMResponse *ctriface.StartVMResponse) *funcInstance {
-	f := &funcInstance{
-		vmID:                   vmID,
-		image:                  image,
-		onceCreateSnapInstance: new(sync.Once),
-		startVMResponse:        startVMResponse,
-	}
-
-	f.logger = log.WithFields(
-		log.Fields{
-			"vmID":  vmID,
-			"image": image,
-		},
-	)
-
-	return f
+type Coordinator interface {
+	StartSandbox(context.Context, string) (*FuncInstance, error)
+	StopSandbox(context.Context, string) error
+	InsertActive(string, *FuncInstance) error
+	RemoveActive(string)
+	IsActive(string) bool
 }
