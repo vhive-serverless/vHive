@@ -26,6 +26,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 SCRIPTS=$ROOT/scripts
 
+GVISOR=$1
+
 echo Clean up host resources if left after previous runs
 $SCRIPTS/github_runner/clean_cri_runner.sh
 
@@ -36,8 +38,14 @@ echo Run the stock containerd daemon
 sudo containerd 1>$CTRDLOGDIR/ctrd.out 2>$CTRDLOGDIR/ctrd.err &
 sleep 1s
 
-echo Run the firecracker-containerd daemon
-sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &
+if [ "$GVISOR" == "gvisor" ]; then
+    echo Run the gvisor-containerd daemon
+    sudo /usr/local/bin/gvisor-containerd --address /run/gvisor-containerd/gvisor-containerd.sock --config /etc/gvisor-containerd/config.toml 1>$CTRDLOGDIR/gvisor.out 2>$CTRDLOGDIR/gvisor.err &
+else
+    echo Run the firecracker-containerd daemon
+    sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &
+fi
+
 sleep 1s
 
 echo Build vHive
