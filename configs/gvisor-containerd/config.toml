@@ -1,0 +1,12 @@
+version = 2
+root = "/var/lib/gvisor-containerd/containerd"
+state = "/run/gvisor-containerd"
+[grpc]
+  address = "/run/gvisor-containerd/containerd.sock"
+[plugins."io.containerd.runtime.v1.linux"]
+  shim_debug = true
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+  runtime_type = "io.containerd.runsc.v1"
+
+[debug]
+  level = "debug"
