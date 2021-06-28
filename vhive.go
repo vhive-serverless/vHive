@@ -32,7 +32,9 @@ import (
 	"runtime"
 
 	ctrdlog "github.com/containerd/containerd/log"
-	fccdcri "github.com/ease-lab/vhive/cri"
+	cri "github.com/ease-lab/vhive/cri"
+	fccri "github.com/ease-lab/vhive/cri/firecracker"
+
 	ctriface "github.com/ease-lab/vhive/ctriface"
 	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 	pb "github.com/ease-lab/vhive/proto"
@@ -44,7 +46,7 @@ const (
 	port    = ":3333"
 	fwdPort = ":3334"
 
-	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
+	testImageName = "vhiveease/helloworld:var_workload"
 )
 
 var (
@@ -152,7 +154,12 @@ func criServe() {
 
 	s := grpc.NewServer()
 
-	criService, err := fccdcri.NewService(orch)
+	fcService, err := fccri.NewFirecrackerService(orch)
+	if err != nil {
+		log.Fatalf("failed to create FirecrackerCRI service %v", err)
+	}
+
+	criService, err := cri.NewService(fcService)
 	if err != nil {
 		log.Fatalf("failed to create CRI service %v", err)
 	}
