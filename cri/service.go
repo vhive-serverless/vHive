@@ -25,22 +25,11 @@ package cri
 import (
 	"context"
 	"errors"
-	"net"
 	"sync"
-	"time"
 
-	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-)
-
-const (
-	stockCtrdSockAddr = "/run/containerd/containerd.sock"
-	dialTimeout       = 10 * time.Second
-	// maxMsgSize use 16MB as the default message size limit.
-	// grpc library default is 4MB
-	maxMsgSize = 1024 * 1024 * 16
 )
 
 // Service contains essential objects for host orchestration.
@@ -49,116 +38,50 @@ type Service struct {
 
 	criapi.ImageServiceServer
 	criapi.RuntimeServiceServer
-	orch               *ctriface.Orchestrator
 	stockRuntimeClient criapi.RuntimeServiceClient
 	stockImageClient   criapi.ImageServiceClient
-	coordinator        *coordinator
 
-	// to store mapping from pod to guest image and port temporarily
-	podVMConfigs map[string]*VMConfig
-}
-
-// VMConfig wraps the IP and port of the guest VM
-type VMConfig struct {
-	guestIP   string
-	guestPort string
+	// generic coordinator
+	serv ServiceInterface
 }
 
 // NewService initializes the host orchestration state.
-func NewService(orch *ctriface.Orchestrator) (*Service, error) {
-	if orch == nil {
-		return nil, errors.New("orch must be non nil")
+func NewService(serv ServiceInterface) (*Service, error) {
+	if serv == nil {
+		return nil, errors.New("coor must be non nil")
 	}
 
-	stockRuntimeClient, err := newStockRuntimeServiceClient()
+	stockRuntimeClient, err := NewStockRuntimeServiceClient()
 	if err != nil {
 		log.WithError(err).Error("failed to create new stock runtime service client")
 		return nil, err
 	}
 
-	stockImageClient, err := newStockImageServiceClient()
+	stockImageClient, err := NewStockImageServiceClient()
 	if err != nil {
 		log.WithError(err).Error("failed to create new stock image service client")
 		return nil, err
 	}
 
 	cs := &Service{
-		orch:               orch,
 		stockRuntimeClient: stockRuntimeClient,
 		stockImageClient:   stockImageClient,
-		coordinator:        newCoordinator(orch),
-		podVMConfigs:       make(map[string]*VMConfig),
+		serv:               serv,
 	}
 
 	return cs, nil
+}
+
+func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	return s.serv.CreateContainer(ctx, r)
+}
+
+func (s *Service) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
+	return s.serv.RemoveContainer(ctx, r)
 }
 
 // Register registers the criapi servers.
 func (s *Service) Register(server *grpc.Server) {
 	criapi.RegisterImageServiceServer(server, s)
 	criapi.RegisterRuntimeServiceServer(server, s)
-}
-
-func newStockImageServiceClient() (criapi.ImageServiceClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
-	if err != nil {
-		return nil, err
-	}
-
-	return criapi.NewImageServiceClient(conn), nil
-}
-
-func newStockRuntimeServiceClient() (criapi.RuntimeServiceClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
-	if err != nil {
-		return nil, err
-	}
-
-	return criapi.NewRuntimeServiceClient(conn), nil
-}
-
-func dialer(ctx context.Context, addr string) (net.Conn, error) {
-	return (&net.Dialer{}).DialContext(ctx, "unix", addr)
-}
-
-func getDialOpts() []grpc.DialOption {
-	return []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithInsecure(),
-		grpc.WithContextDialer(dialer),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
-	}
-}
-
-func (s *Service) insertPodVMConfig(podID string, vmConfig *VMConfig) {
-	s.Lock()
-	defer s.Unlock()
-
-	s.podVMConfigs[podID] = vmConfig
-}
-
-func (s *Service) removePodVMConfig(podID string) {
-	s.Lock()
-	defer s.Unlock()
-
-	delete(s.podVMConfigs, podID)
-}
-
-func (s *Service) getPodVMConfig(podID string) (*VMConfig, error) {
-	s.Lock()
-	defer s.Unlock()
-
-	vmConfig, isPresent := s.podVMConfigs[podID]
-	if !isPresent {
-		log.Errorf("VM config for pod %s does not exist", podID)
-		return nil, errors.New("VM config for pod does not exist")
-	}
-
-	return vmConfig, nil
 }

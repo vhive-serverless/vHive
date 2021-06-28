@@ -20,16 +20,28 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package cri
+package firecracker
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+var (
+	coord *coordinator
+)
+
+func TestMain(m *testing.M) {
+	coord = newFirecrackerCoordinator(nil, withoutOrchestrator())
+
+	ret := m.Run()
+	os.Exit(ret)
+}
 
 func TestStartStop(t *testing.T) {
 	containerID := "1"

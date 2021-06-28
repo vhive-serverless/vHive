@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package cri
+package firecracker
 
 import (
 	"sync"
@@ -30,22 +30,22 @@ import (
 )
 
 type funcInstance struct {
-	vmID                   string
-	image                  string
-	logger                 *log.Entry
-	onceCreateSnapInstance *sync.Once
-	startVMResponse        *ctriface.StartVMResponse
+	VmID                   string
+	Image                  string
+	Logger                 *log.Entry
+	OnceCreateSnapInstance *sync.Once
+	StartVMResponse        *ctriface.StartVMResponse
 }
 
 func newFuncInstance(vmID, image string, startVMResponse *ctriface.StartVMResponse) *funcInstance {
 	f := &funcInstance{
-		vmID:                   vmID,
-		image:                  image,
-		onceCreateSnapInstance: new(sync.Once),
-		startVMResponse:        startVMResponse,
+		VmID:                   vmID,
+		Image:                  image,
+		OnceCreateSnapInstance: new(sync.Once),
+		StartVMResponse:        startVMResponse,
 	}
 
-	f.logger = log.WithFields(
+	f.Logger = log.WithFields(
 		log.Fields{
 			"vmID":  vmID,
 			"image": image,
