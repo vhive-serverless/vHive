@@ -33,11 +33,11 @@ import (
 )
 
 var (
-	coord *FirecrackerCoordinator
+	coord *coordinator
 )
 
 func TestMain(m *testing.M) {
-	coord = NewFirecrackerCoordinator(nil, withoutOrchestrator())
+	coord = newFirecrackerCoordinator(nil, withoutOrchestrator())
 
 	ret := m.Run()
 	os.Exit(ret)
