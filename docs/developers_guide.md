@@ -2,32 +2,10 @@
 
 *Note: this page is going to be extended.*
 
-## Deploying single node container environment
+## Testing stock Knative setup or images
 
-You can use the image to build/test/develop vHive inside a container. This image is preconfigured to run a single node Kubernetes cluster inside a container and contains packages to setup vHive on top of it. 
-```bash
-# Set up the host (the same script as for the self-hosted GitHub CI runner)
-./scripts/github_runner/setup_runner_host.sh
-# pull latest image
-docker pull vhiveease/vhive_dev_env
-# Start a container 
-kind create cluster --image vhiveease/vhive_dev_env
-# Enter the container
-docker exec -it <container name> bash
-```
-### Clean up
-```bash
-# list all kind clusters
-kind get clusters 
-# delete a cluster 
-kind delete cluster --name <name>
-```
+If you need to test your Knative images in stock Knative environment, use the following commands to setup environment.
 
-Once the container is up and running, follow [this](./quickstart_guide.md#setup-a-single-node-cluster-master-and-worker-functionality-on-the-same-node) guide to setup a single node vHive cluster.
-
-## Testing stock Knative images
-
-If you need to test your Knative images on stock Knative environment, use the commands below to setup an environment for that.
 ```bash
 git clone https://github.com/ease-lab/vhive
 cd vhive
@@ -39,9 +17,52 @@ watch kubectl get pods -A
 # once all the containers are ready/complete, you may start Knative functions
 kn service apply
 ```
+
 ### Clean up
 ```bash
 ./scripts/github_runner/clean_cri_runner.sh stock-only
+```
+
+## Deploying single node container environment
+
+You can use the image to build/test/develop vHive inside a [kind container](https://github.com/ease-lab/kind). 
+This image is preconfigured to run a single node Kubernetes cluster 
+inside a container and contains packages to setup vHive on top of it.
+
+```bash
+# Set up the host (the same script as for the self-hosted GitHub CI runner)
+./scripts/github_runner/setup_runner_host.sh
+# pull latest image
+docker pull vhiveease/vhive_dev_env
+# Start a container 
+kind create cluster --image vhiveease/vhive_dev_env
+```
+
+### Running a vHive cluster in a kind container.
+Before running a cluster, one might need to install additional tools, e.g., Golang,
+and check out the vHive repository manually.
+
+```bash
+# Enter the container
+docker exec -it <container name> bash
+# Inside the container, create a single-node cluster
+./scripts/cluster/create_one_node_cluster.sh [stock-only]
+```
+> **Notes:**
+>
+> When running a vHive, or stock Knative, cluster inside a kind container,
+> one should not run setup scripts but start the daemon(s) and create the cluster right away.
+>
+> Currently, with Firecracker, running only a single-node cluster is supported ([Issue](https://github.com/ease-lab/vhive/issues/126) raised).
+> Running a multi-node cluster with stock Knative should work but is not tested.
+
+### Clean up
+
+```bash
+# list all kind clusters
+kind get clusters 
+# delete a cluster 
+kind delete cluster --name <name>
 ```
 
 ## High-level features
