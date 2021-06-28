@@ -20,25 +20,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package cri
+package firecracker
 
 import (
-	"context"
+	"sync"
 
+	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
-	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
-// RemoveContainer removes a container or a VM
-func (s *Service) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
-	log.Debugf("RemoveContainer for %q", r.GetContainerId())
-	containerID := r.GetContainerId()
+type funcInstance struct {
+	VmID                   string
+	Image                  string
+	Logger                 *log.Entry
+	OnceCreateSnapInstance *sync.Once
+	StartVMResponse        *ctriface.StartVMResponse
+}
 
-	go func() {
-		if err := s.coordinator.StopSandbox(context.Background(), containerID); err != nil {
-			log.WithError(err).Error("failed to stop microVM")
-		}
-	}()
+func newFuncInstance(vmID, image string, startVMResponse *ctriface.StartVMResponse) *funcInstance {
+	f := &funcInstance{
+		VmID:                   vmID,
+		Image:                  image,
+		OnceCreateSnapInstance: new(sync.Once),
+		StartVMResponse:        startVMResponse,
+	}
 
-	return s.stockRuntimeClient.RemoveContainer(ctx, r)
+	f.Logger = log.WithFields(
+		log.Fields{
+			"vmID":  vmID,
+			"image": image,
+		},
+	)
+
+	return f
 }
