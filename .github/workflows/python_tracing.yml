@@ -1,0 +1,26 @@
+name: (tmp) python tracing
+
+on: 
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  bench-python-tracing:
+    name: Python Tracing (docker-compose)
+    runs-on: ubuntu-18.04
+    defaults:
+      run:
+        working-directory: ./function-images/tests/tracing/python/client-server
+    strategy:
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: build local images
+      run: make all-image
+    - name: start multi-container program with docker-compose
+      run: |
+        docker-compose up --exit-code-from client
