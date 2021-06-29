@@ -1,9 +1,9 @@
 name: Linters
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/gvisor ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, feature/gvisor ]
 
 jobs:
   build:
