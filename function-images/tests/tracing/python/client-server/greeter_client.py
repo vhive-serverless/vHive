@@ -21,6 +21,14 @@
 # SOFTWARE.
 
 from __future__ import print_function
+
+import sys
+import os
+# adding python tracing sources to the system path
+sys.path.insert(0, os.getcwd() + '/../../../../../utils/tracing/python')
+import tracing
+
+import time
 import logging
 
 import grpc
@@ -28,17 +36,22 @@ import grpc
 import helloworld_pb2
 import helloworld_pb2_grpc
 
-import tracing
+import argparse
 
-import sys
+parser = argparse.ArgumentParser()
+parser.add_argument("-server", "--server", dest = "url", default = "localhost:50051", help="Server url and port")
+parser.add_argument("-zipkin", "--zipkin", dest = "zipkin", default = "http://localhost:9411/api/v2/spans", help="Zipkin endpoint url")
+args = parser.parse_args()
+
+print("client using url: "+args.url)
 
 def run():
-
-    tracing.initTracer("client")
+    time.sleep(10)
+    tracing.initTracer("client", url=args.zipkin)
     tracing.grpcInstrumentClient()
 
     with tracing.Span("test span"):
-        with grpc.insecure_channel('localhost:50051') as channel:
+        with grpc.insecure_channel(args.url) as channel:
             stub = helloworld_pb2_grpc.GreeterStub(channel)
             response = stub.SayHello(helloworld_pb2.HelloRequest(name="world"))
         with tracing.Span("test child span"):
