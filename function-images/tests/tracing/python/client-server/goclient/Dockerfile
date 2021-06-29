@@ -20,13 +20,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-all-image: server-image client-image go-client-image
+FROM vhiveease/golang:latest as builder
 
-server-image: Dockerfile server.py helloworld_pb2_grpc.py helloworld_pb2.py
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-server:latest --target server -f ./function-images/tests/tracing/python/client-server/Dockerfile .
+WORKDIR /app
+RUN apk add --no-cache make
+COPY ./function-images/tests/tracing/python/client-server/goclient ./
+COPY ./utils/tracing/go ./utils/tracing/go
+RUN mkdir /log
+RUN go mod download && \
+   CGO_ENABLED=0 GOOS=linux go build -v -o ./client-bin ./goclient.go
 
-client-image: Dockerfile greeter_client.py helloworld_pb2_grpc.py helloworld_pb2.py
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-client:latest --target client -f ./function-images/tests/tracing/python/client-server/Dockerfile .
-
-go-client-image: goclient/Dockerfile goclient/goclient.go goclient/go.mod goclient/go.sum
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-go-client:latest -f ./function-images/tests/tracing/python/client-server/goclient/Dockerfile .
+FROM scratch
+WORKDIR /app
+COPY --from=builder /log/ /app/log/ 
+COPY --from=builder /app/client-bin /app/exe
+ENTRYPOINT [ "/app/exe" ]

@@ -188,28 +188,3 @@ jobs:
     - name: Cleaning
       if: ${{ always() }}
       run: ./scripts/github_runner/clean_cri_runner.sh stock-only
-
-  bench-python-tracing:
-    name: Python Tracing (docker-compose)
-    runs-on: ubuntu-18.04
-    defaults:
-      run:
-        working-directory: ./function-images/tests/tracing/python/client-server
-    strategy:
-      fail-fast: false
-    steps:
-    - uses: actions/checkout@v2
-    
-    - name: get python dependencies
-      run: python3 -m pip install --user -r requirements.txt
-    - name: build local image
-      run: make server-image
-    - name: start multi-container program with docker-compose
-      run: |
-        docker-compose up &> log_file &
-        sleep 15s
-    - name: call the server
-      run: |
-        python3 greeter_client.py
-    - name: show docker-compose log
-      run: cat  ./function-images/tests/chained-function-serving/log_file
