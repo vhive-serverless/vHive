@@ -3,12 +3,12 @@ name: Function Composition Push
 on: 
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, feature/gvisor ]
     paths:
       - 'function-images/tests/**'
       - '.github/workflows/image_build.yml'
   pull_request:
-    branches: [ main ]
+    branches: [ main, feature/gvisor ]
     paths:
       - 'function-images/tests/**'
       - '.github/workflows/image_build.yml'

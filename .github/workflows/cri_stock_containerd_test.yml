@@ -2,13 +2,13 @@ name: stock Containerd CRI tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/gvisor ]
     paths-ignore:
     - 'docs/**'
     - '**.md'
     - 'function-images/**'
   pull_request:
-    branches: [ main ]
+    branches: [ main, feature/gvisor ]
     paths-ignore:
     - 'docs/**'
     - '**.md'

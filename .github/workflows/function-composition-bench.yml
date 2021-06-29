@@ -3,7 +3,7 @@ name: Function Composition Bench
 on:
   workflow_run:
     workflows: ["Function Composition Push"]
-    branches: [main]
+    branches: [main, feature/gvisor]
     types: 
       - completed
   
