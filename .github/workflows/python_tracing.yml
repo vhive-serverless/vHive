@@ -1,4 +1,4 @@
-name: (tmp) python tracing
+name: Python tracing CI
 
 on: 
   workflow_dispatch:
@@ -21,6 +21,9 @@ jobs:
     
     - name: build local images
       run: make all-image
-    - name: start multi-container program with docker-compose
+    - name: Python client with docker-compose
       run: |
         docker-compose up --exit-code-from client
+    - name: Golang client with docker-compose
+      run: |
+        docker-compose --file ./docker-compose-goclient.yml up --exit-code-from client

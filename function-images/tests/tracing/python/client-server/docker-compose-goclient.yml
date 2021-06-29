@@ -20,13 +20,27 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-all-image: server-image client-image go-client-image
+version: "3.7"
 
-server-image: Dockerfile server.py helloworld_pb2_grpc.py helloworld_pb2.py
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-server:latest --target server -f ./function-images/tests/tracing/python/client-server/Dockerfile .
+services:
+    zipkin:
+        image: openzipkin/zipkin
+        ports:
+            - 9411:9411
+    server:
+        image: vhiveease/py-tracing-server:latest
+        ports:
+            - "50051:50051"
+        command:
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        depends_on: 
+            - zipkin
 
-client-image: Dockerfile greeter_client.py helloworld_pb2_grpc.py helloworld_pb2.py
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-client:latest --target client -f ./function-images/tests/tracing/python/client-server/Dockerfile .
-
-go-client-image: goclient/Dockerfile goclient/goclient.go goclient/go.mod goclient/go.sum
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-go-client:latest -f ./function-images/tests/tracing/python/client-server/goclient/Dockerfile .
+    client:
+        image: vhiveease/py-tracing-go-client:latest
+        command:
+            - -addr=server
+            - -pc=50051
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        depends_on: 
+            - server
