@@ -14,5 +14,5 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0
 	google.golang.org/grpc v1.38.0
-	google.golang.org/protobuf v1.26.0
+	google.golang.org/protobuf v1.27.1
 )
