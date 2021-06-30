@@ -86,7 +86,10 @@ CNCF community. In future, vHive is going to provide tracing modules in a wide r
 One can enable tracing by following these steps (example is for Golang):
 1. Initialise the tracer:
    ```go
-   shutdown := tracing.InitBasicTracer(*url, "producer")
+   shutdown, err := tracing.InitBasicTracer(*url, "my function")
+   if err != nil {
+      log.Warn(err)
+   }
    defer shutdown()
    ```
    The url provided should point to the zipkin span collector service, e.g. 
@@ -96,15 +99,14 @@ One can enable tracing by following these steps (example is for Golang):
    The basic tracer can be used for most applications, and in cases where one wants to provide 
    additional attributes or wishes to specify a different sampling rate they can use 
    `InitCustomTracer`.
-2. If the function is a server, include the server interceptor instrumentation during definition. 
+2. If the function is a server, make an instrumented grpc server:
    Example:
    ```go
-   grpcServer := grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))
+   grpcServer := tracing.GetGRPCServerWithUnaryInterceptor()
    ```
-3. If the function is a client, include client interceptor instrumentation when connecting to a 
-   server. Example:
+3. If the function is a client, use the instrumented grpc dial method to connect to the server:
    ```go
-   conn, err := grpc.Dial(fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort), grpc.WithInsecure(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+   conn, err := tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithInsecure())
    ```
 
 The producer in the vHive 

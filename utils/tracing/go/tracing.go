@@ -32,6 +32,7 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/trace/zipkin"
@@ -39,6 +40,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv"
+
+	"google.golang.org/grpc"
 )
 
 func initTracer(tp *trace.TracerProvider) func() {
@@ -119,4 +122,17 @@ func InitCustomTracer(url string, traceRate float64, logger *log.Logger, attr ..
 	)
 	f := initTracer(tp)
 	return f, nil
+}
+
+// GetGRPCServerWithUnaryInterceptor returns a grpc server instrumented with an opentelemetry
+// interceptor which enables tracing of grpc requests.
+func GetGRPCServerWithUnaryInterceptor() *grpc.Server {
+	return grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))
+}
+
+// DialGRPCWithUnaryInterceptor creates a connection to the provided address, which is instrumented
+// with an opentelemetry client interceptor enabling the tracing to client grpc messages.
+func DialGRPCWithUnaryInterceptor(addr string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	opts = append(opts, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+	return grpc.Dial(addr, opts...)
 }
