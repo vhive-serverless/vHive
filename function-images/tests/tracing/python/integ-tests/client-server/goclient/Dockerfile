@@ -20,5 +20,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-go-client-image: Dockerfile goclient.go go.mod go.sum
-	cd ../../../../../../ && docker build --tag vhiveease/py-tracing-go-client:latest -f ./function-images/tests/tracing/python/client-server/goclient/Dockerfile .
+FROM vhiveease/golang:latest as builder
+
+WORKDIR /app
+RUN apk add --no-cache make
+COPY ./function-images/tests/tracing/python/integ-tests/client-server/goclient ./
+COPY ./utils/tracing/go ./utils/tracing/go
+RUN mkdir /log
+RUN go mod download && \
+   CGO_ENABLED=0 GOOS=linux go build -v -o ./client-bin ./goclient.go
+
+FROM scratch
+WORKDIR /app
+COPY --from=builder /log/ /app/log/ 
+COPY --from=builder /app/client-bin /app/exe
+ENTRYPOINT [ "/app/exe" ]

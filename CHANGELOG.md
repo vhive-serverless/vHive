@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added Python tracing module and an [example](./function-images/tests/tracing/python/integ-tests/client-server/) showing its usage.
 
 ### Changed
 
