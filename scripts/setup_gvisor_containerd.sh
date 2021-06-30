@@ -27,7 +27,8 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && pwd)"
 BINS=$ROOT/bin
-CONFIGS=$ROOT/configs/gvisor-containerd
+CTRDCONFIGS=$ROOT/configs/gvisor-containerd
+CNICONFIGS=$ROOT/configs/cni
 
 sudo mkdir -p /etc/gvisor-containerd
 
@@ -41,4 +42,13 @@ do
   sudo cp $BINS/$BINARY $DST
 done
 
-sudo cp $CONFIGS/config.toml /etc/gvisor-containerd/
+sudo cp $CTRDCONFIGS/config.toml /etc/gvisor-containerd/
+
+sudo mkdir -p /etc/cni/net.d
+
+DST=/etc/cni/net.d
+
+for CONFIG in 10-bridge.conf 99-loopback.conf
+do
+  sudo cp $CNICONFIGS/$CONFIG $DST
+done
