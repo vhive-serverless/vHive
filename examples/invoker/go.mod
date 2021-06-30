@@ -6,6 +6,7 @@ replace (
 	eventing => ../../utils/benchmarking/eventing
 	github.com/ease-lab/vhive/examples/endpoint => ../endpoint
 	github.com/ease-lab/vhive/utils/tracing/go => ../../utils/tracing/go
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0
 )
 
 require (
