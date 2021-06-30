@@ -20,13 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import print_function
+
 import sys
 import os
 # adding python tracing sources to the system path
-sys.path.insert(0, os.getcwd() + '/../../../../../utils/tracing/python')
+sys.path.insert(0, os.getcwd() + '/../../../../../../utils/tracing/python')
 import tracing
 
-from concurrent import futures
+import time
 import logging
 
 import grpc
@@ -37,31 +39,25 @@ import helloworld_pb2_grpc
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-zipkin", "--zipkin", dest = "url", default = "http://localhost:9411/api/v2/spans", help="Zipkin endpoint url")
-
+parser.add_argument("-server", "--server", dest = "url", default = "localhost:50051", help="Server url and port")
+parser.add_argument("-zipkin", "--zipkin", dest = "zipkin", default = "http://localhost:9411/api/v2/spans", help="Zipkin endpoint url")
 args = parser.parse_args()
 
-print("server using url: "+args.url)
-tracing.initTracer("server", url=args.url)
-tracing.grpcInstrumentServer()
+print("client using url: "+args.url)
 
-class Greeter(helloworld_pb2_grpc.GreeterServicer):
+def run():
+    time.sleep(10)
+    tracing.initTracer("client", url=args.zipkin)
+    tracing.grpcInstrumentClient()
 
-    def SayHello(self, request, context):
-        print("SERVER SAY HELLO")
-        msg = 'Hello, %s!' % request.name
-        return helloworld_pb2.HelloReply(message=msg)
-
-
-def serve():
-    print("SERVER STARTING")
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
-    helloworld_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
-    server.add_insecure_port('[::]:50051')
-    server.start()
-    server.wait_for_termination()
+    with tracing.Span("test span"):
+        with grpc.insecure_channel(args.url) as channel:
+            stub = helloworld_pb2_grpc.GreeterStub(channel)
+            response = stub.SayHello(helloworld_pb2.HelloRequest(name="world"))
+        with tracing.Span("test child span"):
+            print("Greeter client received: " + response.message)
 
 
 if __name__ == '__main__':
     logging.basicConfig()
-    serve()
+    run()

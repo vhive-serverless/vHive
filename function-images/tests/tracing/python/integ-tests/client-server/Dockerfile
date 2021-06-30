@@ -20,18 +20,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM vhiveease/golang:latest as builder
-
+FROM python:3.8-slim-buster as server
 WORKDIR /app
-RUN apk add --no-cache make
-COPY ./function-images/tests/tracing/python/client-server/goclient ./
-COPY ./utils/tracing/go ./utils/tracing/go
-RUN mkdir /log
-RUN go mod download && \
-   CGO_ENABLED=0 GOOS=linux go build -v -o ./client-bin ./goclient.go
+COPY ./function-images/tests/tracing/python/integ-tests/client-server/requirements.txt .
+COPY ./function-images/tests/tracing/python/integ-tests/client-server/*.py ./
+COPY ./utils/tracing/python/tracing.py .
+RUN pip3 install --user -r requirements.txt
 
-FROM scratch
+EXPOSE 50051
+
+STOPSIGNAL SIGKILL
+
+ENTRYPOINT ["python3", "-u", "./server.py"]
+
+FROM python:3.8-slim-buster as client
 WORKDIR /app
-COPY --from=builder /log/ /app/log/ 
-COPY --from=builder /app/client-bin /app/exe
-ENTRYPOINT [ "/app/exe" ]
+COPY ./function-images/tests/tracing/python/integ-tests/client-server/requirements.txt .
+COPY ./function-images/tests/tracing/python/integ-tests/client-server/*.py ./
+COPY ./utils/tracing/python/tracing.py .
+RUN pip3 install --user -r requirements.txt
+
+EXPOSE 50051
+
+STOPSIGNAL SIGKILL
+
+ENTRYPOINT ["python3", "-u", "./greeter_client.py"]
+

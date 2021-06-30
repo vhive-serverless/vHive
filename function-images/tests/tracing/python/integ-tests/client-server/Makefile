@@ -20,13 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+ROOT = ../../../../../../
+
 all-image: server-image client-image go-client-image
 
 server-image: Dockerfile server.py helloworld_pb2_grpc.py helloworld_pb2.py
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-server:latest --target server -f ./function-images/tests/tracing/python/client-server/Dockerfile .
+	cd $(ROOT) && docker build --tag vhiveease/py-tracing-server:latest --target server -f ./function-images/tests/tracing/python/integ-tests/client-server/Dockerfile .
 
 client-image: Dockerfile greeter_client.py helloworld_pb2_grpc.py helloworld_pb2.py
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-client:latest --target client -f ./function-images/tests/tracing/python/client-server/Dockerfile .
+	cd $(ROOT)  && docker build --tag vhiveease/py-tracing-client:latest --target client -f ./function-images/tests/tracing/python/integ-tests/client-server/Dockerfile .
 
 go-client-image: goclient/Dockerfile goclient/goclient.go goclient/go.mod goclient/go.sum
-	cd ../../../../../ && docker build --tag vhiveease/py-tracing-go-client:latest -f ./function-images/tests/tracing/python/client-server/goclient/Dockerfile .
+	cd $(ROOT)  && docker build --tag vhiveease/py-tracing-go-client:latest -f ./function-images/tests/tracing/python/integ-tests/client-server/goclient/Dockerfile .
