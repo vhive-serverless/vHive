@@ -1,5 +1,6 @@
 ACM
 Adileh
+addr
 al
 Alberquilla
 Aldus
@@ -106,6 +107,7 @@ deployer
 dev
 devmapper
 df
+DialGRPCWithUnaryInterceptor
 dir
 Distributable
 dmitrii
@@ -156,6 +158,7 @@ FunctionBench
 Fytraki
 Gavrielatos
 GECCO
+GetGRPCServerWithUnaryInterceptor
 GFM
 Ghoshal
 github

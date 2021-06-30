@@ -32,12 +32,10 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 
 	pb "tests/chained-functions-serving/proto"
 
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type consumerServer struct {
@@ -91,7 +89,7 @@ func main() {
 		log.Fatalf("[consumer] failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))
+	grpcServer := tracing.GetGRPCServerWithUnaryInterceptor()
 	s := consumerServer{}
 	pb.RegisterProducerConsumerServer(grpcServer, &s)
 

@@ -31,15 +31,14 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
 	pb_client "tests/chained-functions-serving/proto"
 
 	pb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
+	"google.golang.org/grpc"
 
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type producerServer struct {
@@ -51,7 +50,7 @@ type producerServer struct {
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloReply, error) {
 	// establish a connection
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+	conn, err := tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("[producer] fail to dial: %s", err)
 	}
@@ -87,7 +86,7 @@ func main() {
 	}
 	defer shutdown()
 
-	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))
+	grpcServer := tracing.GetGRPCServerWithUnaryInterceptor()
 
 	reflection.Register(grpcServer)
 	// err = grpcServer.Serve(lis)
