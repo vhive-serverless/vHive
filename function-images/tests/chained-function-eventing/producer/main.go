@@ -24,18 +24,25 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"time"
 
+	obshttp "github.com/cloudevents/sdk-go/observability/opencensus/v2/http"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/client"
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
+
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 
 	. "eventing/eventschemas"
 )
@@ -54,7 +61,18 @@ const workflowId = "producer.chained-functions-eventing.192.168.1.240.sslip.io"
 var ceClient client.Client
 
 func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, error) {
+	span := tracing.Span{SpanName: "SayHello", TracerName: "producer"}
+	ctx = span.StartSpan(ctx)
+	defer span.EndSpan()
+
 	id := uuid.New().String()
+
+	if headers, ok := metadata.FromIncomingContext(ctx); ok {
+		log.Printf("received an HelloRequest: name=`%s` (id=`%s` traceID=`%s`)", req.Name, id, headers.Get("x-b3-traceid")[0])
+	} else {
+		log.Printf("received an HelloRequest: name=`%s` (id=`%s`)", req.Name, id)
+	}
+
 	event := cloudevents.NewEvent("1.0")
 	event.SetID(id)
 	event.SetType("greeting")
@@ -66,8 +84,6 @@ func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, 
 			workflowId, id, time.Now().UTC().Format(ctrdlog.RFC3339NanoFixed),
 		),
 	)
-
-	log.Printf("received an HelloRequest: name=`%s` (id=`%s`)", req.Name, id)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, GreetingEventBody{Name: req.Name}); err != nil {
 		log.Fatalf("failed to set CloudEvents data: %s", err)
@@ -88,12 +104,22 @@ func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, 
 }
 
 func main() {
+	zipkinURL := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
+	flag.Parse()
+
 	log.SetPrefix("Producer: ")
 	log.SetFlags(log.Lmicroseconds | log.LUTC)
 	log.Printf("started")
 
-	var err error
-	ceClient, err = cloudevents.NewClientHTTP()
+	shutdown, err := tracing.InitBasicTracer(*zipkinURL, "producer")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer shutdown()
+
+	p, err := obshttp.NewObservedHTTP()
+
+	ceClient, err = client.New(p)
 	if err != nil {
 		log.Fatalf("failed to initialize CE client: %v", err)
 	}
@@ -105,8 +131,7 @@ func main() {
 	defer lis.Close()
 
 	var server server
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()))
 	RegisterGreeterServer(grpcServer, &server)
 	reflection.Register(grpcServer)
 	err = grpcServer.Serve(lis)

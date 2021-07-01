@@ -26,11 +26,11 @@ Manifests are split into separate files and are enumerated in the order of their
 **On the master node**, execute the following instructions below:
 1. Start a TimeseriesDB experiment:
    ```bash
-   ./bin/grpcurl -plaintext 10.96.0.84:90 -d @ Timeseries.StartExperiment < ./function-images/tests/chained-function-eventing/ts-experiment.json
+   ./bin/grpcurl -plaintext -d @ 10.96.0.84:90 Timeseries.StartExperiment < ./function-images/tests/chained-function-eventing/ts-experiment.json
    ```
 1. Make a gRPC request:
    ```bash
-   ./bin/grpcurl -d '{"name": "Bora"}' -plaintext producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
+   ./bin/grpcurl -plaintext -d '{"name": "Bora"}' producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
    ```
 
 ### Inspecting
