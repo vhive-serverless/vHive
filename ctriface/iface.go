@@ -145,9 +145,11 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 		}
 	}()
 
+	iologger := NewWorkloadIoWriter(vmID)
+	o.workloadIo.Store(vmID, &iologger)
 	logger.Debug("StartVM: Creating a new task")
 	tStart = time.Now()
-	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
+	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, iologger, iologger)))
 	startVMMetric.MetricMap[metrics.NewTask] = metrics.ToUS(time.Since(tStart))
 	vm.Task = &task
 	if err != nil {
@@ -270,6 +272,8 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 		logger.Error("failed to free VM from VM pool")
 		return err
 	}
+
+	o.workloadIo.Delete(vmID)
 
 	logger.Debug("Stopped VM successfully")
 
