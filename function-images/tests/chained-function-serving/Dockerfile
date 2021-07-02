@@ -28,9 +28,9 @@ RUN apk add --no-cache make
 # https://vsupalov.com/docker-build-pass-environment-variables/
 ARG target_arg
 ENV target=$target_arg
-COPY ./function-images/tests/chained-function-serving/ ./
-COPY ./utils/tracing/go ./utils/tracing/go
 RUN mkdir /log
+COPY . .
+WORKDIR /app/function-images/tests/chained-function-serving
 RUN go mod download && \
    CGO_ENABLED=0 GOOS=linux go build -v -o ./${target}-bin ./${target}/
 
@@ -39,5 +39,5 @@ WORKDIR /app
 ARG target_arg
 ENV target=$target_arg
 COPY --from=builder /log/ /app/log/ 
-COPY --from=builder /app/${target}-bin /app/exe
+COPY --from=builder /app/function-images/tests/chained-function-serving/${target}-bin /app/exe
 ENTRYPOINT [ "/app/exe" ]

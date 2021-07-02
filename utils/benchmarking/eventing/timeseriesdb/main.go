@@ -244,8 +244,7 @@ func main() {
 	defer lis.Close()
 
 	var server Server
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer()
 	proto.RegisterTimeseriesServer(grpcServer, &server)
 	reflection.Register(grpcServer)
 	go func() {
