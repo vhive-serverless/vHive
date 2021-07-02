@@ -106,8 +106,7 @@ func main() {
 	defer lis.Close()
 
 	var server server
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer()
 	RegisterGreeterServer(grpcServer, &server)
 	reflection.Register(grpcServer)
 	err = grpcServer.Serve(lis)

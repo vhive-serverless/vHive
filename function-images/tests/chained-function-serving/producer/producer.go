@@ -47,10 +47,18 @@ type producerServer struct {
 	pb.UnimplementedGreeterServer
 }
 
-func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloReply, error) {
+var tracingEnabled = os.Getenv("TRACING") != ""
+
+func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
 	// establish a connection
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
-	conn, err := tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithInsecure())
+	var conn *grpc.ClientConn
+	// TODO: shouldn't we also use grpc.WithBlock() ?
+	if tracingEnabled {
+		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithInsecure())
+	} else {
+		conn, err = grpc.Dial(addr, grpc.WithInsecure())
+	}
 	if err != nil {
 		log.Fatalf("[producer] fail to dial: %s", err)
 	}
@@ -80,13 +88,20 @@ func main() {
 	})
 	log.SetOutput(os.Stdout)
 
-	shutdown, err := tracing.InitBasicTracer(*url, "producer")
-	if err != nil {
-		log.Warn(err)
+	if tracingEnabled {
+		shutdown, err := tracing.InitBasicTracer(*url, "producer")
+		if err != nil {
+			log.Warn(err)
+		}
+		defer shutdown()
 	}
-	defer shutdown()
 
-	grpcServer := tracing.GetGRPCServerWithUnaryInterceptor()
+	var grpcServer *grpc.Server
+	if tracingEnabled {
+		grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
+	} else {
+		grpcServer = grpc.NewServer()
+	}
 
 	reflection.Register(grpcServer)
 	// err = grpcServer.Serve(lis)

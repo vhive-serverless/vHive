@@ -31,14 +31,14 @@ clean:
 
 
 producer-image: Dockerfile producer/producer.go proto/prodcon.pb.go proto/prodcon_grpc.pb.go
-	cd ../../../ && docker build --tag vhiveease/chained-functions-serving-producer:latest --build-arg target_arg=producer -f ./function-images/tests/chained-function-serving/Dockerfile .
+	docker build --tag vhiveease/chained-functions-serving-producer:latest --build-arg target_arg=producer -f Dockerfile ../../..
 
 producer-image-push: producer-image
 	docker push vhiveease/chained-functions-serving-producer:latest
 
 
 consumer-image: Dockerfile consumer/consumer.go proto/prodcon.pb.go proto/prodcon_grpc.pb.go
-	cd ../../../ && docker build --tag vhiveease/chained-functions-serving-consumer:latest --build-arg target_arg=consumer -f ./function-images/tests/chained-function-serving/Dockerfile .
+	docker build --tag vhiveease/chained-functions-serving-consumer:latest --build-arg target_arg=consumer -f Dockerfile ../../..
 
 
 consumer-image-push: consumer-image

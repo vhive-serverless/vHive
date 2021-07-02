@@ -32,6 +32,7 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 
 	pb "tests/chained-functions-serving/proto"
 
@@ -42,13 +43,17 @@ type consumerServer struct {
 	pb.UnimplementedProducerConsumerServer
 }
 
+var tracingEnabled = os.Getenv("TRACING") != ""
+
 func (s *consumerServer) ConsumeString(ctx context.Context, str *pb.ConsumeStringRequest) (*pb.ConsumeStringReply, error) {
-	span1 := tracing.Span{SpanName: "custom-span-1", TracerName: "tracer"}
-	span2 := tracing.Span{SpanName: "custom-span-2", TracerName: "tracer"}
-	ctx = span1.StartSpan(ctx)
-	ctx = span2.StartSpan(ctx)
-	defer span1.EndSpan()
-	defer span2.EndSpan()
+	if tracingEnabled {
+		span1 := tracing.Span{SpanName: "custom-span-1", TracerName: "tracer"}
+		span2 := tracing.Span{SpanName: "custom-span-2", TracerName: "tracer"}
+		ctx = span1.StartSpan(ctx)
+		ctx = span2.StartSpan(ctx)
+		defer span1.EndSpan()
+		defer span2.EndSpan()
+	}
 	log.Printf("[consumer] Consumed %v\n", str.Value)
 	return &pb.ConsumeStringReply{Value: true}, nil
 }
@@ -77,11 +82,13 @@ func main() {
 	})
 	log.SetOutput(os.Stdout)
 
-	shutdown, err := tracing.InitBasicTracer(*url, "consumer")
-	if err != nil {
-		log.Warn(err)
+	if tracingEnabled {
+		shutdown, err := tracing.InitBasicTracer(*url, "consumer")
+		if err != nil {
+			log.Warn(err)
+		}
+		defer shutdown()
 	}
-	defer shutdown()
 
 	//set up server
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
@@ -89,7 +96,13 @@ func main() {
 		log.Fatalf("[consumer] failed to listen: %v", err)
 	}
 
-	grpcServer := tracing.GetGRPCServerWithUnaryInterceptor()
+	var grpcServer *grpc.Server
+	if tracingEnabled {
+		grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
+	} else {
+		grpcServer = grpc.NewServer()
+	}
+
 	s := consumerServer{}
 	pb.RegisterProducerConsumerServer(grpcServer, &s)
 
