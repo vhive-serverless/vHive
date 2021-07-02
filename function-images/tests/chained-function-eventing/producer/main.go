@@ -31,13 +31,12 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/client"
-	ctrdlog "github.com/containerd/containerd/log"
-	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	. "eventing/eventschemas"
+	. "chained_function_eventing/eventschemas"
+	"eventing/vhivemetadata"
 )
 
 type envConfig struct {
@@ -49,25 +48,27 @@ type server struct {
 	UnimplementedGreeterServer
 }
 
-const workflowId = "producer.chained-functions-eventing.192.168.1.240.sslip.io"
+type vHiveMetadata struct {
+	WorkflowId string `json:"WorkflowId"`
+	InvocationId string `json:"InvocationId"`
+	InvokedOn time.Time `json:"InvokedOn"`
+}
 
 var ceClient client.Client
 
 func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, error) {
-	id := uuid.New().String()
+	vhm, err := vhivemetadata.UnmarshalVHiveMetadata(req.VHiveMetadata)
+	if err != nil {
+		log.Fatalln("failed to unmarshal vhivemetadata", err)
+	}
+
 	event := cloudevents.NewEvent("1.0")
-	event.SetID(id)
+	event.SetID(vhm.InvocationId)
 	event.SetType("greeting")
 	event.SetSource("producer")
-	event.SetExtension(
-		"vhivemetadata",
-		fmt.Sprintf(
-			"{\"WorkflowId\": \"%s\", \"InvocationId\": \"%s\", \"InvokedOn\": \"%s\"}",
-			workflowId, id, time.Now().UTC().Format(ctrdlog.RFC3339NanoFixed),
-		),
-	)
+	event.SetExtension("vhivemetadata", req.VHiveMetadata)
 
-	log.Printf("received an HelloRequest: name=`%s` (id=`%s`)", req.Name, id)
+	log.Printf("received an HelloRequest: name=`%s` (invocationId=`%s`)", req.Name, vhm.InvocationId)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, GreetingEventBody{Name: req.Name}); err != nil {
 		log.Fatalf("failed to set CloudEvents data: %s", err)

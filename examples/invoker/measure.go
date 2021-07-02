@@ -24,6 +24,19 @@ func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
 	lock.Lock()
 	defer lock.Unlock()
 
+	// Start the TimeseriesDB only if there exist at least one endpoint
+	// that uses eventing
+	enable := false
+	for _, endpoint := range endpoints {
+		if endpoint.Eventing {
+			enable = true
+			break
+		}
+	}
+	if !enable {
+		return
+	}
+
 	workflowDefinitions := make(map[string]*proto.WorkflowDefinition)
 
 	for _, ep := range endpoints {
@@ -61,6 +74,10 @@ func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
 func End() (durations []time.Duration) {
 	lock.Lock()
 	defer lock.Unlock()
+
+	if conn == nil {
+		return
+	}
 
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

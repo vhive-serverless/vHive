@@ -31,10 +31,11 @@ COPY . ./
 # This is required if the final image is FROM scratch
 # See https://forums.docker.com/t/standard-init-linux-go-195-exec-user-process-caused-no-such-file-or-directory/43777/7
 ENV CGO_ENABLED=0
+WORKDIR /app/function-images/tests/chained-function-eventing
 RUN make bin/${target}
 
 FROM scratch
 WORKDIR /app
 ARG target_arg
-COPY --from=builder /app/bin/${target_arg} /app/exe
+COPY --from=builder /app/function-images/tests/chained-function-eventing/bin/${target_arg} /app/exe
 ENTRYPOINT [ "/app/exe" ]

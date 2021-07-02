@@ -32,35 +32,37 @@ clean:
 	rm -rf bin producer/*.pb.go proto/*.pb.go
 
 
-bin/producer: producer/* producer/helloworld_grpc.pb.go producer/helloworld.pb.go
-	go build -o bin/producer eventing/producer
+bin/producer: producer/main.go producer/helloworld_grpc.pb.go producer/helloworld.pb.go
+	go build -o bin/producer chained_function_eventing/producer
 
 TAG_PRODUCER = vhiveease/chained-functions-eventing-producer:latest
 image-producer: Dockerfile bin/producer
-	docker build --tag ${TAG_PRODUCER} --build-arg target_arg=producer .
+	docker build --tag ${TAG_PRODUCER} --build-arg target_arg=producer -f Dockerfile ../../..
 
 push-producer: image-producer
 	docker push ${TAG_PRODUCER}
 
 
-bin/consumer: consumer/*
-	go build -o bin/consumer eventing/consumer
+bin/consumer: consumer/main.go
+	go build -o bin/consumer chained_function_eventing/consumer
 
 TAG_CONSUMER = vhiveease/chained-functions-eventing-consumer:latest
 image-consumer: Dockerfile bin/consumer
-	docker build --tag ${TAG_CONSUMER} --build-arg target_arg=consumer .
+	docker build --tag ${TAG_CONSUMER} --build-arg target_arg=consumer -f Dockerfile ../../..
 
 push-consumer: image-consumer
 	docker push ${TAG_CONSUMER}
 
-
-producer/helloworld_grpc.pb.go producer/helloworld.pb.go:
-	protoc -I=../../springboot/proto \
+producer/helloworld.pb.go:
+	protoc \
+		-I../../../examples/invoker/ \
 		--go_out=producer \
 		--go_opt="paths=source_relative" \
+		helloworld.proto
+
+producer/helloworld_grpc.pb.go:
+	protoc \
+		-I../../../examples/invoker/ \
 		--go-grpc_out=producer \
 		--go-grpc_opt="paths=source_relative" \
 		helloworld.proto
-	# A kludge since I could not set protoc to generate outputs in `producer/` under
-	# package main.
-	sed -i 's/package helloworld/package main/g' producer/*.pb.go
