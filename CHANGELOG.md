@@ -8,6 +8,7 @@
 
 ### Changed
 
+- Workload stdout/stderr is not directly redirected to vhive stdout/stderr anymore but is printed by vhive via `logrus.WithFields(logrus.Fields{"vmID": vmID})`.
 
 ### Fixed
 
