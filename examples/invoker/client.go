@@ -36,12 +36,13 @@ import (
 	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
-	pb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
+	"eventing/vhivemetadata"
 	. "github.com/ease-lab/vhive/examples/endpoint"
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
@@ -54,6 +55,7 @@ var (
 	portFlag    *int
 	grpcTimeout time.Duration
 	withTracing *bool
+	workflowIDs map[*Endpoint]string
 )
 
 func main() {
@@ -85,7 +87,12 @@ func main() {
 
 	endpoints, err := readEndpoints(*endpointsFile)
 	if err != nil {
-		log.Fatal("Failed to read the Hostname files: ", err)
+		log.Fatal("Failed to read the endpoints file: ", err)
+	}
+
+	workflowIDs = make(map[*Endpoint]string)
+	for _, endpoint := range endpoints {
+		workflowIDs[&endpoint] = uuid.New().String()
 	}
 
 	if *withTracing {
@@ -140,16 +147,16 @@ func runExperiment(endpoints []Endpoint, runDuration, targetRPS int) (realRPS fl
 			})
 			endpoint := endpoints[issued%len(endpoints)]
 			if endpoint.Eventing {
-				go invokeEventingFunction(endpoint)
+				go invokeEventingFunction(&endpoint)
 			} else {
-				go invokeServingFunction(endpoint.Hostname)
+				go invokeServingFunction(&endpoint)
 			}
 			issued++
 		}
 	}
 }
 
-func SayHello(address string) {
+func SayHello(address, workflowID string) {
 	var dialOption grpc.DialOption
 	if *withTracing {
 		dialOption = grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())
@@ -162,35 +169,42 @@ func SayHello(address string) {
 	}
 	defer conn.Close()
 
-	c := pb.NewGreeterClient(conn)
+	c := NewGreeterClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 
-	_, err = c.SayHello(ctx, &pb.HelloRequest{Name: "faas"})
+	_, err = c.SayHello(ctx, &HelloRequest{
+		Name: "faas",
+		VHiveMetadata: vhivemetadata.MarshalVHiveMetadata(vhivemetadata.VHiveMetadata{
+			WorkflowId: workflowID,
+			InvocationId: uuid.New().String(),
+			InvokedOn: time.Now().UTC(),
+		}),
+	})
 	if err != nil {
 		log.Warnf("Failed to invoke %v, err=%v", address, err)
 	}
 }
 
-func invokeEventingFunction(endpoint Endpoint) {
+func invokeEventingFunction(endpoint *Endpoint) {
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
 	log.Debug("Invoking asynchronously by the address: %v", address)
 
-	SayHello(address)
+	SayHello(address, workflowIDs[endpoint])
 
 	atomic.AddInt64(&completed, 1)
 
 	return
 }
 
-func invokeServingFunction(hostname string) {
-	defer getDuration(startMeasurement(hostname)) // measure entire invocation time
+func invokeServingFunction(endpoint *Endpoint) {
+	defer getDuration(startMeasurement(endpoint.Hostname)) // measure entire invocation time
 
-	address := fmt.Sprintf("%s:%d", hostname, *portFlag)
+	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
 	log.Debug("Invoking by the address: %v", address)
 
-	SayHello(address)
+	SayHello(address, workflowIDs[endpoint])
 
 	atomic.AddInt64(&completed, 1)
 
