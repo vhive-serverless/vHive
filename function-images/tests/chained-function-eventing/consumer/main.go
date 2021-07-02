@@ -28,7 +28,7 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 
-	. "eventing/eventschemas"
+	. "chained_function_eventing/eventschemas"
 )
 
 func callback(_ context.Context, event cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
