@@ -57,18 +57,15 @@ type vHiveMetadata struct {
 var ceClient client.Client
 
 func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, error) {
-	vhm, err := vhivemetadata.UnmarshalVHiveMetadata(req.VHiveMetadata)
-	if err != nil {
-		log.Fatalln("failed to unmarshal vhivemetadata", err)
-	}
+	invocationId := vhivemetadata.GetInvocationId(req.VHiveMetadata)
 
 	event := cloudevents.NewEvent("1.0")
-	event.SetID(vhm.InvocationId)
+	event.SetID(invocationId)
 	event.SetType("greeting")
 	event.SetSource("producer")
 	event.SetExtension("vhivemetadata", req.VHiveMetadata)
 
-	log.Printf("received an HelloRequest: name=`%s` (invocationId=`%s`)", req.Name, vhm.InvocationId)
+	log.Printf("received an HelloRequest: name=`%s` (invocationId=`%s`)", req.Name, invocationId)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, GreetingEventBody{Name: req.Name}); err != nil {
 		log.Fatalf("failed to set CloudEvents data: %s", err)
