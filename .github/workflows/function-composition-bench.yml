@@ -10,7 +10,6 @@ on:
 env:
   GOOS: linux
   GO111MODULE: on
-  VHIVE_GOLANG_VERSION: golang:1.16.4-alpine3.13
 
 jobs:
   bench-docker-compose-serving:
@@ -51,7 +50,7 @@ jobs:
     - name: Set up Golang
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15
+        go-version: 1.16
 
     - name: Setup LOGPATH
       run: |
