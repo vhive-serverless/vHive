@@ -55,9 +55,9 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 	var conn *grpc.ClientConn
 	// TODO: shouldn't we also use grpc.WithBlock() ?
 	if tracingEnabled {
-		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithInsecure())
+		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
 	} else {
-		conn, err = grpc.Dial(addr, grpc.WithInsecure())
+		conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
 	}
 	if err != nil {
 		log.Fatalf("[producer] fail to dial: %s", err)

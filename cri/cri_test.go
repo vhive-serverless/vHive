@@ -185,7 +185,7 @@ func parallelInvoke(t *testing.T, functionURL string) {
 }
 
 func getClient(functionURL string) (hpb.GreeterClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(functionURL, grpc.WithInsecure())
+	conn, err := grpc.Dial(functionURL, grpc.WithBlock(), grpc.WithInsecure())
 	if err != nil {
 		return nil, nil, err
 	}
