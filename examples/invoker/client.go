@@ -175,11 +175,11 @@ func SayHello(address, workflowID string) {
 
 	_, err = c.SayHello(ctx, &HelloRequest{
 		Name: "faas",
-		VHiveMetadata: vhivemetadata.MarshalVHiveMetadata(vhivemetadata.VHiveMetadata{
-			WorkflowId:   workflowID,
-			InvocationId: uuid.New().String(),
-			InvokedOn:    time.Now().UTC(),
-		}),
+		VHiveMetadata: vhivemetadata.MakeVHiveMetadata(
+			workflowID,
+			uuid.New().String(),
+			time.Now().UTC(),
+		),
 	})
 	if err != nil {
 		log.Warnf("Failed to invoke %v, err=%v", address, err)
