@@ -44,6 +44,17 @@ import (
 	"google.golang.org/grpc"
 )
 
+func IsTracingEnabled() bool {
+	if val, ok := os.LookupEnv("ENABLE_TRACING"); !ok || val == "false" {
+		return false
+	} else if val == "true" {
+		return true
+	} else {
+		log.Fatalf("ENABLE_TRACING has unexpected value: `%s`", val)
+		return false
+	}
+}
+
 func initTracer(tp *trace.TracerProvider) func() {
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))

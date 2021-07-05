@@ -43,10 +43,8 @@ type consumerServer struct {
 	pb.UnimplementedProducerConsumerServer
 }
 
-var tracingEnabled = os.Getenv("TRACING") != ""
-
 func (s *consumerServer) ConsumeString(ctx context.Context, str *pb.ConsumeStringRequest) (*pb.ConsumeStringReply, error) {
-	if tracingEnabled {
+	if tracing.IsTracingEnabled() {
 		span1 := tracing.Span{SpanName: "custom-span-1", TracerName: "tracer"}
 		span2 := tracing.Span{SpanName: "custom-span-2", TracerName: "tracer"}
 		ctx = span1.StartSpan(ctx)
@@ -82,7 +80,7 @@ func main() {
 	})
 	log.SetOutput(os.Stdout)
 
-	if tracingEnabled {
+	if tracing.IsTracingEnabled() {
 		shutdown, err := tracing.InitBasicTracer(*url, "consumer")
 		if err != nil {
 			log.Warn(err)
@@ -97,7 +95,7 @@ func main() {
 	}
 
 	var grpcServer *grpc.Server
-	if tracingEnabled {
+	if tracing.IsTracingEnabled() {
 		grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
 	} else {
 		grpcServer = grpc.NewServer()
