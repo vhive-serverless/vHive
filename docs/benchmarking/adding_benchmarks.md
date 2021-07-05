@@ -129,6 +129,8 @@ One can enable tracing by following these steps (example is for Golang):
                 - name: h2c
                   containerPort: 80
     ```
+    - Beware that tracing comes with an non-negligible overhead so end-to-end measurements
+      should be performed with tracing off.
 
 The producer in the vHive
 [serving example](/function-images/tests/chained-function-serving/producer/producer.go)
