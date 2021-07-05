@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 
-	"eventing/proto"
+	"github.com/ease-lab/vhive/utils/benchmarking/eventing/proto"
 
 	"github.com/ease-lab/vhive/examples/endpoint"
 )
@@ -74,6 +74,8 @@ func End() (durations []time.Duration) {
 	lock.Lock()
 	defer lock.Unlock()
 
+	// TimeseriesDB is started only if there existed at least one endpoint
+	// that used eventing; conn is nil if not started.
 	if conn == nil {
 		return
 	}

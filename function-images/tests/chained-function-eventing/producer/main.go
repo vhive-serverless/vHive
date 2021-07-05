@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/client"
@@ -35,8 +34,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	. "chained_function_eventing/eventschemas"
-	"eventing/vhivemetadata"
+	"chained_function_eventing/eventschemas"
+	"github.com/ease-lab/vhive/utils/benchmarking/eventing/vhivemetadata"
 )
 
 type envConfig struct {
@@ -46,12 +45,6 @@ type envConfig struct {
 
 type server struct {
 	UnimplementedGreeterServer
-}
-
-type vHiveMetadata struct {
-	WorkflowId string `json:"WorkflowId"`
-	InvocationId string `json:"InvocationId"`
-	InvokedOn time.Time `json:"InvokedOn"`
 }
 
 var ceClient client.Client
@@ -67,7 +60,7 @@ func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, 
 
 	log.Printf("received an HelloRequest: name=`%s` (invocationId=`%s`)", req.Name, invocationId)
 
-	if err := event.SetData(cloudevents.ApplicationJSON, GreetingEventBody{Name: req.Name}); err != nil {
+	if err := event.SetData(cloudevents.ApplicationJSON, eventschemas.GreetingEventBody{Name: req.Name}); err != nil {
 		log.Fatalf("failed to set CloudEvents data: %s", err)
 	}
 
@@ -103,6 +96,7 @@ func main() {
 	defer lis.Close()
 
 	var server server
+	// TODO: add tracing support, see https://github.com/ease-lab/vhive/issues/299
 	grpcServer := grpc.NewServer()
 	RegisterGreeterServer(grpcServer, &server)
 	reflection.Register(grpcServer)

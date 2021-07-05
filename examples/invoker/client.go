@@ -42,9 +42,9 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
-	"eventing/vhivemetadata"
+	"github.com/ease-lab/vhive/utils/benchmarking/eventing/vhivemetadata"
 
-	. "github.com/ease-lab/vhive/examples/endpoint"
+	"github.com/ease-lab/vhive/examples/endpoint"
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
 
@@ -56,7 +56,7 @@ var (
 	portFlag    *int
 	grpcTimeout time.Duration
 	withTracing *bool
-	workflowIDs map[*Endpoint]string
+	workflowIDs map[*endpoint.Endpoint]string
 )
 
 func main() {
@@ -91,9 +91,9 @@ func main() {
 		log.Fatal("Failed to read the endpoints file: ", err)
 	}
 
-	workflowIDs = make(map[*Endpoint]string)
-	for _, endpoint := range endpoints {
-		workflowIDs[&endpoint] = uuid.New().String()
+	workflowIDs = make(map[*endpoint.Endpoint]string)
+	for _, ep := range endpoints {
+		workflowIDs[&ep] = uuid.New().String()
 	}
 
 	if *withTracing {
@@ -109,7 +109,7 @@ func main() {
 	writeLatencies(realRPS, *latencyOutputFile)
 }
 
-func readEndpoints(path string) (endpoints []Endpoint, _ error) {
+func readEndpoints(path string) (endpoints []endpoint.Endpoint, _ error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func readEndpoints(path string) (endpoints []Endpoint, _ error) {
 	return
 }
 
-func runExperiment(endpoints []Endpoint, runDuration, targetRPS int) (realRPS float64) {
+func runExperiment(endpoints []endpoint.Endpoint, runDuration, targetRPS int) (realRPS float64) {
 	var issued int
 
 	Start(TimeseriesDBAddr, endpoints)
@@ -146,11 +146,11 @@ func runExperiment(endpoints []Endpoint, runDuration, targetRPS int) (realRPS fl
 			once.Do(func() {
 				start = time.Now()
 			})
-			endpoint := endpoints[issued%len(endpoints)]
-			if endpoint.Eventing {
-				go invokeEventingFunction(&endpoint)
+			ep := endpoints[issued%len(endpoints)]
+			if ep.Eventing {
+				go invokeEventingFunction(&ep)
 			} else {
-				go invokeServingFunction(&endpoint)
+				go invokeServingFunction(&ep)
 			}
 			issued++
 		}
@@ -186,7 +186,7 @@ func SayHello(address, workflowID string) {
 	}
 }
 
-func invokeEventingFunction(endpoint *Endpoint) {
+func invokeEventingFunction(endpoint *endpoint.Endpoint) {
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
 	log.Debug("Invoking asynchronously by the address: %v", address)
 
@@ -197,7 +197,7 @@ func invokeEventingFunction(endpoint *Endpoint) {
 	return
 }
 
-func invokeServingFunction(endpoint *Endpoint) {
+func invokeServingFunction(endpoint *endpoint.Endpoint) {
 	defer getDuration(startMeasurement(endpoint.Hostname)) // measure entire invocation time
 
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
