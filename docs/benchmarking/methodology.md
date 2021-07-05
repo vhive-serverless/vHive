@@ -25,6 +25,21 @@ for the synchronous benchmarks.
 ![Diagram of TimeseriesDB in a sample asynchronous pipeline](./assets/timeseriesdb.png)
 _Diagram of TimeseriesDB in a sample asynchronous pipeline_
 
+### vHive Metadata
+vHive Metadata is some high-level information for a given asynchronous
+request that is  relied on by the TimeseriesDB. For the purposes of
+pipeline developers, it can simply be thought as an opaque binary
+object that is to be passed around in gRPC requests and CloudEvents.
+vHive Metadata is created at the invoker, and eventually consumed by
+TimeseriesDB.
+
+In gRPC requests, vHive Metadata is passed as field
+`bytes vHiveMetadata = 15` of `HelloRequest` message. In CloudEvents,
+vHive metadata is stored in `vhivemetadata` extension attribute of type
+byte array---this is also what TimeseriesDB looks for.
+
+Developers can use `utils/benchmarking/eventing/vhivemetadata` to read
+and create vHive metadata objects.
 
 ## Benchmarking
 You can use [examples/invoker](../../examples/invoker) (the "invoker") to
