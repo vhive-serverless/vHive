@@ -175,6 +175,7 @@ grpcurl
 gz
 Harald
 HDDs
+HelloRequest
 helloworld
 Hestness
 hostname
@@ -484,11 +485,14 @@ USENIX
 usr
 ustiugov
 Ustiugov
+utils
 UUID
 vhive
 vHive
 vHive's
 vhiveease
+vHiveMetadata
+vhivemetadata
 Vijay
 virtualized
 Vlachos
