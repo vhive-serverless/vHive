@@ -1,6 +1,6 @@
 ACM
-Adileh
 addr
+Adileh
 al
 Alberquilla
 Aldus
@@ -191,6 +191,7 @@ IEEEMicro
 IISWC
 IIT
 imageFile
+imagePullPolicy
 In-Memory
 InfiniBand
 init
@@ -493,8 +494,8 @@ virtualized
 Vlachos
 VLDB
 vm
-vmID
 VM
+vmID
 vmIncrStep
 VMs
 Volos
@@ -503,6 +504,7 @@ WDDD
 wget
 WIDX
 WIOSCA
+WithBlock
 WithFields
 WithInsecure
 WithUnaryInterceptor
