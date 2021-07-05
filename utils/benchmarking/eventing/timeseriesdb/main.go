@@ -23,7 +23,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"strconv"
 	"time"
@@ -38,6 +37,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"eventing/proto"
+	"eventing/vhivemetadata"
 )
 
 type Server struct {
@@ -87,28 +87,16 @@ func (s *Server) EndExperiment(_ context.Context, _ *empty.Empty) (*proto.Experi
 	return &proto.ExperimentResult{WorkflowResults: results}, nil
 }
 
-func getProtoEventFromCloudEvent(s string) *proto.VHiveMetadata {
-	var j struct {
-		WorkflowId   string `json:"WorkflowId"`
-		InvocationId string `json:"InvocationId"`
-		InvokedOn    string `json:"InvokedOn"`
-	}
-	if err := json.Unmarshal([]byte(s), &j); err != nil {
-		log.Fatalln("failed to unmarshal vhivemetadata", err)
-	}
-	invokedOnT, err := time.Parse(ctrdlog.RFC3339NanoFixed, j.InvokedOn)
-	if err != nil {
-		log.Fatalln("failed to parse InvokedOn of vhivemetadata", err)
-	}
+func getProtoEventFromCloudEvent(d []byte) *proto.VHiveMetadata {
 	return &proto.VHiveMetadata{
-		WorkflowId:   j.WorkflowId,
-		InvocationId: j.InvocationId,
-		InvokedOn:    timestamppb.New(invokedOnT),
+		WorkflowId:   vhivemetadata.GetWorkflowId(d),
+		InvocationId: vhivemetadata.GetInvocationId(d),
+		InvokedOn:    timestamppb.New(vhivemetadata.GetInvokedOn(d)),
 	}
 }
 
 func morphCloudEventToProtoEvent(event cloudevents.Event) *proto.Event {
-	vHiveMetadataString, ok := event.Extensions()["vhivemetadata"].(string)
+	vHiveMetadataString, ok := event.Extensions()["vhivemetadata"].([]byte)
 	if !ok {
 		log.Fatalln("vhivemetadata is not of type string")
 	}
