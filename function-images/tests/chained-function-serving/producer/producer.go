@@ -47,14 +47,12 @@ type producerServer struct {
 	pb.UnimplementedGreeterServer
 }
 
-var tracingEnabled = os.Getenv("TRACING") != ""
-
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
 	// establish a connection
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
 	var conn *grpc.ClientConn
 	// TODO: shouldn't we also use grpc.WithBlock() ?
-	if tracingEnabled {
+	if tracing.IsTracingEnabled() {
 		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
 	} else {
 		conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
@@ -88,7 +86,7 @@ func main() {
 	})
 	log.SetOutput(os.Stdout)
 
-	if tracingEnabled {
+	if tracing.IsTracingEnabled() {
 		shutdown, err := tracing.InitBasicTracer(*url, "producer")
 		if err != nil {
 			log.Warn(err)
@@ -97,7 +95,7 @@ func main() {
 	}
 
 	var grpcServer *grpc.Server
-	if tracingEnabled {
+	if tracing.IsTracingEnabled() {
 		grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
 	} else {
 		grpcServer = grpc.NewServer()
