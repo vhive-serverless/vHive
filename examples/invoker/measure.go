@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 
 	"eventing/proto"
+
 	"github.com/ease-lab/vhive/examples/endpoint"
 )
 
@@ -41,7 +42,7 @@ func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
 
 	for _, ep := range endpoints {
 		workflowDefinitions[ep.Hostname] = &proto.WorkflowDefinition{
-			Id:                         ep.Hostname,
+			Id: ep.Hostname,
 			CompletionEventDescriptors: []*proto.CompletionEventDescriptor{
 				{
 					AttrMatchers: ep.Matchers,
@@ -50,14 +51,12 @@ func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
 		}
 	}
 
-	var dialOption grpc.DialOption
+	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
-		dialOption = grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())
-	} else {
-		dialOption = grpc.WithBlock()
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	}
 	var err error
-	conn, err = grpc.Dial(tdbAddr, grpc.WithInsecure(), dialOption)
+	conn, err = grpc.Dial(tdbAddr, dialOptions...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

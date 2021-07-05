@@ -129,6 +129,7 @@ func dialer(ctx context.Context, addr string) (net.Conn, error) {
 
 func getDialOpts() []grpc.DialOption {
 	return []grpc.DialOption{
+		grpc.WithBlock(),
 		grpc.WithInsecure(),
 		grpc.WithContextDialer(dialer),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),

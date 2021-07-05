@@ -43,6 +43,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	"eventing/vhivemetadata"
+
 	. "github.com/ease-lab/vhive/examples/endpoint"
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
@@ -157,13 +158,11 @@ func runExperiment(endpoints []Endpoint, runDuration, targetRPS int) (realRPS fl
 }
 
 func SayHello(address, workflowID string) {
-	var dialOption grpc.DialOption
+	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
-		dialOption = grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())
-	} else {
-		dialOption = grpc.WithBlock()
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	}
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), dialOption)
+	conn, err := grpc.Dial(address, dialOptions...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -177,9 +176,9 @@ func SayHello(address, workflowID string) {
 	_, err = c.SayHello(ctx, &HelloRequest{
 		Name: "faas",
 		VHiveMetadata: vhivemetadata.MarshalVHiveMetadata(vhivemetadata.VHiveMetadata{
-			WorkflowId: workflowID,
+			WorkflowId:   workflowID,
 			InvocationId: uuid.New().String(),
-			InvokedOn: time.Now().UTC(),
+			InvokedOn:    time.Now().UTC(),
 		}),
 	})
 	if err != nil {

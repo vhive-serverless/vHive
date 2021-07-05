@@ -106,7 +106,7 @@ One can enable tracing by following these steps (example is for Golang):
    ```
 3. If the function is a client, use the instrumented grpc dial method to connect to the server:
    ```go
-   conn, err := tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithInsecure())
+   conn, err := tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
    ```
 
 The producer in the vHive 
