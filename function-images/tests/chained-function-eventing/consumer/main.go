@@ -28,11 +28,11 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 
-	. "chained_function_eventing/eventschemas"
+	"chained_function_eventing/eventschemas"
 )
 
 func callback(_ context.Context, event cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
-	var body GreetingEventBody
+	var body eventschemas.GreetingEventBody
 	if err := event.DataAs(&body); err != nil {
 		log.Fatalf("failed to extract CloudEvent data: %s", err)
 	}

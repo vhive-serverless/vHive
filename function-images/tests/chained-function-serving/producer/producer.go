@@ -51,7 +51,6 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 	// establish a connection
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
 	var conn *grpc.ClientConn
-	// TODO: shouldn't we also use grpc.WithBlock() ?
 	if tracing.IsTracingEnabled() {
 		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
 	} else {

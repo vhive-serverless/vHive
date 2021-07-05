@@ -2,10 +2,10 @@ module chained_function_eventing
 
 go 1.16
 
-replace eventing => ../../../utils/benchmarking/eventing
+replace github.com/ease-lab/vhive/utils/benchmarking/eventing => ../../../utils/benchmarking/eventing
 
 require (
-	eventing v0.0.0-00010101000000-000000000000 // indirect
+	github.com/ease-lab/vhive/utils/benchmarking/eventing v0.0.0-00010101000000-000000000000 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.4.1
 	github.com/containerd/containerd v1.5.2
 	github.com/golang/protobuf v1.5.2
