@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	conn   *grpc.ClientConn
-	client proto.TimeseriesClient
-	lock   sync.Mutex
+	tsdbConn   *grpc.ClientConn
+	tsdbClient proto.TimeseriesClient
+	lock       sync.Mutex
 )
 
 func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
@@ -56,16 +56,16 @@ func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	}
 	var err error
-	conn, err = grpc.Dial(tdbAddr, dialOptions...)
+	tsdbConn, err = grpc.Dial(tdbAddr, dialOptions...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 
-	client = proto.NewTimeseriesClient(conn)
+	tsdbClient = proto.NewTimeseriesClient(tsdbConn)
 	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 
-	if _, err := client.StartExperiment(ctx, &proto.ExperimentDefinition{WorkflowDefinitions: workflowDefinitions}); err != nil {
+	if _, err := tsdbClient.StartExperiment(ctx, &proto.ExperimentDefinition{WorkflowDefinitions: workflowDefinitions}); err != nil {
 		log.Fatalln("failed to start experiment", err)
 	}
 }
@@ -75,15 +75,15 @@ func End() (durations []time.Duration) {
 	defer lock.Unlock()
 
 	// TimeseriesDB is started only if there existed at least one endpoint
-	// that used eventing; conn is nil if not started.
-	if conn == nil {
+	// that used eventing; tsdbConn is nil if not started.
+	if tsdbConn == nil {
 		return
 	}
 
-	defer conn.Close()
+	defer tsdbConn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	res, err := client.EndExperiment(ctx, &empty.Empty{})
+	res, err := tsdbClient.EndExperiment(ctx, &empty.Empty{})
 	if err != nil {
 		log.Fatalln("failed to end experiment", err)
 	}
