@@ -23,20 +23,21 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"encoding/base64"
 	"net/url"
 	"testing"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/types"
-	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"eventing/proto"
+	"eventing/vhivemetadata"
 )
 
+const workflowId = "wfid"
 const SleepDuration = 200 * time.Millisecond
 
 func parseURIRef(s string) types.URIRef {
@@ -52,28 +53,34 @@ func TestDefaultEndToEnd(t *testing.T) {
 
 	// Parameters
 	// ================================================================
-	exDef := proto.ExperimentDefinition{CompletionEventDescriptors: []*proto.CompletionEventDescriptor{
-		{
-			AttrMatchers: map[string]string{
-				"type":   "greeting",
-				"source": "consumer",
+	exDef := proto.ExperimentDefinition{
+		WorkflowDefinitions: map[string]*proto.WorkflowDefinition{
+			workflowId: {
+				Id: workflowId,
+				CompletionEventDescriptors: []*proto.CompletionEventDescriptor{
+					{
+						AttrMatchers: map[string]string{
+							"type":   "greeting",
+							"source": "consumer",
+						},
+					},
+				},
 			},
-		},
-	}}
+		}}
 	aInvokedOn := time.Now().UTC()
 
-	vHiveMetadataString := fmt.Sprintf(
-		`{"Id": "A", "InvokedOn": "%s"}`,
-		aInvokedOn.Format(ctrdlog.RFC3339NanoFixed),
-	)
+	vHiveMetadataString := vhivemetadata.MakeVHiveMetadata(workflowId, "A", aInvokedOn)
+	// Because CloudEvents serialise a byte array using base64 upon sending (but not object creation!)
+	// we need to do this manually for testing
+	vHiveMetadataBytes := base64.StdEncoding.EncodeToString(vHiveMetadataString)
 
 	cEventA1 := cloudevents.NewEvent("1.0")
 	cEventA1.SetID("A")
 	cEventA1.SetSource("producer")
 	cEventA1.SetType("greeting")
-	cEventA1.SetExtension("vhivemetadata", vHiveMetadataString)
+	cEventA1.SetExtension("vhivemetadata", vHiveMetadataBytes)
 	eventA1 := proto.Event{
-		VHiveMetadata: &proto.VHiveMetadata{Id: "A", InvokedOn: timestamppb.New(aInvokedOn)},
+		VHiveMetadata: &proto.VHiveMetadata{WorkflowId: workflowId, InvocationId: "A", InvokedOn: timestamppb.New(aInvokedOn)},
 		Attributes: map[string]string{
 			"id":     "A",
 			"source": "producer",
@@ -85,9 +92,9 @@ func TestDefaultEndToEnd(t *testing.T) {
 	cEventA2.SetID("A")
 	cEventA2.SetSource("consumer")
 	cEventA2.SetType("greeting")
-	cEventA2.SetExtension("vhivemetadata", vHiveMetadataString)
+	cEventA2.SetExtension("vhivemetadata", vHiveMetadataBytes)
 	eventA2 := proto.Event{
-		VHiveMetadata: &proto.VHiveMetadata{Id: "A", InvokedOn: timestamppb.New(aInvokedOn)},
+		VHiveMetadata: &proto.VHiveMetadata{WorkflowId: workflowId, InvocationId: "A", InvokedOn: timestamppb.New(aInvokedOn)},
 		Attributes: map[string]string{
 			"id":     "A",
 			"source": "consumer",
@@ -123,9 +130,11 @@ func TestDefaultEndToEnd(t *testing.T) {
 
 	// Assertions
 	// ================================================================
-	require.Len(t, res.Invocations, 1)
+	require.Len(t, res.WorkflowResults, 1)
 
-	invocation := res.Invocations[0]
+	require.Len(t, res.WorkflowResults[workflowId].Invocations, 1)
+
+	invocation := res.WorkflowResults[workflowId].Invocations[0]
 	require.Equal(t, "A", invocation.Id)
 	require.Equal(t, aInvokedOn, invocation.InvokedOn.AsTime())
 	require.GreaterOrEqual(t, invocation.Duration.AsDuration().Microseconds(), SleepDuration.Microseconds())

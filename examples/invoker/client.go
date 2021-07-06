@@ -93,7 +93,7 @@ func main() {
 
 	workflowIDs = make(map[*endpoint.Endpoint]string)
 	for _, ep := range endpoints {
-		workflowIDs[&ep] = uuid.New().String()
+		workflowIDs[ep] = uuid.New().String()
 	}
 
 	if *withTracing {
@@ -109,7 +109,7 @@ func main() {
 	writeLatencies(realRPS, *latencyOutputFile)
 }
 
-func readEndpoints(path string) (endpoints []endpoint.Endpoint, _ error) {
+func readEndpoints(path string) (endpoints []*endpoint.Endpoint, _ error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -120,10 +120,10 @@ func readEndpoints(path string) (endpoints []endpoint.Endpoint, _ error) {
 	return
 }
 
-func runExperiment(endpoints []endpoint.Endpoint, runDuration, targetRPS int) (realRPS float64) {
+func runExperiment(endpoints []*endpoint.Endpoint, runDuration, targetRPS int) (realRPS float64) {
 	var issued int
 
-	Start(TimeseriesDBAddr, endpoints)
+	Start(TimeseriesDBAddr, endpoints, workflowIDs)
 
 	timeout := time.After(time.Duration(runDuration) * time.Second)
 	tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
@@ -148,9 +148,9 @@ func runExperiment(endpoints []endpoint.Endpoint, runDuration, targetRPS int) (r
 			})
 			ep := endpoints[issued%len(endpoints)]
 			if ep.Eventing {
-				go invokeEventingFunction(&ep)
+				go invokeEventingFunction(ep)
 			} else {
-				go invokeServingFunction(&ep)
+				go invokeServingFunction(ep)
 			}
 			issued++
 		}
