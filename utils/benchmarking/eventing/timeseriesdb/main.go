@@ -23,6 +23,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"net"
 	"strconv"
 	"time"
@@ -96,9 +97,14 @@ func getProtoEventFromCloudEvent(d []byte) *proto.VHiveMetadata {
 }
 
 func morphCloudEventToProtoEvent(event cloudevents.Event) *proto.Event {
-	vHiveMetadataString, ok := event.Extensions()["vhivemetadata"].([]byte)
+	vHiveMetadataString, ok := event.Extensions()["vhivemetadata"].(string)
 	if !ok {
-		log.Fatalln("vhivemetadata is not of type string")
+		log.Fatalf("vhivemetadata is not of type []byte: `%#v`", event.Extensions()["vhivemetadata"])
+	}
+
+	vHiveMetadataBytes, err := base64.StdEncoding.DecodeString(vHiveMetadataString)
+	if err != nil {
+		log.Fatalf("failed to base64 decode vhivemetadata: `%#v`", vHiveMetadataString)
 	}
 
 	// See https://github.com/cloudevents/spec/blob/v1.0.1/spec.md#type-system
@@ -107,6 +113,9 @@ func morphCloudEventToProtoEvent(event cloudevents.Event) *proto.Event {
 	attributes["source"] = event.Source()
 	attributes["type"] = event.Type()
 	for k, i := range event.Extensions() {
+		if k == "vhivemetadata" {
+			continue
+		}
 		switch v := i.(type) {
 		case bool:
 			attributes[k] = strconv.FormatBool(v)
@@ -119,11 +128,8 @@ func morphCloudEventToProtoEvent(event cloudevents.Event) *proto.Event {
 		}
 	}
 
-	// CloudEvent extension `vhivemetadata` is our own magic and thus shall be removed from attributes
-	delete(attributes, "vhivemetadata")
-
 	return &proto.Event{
-		VHiveMetadata: getProtoEventFromCloudEvent(vHiveMetadataString),
+		VHiveMetadata: getProtoEventFromCloudEvent(vHiveMetadataBytes),
 		Attributes:    attributes,
 		Data:          event.Data(),
 	}
@@ -196,7 +202,10 @@ func (s *Server) registerEvent(_ context.Context, cloudEvent cloudevents.Event) 
 		event.Attributes["source"], event.Attributes["type"],
 	)
 
-	workflow := s.workflows[event.VHiveMetadata.WorkflowId]
+	workflow, ok := s.workflows[event.VHiveMetadata.WorkflowId]
+	if !ok {
+		log.Fatalf("failed to register an event to an unknown workflow: `%s`", event.VHiveMetadata.WorkflowId)
+	}
 
 	invocation, ok := workflow.invocations[event.VHiveMetadata.InvocationId]
 	if !ok {
