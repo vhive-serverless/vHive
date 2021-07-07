@@ -357,11 +357,10 @@ func (f *Function) AddInstance() *metrics.Metric {
 		metr = f.LoadInstance()
 	} else {
 		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
-		f.guestIP = resp.GuestIP
 		if err != nil {
 			log.Panic(err)
 		}
-
+		f.guestIP = resp.GuestIP
 		f.vmID = f.getVMID()
 		f.lastInstanceID++
 	}
