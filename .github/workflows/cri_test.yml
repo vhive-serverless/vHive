@@ -68,3 +68,49 @@ jobs:
     - name: Cleaning
       if: ${{ always() }}
       run: ./scripts/github_runner/clean_cri_runner.sh
+  
+  gvisor-cri-tests:
+    name: gVisor CRI tests
+    env:
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_VHIVE_ARGS: "-dbg"
+    runs-on: [self-hosted, cri]
+
+    steps:
+
+    - name: Host Info
+      run: |
+        echo $HOSTNAME
+        echo $GITHUB_RUN_ID
+
+    - name: Setup TMPDIR
+      run: mkdir -p $TMPDIR
+
+    - name: Set up Go 1.16
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Setup gvisor-containerd
+      run: ./scripts/setup_gvisor_containerd.sh
+
+    - name: Build
+      run: go build
+
+    - name: Run vHive gVisor CRI tests
+      run: make test-cri-gvisor
+
+    - name: Archive log artifacts
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: ctrd-logs
+        path: |
+          /tmp/ctrd-logs/${{ github.run_id }}
+
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/github_runner/clean_cri_runner.sh
