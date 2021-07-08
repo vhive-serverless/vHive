@@ -21,7 +21,7 @@ var (
 	lock       sync.Mutex
 )
 
-func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
+func Start(tdbAddr string, endpoints []*endpoint.Endpoint, workflowIDs map[*endpoint.Endpoint]string) {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -41,8 +41,9 @@ func Start(tdbAddr string, endpoints []endpoint.Endpoint) {
 	workflowDefinitions := make(map[string]*proto.WorkflowDefinition)
 
 	for _, ep := range endpoints {
-		workflowDefinitions[ep.Hostname] = &proto.WorkflowDefinition{
-			Id: ep.Hostname,
+		workflowID := workflowIDs[ep]
+		workflowDefinitions[workflowID] = &proto.WorkflowDefinition{
+			Id: workflowID,
 			CompletionEventDescriptors: []*proto.CompletionEventDescriptor{
 				{
 					AttrMatchers: ep.Matchers,
