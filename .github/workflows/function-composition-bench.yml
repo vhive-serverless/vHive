@@ -1,15 +1,17 @@
 name: Function Composition Bench
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["Function Composition Push"]
     branches: [main]
-    types: 
+    types:
       - completed
-  
+
 env:
   GOOS: linux
   GO111MODULE: on
+  TMPDIR: /root/tmp
 
 jobs:
   bench-docker-compose-serving:
@@ -18,23 +20,20 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: start multi-container program with docker-compose
+        working-directory: function-images/tests/chained-function-serving
+        run: |
+          docker-compose up &> log_file &
+          sleep 15s
+      - name: invoke the chain
+        run: |
+          ./bin/grpcurl -plaintext localhost:3031 helloworld.Greeter.SayHello
+      - name: show docker-compose log
+        run: cat function-images/tests/chained-function-serving/log_file
 
-    - name: Setup grpcurl
-      run: |
-        wget -qO- https://github.com/fullstorydev/grpcurl/releases/download/v1.8.1/grpcurl_1.8.1_linux_x86_64.tar.gz | sudo tar -C /usr/bin/ -xz grpcurl
-
-    - name: start multi-container program with docker-compose
-      run: |
-        cd ./function-images/tests/chained-function-serving/
-        docker-compose up &> log_file &
-        sleep 15s
-    - name: invoke the chain
-      run: |
-        grpcurl -plaintext localhost:3031 helloworld.Greeter.SayHello
-    - name: show docker-compose log
-      run: cat  ./function-images/tests/chained-function-serving/log_file
-        
   bench-serving:
     name: Serving uBenchmark (Knative)
     env:
@@ -42,71 +41,80 @@ jobs:
         LOGPATH: /tmp/uBench-logs/${{ github.run_id }}
         GOCACHE: /root/tmp/gocache
         GOPATH: /root/tmp/gopath
-    runs-on: [self-hosted, cri]
+    runs-on: [stock-knative]
     strategy:
       fail-fast: false
     steps:
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
 
-    - name: Set up Golang
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.16
+      - name: Set up Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
 
-    - name: Setup LOGPATH
-      run: |
-        mkdir -p /tmp/uBench-logs/${{ github.run_id }}
+      - name: Setup LOGPATH
+        run: |
+          mkdir -p /tmp/uBench-logs/${{ github.run_id }}
 
-    - name: Host Info
-      run: |
-        echo $HOSTNAME
-        echo $GITHUB_RUN_ID
-        echo $LOGPATH
+      - name: Host Info
+        run: |
+          echo $HOSTNAME
+          echo $GITHUB_RUN_ID
+          echo $LOGPATH
 
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          lfs: true
 
-    - name: Start containerd
-      run: sudo containerd 1>$LOGPATH/uBench.out 2>$LOGPATH/uBench.err &
+      - name: Start consumer
+        run: kn service apply -f ./function-images/tests/chained-function-serving/service-consumer.yaml && sleep 30s
 
-    - name: Start one-node cluster
-      run : |
-        ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
+      - name: Start producer
+        run: kn service apply -f ./function-images/tests/chained-function-serving/service-producer.yaml && sleep 30s
 
-    - name: Start consumer
-      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/chained-function-serving/service-consumer.yaml && sleep 30s
+      # First use grpcurl to invoke and then use the invoker in the same
+      # job, since invoker would consider timeouts as an error so if
+      # function deployment failed, the CI would not catch an error.
+      - name: grpcurl
+        run: |
+          set -x
 
-    - name: Start producer
-      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/chained-function-serving/service-producer.yaml && sleep 30s
+          export NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          export HOSTNAME=$(kubectl get ksvc producer -n default -o jsonpath='{.status.url}' | cut -c8-)
 
-    # First use grpcurl to invoke and then use the invoker in the same
-    # job, since invoker would consider timeouts as an error so if
-    # function deployment failed, the CI would not catch an error.
-    - name: grpcurl
-      run: |
-        ./bin/grpcurl -d '{\"name\": \"Michal\"}'  -plaintext producer.default.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
+          ./bin/grpcurl -d '{\"name\": \"Michal\"}' -plaintext $HOSTNAME:$NODEPORT helloworld.Greeter.SayHello
 
-    - name: Run invoker client
-      run: |
-        echo '[ { "hostname": "producer.default.192.168.1.240.sslip.io" } ]' > endpoints.json
-        (cd examples/invoker; go build github.com/ease-lab/vhive/examples/invoker)
-        ./examples/invoker/invoker -rps 10 -time 5
+      - name: Run invoker client
+        run: |
+          set -x
 
-    - name: Test results
-      run: |
-        test $(wc -l < rps10.00_lat.csv) -eq 50
+          export NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          export HOSTNAME=$(kubectl get ksvc producer -n default -o jsonpath='{.status.url}' | cut -c8-)
 
-    - name: Inspect logs
-      run: |
-        cat rps*lat.csv
+          echo "[ { \"hostname\": \"$HOSTNAME:$NODEPORT\" } ]" > endpoints.json
+          (cd examples/invoker; go build github.com/ease-lab/vhive/examples/invoker)
+          ./examples/invoker/invoker -rps 10 -time 5
 
-    - name: Archive log artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: logs
-        path: /tmp/uBench-logs/${{ github.run_id }}
+      - name: Test results
+        run: |
+          test $(wc -l < rps10.00_lat.csv) -eq 50
 
-    - name: Cleaning
-      if: ${{ always() }}
-      run: ./scripts/github_runner/clean_cri_runner.sh stock-only
+      - name: Inspect logs
+        run: |
+          cat rps*lat.csv
+
+      - name: Archive log artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: logs
+          path: /tmp/uBench-logs/${{ github.run_id }}
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: |
+          kn service delete -f ./function-images/tests/chained-function-serving/service-producer.yaml --wait
+          kn service delete -f ./function-images/tests/chained-function-serving/service-consumer.yaml --wait
 
   bench-eventing:
     name: Eventing uBenchmark (Knative)
@@ -115,75 +123,78 @@ jobs:
         LOGPATH: /tmp/uBench-logs/${{ github.run_id }}
         GOCACHE: /root/tmp/gocache
         GOPATH: /root/tmp/gopath
-    runs-on: [self-hosted, cri]
+    runs-on: [stock-knative]
     strategy:
       fail-fast: false
     steps:
-    - name: Set up Golang
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.16
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
 
-    - name: Setup LOGPATH
-      run: |
-        mkdir -p /tmp/uBench-logs/${{ github.run_id }}
+      - name: Set up Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
 
-    - name: Host Info
-      run: |
-        echo $HOSTNAME
-        echo $GITHUB_RUN_ID
-        echo $LOGPATH
+      - name: Setup LOGPATH
+        run: |
+          mkdir -p /tmp/uBench-logs/${{ github.run_id }}
 
-    - uses: actions/checkout@v2
+      - name: Host Info
+        run: |
+          echo $HOSTNAME
+          echo $GITHUB_RUN_ID
+          echo $LOGPATH
 
-    - name: Start containerd
-      run: sudo containerd 1>$LOGPATH/containerd.out 2>$LOGPATH/containerd.err &
+      - uses: actions/checkout@v2
+        with:
+          lfs: true
 
-    - name: Start one-node cluster
-      run : |
-        ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
+      - name: Describe
+        run: |
+          kubectl get -n chained-functions-eventing broker
+          kubectl get -n chained-functions-eventing sinkbinding
+          kubectl get -n chained-functions-eventing ksvc
+          kubectl get -n chained-functions-eventing trigger
 
-    - name: Start consumer and producer
-      run: KUBECONFIG=/etc/kubernetes/admin.conf ./function-images/tests/chained-function-eventing/manifests/apply.sh && sleep 30s
+      # First use grpcurl to invoke and then use the invoker in the same
+      # job, since invoker would consider timeouts as an error so if
+      # function deployment failed, the CI would not catch an error.
+      - name: grpcurl
+        run: |
+          set -x
 
-    - name: Describe
-      run: |
-        KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing broker
-        KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing sinkbinding
-        KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing ksvc
-        KUBECONFIG=/etc/kubernetes/admin.conf kubectl get -n chained-functions-eventing trigger
+          export NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          export HOSTNAME=$(kubectl get ksvc producer -n chained-functions-eventing -o jsonpath='{.status.url}' | cut -c8-)
 
-    # First use grpcurl to invoke and then use the invoker in the same
-    # job, since invoker would consider timeouts as an error so if
-    # function deployment failed, the CI would not catch an error.
-    - name: grpcurl
-      run: |
-        ./bin/grpcurl -d '{\"name\": \"Bora\"}'  -plaintext producer.chained-functions-eventing.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
+          ./bin/grpcurl -d '{\"name\": \"Bora\"}' -plaintext $HOSTNAME:$NODEPORT helloworld.Greeter.SayHello
 
-    - name: Invoke
-      run: |
-        (cd examples/invoker; go build github.com/ease-lab/vhive/examples/invoker)
-        ./examples/invoker/invoker -rps 10 -time 5 -endpointsFile ./function-images/tests/chained-function-eventing/endpoints.json
+      - name: Invoke
+        run: |
+          set -x
 
-    - name: Inspect logs
-      run: |
-        cat rps*lat.csv
-        KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=producer
-        KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=consumer
+          export NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          export HOSTNAME=$(kubectl get ksvc producer -n chained-functions-eventing -o jsonpath='{.status.url}' | cut -c8-)
 
-    - name: Test results
-      run: |
-        test $(wc -l < rps10.00_lat.csv) -eq 50
+          echo "[ { \"hostname\": \"$HOSTNAME:$NODEPORT\" } ]" > endpoints.json
+          (cd examples/invoker; go build github.com/ease-lab/vhive/examples/invoker)
+          ./examples/invoker/invoker -rps 10 -time 5
 
-    - name: Archive log artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: logs
-        path: /tmp/uBench-logs/${{ github.run_id }}
+      - name: Inspect logs
+        run: |
+          cat rps*lat.csv
+          kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=producer
+          kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=consumer
 
-    - name: Delete
-      run: KUBECONFIG=/etc/kubernetes/admin.conf ./function-images/tests/chained-function-eventing/manifests/delete.sh
+      - name: Test results
+        run: |
+          test $(wc -l < rps10.00_lat.csv) -eq 50
 
-    - name: Cleaning
-      if: ${{ always() }}
-      run: ./scripts/github_runner/clean_cri_runner.sh stock-only
+      - name: Archive log artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: logs
+          path: /tmp/uBench-logs/${{ github.run_id }}
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: ./function-images/tests/chained-function-eventing/manifests/delete.sh
