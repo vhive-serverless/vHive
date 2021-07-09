@@ -11,6 +11,8 @@ Amna's
 amohoste
 analytics
 Analytics
+Ansible
+ansible
 antonis
 Antonis
 Apache
@@ -160,6 +162,7 @@ Gavrielatos
 GECCO
 GetGRPCServerWithUnaryInterceptor
 GFM
+GH
 Ghoshal
 github
 Golang
@@ -225,6 +228,7 @@ Katsarakis
 Kaynak
 Keckler
 Khosro
+KinD
 knative
 Knative
 KNOC
@@ -240,6 +244,7 @@ Kubernetes
 Kumar
 Kuntai
 KVM
+lan
 latencies
 latSamples
 ldquo
@@ -453,6 +458,7 @@ TimeseriesDB
 TimestampFormat
 TLB
 tmp
+TMPDIR
 tmux
 toc
 TOCS

@@ -1,20 +1,22 @@
 name: Function Composition Push
 
-on: 
+on:
   workflow_dispatch:
   push:
     branches: [ main ]
     paths:
       - 'function-images/tests/**'
       - '.github/workflows/image_build.yml'
+      - '.github/workflows/function-composition-*'
   pull_request:
     branches: [ main ]
     paths:
       - 'function-images/tests/**'
       - '.github/workflows/image_build.yml'
+      - '.github/workflows/function-composition-*'
   schedule:
     - cron: '0 9 * * 1'
-  
+
 env:
   GOOS: linux
   GO111MODULE: on
