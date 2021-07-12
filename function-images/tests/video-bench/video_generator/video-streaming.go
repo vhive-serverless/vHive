@@ -15,6 +15,8 @@ import (
 	pb_video "tests/video_analytics/proto"
 
 	pb_helloworld "github.com/ease-lab/vhive/examples/protobuf/helloworld"
+
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
 
 var videoFragment []byte
@@ -31,7 +33,7 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	// establish a connection
 	addr := fmt.Sprintf("%v:%v", s.decoderAddr, s.decoderPort)
 	log.Infof("Using addr: %v", addr)
-	conn, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure()) //todo: add tracing here
+	conn, err := tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("[Video Generator] Failed to dial decoder: %s", err)
 	}
@@ -55,6 +57,7 @@ func main() {
 	decoderPort := flag.Int("p", 80, "Decoder port")
 	servePort := flag.Int("sp", 80, "Port listened to by this generator")
 	videoFile := flag.String("video", "reference/video.mp4", "The file location of the video")
+	zipkin := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
 	flag.Parse()
 
 	log.SetFormatter(&log.TextFormatter{
@@ -69,7 +72,12 @@ func main() {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	var err error
+	shutdown, err := tracing.InitBasicTracer(*zipkin, "Video Generator")
+	if err != nil {
+		log.Warn(err)
+	}
+	defer shutdown()
+
 	videoFragment, err = ioutil.ReadFile(*videoFile)
 	log.Infof("read video fragment, size: %v\n", len(videoFragment))
 
@@ -78,7 +86,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	grpcServer := grpc.NewServer() //todo: update for tracing
+	grpcServer := tracing.GetGRPCServerWithUnaryInterceptor()
 	reflection.Register(grpcServer)
 	server := server{}
 	server.decoderAddr = *decoderAddr

@@ -22,14 +22,16 @@
 
 FROM python:3.8 as recogBuilder
 WORKDIR /py
+COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
     pip3 install --no-cache-dir --user torch==1.8.1+cpu torchvision==0.9.1+cpu torchaudio==0.8.1 -f https://download.pytorch.org/whl/torch_stable.html && \
     pip3 install --no-cache-dir --user grpcio && \
+    pip3 install --no-cache-dir --user -r requirements.txt && \
     pip3 install --no-cache-dir --user grpcio-tools
-
-COPY ./object_recognition/* ./
-COPY ./proto/videoservice_pb2_grpc.py ./
-COPY ./proto/videoservice_pb2.py ./
+COPY ./utils/tracing/python/tracing.py ./
+COPY ./function-images/tests/video-bench/object_recognition/* ./
+COPY ./function-images/tests/video-bench/proto/videoservice_pb2_grpc.py ./
+COPY ./function-images/tests/video-bench/proto/videoservice_pb2.py ./
 
 FROM python:3.8-slim as recog
 COPY --from=recogBuilder /root/.local /root/.local
@@ -41,15 +43,18 @@ ENTRYPOINT ["python3", "-u", "./recog.py"]
 
 FROM python:3.8 as decodeBuilder
 WORKDIR /py
+COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
     apt-get install ffmpeg libsm6 libxext6  -y && \
     pip3 install --no-cache-dir --user opencv-python && \
     pip3 install --no-cache-dir --user grpcio && \
+    pip3 install --no-cache-dir --user -r requirements.txt && \
     pip3 install --no-cache-dir --user grpcio-tools
-COPY ./decoder/decode.py ./
+COPY ./utils/tracing/python/tracing.py ./
+COPY ./function-images/tests/video-bench/decoder/decode.py ./
 RUN mkdir frames
-COPY ./proto/videoservice_pb2_grpc.py ./
-COPY ./proto/videoservice_pb2.py ./
+COPY ./function-images/tests/video-bench/proto/videoservice_pb2_grpc.py ./
+COPY ./function-images/tests/video-bench/proto/videoservice_pb2.py ./
 
 FROM python:3.8-slim as decode
 RUN apt update && apt-get install ffmpeg libsm6 libxext6  -y

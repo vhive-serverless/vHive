@@ -20,6 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+ROOT = ../../../
+HERE = ./function-images/tests/video-bench
+
 all: all-image 
 
 all-image: decoder-image recog-image generator-image
@@ -27,10 +30,10 @@ all-image: decoder-image recog-image generator-image
 all-image-push: decoder-image-push recog-image-push generator-image-push
 
 decoder-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py decoder/decode.py decoder/frames
-	docker build -t vhiveease/video-bench-decoder --target decode .
+	cd $(ROOT) && docker build -t vhiveease/video-bench-decoder --target decode -f $(HERE)/Dockerfile .
 
 recog-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py object_recognition/recog.py object_recognition/imagenet_labels.txt
-	docker build -t vhiveease/video-bench-recog --target recog .
+	cd $(ROOT) && docker build -t vhiveease/video-bench-recog --target recog -f $(HERE)/Dockerfile .
 
 generator-image: Dockerfile proto/videoservice_grpc.pb.go proto/videoservice.pb.go video_generator/video-streaming.go video_generator/reference/video.mp4
 	docker build -t vhiveease/video-bench-generator --target generator .

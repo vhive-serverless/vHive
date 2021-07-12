@@ -23,16 +23,24 @@
 version: "3.7"
 
 services:
+    zipkin:
+        image: openzipkin/zipkin
+        ports:
+            - 9411:9411
     recog:
         image: vhiveease/video-bench-recog
         command:
             - -sp=50053
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        depends_on:
+            - zipkin
 
     decoder:
         image: vhiveease/video-bench-decoder
         command:
             - -addr=recog:50053
             - -sp=50052
+            - -zipkin=http://zipkin:9411/api/v2/spans
         depends_on: 
             - recog
 
@@ -44,5 +52,6 @@ services:
             - -addr=decoder
             - -p=50052
             - -sp=50051
+            - -zipkin=http://zipkin:9411/api/v2/spans
         depends_on:
             - decoder
