@@ -66,20 +66,20 @@ ENTRYPOINT ["python3", "-u", "./decode.py"]
 
 
 
-FROM vhiveease/golang:latest as generatorBuilder
+FROM vhiveease/golang:latest as streamingBuilder
 WORKDIR /app
 RUN apk add --no-cache make
-COPY ./video_generator/video-streaming.go ./video_generator/
-COPY ./video_generator/reference ./reference
+COPY ./video_streaming/video-streaming.go ./video_streaming/
+COPY ./video_streaming/reference ./reference
 COPY ./go.mod ./
 COPY ./go.sum ./
 COPY ./proto ./proto
 RUN go mod download && \
-   CGO_ENABLED=0 GOOS=linux go build -v -o ./video_generator/generator-bin ./video_generator
+   CGO_ENABLED=0 GOOS=linux go build -v -o ./video_streaming/streaming-bin ./video_streaming
 
-FROM scratch as generator
+FROM scratch as streaming
 WORKDIR /app
-COPY --from=generatorBuilder /app/video_generator/generator-bin /app/gen/exe
-COPY --from=generatorBuilder /app/reference /app/reference
+COPY --from=streamingBuilder /app/video_streaming/streaming-bin /app/gen/exe
+COPY --from=streamingBuilder /app/reference /app/reference
 
 ENTRYPOINT [ "/app/gen/exe" ]

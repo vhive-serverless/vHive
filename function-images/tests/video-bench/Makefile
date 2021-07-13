@@ -25,9 +25,9 @@ HERE = ./function-images/tests/video-bench
 
 all: all-image 
 
-all-image: decoder-image recog-image generator-image
+all-image: decoder-image recog-image streaming-image
 
-all-image-push: decoder-image-push recog-image-push generator-image-push
+all-image-push: decoder-image-push recog-image-push streaming-image-push
 
 decoder-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py decoder/decode.py decoder/frames
 	cd $(ROOT) && docker build -t vhiveease/video-bench-decoder --target decode -f $(HERE)/Dockerfile .
@@ -35,8 +35,8 @@ decoder-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.
 recog-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py object_recognition/recog.py object_recognition/imagenet_labels.txt
 	cd $(ROOT) && docker build -t vhiveease/video-bench-recog --target recog -f $(HERE)/Dockerfile .
 
-generator-image: Dockerfile proto/videoservice_grpc.pb.go proto/videoservice.pb.go video_generator/video-streaming.go video_generator/reference/video.mp4
-	docker build -t vhiveease/video-bench-generator --target generator .
+streaming-image: Dockerfile proto/videoservice_grpc.pb.go proto/videoservice.pb.go video_streaming/video-streaming.go video_streaming/reference/video.mp4
+	docker build -t vhiveease/video-bench-streaming --target streaming .
 
 decoder-image-push: decoder-image
 	docker push vhiveease/video-bench-decoder:latest
@@ -44,5 +44,5 @@ decoder-image-push: decoder-image
 recog-image-push: recog-image
 	docker push vhiveease/video-bench-recog:latest
 
-generator-image-push: generator-image
-	docker push vhiveease/video-bench-generator:latest
+streaming-image-push: streaming-image
+	docker push vhiveease/video-bench-streaming:latest

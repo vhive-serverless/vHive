@@ -255,19 +255,19 @@ jobs:
     - name: Start decoder
       run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/video-bench/service-decoder.yaml && sleep 30s
 
-    - name: Start generator
-      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/video-bench/service-generator.yaml && sleep 30s
+    - name: Start streaming
+      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/video-bench/service-streaming.yaml && sleep 30s
 
     # First use grpcurl to invoke and then use the invoker in the same
     # job, since invoker would consider timeouts as an error so if
     # function deployment failed, the CI would not catch an error.
     - name: grpcurl
       run: |
-        ./bin/grpcurl -plaintext generator.default.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
+        ./bin/grpcurl -plaintext streaming.default.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
 
     - name: Run invoker client
       run: |
-        echo '[ { "hostname": "generator.default.192.168.1.240.sslip.io" } ]' > endpoints.json
+        echo '[ { "hostname": "streaming.default.192.168.1.240.sslip.io" } ]' > endpoints.json
         (cd examples/invoker; go build github.com/ease-lab/vhive/examples/invoker)
         ./examples/invoker/invoker -rps 10 -time 5
 

@@ -20,33 +20,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-version: "3.7"
-
-services:
-    recog:
-        image: vhiveease/video-bench-recog
-        command:
-            - -sp=50053
-            - -zipkin=http://zipkin:9411/api/v2/spans
-
-    decoder:
-        image: vhiveease/video-bench-decoder
-        command:
-            - -addr=recog:50053
-            - -sp=50052
-            - -frames=3
-            - -zipkin=http://zipkin:9411/api/v2/spans
-        depends_on: 
-            - recog
-
-    streaming:
-        image: vhiveease/video-bench-streaming
-        ports: 
-            - "50051:50051"
-        command:
-            - -addr=decoder
-            - -p=50052
-            - -sp=50051
-            - -zipkin=http://zipkin:9411/api/v2/spans
-        depends_on:
-            - decoder
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: streaming
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+        - image: docker.io/vhiveease/video-bench-streaming:latest
+          imagePullPolicy: Always
+          ports:
+            # For `h2c`, see https://knative.tips/networking/http2/
+            - name: h2c
+              containerPort: 80

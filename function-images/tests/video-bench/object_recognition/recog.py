@@ -51,8 +51,9 @@ parser.add_argument("-zipkin", "--zipkin", dest = "url", default = "http://zipki
 
 args = parser.parse_args()
 
-tracing.initTracer("recog", url=args.url)
-tracing.grpcInstrumentServer()
+if tracing.IsTracingEnabled():
+    tracing.initTracer("recog", url=args.url)
+    tracing.grpcInstrumentServer()
 
 # DMITRII: The code below should run upon initialization
 

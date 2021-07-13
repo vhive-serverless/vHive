@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import print_function
+
 import sys
 import os
 # adding python tracing sources to the system path
@@ -42,37 +44,39 @@ from timeit import default_timer as now
 parser = argparse.ArgumentParser()
 parser.add_argument("-addr", "--addr", dest = "addr", default = "recog.default.192.168.1.240.sslip.io:80", help="recog address")
 parser.add_argument("-sp", "--sp", dest = "sp", default = "80", help="serve port")
+parser.add_argument("-frames", "--frames", dest = "frames", default = "1", help="Default number of frames- overwritten by environment variable")
 parser.add_argument("-zipkin", "--zipkin", dest = "url", default = "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", help="Zipkin endpoint url")
 
 args = parser.parse_args()
 
-tracing.initTracer("decoder", url=args.url)
-tracing.grpcInstrumentClient()
-tracing.grpcInstrumentServer()
+if tracing.IsTracingEnabled():
+    tracing.initTracer("decoder", url=args.url)
+    tracing.grpcInstrumentClient()
+    tracing.grpcInstrumentServer()
 
 def decode(bytes):
-  with tracing.Span("Making Tempfile"):
-    start_tempfile = now()
-    temp = tempfile.NamedTemporaryFile(suffix=".mp4")
-    temp.write(bytes)
-    temp.seek(0)
-    end_tempfile_write = now()
-    write_time = (start_tempfile-end_tempfile_write)*1000
-    print("tempfile write time: %dms" %write_time)
+    with tracing.Span("Making Tempfile"):
+        start_tempfile = now()
+        temp = tempfile.NamedTemporaryFile(suffix=".mp4")
+        temp.write(bytes)
+        temp.seek(0)
+        end_tempfile_write = now()
+        write_time = (start_tempfile-end_tempfile_write)*1000
+        print("tempfile write time: %dms" %write_time)
 
-  with tracing.Span("Split into frames"):  
-    vidcap = cv2.VideoCapture(temp.name)
-    
+    with tracing.Span("Split into frames"):  
+        vidcap = cv2.VideoCapture(temp.name)
+        
 
-    start_decode = now()
+        start_decode = now()
 
-    success,image = vidcap.read()
-    count = 0
+        success,image = vidcap.read()
+        count = 0
 
-    while success and count < 10:
-      cv2.imwrite("frames/frame%d.jpg" % count, image)     # save frame as JPEG file      
-      success,image = vidcap.read()
-      count += 1
+    while success and count < os.getenv('DecoderFrames', int(args.frames)):
+        cv2.imwrite("frames/frame%d.jpg" % count, image)     # save frame as JPEG file      
+        success,image = vidcap.read()
+        count += 1
 
     end_decode = now()
 
@@ -80,34 +84,40 @@ def decode(bytes):
     print('Time to decode %d frames: %dms' % (count, decode_e2e))
     temp.close()
 
-def SendFrame(frameNumber):
-  frame = open("frames/frame%d.jpg" % frameNumber, "rb")
-  channel = grpc.insecure_channel(args.addr)
-  stub = videoservice_pb2_grpc.ProcessFrameStub(channel)
-  response = stub.SendFrame(videoservice_pb2.SendFrameRequest(value=frame.read()))
-  return response.value
 
 
 class DecodeVideoServicer(videoservice_pb2_grpc.DecodeVideoServicer):
-  def SendVideo(self, request, context):
-    decode(request.value)
-    with tracing.Span("Send all frames"):  
-      for i in range(os.getenv('DecoderFrames', 1)):
-        result = SendFrame(i)
-        print(result)
-    # just returns the final result
-    return videoservice_pb2.SendVideoReply(value=result)
+    def SendVideo(self, request, context):
+        decode(request.value)
+        with tracing.Span("Send all frames"):  
+            for i in range(os.getenv('DecoderFrames', int(args.frames))):
+                self.SendFrame(i)
+        # just returns the final result
+
+        return videoservice_pb2.SendVideoReply(value="success")
+    
+    def SendFrame(self, frameNumber):
+        frame = open("frames/frame%d.jpg" % frameNumber, "rb")
+        channel = grpc.insecure_channel(args.addr)
+        stub = videoservice_pb2_grpc.ProcessFrameStub(channel)
+        call_future = stub.SendFrame.future(videoservice_pb2.SendFrameRequest(value=frame.read()))
+        call_future.add_done_callback(self.SendFrameResponse)
+
+    def SendFrameResponse(self, call_future):
+        print("Future callback!:")
+        print(call_future.result())
+
 
 
 def serve():
-  server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-  videoservice_pb2_grpc.add_DecodeVideoServicer_to_server(
-      DecodeVideoServicer(), server)
-  server.add_insecure_port('[::]:'+args.sp)
-  server.start()
-  server.wait_for_termination()
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    videoservice_pb2_grpc.add_DecodeVideoServicer_to_server(
+        DecodeVideoServicer(), server)
+    server.add_insecure_port('[::]:'+args.sp)
+    server.start()
+    server.wait_for_termination()
 
 
 
 if __name__ == '__main__':
-  serve()
+    serve()
