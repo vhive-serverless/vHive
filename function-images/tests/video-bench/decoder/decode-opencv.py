@@ -65,26 +65,14 @@ def decode(bytes):
         write_time = (start_tempfile-end_tempfile_write)*1000
         print("tempfile write time: %dms" %write_time)
 
-    start_decode = now()
-    with tracing.Span("get frames"):
-        out = []
-        count = 0
+    all_frames = [] 
+    with tracing.Span("Get frames"):
+        vidcap = cv2.VideoCapture(temp.name)
         for i in range(os.getenv('DecoderFrames', int(args.frames))):
-            frame, _ = (
-                ffmpeg
-                .input(temp.name)
-                .filter('select', 'gte(n,{})'.format(i+1))
-                .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')
-                .run(capture_stdout=True)
-            )
-            out.append(frame)
+            success,image = vidcap.read()
+            all_frames.append(cv2.imencode('.jpg', image)[1].tobytes())
 
-    end_decode = now()
-
-    decode_e2e = ( end_decode - start_decode ) * 1000
-    print('Time to decode %d frames: %dms' % (count, decode_e2e))
-    temp.close()
-    return out
+    return all_frames
 
 
 

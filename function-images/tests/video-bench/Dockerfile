@@ -46,6 +46,7 @@ WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
     apt-get install ffmpeg libsm6 libxext6  -y && \
+    pip3 install --no-cache-dir --user ffmpeg-python && \
     pip3 install --no-cache-dir --user opencv-python && \
     pip3 install --no-cache-dir --user grpcio && \
     pip3 install --no-cache-dir --user -r requirements.txt && \
