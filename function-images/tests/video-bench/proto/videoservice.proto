@@ -29,26 +29,26 @@ option go_package = "tests/video_analytics/proto";
 
 package videoservice;
 
-service DecodeVideo {
-    rpc SendVideo(SendVideoRequest) returns (SendVideoReply) {}
+service VideoDecoder {
+    rpc Decode(DecodeRequest) returns (DecodeReply) {}
 }
 
-service ProcessFrame {
-    rpc SendFrame(SendFrameRequest) returns (SendFrameReply) {}
+service ObjectRecognition {
+    rpc Recognise(RecogniseRequest) returns (RecogniseReply) {}
 }
 
-message SendVideoRequest {
-    bytes value = 1;
+message DecodeRequest {
+    bytes video = 1;
 }
 
-message SendVideoReply {
-    string value = 1;
+message DecodeReply {
+    string classification = 1;
 }
 
-message SendFrameRequest {
-    bytes value = 1;
+message RecogniseRequest {
+    bytes frame = 1;
 }
 
-message SendFrameReply {
-    string value = 1;
+message RecogniseReply {
+    string classification = 1;
 }

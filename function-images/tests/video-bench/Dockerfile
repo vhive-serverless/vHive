@@ -24,7 +24,7 @@ FROM python:3.8 as recogBuilder
 WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
-    pip3 install --no-cache-dir --user torch==1.8.1+cpu torchvision==0.9.1+cpu torchaudio==0.8.1 -f https://download.pytorch.org/whl/torch_stable.html && \
+    pip3 install --no-cache-dir --user torch==1.9.0+cpu torchvision==0.10.0+cpu torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html && \
     pip3 install --no-cache-dir --user grpcio && \
     pip3 install --no-cache-dir --user -r requirements.txt && \
     pip3 install --no-cache-dir --user grpcio-tools

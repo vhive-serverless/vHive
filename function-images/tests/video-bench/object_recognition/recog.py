@@ -55,14 +55,9 @@ if tracing.IsTracingEnabled():
     tracing.initTracer("recog", url=args.url)
     tracing.grpcInstrumentServer()
 
-# DMITRII: The code below should run upon initialization
-
 # Load model
-#model_file = 'squeezenet.pt'
 start_load_model = now()
-#model = torch.load(model_file)
 model = models.squeezenet1_1(pretrained=True)
-#mode = 
 end_load_model = now()
 load_model_e2e = (end_load_model - start_load_model) * 1000
 print('Time to load model: %dms' % load_model_e2e)
@@ -73,12 +68,8 @@ for i in labels_fd:
     labels.append(i)
 labels_fd.close()
 
-# Starting from here, the code should run upon a function invocation
-
 def processImage(bytes):
     start_preprocess = now()
-    # Load image
-    # img = Image.open('frame10.jpg')
     img = Image.open(io.BytesIO(bytes))
 
     transform = transforms.Compose([
@@ -123,25 +114,27 @@ def processImage(bytes):
     top_label = labels[indices[0][0]]
     output_msg = 'Label %s,LoadMod %d,PreProc %d,Inf %d,Tot %d' % (
         top_label, load_model_e2e, preprocess_e2e, inference_e2e, total_e2e)
-
-    # DMITRII: return 100 top labels to the caller; drop the code below
-
     print(output_msg)
-    return output_msg
 
-class ProcessFrameServicer(videoservice_pb2_grpc.ProcessFrameServicer):
-    def SendFrame(self, request, context):
+    # make comma-seperated output of top 100 label
+    out = ""
+    for idx in indices[0][:100]:
+        out = out + labels[idx] + ","
+    return out
+
+class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer):
+    def Recognise(self, request, context):
         print("received a call")
         with tracing.Span("Object recognition"):
-            classification = processImage(request.value)
+            classification = processImage(request.frame)
         print("object recogintion successful")
-        return videoservice_pb2.SendFrameReply(value=classification)
+        return videoservice_pb2.RecogniseReply(classification=classification)
 
 
 def serve():
   server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-  videoservice_pb2_grpc.add_ProcessFrameServicer_to_server(
-      ProcessFrameServicer(), server)
+  videoservice_pb2_grpc.add_ObjectRecognitionServicer_to_server(
+      ObjectRecognitionServicer(), server)
   server.add_insecure_port('[::]:'+args.sp)
   server.start()
   server.wait_for_termination()

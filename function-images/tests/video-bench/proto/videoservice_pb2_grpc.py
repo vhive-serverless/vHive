@@ -5,7 +5,7 @@ import grpc
 import videoservice_pb2 as videoservice__pb2
 
 
-class DecodeVideoStub(object):
+class VideoDecoderStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -14,42 +14,42 @@ class DecodeVideoStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.SendVideo = channel.unary_unary(
-                '/videoservice.DecodeVideo/SendVideo',
-                request_serializer=videoservice__pb2.SendVideoRequest.SerializeToString,
-                response_deserializer=videoservice__pb2.SendVideoReply.FromString,
+        self.Decode = channel.unary_unary(
+                '/videoservice.VideoDecoder/Decode',
+                request_serializer=videoservice__pb2.DecodeRequest.SerializeToString,
+                response_deserializer=videoservice__pb2.DecodeReply.FromString,
                 )
 
 
-class DecodeVideoServicer(object):
+class VideoDecoderServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def SendVideo(self, request, context):
+    def Decode(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_DecodeVideoServicer_to_server(servicer, server):
+def add_VideoDecoderServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'SendVideo': grpc.unary_unary_rpc_method_handler(
-                    servicer.SendVideo,
-                    request_deserializer=videoservice__pb2.SendVideoRequest.FromString,
-                    response_serializer=videoservice__pb2.SendVideoReply.SerializeToString,
+            'Decode': grpc.unary_unary_rpc_method_handler(
+                    servicer.Decode,
+                    request_deserializer=videoservice__pb2.DecodeRequest.FromString,
+                    response_serializer=videoservice__pb2.DecodeReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'videoservice.DecodeVideo', rpc_method_handlers)
+            'videoservice.VideoDecoder', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class DecodeVideo(object):
+class VideoDecoder(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def SendVideo(request,
+    def Decode(request,
             target,
             options=(),
             channel_credentials=None,
@@ -59,14 +59,14 @@ class DecodeVideo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/videoservice.DecodeVideo/SendVideo',
-            videoservice__pb2.SendVideoRequest.SerializeToString,
-            videoservice__pb2.SendVideoReply.FromString,
+        return grpc.experimental.unary_unary(request, target, '/videoservice.VideoDecoder/Decode',
+            videoservice__pb2.DecodeRequest.SerializeToString,
+            videoservice__pb2.DecodeReply.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
-class ProcessFrameStub(object):
+class ObjectRecognitionStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -75,42 +75,42 @@ class ProcessFrameStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.SendFrame = channel.unary_unary(
-                '/videoservice.ProcessFrame/SendFrame',
-                request_serializer=videoservice__pb2.SendFrameRequest.SerializeToString,
-                response_deserializer=videoservice__pb2.SendFrameReply.FromString,
+        self.Recognise = channel.unary_unary(
+                '/videoservice.ObjectRecognition/Recognise',
+                request_serializer=videoservice__pb2.RecogniseRequest.SerializeToString,
+                response_deserializer=videoservice__pb2.RecogniseReply.FromString,
                 )
 
 
-class ProcessFrameServicer(object):
+class ObjectRecognitionServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def SendFrame(self, request, context):
+    def Recognise(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_ProcessFrameServicer_to_server(servicer, server):
+def add_ObjectRecognitionServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'SendFrame': grpc.unary_unary_rpc_method_handler(
-                    servicer.SendFrame,
-                    request_deserializer=videoservice__pb2.SendFrameRequest.FromString,
-                    response_serializer=videoservice__pb2.SendFrameReply.SerializeToString,
+            'Recognise': grpc.unary_unary_rpc_method_handler(
+                    servicer.Recognise,
+                    request_deserializer=videoservice__pb2.RecogniseRequest.FromString,
+                    response_serializer=videoservice__pb2.RecogniseReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'videoservice.ProcessFrame', rpc_method_handlers)
+            'videoservice.ObjectRecognition', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class ProcessFrame(object):
+class ObjectRecognition(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def SendFrame(request,
+    def Recognise(request,
             target,
             options=(),
             channel_credentials=None,
@@ -120,8 +120,8 @@ class ProcessFrame(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/videoservice.ProcessFrame/SendFrame',
-            videoservice__pb2.SendFrameRequest.SerializeToString,
-            videoservice__pb2.SendFrameReply.FromString,
+        return grpc.experimental.unary_unary(request, target, '/videoservice.ObjectRecognition/Recognise',
+            videoservice__pb2.RecogniseRequest.SerializeToString,
+            videoservice__pb2.RecogniseReply.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -101,7 +101,7 @@ jobs:
         run: make push-all
 
   push-video-processing:
-    name: Push video-processing-*
+    name: Push Video Analytics images
     needs: push-golang
     runs-on: ubuntu-18.04
     strategy:

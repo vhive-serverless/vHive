@@ -191,16 +191,12 @@ jobs:
       run: ./scripts/github_runner/clean_cri_runner.sh stock-only
 
   bench-video-compose:
-    name: Video Processing (docker-compose)
+    name: Video Analytics (docker-compose)
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
     steps:
     - uses: actions/checkout@v2
-
-    - name: Setup grpcurl
-      run: |
-        wget -qO- https://github.com/fullstorydev/grpcurl/releases/download/v1.8.1/grpcurl_1.8.1_linux_x86_64.tar.gz | sudo tar -C /usr/bin/ -xz grpcurl
 
     - name: start multi-container program with docker-compose
       run: |
@@ -209,12 +205,12 @@ jobs:
         sleep 15s
     - name: invoke the chain
       run: |
-        grpcurl -plaintext localhost:50051 helloworld.Greeter.SayHello
+        ./bin/grpcurl -plaintext localhost:50051 helloworld.Greeter.SayHello
     - name: show docker-compose log
       run: cat  ./function-images/tests/chained-function-serving/log_file
 
   bench-video-knative:
-    name: Video Processing (Knative)
+    name: Video Analytics (Knative)
     env:
         GITHUB_RUN_ID: ${{ github.run_id }}
         LOGPATH: /tmp/uBench-logs/${{ github.run_id }}
@@ -249,14 +245,9 @@ jobs:
       run : |
         ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
 
-    - name: Start recog
-      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/video-bench/service-recog.yaml && sleep 30s
-
-    - name: Start decoder
-      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/video-bench/service-decoder.yaml && sleep 30s
-
-    - name: Start streaming
-      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service apply -f ./function-images/tests/video-bench/service-streaming.yaml && sleep 30s
+    - name: Deploy services
+      run: |
+       cd ./function-images/tests/video-bench && ./deploy.sh
 
     # First use grpcurl to invoke and then use the invoker in the same
     # job, since invoker would consider timeouts as an error so if

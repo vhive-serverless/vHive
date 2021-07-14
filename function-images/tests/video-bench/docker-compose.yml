@@ -34,7 +34,7 @@ services:
         command:
             - -addr=recog:50053
             - -sp=50052
-            - -frames=3
+            - -frames=1
             - -zipkin=http://zipkin:9411/api/v2/spans
         depends_on: 
             - recog

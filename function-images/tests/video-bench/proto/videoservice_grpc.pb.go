@@ -14,208 +14,174 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// DecodeVideoClient is the client API for DecodeVideo service.
+// VideoDecoderClient is the client API for VideoDecoder service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type DecodeVideoClient interface {
-	SendVideo(ctx context.Context, in *SendVideoRequest, opts ...grpc.CallOption) (*SendVideoReply, error)
+type VideoDecoderClient interface {
+	Decode(ctx context.Context, in *DecodeRequest, opts ...grpc.CallOption) (*DecodeReply, error)
 }
 
-type decodeVideoClient struct {
+type videoDecoderClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewDecodeVideoClient(cc grpc.ClientConnInterface) DecodeVideoClient {
-	return &decodeVideoClient{cc}
+func NewVideoDecoderClient(cc grpc.ClientConnInterface) VideoDecoderClient {
+	return &videoDecoderClient{cc}
 }
 
-func (c *decodeVideoClient) SendVideo(ctx context.Context, in *SendVideoRequest, opts ...grpc.CallOption) (*SendVideoReply, error) {
-	out := new(SendVideoReply)
-	err := c.cc.Invoke(ctx, "/videoservice.DecodeVideo/SendVideo", in, out, opts...)
+func (c *videoDecoderClient) Decode(ctx context.Context, in *DecodeRequest, opts ...grpc.CallOption) (*DecodeReply, error) {
+	out := new(DecodeReply)
+	err := c.cc.Invoke(ctx, "/videoservice.VideoDecoder/Decode", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// DecodeVideoServer is the server API for DecodeVideo service.
-// All implementations must embed UnimplementedDecodeVideoServer
+// VideoDecoderServer is the server API for VideoDecoder service.
+// All implementations must embed UnimplementedVideoDecoderServer
 // for forward compatibility
-type DecodeVideoServer interface {
-	SendVideo(context.Context, *SendVideoRequest) (*SendVideoReply, error)
-	mustEmbedUnimplementedDecodeVideoServer()
+type VideoDecoderServer interface {
+	Decode(context.Context, *DecodeRequest) (*DecodeReply, error)
+	mustEmbedUnimplementedVideoDecoderServer()
 }
 
-// UnimplementedDecodeVideoServer must be embedded to have forward compatible implementations.
-type UnimplementedDecodeVideoServer struct {
+// UnimplementedVideoDecoderServer must be embedded to have forward compatible implementations.
+type UnimplementedVideoDecoderServer struct {
 }
 
-func (UnimplementedDecodeVideoServer) SendVideo(context.Context, *SendVideoRequest) (*SendVideoReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendVideo not implemented")
+func (UnimplementedVideoDecoderServer) Decode(context.Context, *DecodeRequest) (*DecodeReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Decode not implemented")
 }
-func (UnimplementedDecodeVideoServer) mustEmbedUnimplementedDecodeVideoServer() {}
+func (UnimplementedVideoDecoderServer) mustEmbedUnimplementedVideoDecoderServer() {}
 
-// UnsafeDecodeVideoServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to DecodeVideoServer will
+// UnsafeVideoDecoderServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to VideoDecoderServer will
 // result in compilation errors.
-type UnsafeDecodeVideoServer interface {
-	mustEmbedUnimplementedDecodeVideoServer()
+type UnsafeVideoDecoderServer interface {
+	mustEmbedUnimplementedVideoDecoderServer()
 }
 
-func RegisterDecodeVideoServer(s grpc.ServiceRegistrar, srv DecodeVideoServer) {
-	s.RegisterService(&DecodeVideo_ServiceDesc, srv)
+func RegisterVideoDecoderServer(s grpc.ServiceRegistrar, srv VideoDecoderServer) {
+	s.RegisterService(&VideoDecoder_ServiceDesc, srv)
 }
 
-func _DecodeVideo_SendVideo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendVideoRequest)
+func _VideoDecoder_Decode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DecodeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DecodeVideoServer).SendVideo(ctx, in)
+		return srv.(VideoDecoderServer).Decode(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/videoservice.DecodeVideo/SendVideo",
+		FullMethod: "/videoservice.VideoDecoder/Decode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DecodeVideoServer).SendVideo(ctx, req.(*SendVideoRequest))
+		return srv.(VideoDecoderServer).Decode(ctx, req.(*DecodeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// DecodeVideo_ServiceDesc is the grpc.ServiceDesc for DecodeVideo service.
+// VideoDecoder_ServiceDesc is the grpc.ServiceDesc for VideoDecoder service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var DecodeVideo_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "videoservice.DecodeVideo",
-	HandlerType: (*DecodeVideoServer)(nil),
+var VideoDecoder_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "videoservice.VideoDecoder",
+	HandlerType: (*VideoDecoderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SendVideo",
-			Handler:    _DecodeVideo_SendVideo_Handler,
+			MethodName: "Decode",
+			Handler:    _VideoDecoder_Decode_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/videoservice.proto",
 }
 
-// ProcessFrameClient is the client API for ProcessFrame service.
+// ObjectRecognitionClient is the client API for ObjectRecognition service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ProcessFrameClient interface {
-	SendFrame(ctx context.Context, opts ...grpc.CallOption) (ProcessFrame_SendFrameClient, error)
+type ObjectRecognitionClient interface {
+	Recognise(ctx context.Context, in *RecogniseRequest, opts ...grpc.CallOption) (*RecogniseReply, error)
 }
 
-type processFrameClient struct {
+type objectRecognitionClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewProcessFrameClient(cc grpc.ClientConnInterface) ProcessFrameClient {
-	return &processFrameClient{cc}
+func NewObjectRecognitionClient(cc grpc.ClientConnInterface) ObjectRecognitionClient {
+	return &objectRecognitionClient{cc}
 }
 
-func (c *processFrameClient) SendFrame(ctx context.Context, opts ...grpc.CallOption) (ProcessFrame_SendFrameClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ProcessFrame_ServiceDesc.Streams[0], "/videoservice.ProcessFrame/SendFrame", opts...)
+func (c *objectRecognitionClient) Recognise(ctx context.Context, in *RecogniseRequest, opts ...grpc.CallOption) (*RecogniseReply, error) {
+	out := new(RecogniseReply)
+	err := c.cc.Invoke(ctx, "/videoservice.ObjectRecognition/Recognise", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &processFrameSendFrameClient{stream}
-	return x, nil
+	return out, nil
 }
 
-type ProcessFrame_SendFrameClient interface {
-	Send(*SendFrameRequest) error
-	CloseAndRecv() (*SendFrameReply, error)
-	grpc.ClientStream
-}
-
-type processFrameSendFrameClient struct {
-	grpc.ClientStream
-}
-
-func (x *processFrameSendFrameClient) Send(m *SendFrameRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *processFrameSendFrameClient) CloseAndRecv() (*SendFrameReply, error) {
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	m := new(SendFrameReply)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-// ProcessFrameServer is the server API for ProcessFrame service.
-// All implementations must embed UnimplementedProcessFrameServer
+// ObjectRecognitionServer is the server API for ObjectRecognition service.
+// All implementations must embed UnimplementedObjectRecognitionServer
 // for forward compatibility
-type ProcessFrameServer interface {
-	SendFrame(ProcessFrame_SendFrameServer) error
-	mustEmbedUnimplementedProcessFrameServer()
+type ObjectRecognitionServer interface {
+	Recognise(context.Context, *RecogniseRequest) (*RecogniseReply, error)
+	mustEmbedUnimplementedObjectRecognitionServer()
 }
 
-// UnimplementedProcessFrameServer must be embedded to have forward compatible implementations.
-type UnimplementedProcessFrameServer struct {
+// UnimplementedObjectRecognitionServer must be embedded to have forward compatible implementations.
+type UnimplementedObjectRecognitionServer struct {
 }
 
-func (UnimplementedProcessFrameServer) SendFrame(ProcessFrame_SendFrameServer) error {
-	return status.Errorf(codes.Unimplemented, "method SendFrame not implemented")
+func (UnimplementedObjectRecognitionServer) Recognise(context.Context, *RecogniseRequest) (*RecogniseReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Recognise not implemented")
 }
-func (UnimplementedProcessFrameServer) mustEmbedUnimplementedProcessFrameServer() {}
+func (UnimplementedObjectRecognitionServer) mustEmbedUnimplementedObjectRecognitionServer() {}
 
-// UnsafeProcessFrameServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ProcessFrameServer will
+// UnsafeObjectRecognitionServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ObjectRecognitionServer will
 // result in compilation errors.
-type UnsafeProcessFrameServer interface {
-	mustEmbedUnimplementedProcessFrameServer()
+type UnsafeObjectRecognitionServer interface {
+	mustEmbedUnimplementedObjectRecognitionServer()
 }
 
-func RegisterProcessFrameServer(s grpc.ServiceRegistrar, srv ProcessFrameServer) {
-	s.RegisterService(&ProcessFrame_ServiceDesc, srv)
+func RegisterObjectRecognitionServer(s grpc.ServiceRegistrar, srv ObjectRecognitionServer) {
+	s.RegisterService(&ObjectRecognition_ServiceDesc, srv)
 }
 
-func _ProcessFrame_SendFrame_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(ProcessFrameServer).SendFrame(&processFrameSendFrameServer{stream})
-}
-
-type ProcessFrame_SendFrameServer interface {
-	SendAndClose(*SendFrameReply) error
-	Recv() (*SendFrameRequest, error)
-	grpc.ServerStream
-}
-
-type processFrameSendFrameServer struct {
-	grpc.ServerStream
-}
-
-func (x *processFrameSendFrameServer) SendAndClose(m *SendFrameReply) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *processFrameSendFrameServer) Recv() (*SendFrameRequest, error) {
-	m := new(SendFrameRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _ObjectRecognition_Recognise_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecogniseRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(ObjectRecognitionServer).Recognise(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/videoservice.ObjectRecognition/Recognise",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ObjectRecognitionServer).Recognise(ctx, req.(*RecogniseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-// ProcessFrame_ServiceDesc is the grpc.ServiceDesc for ProcessFrame service.
+// ObjectRecognition_ServiceDesc is the grpc.ServiceDesc for ObjectRecognition service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ProcessFrame_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "videoservice.ProcessFrame",
-	HandlerType: (*ProcessFrameServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams: []grpc.StreamDesc{
+var ObjectRecognition_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "videoservice.ObjectRecognition",
+	HandlerType: (*ObjectRecognitionServer)(nil),
+	Methods: []grpc.MethodDesc{
 		{
-			StreamName:    "SendFrame",
-			Handler:       _ProcessFrame_SendFrame_Handler,
-			ClientStreams: true,
+			MethodName: "Recognise",
+			Handler:    _ObjectRecognition_Recognise_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/videoservice.proto",
 }

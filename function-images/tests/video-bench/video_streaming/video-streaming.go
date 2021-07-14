@@ -68,16 +68,16 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	}
 	defer conn.Close()
 
-	client := pb_video.NewDecodeVideoClient(conn)
+	client := pb_video.NewVideoDecoderClient(conn)
 
 	// send message
 	log.Infof("[Video Streaming] Video Fragment length: %v", len(videoFragment))
-	reply, err := client.SendVideo(ctx, &pb_video.SendVideoRequest{Value: videoFragment})
+	reply, err := client.Decode(ctx, &pb_video.DecodeRequest{Video: videoFragment})
 	if err != nil {
 		log.Fatalf("[Video Streaming] Failed to send video to decoder: %s", err)
 	}
-	log.Infof("[Video Streaming] Decoder replied: %v\n", reply.Value)
-	return &pb_helloworld.HelloReply{Message: reply.Value}, err
+	log.Infof("[Video Streaming] Decoder replied: %v\n", reply.Classification)
+	return &pb_helloworld.HelloReply{Message: reply.Classification}, err
 }
 
 func main() {

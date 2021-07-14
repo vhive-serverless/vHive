@@ -31,6 +31,9 @@ spec:
       containers:
         - image: docker.io/vhiveease/video-bench-streaming:latest
           imagePullPolicy: Always
+          env:
+            - name: ENABLE_TRACING
+              value: "true"
           ports:
             # For `h2c`, see https://knative.tips/networking/http2/
             - name: h2c
