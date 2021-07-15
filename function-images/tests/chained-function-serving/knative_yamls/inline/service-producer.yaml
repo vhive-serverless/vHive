@@ -32,6 +32,9 @@ spec:
         - image: docker.io/vhiveease/chained-functions-serving-producer:latest
           imagePullPolicy: Always
           args: ["-addr", "consumer.default.svc.cluster.local"]
+          env:
+            - name: TRANSFER_TYPE
+              value: "INLINE"
           ports:
             # For `h2c`, see https://knative.tips/networking/http2/
             - name: h2c

@@ -32,6 +32,8 @@ spec:
         - image: docker.io/vhiveease/chained-functions-serving-producer:latest
           imagePullPolicy: Always
           env:
+            - name: TRANSFER_TYPE
+              value: "XDT"
             - name: CHUNK_SIZE_IN_BYTES
               value: "65536"
             - name: CT_BUFFER_SIZE
