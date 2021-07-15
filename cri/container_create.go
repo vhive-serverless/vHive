@@ -91,6 +91,12 @@ func (s *Service) createUserContainer(ctx context.Context, r *criapi.CreateConta
 	// Wait for placeholder UC to be created
 	<-stockDone
 
+	// Check for error from container creation
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
+	
 	containerdID := stockResp.ContainerId
 	err = s.coordinator.insertActive(containerdID, funcInst)
 	if err != nil {
