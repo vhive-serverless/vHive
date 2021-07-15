@@ -24,10 +24,14 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"flag"
 	"fmt"
 	"net"
 	"os"
+
+	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
+	"github.com/ease-lab/vhive-xdt/utils"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -44,33 +48,58 @@ import (
 type producerServer struct {
 	consumerAddr string
 	consumerPort int
+	payload      utils.Payload
+	config       utils.Config
+	XDTclient    sdk.XDTclient
+	transferType string
 	pb.UnimplementedGreeterServer
 }
 
+func fetchSelfIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		log.Errorf("Oops: " + err.Error())
+	}
+
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	log.Errorf("unable to find IP, returning empty string")
+	return ""
+}
+
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
-	// establish a connection
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
-	log.Printf("producer dialling consumer at %s ...\n", addr)
-	var conn *grpc.ClientConn
-	if tracing.IsTracingEnabled() {
-		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
-	} else {
-		conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
-	}
-	if err != nil {
-		log.Fatalf("[producer] fail to dial: %s", err)
-	}
-	defer conn.Close()
-	log.Printf("producer has successfully dialled the consumer!")
+	if ps.transferType == "INLINE" {
+		// establish a connection
+		var conn *grpc.ClientConn
+		if tracing.IsTracingEnabled() {
+			conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
+		} else {
+			conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
+		}
+		if err != nil {
+			log.Fatalf("[producer] fail to dial: %s", err)
+		}
+		defer conn.Close()
 
-	client := pb_client.NewProducerConsumerClient(conn)
+		client := pb_client.NewProducerConsumerClient(conn)
 
-	// send message
-	ack, err := client.ConsumeString(ctx, &pb_client.ConsumeStringRequest{Value: "1"})
-	if err != nil {
-		log.Fatalf("[producer] client error in string consumption: %s", err)
+		// send message
+		ack, err := client.ConsumeString(ctx, &pb_client.ConsumeStringRequest{Value: "1"})
+		if err != nil {
+			log.Fatalf("[producer] client error in string consumption: %s", err)
+		}
+		log.Printf("[producer] (single) Ack: %v\n", ack.Value)
+	} else if ps.transferType == "XDT" {
+		if err := ps.XDTclient.Invoke(addr, ps.payload); err != nil {
+			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
+		}
 	}
-	log.Printf("[producer] (single) Ack: %v\n", ack.Value)
 	return &pb.HelloReply{Message: "Success"}, err
 }
 
@@ -79,6 +108,7 @@ func main() {
 	flagClientPort := flag.Int("pc", 80, "Client Port")
 	flagServerPort := flag.Int("ps", 80, "Server Port")
 	url := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
+	transferSize := flag.Int("transferSize", 10000, "Number of KB's to transfer")
 	flag.Parse()
 
 	log.SetFormatter(&log.TextFormatter{
@@ -106,7 +136,6 @@ func main() {
 	}
 
 	reflection.Register(grpcServer)
-	// err = grpcServer.Serve(lis)
 
 	//client setup
 	log.Printf("[producer] Client using address: %v:%d\n", *flagAddress, *flagClientPort)
@@ -114,6 +143,34 @@ func main() {
 	s := producerServer{}
 	s.consumerAddr = *flagAddress
 	s.consumerPort = *flagClientPort
+
+	transferType := os.Getenv("TRANSFER_TYPE")
+	if transferType == "" {
+		transferType = "INLINE"
+	}
+	s.transferType = transferType
+
+	if transferType == "XDT" {
+		payloadData := make([]byte, *transferSize*1024) // 10MiB
+		if _, err := rand.Read(payloadData); err != nil {
+			log.Fatal(err)
+		}
+
+		payloadToSend := utils.Payload{
+			FunctionName: "HelloXDT",
+			Data:         payloadData,
+		}
+		config := utils.ReadConfig()
+		config.SQPServerHostname = fetchSelfIP()
+		xdtClient, err := sdk.NewXDTclient(config)
+		if err != nil {
+			log.Fatalf("InitXDT failed %v", err)
+		}
+
+		s.config = config
+		s.payload = payloadToSend
+		s.XDTclient = xdtClient
+	}
 	pb.RegisterGreeterServer(grpcServer, &s)
 
 	//server setup

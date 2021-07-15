@@ -37,6 +37,9 @@ import (
 	pb "tests/chained-functions-serving/proto"
 
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
+
+	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
+	"github.com/ease-lab/vhive-xdt/utils"
 )
 
 type consumerServer struct {
@@ -91,26 +94,38 @@ func main() {
 		log.Println("consumer has tracing DISABLED")
 	}
 
-	//set up server
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
-	if err != nil {
-		log.Fatalf("[consumer] failed to listen: %v", err)
+	transferType := os.Getenv("TRANSFER_TYPE")
+	if transferType == "" {
+		transferType = "INLINE"
 	}
 
-	var grpcServer *grpc.Server
-	if tracing.IsTracingEnabled() {
-		grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
-	} else {
-		grpcServer = grpc.NewServer()
+	if transferType == "INLINE" {
+		//set up server
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+		if err != nil {
+			log.Fatalf("[consumer] failed to listen: %v", err)
+		}
+
+		var grpcServer *grpc.Server
+		if tracing.IsTracingEnabled() {
+			grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
+		} else {
+			grpcServer = grpc.NewServer()
+		}
+
+		s := consumerServer{}
+		pb.RegisterProducerConsumerServer(grpcServer, &s)
+
+		log.Printf("[consumer] Server Started on port %v\n", *port)
+
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("[consumer] failed to serve: %s", err)
+		}
+	} else if transferType == "XDT" {
+		var handler = func(data []byte) {
+			log.Infof("gx: destination handler received data of size %d", len(data))
+		}
+		config := utils.ReadConfig()
+		sdk.StartDstServer(config, handler)
 	}
-
-	s := consumerServer{}
-	pb.RegisterProducerConsumerServer(grpcServer, &s)
-
-	log.Printf("[consumer] Server Started on port %v\n", *port)
-
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("[consumer] failed to serve: %s", err)
-	}
-
 }
