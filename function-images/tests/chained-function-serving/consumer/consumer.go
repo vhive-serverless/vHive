@@ -68,7 +68,7 @@ func (s *consumerServer) ConsumeStream(stream pb.ProducerConsumer_ConsumeStreamS
 		if err != nil {
 			return err
 		}
-		log.Printf("[consumer] Consumed %v\n", str.Value)
+		log.Printf("[consumer] Consumed string of length %d\n", len(str.Value))
 	}
 }
 
