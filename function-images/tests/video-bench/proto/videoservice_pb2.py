@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'\n\031com.vhive.video_analyticsB\014videoserviceP\001Z\033tests/video_analytics/proto',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x12videoservice.proto\x12\x0cvideoservice\"\x1e\n\rDecodeRequest\x12\r\n\x05video\x18\x01 \x01(\x0c\"%\n\x0b\x44\x65\x63odeReply\x12\x16\n\x0e\x63lassification\x18\x01 \x01(\t\"!\n\x10RecogniseRequest\x12\r\n\x05\x66rame\x18\x01 \x01(\x0c\"(\n\x0eRecogniseReply\x12\x16\n\x0e\x63lassification\x18\x01 \x01(\t2R\n\x0cVideoDecoder\x12\x42\n\x06\x44\x65\x63ode\x12\x1b.videoservice.DecodeRequest\x1a\x19.videoservice.DecodeReply\"\x00\x32`\n\x11ObjectRecognition\x12K\n\tRecognise\x12\x1e.videoservice.RecogniseRequest\x1a\x1c.videoservice.RecogniseReply\"\x00\x42H\n\x19\x63om.vhive.video_analyticsB\x0cvideoserviceP\x01Z\x1btests/video_analytics/protob\x06proto3'
+  serialized_pb=b'\n\x12videoservice.proto\x12\x0cvideoservice\"-\n\rDecodeRequest\x12\r\n\x05video\x18\x01 \x01(\x0c\x12\r\n\x05s3key\x18\x02 \x01(\t\"%\n\x0b\x44\x65\x63odeReply\x12\x16\n\x0e\x63lassification\x18\x01 \x01(\t\"0\n\x10RecogniseRequest\x12\r\n\x05\x66rame\x18\x01 \x01(\x0c\x12\r\n\x05s3key\x18\x02 \x01(\t\"(\n\x0eRecogniseReply\x12\x16\n\x0e\x63lassification\x18\x01 \x01(\t2R\n\x0cVideoDecoder\x12\x42\n\x06\x44\x65\x63ode\x12\x1b.videoservice.DecodeRequest\x1a\x19.videoservice.DecodeReply\"\x00\x32`\n\x11ObjectRecognition\x12K\n\tRecognise\x12\x1e.videoservice.RecogniseRequest\x1a\x1c.videoservice.RecogniseReply\"\x00\x42H\n\x19\x63om.vhive.video_analyticsB\x0cvideoserviceP\x01Z\x1btests/video_analytics/protob\x06proto3'
 )
 
 
@@ -40,6 +40,13 @@ _DECODEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='s3key', full_name='videoservice.DecodeRequest.s3key', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -53,7 +60,7 @@ _DECODEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=36,
-  serialized_end=66,
+  serialized_end=81,
 )
 
 
@@ -84,8 +91,8 @@ _DECODEREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=68,
-  serialized_end=105,
+  serialized_start=83,
+  serialized_end=120,
 )
 
 
@@ -104,6 +111,13 @@ _RECOGNISEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='s3key', full_name='videoservice.RecogniseRequest.s3key', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -116,8 +130,8 @@ _RECOGNISEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=107,
-  serialized_end=140,
+  serialized_start=122,
+  serialized_end=170,
 )
 
 
@@ -148,8 +162,8 @@ _RECOGNISEREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=142,
-  serialized_end=182,
+  serialized_start=172,
+  serialized_end=212,
 )
 
 DESCRIPTOR.message_types_by_name['DecodeRequest'] = _DECODEREQUEST
@@ -196,8 +210,8 @@ _VIDEODECODER = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=184,
-  serialized_end=266,
+  serialized_start=214,
+  serialized_end=296,
   methods=[
   _descriptor.MethodDescriptor(
     name='Decode',
@@ -222,8 +236,8 @@ _OBJECTRECOGNITION = _descriptor.ServiceDescriptor(
   index=1,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=268,
-  serialized_end=364,
+  serialized_start=298,
+  serialized_end=394,
   methods=[
   _descriptor.MethodDescriptor(
     name='Recognise',

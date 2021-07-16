@@ -39,6 +39,7 @@ import videoservice_pb2
 import io
 import grpc
 import argparse
+import boto3
 
 from concurrent import futures
 from timeit import default_timer as now
@@ -50,6 +51,11 @@ parser.add_argument("-sp", "--sp", dest = "sp", default = "80", help="serve port
 parser.add_argument("-zipkin", "--zipkin", dest = "url", default = "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", help="Zipkin endpoint url")
 
 args = parser.parse_args()
+
+# set aws credentials:
+AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
+AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
+
 
 if tracing.IsTracingEnabled():
     tracing.initTracer("recog", url=args.url)
@@ -111,10 +117,10 @@ def processImage(bytes):
     print('End-to-end time: %dms' % total_e2e)
 
     # Return top label and timers in binded output
-    top_label = labels[indices[0][0]]
-    output_msg = 'Label %s,LoadMod %d,PreProc %d,Inf %d,Tot %d' % (
-        top_label, load_model_e2e, preprocess_e2e, inference_e2e, total_e2e)
-    print(output_msg)
+    # top_label = labels[indices[0][0]]
+    # output_msg = 'Label %s,LoadMod %d,PreProc %d,Inf %d,Tot %d' % (
+    #     top_label, load_model_e2e, preprocess_e2e, inference_e2e, total_e2e)
+    # print(output_msg)
 
     # make comma-seperated output of top 100 label
     out = ""
@@ -125,8 +131,31 @@ def processImage(bytes):
 class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer):
     def Recognise(self, request, context):
         print("received a call")
+        uses3 = os.getenv('USES3', "false")
+        if uses3 == "false":
+            uses3 = False
+        else:
+            uses3 = True
+
+        # get the frame from s3 or inline
+        frame = None
+        if uses3:
+            print("retrieving target frame '%s' from s3" % request.s3key)
+            s3 = boto3.resource(
+                service_name='s3',
+                region_name='us-west-1',
+                aws_access_key_id=AWS_ID,
+                aws_secret_access_key=AWS_SECRET
+            )
+            obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
+            response = obj.get()
+            frame = response['Body'].read()
+        else:
+            frame = request.frame
+
         with tracing.Span("Object recognition"):
-            classification = processImage(request.frame)
+            print("performing image recognition on frame")
+            classification = processImage(frame)
         print("object recogintion successful")
         return videoservice_pb2.RecogniseReply(classification=classification)
 

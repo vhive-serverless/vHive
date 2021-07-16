@@ -36,7 +36,7 @@ import cv2
 import grpc
 import tempfile
 import argparse
-import asyncio
+import boto3
 
 
 from concurrent import futures
@@ -55,6 +55,11 @@ if tracing.IsTracingEnabled():
     tracing.initTracer("decoder", url=args.url)
     tracing.grpcInstrumentClient()
     tracing.grpcInstrumentServer()
+
+
+# set aws credentials:
+AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
+AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
 
 def decode(bytes):
     start_tempfile = now()
@@ -78,23 +83,60 @@ def decode(bytes):
 
 class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
     def Decode(self, request, context):
-        out = decode(request.video)
+        print("Decoder recieved a request")
+        uses3 = os.getenv('USES3', "false")
+        if uses3 == "false":
+            uses3 = False
+        else:
+            uses3 = True
+
+        out = []
+        s3 = None
+        if uses3:
+            print("Using s3, getting bucket")
+            s3 = boto3.resource(
+                service_name='s3',
+                region_name='us-west-1',
+                aws_access_key_id=AWS_ID,
+                aws_secret_access_key= AWS_SECRET
+            )
+            obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
+            response = obj.get()
+            data = response['Body'].read()
+            print("decoding frames of the s3 object")
+            out = decode(data)
+        else:
+            print("Standard video decode (no s3). Decoding frames.")
+            out = decode(request.video)
+
         with tracing.Span("Recognise all frames"):  
             all_result_futures = []
             # send all requests
+            self.frameCount = 0
             for i in range(int(os.getenv('DecoderFrames', int(args.frames)))):
-                all_result_futures.append(self.Recognise(out[i]))
+                all_result_futures.append(self.Recognise(out[i], s3))
             # concat all results
+            print("returning result of frame classification")
             results = ""
             for result in all_result_futures:
                 results = results + result.result().classification + ","
 
             return videoservice_pb2.DecodeReply(classification=results)
     
-    def Recognise(self, frame):
+    def Recognise(self, frame, s3):
         channel = grpc.insecure_channel(args.addr)
         stub = videoservice_pb2_grpc.ObjectRecognitionStub(channel)
-        response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(frame=frame))
+        if (s3 != None):
+            name = "decoder-frame-" + str(self.frameCount) + ".jpg"
+            self.frameCount += 1
+            s3object = s3.Object('vhive-video-bench', name)
+            print("uploading frame %d to s3" % (self.frameCount-1))
+            s3object.put(Body=frame)
+            print("calling recog with s3 key")
+            response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(s3key=name))
+        else:
+            response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(frame=frame))
+        
         return response_future
 
 

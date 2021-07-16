@@ -25,6 +25,7 @@ WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
     pip3 install --no-cache-dir --user torch==1.9.0+cpu torchvision==0.10.0+cpu torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html && \
+    pip3 install --no-cache-dir --user boto3 && \
     pip3 install --no-cache-dir --user grpcio && \
     pip3 install --no-cache-dir --user -r requirements.txt && \
     pip3 install --no-cache-dir --user grpcio-tools
@@ -46,6 +47,7 @@ WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
     apt-get install ffmpeg libsm6 libxext6  -y && \
+    pip3 install --no-cache-dir --user boto3 && \
     pip3 install --no-cache-dir --user ffmpeg-python && \
     pip3 install --no-cache-dir --user opencv-python && \
     pip3 install --no-cache-dir --user grpcio && \
@@ -70,6 +72,7 @@ ENTRYPOINT ["python3", "-u", "./decode.py"]
 FROM vhiveease/golang:latest as streamingBuilder
 WORKDIR /app
 RUN apk add --no-cache make
+RUN apk add -U --no-cache ca-certificates
 COPY ./video_streaming/video-streaming.go ./video_streaming/
 COPY ./video_streaming/reference ./reference
 COPY ./go.mod ./
@@ -80,6 +83,7 @@ RUN go mod download && \
 
 FROM scratch as streaming
 WORKDIR /app
+COPY --from=streamingBuilder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=streamingBuilder /app/video_streaming/streaming-bin /app/gen/exe
 COPY --from=streamingBuilder /app/reference /app/reference
 

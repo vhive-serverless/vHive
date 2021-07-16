@@ -46,3 +46,6 @@ recog-image-push: recog-image
 
 streaming-image-push: streaming-image
 	docker push vhiveease/video-bench-streaming:latest
+
+proto: proto/videoservice.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative proto/videoservice.proto && cd proto && python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. videoservice.proto

@@ -39,6 +39,7 @@ service ObjectRecognition {
 
 message DecodeRequest {
     bytes video = 1;
+    string s3key = 2;
 }
 
 message DecodeReply {
@@ -47,6 +48,7 @@ message DecodeReply {
 
 message RecogniseRequest {
     bytes frame = 1;
+    string s3key = 2;
 }
 
 message RecogniseReply {

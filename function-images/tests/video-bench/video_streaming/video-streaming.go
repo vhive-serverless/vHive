@@ -28,11 +28,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"os"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	pb_video "tests/video_analytics/proto"
 
@@ -41,12 +47,36 @@ import (
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
 
-var videoFragment []byte
+var (
+	videoFragment []byte
+	videoFile     *string
+	AKID          string
+	SECRET_KEY    string
+)
+
+const (
+	AWS_S3_REGION = "us-west-1"
+	AWS_S3_BUCKET = "vhive-video-bench"
+
+	TOKEN = ""
+)
 
 type server struct {
 	decoderAddr string
 	decoderPort int
 	pb_helloworld.UnimplementedGreeterServer
+}
+
+func setAWSCredentials() {
+	aws_access_key, ok1 := os.LookupEnv("AWS_ACCESS_KEY")
+	if ok1 {
+		AKID = aws_access_key
+	}
+	aws_secret_key, ok2 := os.LookupEnv("AWS_SECRET_KEY")
+	if ok2 {
+		SECRET_KEY = aws_secret_key
+	}
+	fmt.Printf("USING AWS ID: %v", AKID)
 }
 
 // SayHello implements the helloworld interface. Used to trigger the video streamer to start the benchmark.
@@ -72,11 +102,50 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 
 	// send message
 	log.Infof("[Video Streaming] Video Fragment length: %v", len(videoFragment))
-	reply, err := client.Decode(ctx, &pb_video.DecodeRequest{Video: videoFragment})
+
+	var uses3 bool
+	if val, ok := os.LookupEnv("USES3"); !ok || val == "false" {
+		uses3 = false
+	} else {
+		uses3 = true
+	}
+
+	var reply *pb_video.DecodeReply
+	if uses3 {
+		// upload video to s3
+		sess, err := session.NewSession(&aws.Config{
+			Region:      aws.String(AWS_S3_REGION),
+			Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
+		})
+		if err != nil {
+			log.Fatalf("[Video Streaming] Failed establish s3 session: %s", err)
+		}
+		file, err := os.Open(*videoFile)
+		if err != nil {
+			log.Fatalf("[Video Streaming] Failed to open file: %s", err)
+		}
+		log.Infof("[Video Streaming] uploading video to s3")
+		uploader := s3manager.NewUploader(sess)
+		_, err = uploader.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(AWS_S3_BUCKET),
+			Key:    aws.String("streaming-video.mp4"),
+			Body:   file,
+		})
+		if err != nil {
+			log.Fatalf("[Video Streaming] Failed to upload file to s3: %s", err)
+		}
+		log.Infof("[Video Streaming] Uploaded video to s3")
+		// issue request
+		reply, err = client.Decode(ctx, &pb_video.DecodeRequest{S3Key: "streaming-video.mp4"})
+
+	} else {
+		reply, err = client.Decode(ctx, &pb_video.DecodeRequest{Video: videoFragment})
+	}
+
 	if err != nil {
 		log.Fatalf("[Video Streaming] Failed to send video to decoder: %s", err)
 	}
-	log.Infof("[Video Streaming] Decoder replied: %v\n", reply.Classification)
+	log.Infof("[Video Streaming] Received Decoder reply")
 	return &pb_helloworld.HelloReply{Message: reply.Classification}, err
 }
 
@@ -85,7 +154,7 @@ func main() {
 	decoderAddr := flag.String("addr", "decoder.default.192.168.1.240.sslip.io", "Decoder address")
 	decoderPort := flag.Int("p", 80, "Decoder port")
 	servePort := flag.Int("sp", 80, "Port listened to by this streamer")
-	videoFile := flag.String("video", "reference/video.mp4", "The file location of the video")
+	videoFile = flag.String("video", "reference/video.mp4", "The file location of the video")
 	zipkin := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
 	flag.Parse()
 
@@ -100,6 +169,8 @@ func main() {
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
+
+	setAWSCredentials()
 
 	shutdown, err := tracing.InitBasicTracer(*zipkin, "Video Streaming")
 	if err != nil {
