@@ -31,6 +31,14 @@ ENV target=$target_arg
 RUN mkdir /log
 COPY . .
 WORKDIR /app/function-images/tests/chained-function-serving
+RUN go env -w GOPRIVATE=github.com/ease-lab/vhive-xdt
+RUN apk update && \
+    apk add git
+# Using buidkit secrets to pass sensitive info during the build.
+# https://pythonspeed.com/articles/docker-build-secrets/
+RUN --mount=type=secret,id=GOPRIVATE_KEY \
+    git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
+RUN go mod tidy
 RUN go mod download && \
    CGO_ENABLED=0 GOOS=linux go build -v -o ./${target}-bin ./${target}/
 
