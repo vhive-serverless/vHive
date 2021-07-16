@@ -58,7 +58,7 @@ type producerServer struct {
 func fetchSelfIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		log.Errorf("Oops: " + err.Error())
+		log.Errorf("Error fetching self IP: " + err.Error())
 	}
 
 	for _, a := range addrs {
@@ -144,8 +144,9 @@ func main() {
 	s.consumerAddr = *flagAddress
 	s.consumerPort = *flagClientPort
 
-	transferType := os.Getenv("TRANSFER_TYPE")
-	if transferType == "" {
+	transferType, ok := os.LookupEnv("TRANSFER_TYPE")
+	if !ok {
+		log.Infof("TRANSFER_TYPE not found, using INLINE transfer")
 		transferType = "INLINE"
 	}
 	s.transferType = transferType

@@ -94,8 +94,9 @@ func main() {
 		log.Println("consumer has tracing DISABLED")
 	}
 
-	transferType := os.Getenv("TRANSFER_TYPE")
-	if transferType == "" {
+	transferType, ok := os.LookupEnv("TRANSFER_TYPE")
+	if !ok {
+		log.Infof("TRANSFER_TYPE not found, using INLINE transfer")
 		transferType = "INLINE"
 	}
 

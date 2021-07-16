@@ -58,7 +58,7 @@ how many manifests are needed depends on whether serving or eventing is used, an
 are given in their appropriate sections.
 
 Since vHive functions use gRPC, for example in both the
-[serving](/function-images/tests/chained-function-serving/service-producer.yaml) and
+[serving](/function-images/tests/chained-function-serving/knative_yamls/inline/service-producer.yaml) and
 [eventing examples](/function-images/tests/chained-function-eventing/manifests/4-ksvc.yaml), one will
 need to include the `h2c` port translation in each relevant manifest.
 
@@ -204,7 +204,7 @@ need to be both a server of one proto service and a client of another proto serv
 ### Knative Manifests
 One will need a Knative service definition for each of their functions. Refer to the
 [Knative docs](https://knative.dev/docs/serving/getting-started-knative-app/) and see the
-[example manifests](/function-images/tests/chained-function-serving/service-producer.yaml) for
+[example manifests](/function-images/tests/chained-function-serving/knative_yamls/inline/service-producer.yaml) for
 support.
 
 ### Deployment
