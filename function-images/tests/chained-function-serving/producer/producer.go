@@ -24,9 +24,9 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"flag"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 
@@ -107,6 +107,16 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 	return &pb.HelloReply{Message: "Success"}, err
 }
 
+// https://stackoverflow.com/a/31832326/4997724
+func randStringBytes(n int) []byte {
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
+	}
+	return b
+}
+
 func main() {
 	flagAddress := flag.String("addr", "consumer.default.192.168.1.240.sslip.io", "Server IP address")
 	flagClientPort := flag.Int("pc", 80, "Client Port")
@@ -154,10 +164,8 @@ func main() {
 		transferType = "INLINE"
 	}
 	s.transferType = transferType
-	payloadData := make([]byte, *transferSize*1024) // 10MiB
-	if _, err := rand.Read(payloadData); err != nil {
-		log.Fatal(err)
-	}
+	payloadData := randStringBytes(*transferSize * 1024) // 10MiB
+
 	log.Infof("sending %d bytes to consumer", len(payloadData))
 	s.payloadData = payloadData
 	if transferType == "XDT" {
