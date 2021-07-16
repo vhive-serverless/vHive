@@ -46,7 +46,7 @@ type consumerServer struct {
 	pb.UnimplementedProducerConsumerServer
 }
 
-func (s *consumerServer) ConsumeString(ctx context.Context, str *pb.ConsumeStringRequest) (*pb.ConsumeStringReply, error) {
+func (s *consumerServer) ConsumeByte(ctx context.Context, str *pb.ConsumeByteRequest) (*pb.ConsumeByteReply, error) {
 	if tracing.IsTracingEnabled() {
 		span1 := tracing.Span{SpanName: "custom-span-1", TracerName: "tracer"}
 		span2 := tracing.Span{SpanName: "custom-span-2", TracerName: "tracer"}
@@ -56,14 +56,14 @@ func (s *consumerServer) ConsumeString(ctx context.Context, str *pb.ConsumeStrin
 		defer span2.EndSpan()
 	}
 	log.Printf("[consumer] Consumed %v\n", str.Value)
-	return &pb.ConsumeStringReply{Value: true}, nil
+	return &pb.ConsumeByteReply{Value: true}, nil
 }
 
 func (s *consumerServer) ConsumeStream(stream pb.ProducerConsumer_ConsumeStreamServer) error {
 	for {
 		str, err := stream.Recv()
 		if err == io.EOF {
-			return stream.SendAndClose(&pb.ConsumeStringReply{Value: true})
+			return stream.SendAndClose(&pb.ConsumeByteReply{Value: true})
 		}
 		if err != nil {
 			return err

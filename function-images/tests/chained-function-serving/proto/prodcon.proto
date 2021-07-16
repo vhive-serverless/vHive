@@ -27,23 +27,23 @@ option go_package = "tests/chained-functions-serving/proto";
 package prodcon;
 
 service ProducerConsumer {
-    rpc ConsumeString(ConsumeStringRequest) returns (ConsumeStringReply) {}
-    rpc ConsumeStream(stream ConsumeStringRequest) returns (ConsumeStringReply) {}
+    rpc ConsumeByte(ConsumeByteRequest) returns (ConsumeByteReply) {}
+    rpc ConsumeStream(stream ConsumeByteRequest) returns (ConsumeByteReply) {}
 }
 
 service ClientProducer {
-    rpc ProduceStrings(ProduceStringsRequest) returns (Empty);
+    rpc ProduceBytes(ProduceBytesRequest) returns (Empty);
 }
 
-message ConsumeStringRequest {
-    string value = 1;
+message ConsumeByteRequest {
+    bytes value = 1;
 }
 
-message ConsumeStringReply {
+message ConsumeByteReply {
     bool value = 1;
 }
 
-message ProduceStringsRequest {
+message ProduceBytesRequest {
     int32 value = 1;
 }
 

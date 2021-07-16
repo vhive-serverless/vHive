@@ -24,9 +24,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"flag"
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 
@@ -90,7 +90,7 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 		client := pb_client.NewProducerConsumerClient(conn)
 
 		// send message
-		ack, err := client.ConsumeString(ctx, &pb_client.ConsumeStringRequest{Value: string(ps.payloadData)})
+		ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: ps.payloadData})
 		if err != nil {
 			log.Fatalf("[producer] client error in string consumption: %s", err)
 		}
@@ -107,22 +107,12 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 	return &pb.HelloReply{Message: "Success"}, err
 }
 
-// https://stackoverflow.com/a/31832326/4997724
-func randStringBytes(n int) []byte {
-	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
-	}
-	return b
-}
-
 func main() {
 	flagAddress := flag.String("addr", "consumer.default.192.168.1.240.sslip.io", "Server IP address")
 	flagClientPort := flag.Int("pc", 80, "Client Port")
 	flagServerPort := flag.Int("ps", 80, "Server Port")
 	url := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
-	transferSize := flag.Int("transferSize", 10000, "Number of KB's to transfer")
+	transferSize := flag.Int("transferSize", 4095, "Number of KB's to transfer")
 	flag.Parse()
 
 	log.SetFormatter(&log.TextFormatter{
@@ -164,8 +154,11 @@ func main() {
 		transferType = "INLINE"
 	}
 	s.transferType = transferType
-	payloadData := randStringBytes(*transferSize * 1024) // 10MiB
-
+	// 4194304 bytes is the limit by gRPC
+	payloadData := make([]byte, *transferSize*1024) // 10MiB
+	if _, err := rand.Read(payloadData); err != nil {
+		log.Fatal(err)
+	}
 	log.Infof("sending %d bytes to consumer", len(payloadData))
 	s.payloadData = payloadData
 	if transferType == "XDT" {
