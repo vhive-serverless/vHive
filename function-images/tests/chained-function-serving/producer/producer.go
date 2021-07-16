@@ -48,7 +48,7 @@ import (
 type producerServer struct {
 	consumerAddr string
 	consumerPort int
-	payload      utils.Payload
+	payloadData  []byte
 	config       utils.Config
 	XDTclient    sdk.XDTclient
 	transferType string
@@ -90,13 +90,17 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 		client := pb_client.NewProducerConsumerClient(conn)
 
 		// send message
-		ack, err := client.ConsumeString(ctx, &pb_client.ConsumeStringRequest{Value: "1"})
+		ack, err := client.ConsumeString(ctx, &pb_client.ConsumeStringRequest{Value: string(ps.payloadData)})
 		if err != nil {
 			log.Fatalf("[producer] client error in string consumption: %s", err)
 		}
 		log.Printf("[producer] (single) Ack: %v\n", ack.Value)
 	} else if ps.transferType == "XDT" {
-		if err := ps.XDTclient.Invoke(addr, ps.payload); err != nil {
+		payloadToSend := utils.Payload{
+			FunctionName: "HelloXDT",
+			Data:         ps.payloadData,
+		}
+		if err := ps.XDTclient.Invoke(addr, payloadToSend); err != nil {
 			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
 		}
 	}
@@ -150,17 +154,13 @@ func main() {
 		transferType = "INLINE"
 	}
 	s.transferType = transferType
-
+	payloadData := make([]byte, *transferSize*1024) // 10MiB
+	if _, err := rand.Read(payloadData); err != nil {
+		log.Fatal(err)
+	}
+	log.Infof("sending %d bytes to consumer", len(payloadData))
+	s.payloadData = payloadData
 	if transferType == "XDT" {
-		payloadData := make([]byte, *transferSize*1024) // 10MiB
-		if _, err := rand.Read(payloadData); err != nil {
-			log.Fatal(err)
-		}
-
-		payloadToSend := utils.Payload{
-			FunctionName: "HelloXDT",
-			Data:         payloadData,
-		}
 		config := utils.ReadConfig()
 		config.SQPServerHostname = fetchSelfIP()
 		xdtClient, err := sdk.NewXDTclient(config)
@@ -169,7 +169,6 @@ func main() {
 		}
 
 		s.config = config
-		s.payload = payloadToSend
 		s.XDTclient = xdtClient
 	}
 	pb.RegisterGreeterServer(grpcServer, &s)
