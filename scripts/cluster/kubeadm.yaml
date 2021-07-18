@@ -1,0 +1,13 @@
+apiVersion: kubeadm.k8s.io/v1beta1
+kind: InitConfiguration
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+# Allowing for CPU pinning and isolation in case of guaranteed QoS class
+cpuManagerPolicy: static
+systemReserved:
+  cpu: 500m
+  memory: 256M
+kubeReserved:
+  cpu: 500m
+  memory: 256M

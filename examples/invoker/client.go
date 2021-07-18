@@ -167,6 +167,7 @@ func SayHello(address, workflowID string) {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
+	log.Info("connected to : ", address)
 
 	c := NewGreeterClient(conn)
 
@@ -188,7 +189,7 @@ func SayHello(address, workflowID string) {
 
 func invokeEventingFunction(endpoint *endpoint.Endpoint) {
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
-	log.Debug("Invoking asynchronously by the address: %v", address)
+	log.Debug("Invoking asynchronously by the address: ", address)
 
 	SayHello(address, workflowIDs[endpoint])
 
@@ -201,7 +202,7 @@ func invokeServingFunction(endpoint *endpoint.Endpoint) {
 	defer getDuration(startMeasurement(endpoint.Hostname)) // measure entire invocation time
 
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
-	log.Debug("Invoking by the address: %v", address)
+	log.Debug("Invoking by the address: ", address)
 
 	SayHello(address, workflowIDs[endpoint])
 

@@ -36,7 +36,7 @@ else
     CRI_SOCK="/etc/firecracker-containerd/fccd-cri.sock"
 fi
 
-sudo kubeadm init --ignore-preflight-errors=all --cri-socket $CRI_SOCK --pod-network-cidr=192.168.0.0/16
+sudo kubeadm init --ignore-preflight-errors=all --cri-socket $CRI_SOCK --pod-network-cidr=192.168.0.0/16 #--config=$DIR/kubeadm.yaml
 
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config

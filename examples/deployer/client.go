@@ -129,6 +129,7 @@ func deployFunction(funcName, filePath string) {
 		"--concurrency-target",
 		"1",
 	)
+	log.Info(cmd.String())
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Warnf("Failed to deploy function %s, %s: %v\n%s\n", funcName, filePath, err, stdoutStderr)
