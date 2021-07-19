@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM python:3.8 as recogBuilder
+FROM vhiveease/python:latest as recogBuilder
 WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
@@ -31,7 +31,7 @@ COPY ./function-images/tests/video-bench/object_recognition/* ./
 COPY ./function-images/tests/video-bench/proto/videoservice_pb2_grpc.py ./
 COPY ./function-images/tests/video-bench/proto/videoservice_pb2.py ./
 
-FROM python:3.8-slim as recog
+FROM vhiveease/python-slim:latest as recog
 COPY --from=recogBuilder /root/.local /root/.local
 COPY --from=recogBuilder /py /app
 WORKDIR /app
@@ -39,7 +39,7 @@ ENV PATH=/root/.local/bin:$PATH
 ENTRYPOINT ["python3", "-u", "./recog.py"]
 
 
-FROM python:3.8 as decodeBuilder
+FROM vhiveease/python:latest as decodeBuilder
 WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
@@ -53,7 +53,7 @@ RUN mkdir frames
 COPY ./function-images/tests/video-bench/proto/videoservice_pb2_grpc.py ./
 COPY ./function-images/tests/video-bench/proto/videoservice_pb2.py ./
 
-FROM python:3.8-slim as decode
+FROM vhiveease/python-slim:latest as decode
 RUN apt update && apt-get install ffmpeg libsm6 libxext6  -y
 COPY --from=decodeBuilder /root/.local /root/.local
 COPY --from=decodeBuilder /py /app
