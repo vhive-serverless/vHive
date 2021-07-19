@@ -96,15 +96,16 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         s3 = None
         if uses3:
             print("Using s3, getting bucket")
-            s3 = boto3.resource(
-                service_name='s3',
-                region_name='us-west-1',
-                aws_access_key_id=AWS_ID,
-                aws_secret_access_key= AWS_SECRET
-            )
-            obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
-            response = obj.get()
-            data = response['Body'].read()
+            with tracing.Span("Fetch video from s3"):
+                s3 = boto3.resource(
+                    service_name='s3',
+                    region_name='us-west-1',
+                    aws_access_key_id=AWS_ID,
+                    aws_secret_access_key= AWS_SECRET
+                )
+                obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
+                response = obj.get()
+                data = response['Body'].read()
             print("decoding frames of the s3 object")
             out = decode(data)
         else:
@@ -131,9 +132,10 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         if (s3 != None):
             name = "decoder-frame-" + str(self.frameCount) + ".jpg"
             self.frameCount += 1
-            s3object = s3.Object('vhive-video-bench', name)
-            print("uploading frame %d to s3" % (self.frameCount-1))
-            s3object.put(Body=frame)
+            with tracing.Span("Upload frame to s3"):
+                s3object = s3.Object('vhive-video-bench', name)
+                print("uploading frame %d to s3" % (self.frameCount-1))
+                s3object.put(Body=frame)
             print("calling recog with s3 key")
             response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(s3key=name))
         else:

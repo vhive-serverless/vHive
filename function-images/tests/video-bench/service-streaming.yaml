@@ -38,6 +38,8 @@ spec:
               value: ${AWS_ACCESS_KEY}
             - name: AWS_SECRET_KEY
               value: ${AWS_SECRET_KEY}
+            - name: ENABLE_TRACING
+              value: "false"
           ports:
             # For `h2c`, see https://knative.tips/networking/http2/
             - name: h2c

@@ -115,6 +115,8 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	var reply *pb_video.DecodeReply
 	if uses3 {
 		// upload video to s3
+		span := tracing.Span{SpanName: "S3 video upload", TracerName: "S3 video upload - tracer"}
+		ctx = span.StartSpan(ctx)
 		sess, err := session.NewSession(&aws.Config{
 			Region:      aws.String(AWS_S3_REGION),
 			Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
@@ -136,6 +138,7 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 		if err != nil {
 			log.Fatalf("[Video Streaming] Failed to upload file to s3: %s", err)
 		}
+		span.EndSpan()
 		log.Infof("[Video Streaming] Uploaded video to s3")
 		// issue request
 		reply, err = client.Decode(ctx, &pb_video.DecodeRequest{S3Key: "streaming-video.mp4"})

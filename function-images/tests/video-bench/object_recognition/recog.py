@@ -143,15 +143,16 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
         frame = None
         if uses3:
             print("retrieving target frame '%s' from s3" % request.s3key)
-            s3 = boto3.resource(
-                service_name='s3',
-                region_name='us-west-1',
-                aws_access_key_id=AWS_ID,
-                aws_secret_access_key=AWS_SECRET
-            )
-            obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
-            response = obj.get()
-            frame = response['Body'].read()
+            with tracing.Span("Retrive frame from s3"):
+                s3 = boto3.resource(
+                    service_name='s3',
+                    region_name='us-west-1',
+                    aws_access_key_id=AWS_ID,
+                    aws_secret_access_key=AWS_SECRET
+                )
+                obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
+                response = obj.get()
+                frame = response['Body'].read()
         else:
             frame = request.frame
 
