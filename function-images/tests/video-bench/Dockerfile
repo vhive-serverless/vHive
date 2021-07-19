@@ -25,10 +25,7 @@ WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
     pip3 install --no-cache-dir --user torch==1.9.0+cpu torchvision==0.10.0+cpu torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html && \
-    pip3 install --no-cache-dir --user boto3 && \
-    pip3 install --no-cache-dir --user grpcio && \
-    pip3 install --no-cache-dir --user -r requirements.txt && \
-    pip3 install --no-cache-dir --user grpcio-tools
+    pip3 install --no-cache-dir --user -r requirements.txt
 COPY ./utils/tracing/python/tracing.py ./
 COPY ./function-images/tests/video-bench/object_recognition/* ./
 COPY ./function-images/tests/video-bench/proto/videoservice_pb2_grpc.py ./
@@ -47,12 +44,9 @@ WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
     apt-get install ffmpeg libsm6 libxext6  -y && \
-    pip3 install --no-cache-dir --user boto3 && \
     pip3 install --no-cache-dir --user ffmpeg-python && \
     pip3 install --no-cache-dir --user opencv-python && \
-    pip3 install --no-cache-dir --user grpcio && \
-    pip3 install --no-cache-dir --user -r requirements.txt && \
-    pip3 install --no-cache-dir --user grpcio-tools
+    pip3 install --no-cache-dir --user -r requirements.txt
 COPY ./utils/tracing/python/tracing.py ./
 COPY ./function-images/tests/video-bench/decoder/decode.py ./
 RUN mkdir frames
