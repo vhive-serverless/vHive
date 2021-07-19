@@ -8,7 +8,7 @@ replace (
 )
 
 require (
-	github.com/containerd/containerd v1.5.2
+	github.com/containerd/containerd v1.5.3
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20210630153229-45a1c5894f68
 	github.com/ease-lab/vhive/utils/tracing/go v0.0.0-20210630153229-45a1c5894f68
 	github.com/sirupsen/logrus v1.8.1
