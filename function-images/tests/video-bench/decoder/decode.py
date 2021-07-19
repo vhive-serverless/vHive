@@ -31,16 +31,14 @@ import tracing
 import videoservice_pb2_grpc
 import videoservice_pb2
 
-import io
 import cv2
 import grpc
 import tempfile
 import argparse
 import boto3
-
+import logging as log
 
 from concurrent import futures
-from timeit import default_timer as now
 
 # USE ENV VAR "DecoderFrames" to set the number of frames to be sent
 parser = argparse.ArgumentParser()
@@ -62,13 +60,9 @@ AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
 AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
 
 def decode(bytes):
-    start_tempfile = now()
     temp = tempfile.NamedTemporaryFile(suffix=".mp4")
     temp.write(bytes)
     temp.seek(0)
-    end_tempfile_write = now()
-    write_time = (end_tempfile_write - start_tempfile)*1000
-    print("tempfile write time: %dms" %write_time)
 
     all_frames = [] 
     with tracing.Span("Decode frames"):
@@ -83,19 +77,19 @@ def decode(bytes):
 
 class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
     def Decode(self, request, context):
-        print("Decoder recieved a request")
+        log.info("Decoder recieved a request")
         uses3 = os.getenv('USES3', "false")
         if uses3 == "false":
             uses3 = False
         elif uses3 == "true":
             uses3 = True
         else:
-            print("Invalid USES3 value")
+            log.info("Invalid USES3 value")
 
         out = []
         s3 = None
         if uses3:
-            print("Using s3, getting bucket")
+            log.info("Using s3, getting bucket")
             with tracing.Span("Fetch video from s3"):
                 s3 = boto3.resource(
                     service_name='s3',
@@ -106,10 +100,10 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
                 obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
                 response = obj.get()
                 data = response['Body'].read()
-            print("decoding frames of the s3 object")
+            log.info("decoding frames of the s3 object")
             out = decode(data)
         else:
-            print("Standard video decode (no s3). Decoding frames.")
+            log.info("Standard video decode (no s3). Decoding frames.")
             out = decode(request.video)
 
         with tracing.Span("Recognise all frames"):  
@@ -119,7 +113,7 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
             for i in range(int(os.getenv('DecoderFrames', int(args.frames)))):
                 all_result_futures.append(self.Recognise(out[i], s3))
             # concat all results
-            print("returning result of frame classification")
+            log.info("returning result of frame classification")
             results = ""
             for result in all_result_futures:
                 results = results + result.result().classification + ","
@@ -134,9 +128,9 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
             self.frameCount += 1
             with tracing.Span("Upload frame to s3"):
                 s3object = s3.Object('vhive-video-bench', name)
-                print("uploading frame %d to s3" % (self.frameCount-1))
+                log.info("uploading frame %d to s3" % (self.frameCount-1))
                 s3object.put(Body=frame)
-            print("calling recog with s3 key")
+            log.info("calling recog with s3 key")
             response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(s3key=name))
         else:
             response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(frame=frame))
@@ -156,4 +150,5 @@ def serve():
 
 
 if __name__ == '__main__':
+    log.basicConfig(level=log.INFO)
     serve()

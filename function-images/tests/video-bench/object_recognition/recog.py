@@ -40,6 +40,7 @@ import io
 import grpc
 import argparse
 import boto3
+import logging as log
 
 from concurrent import futures
 from timeit import default_timer as now
@@ -66,7 +67,7 @@ start_load_model = now()
 model = models.squeezenet1_1(pretrained=True)
 end_load_model = now()
 load_model_e2e = (end_load_model - start_load_model) * 1000
-print('Time to load model: %dms' % load_model_e2e)
+log.info('Time to load model: %dms' % load_model_e2e)
 
 labels_fd = open('imagenet_labels.txt', 'r')
 labels = []
@@ -93,7 +94,7 @@ def processImage(bytes):
 
     end_preprocess = now()
     preprocess_e2e = (end_preprocess - start_preprocess) * 1000
-    print('Time to preprocess: %dms' % preprocess_e2e)
+    log.info('Time to preprocess: %dms' % preprocess_e2e)
 
     # Set up model to do evaluation
     model.eval()
@@ -104,17 +105,17 @@ def processImage(bytes):
         out = model(batch_t)
     end_inf = now()
     inference_e2e = (end_inf - start_inf) * 1000
-    print('Time to perform inference: %dms' % inference_e2e)
+    log.info('Time to perform inference: %dms' % inference_e2e)
 
     # Print top 5 for logging
     _, indices = torch.sort(out, descending=True)
     percentages = torch.nn.functional.softmax(out, dim=1)[0] * 100
     for idx in indices[0][:5]:
-        print('\tLabel: %s, percentage: %.2f' % (labels[idx], percentages[idx].item()))
+        log.info('\tLabel: %s, percentage: %.2f' % (labels[idx], percentages[idx].item()))
 
     end_overall = now()
     total_e2e = (end_overall - start_overall) * 1000
-    print('End-to-end time: %dms' % total_e2e)
+    log.info('End-to-end time: %dms' % total_e2e)
 
     # Return top label and timers in binded output
     # top_label = labels[indices[0][0]]
@@ -130,19 +131,19 @@ def processImage(bytes):
 
 class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer):
     def Recognise(self, request, context):
-        print("received a call")
+        log.info("received a call")
         uses3 = os.getenv('USES3', "false")
         if uses3 == "false":
             uses3 = False
         elif uses3 == "true":
             uses3 = True
         else:
-            print("Invalid USES3 value")
+            log.info("Invalid USES3 value")
 
         # get the frame from s3 or inline
         frame = None
         if uses3:
-            print("retrieving target frame '%s' from s3" % request.s3key)
+            log.info("retrieving target frame '%s' from s3" % request.s3key)
             with tracing.Span("Retrive frame from s3"):
                 s3 = boto3.resource(
                     service_name='s3',
@@ -157,19 +158,20 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
             frame = request.frame
 
         with tracing.Span("Object recognition"):
-            print("performing image recognition on frame")
+            log.info("performing image recognition on frame")
             classification = processImage(frame)
-        print("object recogintion successful")
+        log.info("object recogintion successful")
         return videoservice_pb2.RecogniseReply(classification=classification)
 
 
 def serve():
-  server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-  videoservice_pb2_grpc.add_ObjectRecognitionServicer_to_server(
-      ObjectRecognitionServicer(), server)
-  server.add_insecure_port('[::]:'+args.sp)
-  server.start()
-  server.wait_for_termination()
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    videoservice_pb2_grpc.add_ObjectRecognitionServicer_to_server(
+        ObjectRecognitionServicer(), server)
+    server.add_insecure_port('[::]:'+args.sp)
+    server.start()
+    server.wait_for_termination()
 
 if __name__ == '__main__':
-  serve()
+    log.basicConfig(level=log.INFO)
+    serve()
