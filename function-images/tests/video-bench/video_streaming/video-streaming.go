@@ -106,8 +106,10 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	var uses3 bool
 	if val, ok := os.LookupEnv("USES3"); !ok || val == "false" {
 		uses3 = false
-	} else {
+	} else if val == "true" {
 		uses3 = true
+	} else {
+		log.Fatalf("Invalid USES3 value")
 	}
 
 	var reply *pb_video.DecodeReply
@@ -141,7 +143,6 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	} else {
 		reply, err = client.Decode(ctx, &pb_video.DecodeRequest{Video: videoFragment})
 	}
-
 	if err != nil {
 		log.Fatalf("[Video Streaming] Failed to send video to decoder: %s", err)
 	}

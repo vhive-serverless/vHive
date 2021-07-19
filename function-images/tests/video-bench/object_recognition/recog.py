@@ -134,8 +134,10 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
         uses3 = os.getenv('USES3', "false")
         if uses3 == "false":
             uses3 = False
-        else:
+        elif uses3 == "true":
             uses3 = True
+        else:
+            print("Invalid USES3 value")
 
         # get the frame from s3 or inline
         frame = None

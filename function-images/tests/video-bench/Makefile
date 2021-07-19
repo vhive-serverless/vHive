@@ -29,7 +29,7 @@ all-image: decoder-image recog-image streaming-image
 
 all-image-push: decoder-image-push recog-image-push streaming-image-push
 
-decoder-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py decoder/decode.py decoder/frames
+decoder-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py decoder/decode.py
 	cd $(ROOT) && docker build -t vhiveease/video-bench-decoder --target decode -f $(HERE)/Dockerfile .
 
 recog-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py object_recognition/recog.py object_recognition/imagenet_labels.txt

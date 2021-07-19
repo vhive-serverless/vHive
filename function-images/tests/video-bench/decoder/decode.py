@@ -73,7 +73,7 @@ def decode(bytes):
     all_frames = [] 
     with tracing.Span("Decode frames"):
         vidcap = cv2.VideoCapture(temp.name)
-        for i in range(os.getenv('DecoderFrames', int(args.frames))):
+        for i in range(int(os.getenv('DecoderFrames', int(args.frames)))):
             success,image = vidcap.read()
             all_frames.append(cv2.imencode('.jpg', image)[1].tobytes())
 
@@ -87,8 +87,10 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         uses3 = os.getenv('USES3', "false")
         if uses3 == "false":
             uses3 = False
-        else:
+        elif uses3 == "true":
             uses3 = True
+        else:
+            print("Invalid USES3 value")
 
         out = []
         s3 = None
