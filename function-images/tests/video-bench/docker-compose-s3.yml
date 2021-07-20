@@ -32,6 +32,8 @@ services:
             - USES3=true
             - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+            - AWS_REGION=us-west-1
+            - MAX_RECOG_SERVER_THREADS=10
 
     decoder:
         image: vhiveease/video-bench-decoder
@@ -44,6 +46,8 @@ services:
             - USES3=true
             - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+            - AWS_REGION=us-west-1
+            - MAX_DECODER_SERVER_THREADS=10
         depends_on: 
             - recog
 
@@ -60,5 +64,6 @@ services:
             - USES3=true
             - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+            - AWS_REGION=us-west-1
         depends_on:
             - decoder

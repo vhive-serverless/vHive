@@ -28,6 +28,8 @@ services:
         command:
             - -sp=50053
             - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - MAX_RECOG_SERVER_THREADS=10
 
     decoder:
         image: vhiveease/video-bench-decoder
@@ -36,6 +38,8 @@ services:
             - -sp=50052
             - -frames=1
             - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - MAX_DECODER_SERVER_THREADS=10
         depends_on: 
             - recog
 

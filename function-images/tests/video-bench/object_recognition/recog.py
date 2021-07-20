@@ -75,6 +75,7 @@ for i in labels_fd:
     labels.append(i)
 labels_fd.close()
 
+
 def processImage(bytes):
     start_preprocess = now()
     img = Image.open(io.BytesIO(bytes))
@@ -117,17 +118,24 @@ def processImage(bytes):
     total_e2e = (end_overall - start_overall) * 1000
     log.info('End-to-end time: %dms' % total_e2e)
 
-    # Return top label and timers in binded output
-    # top_label = labels[indices[0][0]]
-    # output_msg = 'Label %s,LoadMod %d,PreProc %d,Inf %d,Tot %d' % (
-    #     top_label, load_model_e2e, preprocess_e2e, inference_e2e, total_e2e)
-    # print(output_msg)
-
     # make comma-seperated output of top 100 label
     out = ""
     for idx in indices[0][:100]:
         out = out + labels[idx] + ","
     return out
+
+
+def fetchFrameS3(key):
+    s3_client = boto3.resource(
+        service_name='s3',
+        region_name=os.getenv("AWS_REGION", 'us-west-1'),
+        aws_access_key_id=AWS_ID,
+        aws_secret_access_key=AWS_SECRET
+    )
+    obj = s3_client.Object(bucket_name='vhive-video-bench', key=key)
+    response = obj.get()
+    return response['Body'].read()
+
 
 class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer):
     def Recognise(self, request, context):
@@ -145,15 +153,7 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
         if uses3:
             log.info("retrieving target frame '%s' from s3" % request.s3key)
             with tracing.Span("Retrive frame from s3"):
-                s3 = boto3.resource(
-                    service_name='s3',
-                    region_name='us-west-1',
-                    aws_access_key_id=AWS_ID,
-                    aws_secret_access_key=AWS_SECRET
-                )
-                obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
-                response = obj.get()
-                frame = response['Body'].read()
+                frame = fetchFrameS3(request.s3key)
         else:
             frame = request.frame
 
@@ -165,12 +165,14 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
 
 
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    max_workers = int(os.getenv("MAX_RECOG_SERVER_THREADS", 10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     videoservice_pb2_grpc.add_ObjectRecognitionServicer_to_server(
         ObjectRecognitionServicer(), server)
     server.add_insecure_port('[::]:'+args.sp)
     server.start()
     server.wait_for_termination()
+
 
 if __name__ == '__main__':
     log.basicConfig(level=log.INFO)

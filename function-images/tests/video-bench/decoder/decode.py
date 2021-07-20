@@ -59,6 +59,7 @@ if tracing.IsTracingEnabled():
 AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
 AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
 
+
 def decode(bytes):
     temp = tempfile.NamedTemporaryFile(suffix=".mp4")
     temp.write(bytes)
@@ -73,6 +74,17 @@ def decode(bytes):
 
     return all_frames
 
+
+def fetchFromS3(key):
+    s3_client = boto3.resource(
+        service_name='s3',
+        region_name=os.getenv("AWS_REGION", 'us-west-1'),
+        aws_access_key_id=AWS_ID,
+        aws_secret_access_key= AWS_SECRET
+    )
+    obj = s3_client.Object(bucket_name='vhive-video-bench', key=key)
+    response = obj.get()
+    return s3_client, response['Body'].read()
 
 
 class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
@@ -91,15 +103,7 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         if uses3:
             log.info("Using s3, getting bucket")
             with tracing.Span("Fetch video from s3"):
-                s3 = boto3.resource(
-                    service_name='s3',
-                    region_name='us-west-1',
-                    aws_access_key_id=AWS_ID,
-                    aws_secret_access_key= AWS_SECRET
-                )
-                obj = s3.Object(bucket_name='vhive-video-bench', key=request.s3key)
-                response = obj.get()
-                data = response['Body'].read()
+                s3, data = fetchFromS3(request.s3key)
             log.info("decoding frames of the s3 object")
             out = decode(data)
         else:
@@ -123,7 +127,7 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
     def Recognise(self, frame, s3):
         channel = grpc.insecure_channel(args.addr)
         stub = videoservice_pb2_grpc.ObjectRecognitionStub(channel)
-        if (s3 != None):
+        if s3 is not None:
             name = "decoder-frame-" + str(self.frameCount) + ".jpg"
             self.frameCount += 1
             with tracing.Span("Upload frame to s3"):
@@ -138,15 +142,14 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         return response_future
 
 
-
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    max_workers = int(os.getenv("MAX_DECODER_SERVER_THREADS", 10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     videoservice_pb2_grpc.add_VideoDecoderServicer_to_server(
         VideoDecoderServicer(), server)
     server.add_insecure_port('[::]:'+args.sp)
     server.start()
     server.wait_for_termination()
-
 
 
 if __name__ == '__main__':

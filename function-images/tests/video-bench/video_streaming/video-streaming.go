@@ -52,12 +52,11 @@ var (
 	videoFile     *string
 	AKID          string
 	SECRET_KEY    string
+	AWS_S3_REGION string
 )
 
 const (
-	AWS_S3_REGION = "us-west-1"
 	AWS_S3_BUCKET = "vhive-video-bench"
-
 	TOKEN = ""
 )
 
@@ -68,13 +67,18 @@ type server struct {
 }
 
 func setAWSCredentials() {
-	aws_access_key, ok1 := os.LookupEnv("AWS_ACCESS_KEY")
-	if ok1 {
+	aws_access_key, ok := os.LookupEnv("AWS_ACCESS_KEY")
+	if ok {
 		AKID = aws_access_key
 	}
-	aws_secret_key, ok2 := os.LookupEnv("AWS_SECRET_KEY")
-	if ok2 {
+	aws_secret_key, ok := os.LookupEnv("AWS_SECRET_KEY")
+	if ok {
 		SECRET_KEY = aws_secret_key
+	}
+	AWS_S3_REGION = "us-west-1"
+	aws_region, ok := os.LookupEnv("AWS_REGION")
+	if ok {
+		AWS_S3_REGION = aws_region
 	}
 	fmt.Printf("USING AWS ID: %v", AKID)
 }

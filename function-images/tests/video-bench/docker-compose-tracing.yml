@@ -35,6 +35,7 @@ services:
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
             - ENABLE_TRACING=true
+            - MAX_RECOG_SERVER_THREADS=10
         depends_on:
             - zipkin
 
@@ -47,7 +48,8 @@ services:
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
             - ENABLE_TRACING=true
-        depends_on: 
+            - MAX_DECODER_SERVER_THREADS=10
+        depends_on:
             - recog
 
     streaming:
