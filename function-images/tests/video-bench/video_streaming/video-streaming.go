@@ -57,7 +57,7 @@ var (
 
 const (
 	AWS_S3_BUCKET = "vhive-video-bench"
-	TOKEN = ""
+	TOKEN         = ""
 )
 
 type server struct {
@@ -119,7 +119,7 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	var reply *pb_video.DecodeReply
 	if uses3 {
 		// upload video to s3
-		span := tracing.Span{SpanName: "S3 video upload", TracerName: "S3 video upload - tracer"}
+		span := tracing.Span{SpanName: "Video upload", TracerName: "S3 video upload - tracer"}
 		ctx = span.StartSpan(ctx)
 		sess, err := session.NewSession(&aws.Config{
 			Region:      aws.String(AWS_S3_REGION),

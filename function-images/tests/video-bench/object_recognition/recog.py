@@ -45,7 +45,6 @@ import logging as log
 from concurrent import futures
 from timeit import default_timer as now
 
-start_overall = now()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-sp", "--sp", dest = "sp", default = "80", help="serve port")
@@ -63,11 +62,7 @@ if tracing.IsTracingEnabled():
     tracing.grpcInstrumentServer()
 
 # Load model
-start_load_model = now()
 model = models.squeezenet1_1(pretrained=True)
-end_load_model = now()
-load_model_e2e = (end_load_model - start_load_model) * 1000
-log.info('Time to load model: %dms' % load_model_e2e)
 
 labels_fd = open('imagenet_labels.txt', 'r')
 labels = []
@@ -76,53 +71,44 @@ for i in labels_fd:
 labels_fd.close()
 
 
-def processImage(bytes):
-    start_preprocess = now()
-    img = Image.open(io.BytesIO(bytes))
+def preProcessImage(imageBytes):
+    with tracing.Span("preprocess"):
+        img = Image.open(io.BytesIO(imageBytes))
 
-    transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
-        )
-    ])
+        transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            )
+        ])
 
-    img_t = transform(img)
-    batch_t = torch.unsqueeze(img_t, 0)
+        img_t = transform(img)
+        return torch.unsqueeze(img_t, 0)
 
-    end_preprocess = now()
-    preprocess_e2e = (end_preprocess - start_preprocess) * 1000
-    log.info('Time to preprocess: %dms' % preprocess_e2e)
 
-    # Set up model to do evaluation
-    model.eval()
+def infer(batch_t):
+    with tracing.Span("infer"):
+        # Set up model to do evaluation
+        model.eval()
 
-    # Run inference
-    start_inf = now()
-    with torch.no_grad():
-        out = model(batch_t)
-    end_inf = now()
-    inference_e2e = (end_inf - start_inf) * 1000
-    log.info('Time to perform inference: %dms' % inference_e2e)
+        # Run inference
+        with torch.no_grad():
+            out = model(batch_t)
 
-    # Print top 5 for logging
-    _, indices = torch.sort(out, descending=True)
-    percentages = torch.nn.functional.softmax(out, dim=1)[0] * 100
-    for idx in indices[0][:5]:
-        log.info('\tLabel: %s, percentage: %.2f' % (labels[idx], percentages[idx].item()))
+        # Print top 5 for logging
+        _, indices = torch.sort(out, descending=True)
+        percentages = torch.nn.functional.softmax(out, dim=1)[0] * 100
+        for idx in indices[0][:5]:
+            log.info('\tLabel: %s, percentage: %.2f' % (labels[idx], percentages[idx].item()))
 
-    end_overall = now()
-    total_e2e = (end_overall - start_overall) * 1000
-    log.info('End-to-end time: %dms' % total_e2e)
-
-    # make comma-seperated output of top 100 label
-    out = ""
-    for idx in indices[0][:100]:
-        out = out + labels[idx] + ","
-    return out
+        # make comma-seperated output of top 100 label
+        out = ""
+        for idx in indices[0][:100]:
+            out = out + labels[idx] + ","
+        return out
 
 
 def fetchFrameS3(key):
@@ -152,14 +138,13 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
         frame = None
         if uses3:
             log.info("retrieving target frame '%s' from s3" % request.s3key)
-            with tracing.Span("Retrive frame from s3"):
+            with tracing.Span("Frame fetch"):
                 frame = fetchFrameS3(request.s3key)
         else:
             frame = request.frame
 
-        with tracing.Span("Object recognition"):
-            log.info("performing image recognition on frame")
-            classification = processImage(frame)
+        log.info("performing image recognition on frame")
+        classification = infer(preProcessImage(frame))
         log.info("object recogintion successful")
         return videoservice_pb2.RecogniseReply(classification=classification)
 

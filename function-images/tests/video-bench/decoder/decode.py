@@ -102,7 +102,7 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         s3 = None
         if uses3:
             log.info("Using s3, getting bucket")
-            with tracing.Span("Fetch video from s3"):
+            with tracing.Span("Video fetch"):
                 s3, data = fetchFromS3(request.s3key)
             log.info("decoding frames of the s3 object")
             out = decode(data)
@@ -129,10 +129,10 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         stub = videoservice_pb2_grpc.ObjectRecognitionStub(channel)
         if s3 is not None:
             name = "decoder-frame-" + str(self.frameCount) + ".jpg"
-            self.frameCount += 1
-            with tracing.Span("Upload frame to s3"):
+            with tracing.Span("Upload frame"):
                 s3object = s3.Object('vhive-video-bench', name)
-                log.info("uploading frame %d to s3" % (self.frameCount-1))
+                self.frameCount += 1
+                log.info("uploading frame %d to s3" % (self.frameCount))
                 s3object.put(Body=frame)
             log.info("calling recog with s3 key")
             response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(s3key=name))
