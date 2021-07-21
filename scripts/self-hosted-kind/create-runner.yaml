@@ -57,17 +57,8 @@
         dest: /tmp/setup-runner.sh
         force: yes
 
-    - name: Create remove.sh on the remote host
-      ansible.builtin.copy:
-        dest: /tmp/remove.sh
-        force: yes
-        content: "/actions-runner/config.sh remove --token {{ registration.json.token }}"
-
     - name: Copy setup-runner.sh into the container
       command: "docker cp /tmp/setup-runner.sh {{ cluster_name.stdout }}-control-plane:/setup-runner.sh"
 
-    - name: Copy remove.sh into the container
-      command: "docker cp /tmp/remove.sh {{ cluster_name.stdout }}-control-plane:/remove.sh"
-
     - name: Setup and start the GitHub runner
-      command: "docker exec -d -e RUNNER_ALLOW_RUNASROOT=1 -e TOKEN={{ registration.json.token }} {{ cluster_name.stdout }}-control-plane bash /setup-runner.sh"
+      command: "docker exec -e RUNNER_ALLOW_RUNASROOT=1 -e TOKEN={{ registration.json.token }} {{ cluster_name.stdout }}-control-plane bash /setup-runner.sh"
