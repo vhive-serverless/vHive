@@ -1,0 +1,1 @@
+FROM python:3.8-slim as python-slim

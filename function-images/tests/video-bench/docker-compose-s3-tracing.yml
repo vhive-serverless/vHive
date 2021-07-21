@@ -1,0 +1,79 @@
+# MIT License
+#
+# Copyright (c) 2021 Michal Baczun and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.7"
+
+services:
+    zipkin:
+        image: openzipkin/zipkin
+        ports:
+            - 9411:9411
+
+    recog:
+        image: vhiveease/video-bench-recog
+        command:
+            - -sp=50053
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - USES3=true
+            - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+            - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+            - AWS_REGION=us-west-1
+            - ENABLE_TRACING=true
+            - MAX_RECOG_SERVER_THREADS=10
+        depends_on:
+            - zipkin
+
+    decoder:
+        image: vhiveease/video-bench-decoder
+        command:
+            - -addr=recog:50053
+            - -sp=50052
+            - -frames=3
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - USES3=true
+            - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+            - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+            - AWS_REGION=us-west-1
+            - ENABLE_TRACING=true
+            - MAX_DECODER_SERVER_THREADS=10
+        depends_on:
+            - recog
+
+    streaming:
+        image: vhiveease/video-bench-streaming
+        ports:
+            - "50051:50051"
+        command:
+            - -addr=decoder
+            - -p=50052
+            - -sp=50051
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - USES3=true
+            - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+            - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+            - AWS_REGION=us-west-1
+            - ENABLE_TRACING=true
+        depends_on:
+            - decoder
