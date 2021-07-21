@@ -33,12 +33,12 @@ else
     sudo kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
 fi
 sudo pkill -INT vhive
-sudo pkill -9 firecracker-containerd
-sudo pkill -9 firecracker
-sudo pkill -9 containerd
-sudo pkill -9 gvisor-containerd
-sudo pkill -9 containerd-shim-runc-v2
-sudo pkill -9 -f runsc
+sudo pkill  -f -9 firecracker-containerd
+sudo pkill  -f -9 firecracker
+sudo pkill  -f -9 containerd
+sudo pkill  -f -9 gvisor-containerd
+sudo pkill  -f -9 containerd-shim-runc-v2
+sudo pkill  -f -9 -f runsc
 
 ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
