@@ -50,7 +50,7 @@ jobs:
       run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
     - name: Setup minio
-      run: sleep 1m && make -C ./function-images/tests/save_load_minio local
+      run: sleep 1m && make -C ./function-images/tests/save_load_minio build_local
 
     - name: Test minio
       run: ./function-images/tests/save_load_minio/scripts/run_minio_k8s.sh
