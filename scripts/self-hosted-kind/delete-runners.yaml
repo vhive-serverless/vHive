@@ -20,19 +20,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Execute this playbook using 
-#   ansible-playbook -u YOUR_SSH_USERNAME -i REMOTE_HOSTNAME, delete-runners.yaml
+# Execute this playbook using
+#   GH_ACCESS_TOKEN=... ansible-playbook -u YOUR_SSH_USERNAME -i REMOTE_HOSTNAME, delete-runners.yaml
 
 ---
 - name: Delete All GitHub Runners
   hosts: all
   tasks:
+    - name: Get GitHub runner remove token
+      uri:
+        method: POST
+        url: https://api.github.com/repos/ease-lab/vhive-benchmarking/actions/runners/remove-token
+        headers:
+          Accept: application/vnd.github.v3+json
+          Authorization: "token {{ lookup('env', 'GH_ACCESS_TOKEN') }}"
+        status_code: 201
+      register: token
+
     - name: List all KinD clusters
       command: kind get clusters
       register: clusters
 
     - name: Remove each runner
-      command: "docker exec -e RUNNER_ALLOW_RUNASROOT=1 {{ item }}-control-plane bash /remove.sh"
+      command: "docker exec -e RUNNER_ALLOW_RUNASROOT=1 {{ item }}-control-plane bash /actions-runner/config.sh remove --token {{ token.json.token }}"
       ignore_errors: yes
       loop: "{{ clusters.stdout_lines }}"
 
