@@ -56,7 +56,6 @@ args = parser.parse_args()
 AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
 AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
 
-
 if tracing.IsTracingEnabled():
     tracing.initTracer("recog", url=args.url)
     tracing.grpcInstrumentServer()
@@ -112,7 +111,8 @@ def infer(batch_t):
 
 
 def fetchFrameS3(key):
-    s3_client = boto3.resource(
+    session = boto3.session.Session()
+    s3_client = session.resource(
         service_name='s3',
         region_name=os.getenv("AWS_REGION", 'us-west-1'),
         aws_access_key_id=AWS_ID,
