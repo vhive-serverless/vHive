@@ -29,6 +29,12 @@ On your **local** machine, use Ansible to delete all runners:
 ansible-playbook -u YOUR_SSH_USERNAME -i REMOTE_HOSTNAME, delete-runners.yaml
 ```
 
+## Delete All Runners and Start New _N_ Runners
+
+```bash
+GH_ACCESS_TOKEN=... ./scripts/self-hosted-kind/easy-recreate.sh REMOTE_HOSTNAME N
+```
+
 ## Restarting the Host
 1. On your **local** machine, use Ansible to delete all runners:
    ```bash
