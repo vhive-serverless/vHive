@@ -59,8 +59,8 @@ else
     sudo dmsetup remove fc-dev-thinpool
 fi
 
-sudo rm /etc/firecracker-containerd/fccd-cri.sock
-rm ${HOME}/.kube/config
+sudo rm -rf /etc/firecracker-containerd/fccd-cri.sock
+rm -rf ${HOME}/.kube/config
 sudo rm -rf ${HOME}/tmp
 
 echo Cleaning /var/lib/firecracker-containerd/*
