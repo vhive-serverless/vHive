@@ -83,6 +83,33 @@ func setAWSCredentials() {
 	fmt.Printf("USING AWS ID: %v", AKID)
 }
 
+func uploadToS3(ctx context.Context) {
+	span := tracing.Span{SpanName: "Video upload", TracerName: "S3 video upload - tracer"}
+	ctx = span.StartSpan(ctx)
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String(AWS_S3_REGION),
+		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
+	})
+	if err != nil {
+		log.Fatalf("[Video Streaming] Failed establish s3 session: %s", err)
+	}
+	file, err := os.Open(*videoFile)
+	if err != nil {
+		log.Fatalf("[Video Streaming] Failed to open file: %s", err)
+	}
+	log.Infof("[Video Streaming] uploading video to s3")
+	uploader := s3manager.NewUploader(sess)
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(AWS_S3_BUCKET),
+		Key:    aws.String("streaming-video.mp4"),
+		Body:   file,
+	})
+	if err != nil {
+		log.Fatalf("[Video Streaming] Failed to upload file to s3: %s", err)
+	}
+	span.EndSpan()
+}
+
 // SayHello implements the helloworld interface. Used to trigger the video streamer to start the benchmark.
 func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) (_ *pb_helloworld.HelloReply, err error) {
 	// Become a client of the decoder function and send the video:
@@ -119,30 +146,7 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	var reply *pb_video.DecodeReply
 	if uses3 {
 		// upload video to s3
-		span := tracing.Span{SpanName: "Video upload", TracerName: "S3 video upload - tracer"}
-		ctx = span.StartSpan(ctx)
-		sess, err := session.NewSession(&aws.Config{
-			Region:      aws.String(AWS_S3_REGION),
-			Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
-		})
-		if err != nil {
-			log.Fatalf("[Video Streaming] Failed establish s3 session: %s", err)
-		}
-		file, err := os.Open(*videoFile)
-		if err != nil {
-			log.Fatalf("[Video Streaming] Failed to open file: %s", err)
-		}
-		log.Infof("[Video Streaming] uploading video to s3")
-		uploader := s3manager.NewUploader(sess)
-		_, err = uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(AWS_S3_BUCKET),
-			Key:    aws.String("streaming-video.mp4"),
-			Body:   file,
-		})
-		if err != nil {
-			log.Fatalf("[Video Streaming] Failed to upload file to s3: %s", err)
-		}
-		span.EndSpan()
+		uploadToS3(ctx)
 		log.Infof("[Video Streaming] Uploaded video to s3")
 		// issue request
 		reply, err = client.Decode(ctx, &pb_video.DecodeRequest{S3Key: "streaming-video.mp4"})
