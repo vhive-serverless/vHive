@@ -23,10 +23,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"flag"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"net"
 	"os"
 
@@ -55,6 +60,20 @@ type producerServer struct {
 	pb.UnimplementedGreeterServer
 }
 
+const (
+	INLINE = "INLINE"
+	XDT = "XDT"
+	S3 = "S3"
+	AWS_S3_BUCKET = "vhive-prodcon-bench"
+	TOKEN         = ""
+)
+
+var (
+	AKID          string
+	SECRET_KEY    string
+	AWS_S3_REGION string
+)
+
 func fetchSelfIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -72,9 +91,53 @@ func fetchSelfIP() string {
 	return ""
 }
 
+func setAWSCredentials() {
+	awsAccessKey, ok := os.LookupEnv("AWS_ACCESS_KEY")
+	if ok {
+		AKID = awsAccessKey
+	}
+	awsSecretKey, ok := os.LookupEnv("AWS_SECRET_KEY")
+	if ok {
+		SECRET_KEY = awsSecretKey
+	}
+	AWS_S3_REGION = "us-west-1"
+	awsRegion, ok := os.LookupEnv("AWS_REGION")
+	if ok {
+		AWS_S3_REGION = awsRegion
+	}
+	fmt.Printf("USING AWS ID: %v", AKID)
+}
+
+func uploadToS3(ctx context.Context, payloadData []byte) string {
+	span := tracing.Span{SpanName: "S3 put", TracerName: "S3 put - tracer"}
+	ctx = span.StartSpan(ctx)
+	defer span.EndSpan()
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String(AWS_S3_REGION),
+		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
+	})
+	if err != nil {
+		log.Fatalf("[producer] Failed establish s3 session: %s", err)
+	}
+	log.Infof("[producer] uploading %d bytes to s3", len(payloadData))
+	uploader := s3manager.NewUploader(sess)
+	reader := bytes.NewReader(payloadData)
+	key := "payload_bytes.txt"
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(AWS_S3_BUCKET),
+		Key:    aws.String(key),
+		Body:   reader,
+	})
+	log.Infof("[producer] S3 upload complete")
+	if err != nil {
+		log.Fatalf("[producer] Failed to upload bytes to s3: %s", err)
+	}
+	return key
+}
+
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
-	if ps.transferType == "INLINE" {
+	if ps.transferType == INLINE || ps.transferType == S3 {
 		// establish a connection
 		var conn *grpc.ClientConn
 		if tracing.IsTracingEnabled() {
@@ -88,14 +151,16 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 		defer conn.Close()
 
 		client := pb_client.NewProducerConsumerClient(conn)
-
-		// send message
-		ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: ps.payloadData})
+		payloadToSend := ps.payloadData
+		if ps.transferType == S3 {
+			payloadToSend = []byte(uploadToS3(ctx, ps.payloadData))
+		}
+		ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
 		if err != nil {
 			log.Fatalf("[producer] client error in string consumption: %s", err)
 		}
 		log.Printf("[producer] (single) Ack: %v\n", ack.Value)
-	} else if ps.transferType == "XDT" {
+	} else if ps.transferType == XDT {
 		payloadToSend := utils.Payload{
 			FunctionName: "HelloXDT",
 			Data:         ps.payloadData,
@@ -151,8 +216,9 @@ func main() {
 	transferType, ok := os.LookupEnv("TRANSFER_TYPE")
 	if !ok {
 		log.Infof("TRANSFER_TYPE not found, using INLINE transfer")
-		transferType = "INLINE"
+		transferType = INLINE
 	}
+	log.Infof("[producer] transfering via %s",transferType)
 	s.transferType = transferType
 	// 4194304 bytes is the limit by gRPC
 	payloadData := make([]byte, *transferSize*1024) // 10MiB
@@ -161,7 +227,7 @@ func main() {
 	}
 	log.Infof("sending %d bytes to consumer", len(payloadData))
 	s.payloadData = payloadData
-	if transferType == "XDT" {
+	if transferType == XDT {
 		config := utils.ReadConfig()
 		config.SQPServerHostname = fetchSelfIP()
 		xdtClient, err := sdk.NewXDTclient(config)
@@ -171,6 +237,8 @@ func main() {
 
 		s.config = config
 		s.XDTclient = xdtClient
+	}else if transferType == S3 {
+		setAWSCredentials()
 	}
 	pb.RegisterGreeterServer(grpcServer, &s)
 

@@ -24,6 +24,7 @@ FROM vhiveease/golang:latest as builder
 
 WORKDIR /app
 RUN apk add --no-cache make
+RUN apk add -U --no-cache ca-certificates
 # We use ARG and ENV to have a single Dockerfile for the all three programs.
 # https://vsupalov.com/docker-build-pass-environment-variables/
 ARG target_arg
@@ -46,6 +47,7 @@ FROM scratch
 WORKDIR /app
 ARG target_arg
 ENV target=$target_arg
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /log/ /app/log/ 
 COPY --from=builder /app/function-images/tests/chained-function-serving/${target}-bin /app/exe
 ENTRYPOINT [ "/app/exe" ]
