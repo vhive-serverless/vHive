@@ -1,0 +1,252 @@
+# MIT License
+#
+# Copyright (c) 2021 Mert Bora Alper and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+name: Function Composition Benchmarks
+
+# > Concurrency ensures that only a single job or workflow using the
+# > same concurrency group will run at a time.
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency
+#
+# Since we are using Docker Hub for our images, this helps us prevent
+# concurrency bugs related to using the same image:tag across different
+# CI pipelines.
+concurrency: function-composition
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  GOOS: linux
+  GO111MODULE: on
+  VHIVE_GOLANG_VERSION: golang:1.16.4-alpine3.13
+  KUBECONFIG: /etc/kubernetes/admin.conf
+
+jobs:
+  push-golang:
+    name: Push Golang Build Image
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+            context: ./configs/golang/
+            file: ./configs/golang/Dockerfile
+            push: true
+            tags: |
+              ${{ secrets.DOCKER_HUB_USERNAME }}/golang:latest
+              ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.VHIVE_GOLANG_VERSION }}
+
+  push-chained-functions-serving:
+    name: Push chained-functions-serving
+    needs: push-golang
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        working-directory: ./function-images/tests/chained-function-serving
+        run: |
+          make all-image
+          make all-image-push
+
+  push-chained-functions-eventing:
+      name: Push chained-functions-eventing
+      needs: push-golang
+      runs-on: ubuntu-18.04
+      strategy:
+        fail-fast: false
+      steps:
+        - uses: actions/checkout@v2
+
+        - name: Login to Docker Hub
+          uses: docker/login-action@v1
+          with:
+            username: ${{ secrets.DOCKER_HUB_USERNAME }}
+            password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+        - name: Set up Docker Buildx
+          id: buildx
+          uses: docker/setup-buildx-action@v1
+
+        - name: Build and push
+          working-directory: ./function-images/tests/chained-function-eventing
+          run: make push-all
+
+  bench-docker-compose-serving:
+    name: Serving uBenchmark (docker-compose)
+    needs: push-chained-functions-serving
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+
+      - name: start multi-container program with docker-compose
+        working-directory: function-images/tests/chained-function-serving
+        run: |
+          docker-compose up &> log_file &
+          sleep 15s
+
+      - name: invoke the chain
+        run: |
+          ./bin/grpcurl -max-time 10 -plaintext localhost:3031 helloworld.Greeter.SayHello
+
+      - name: show docker-compose log
+        run: cat function-images/tests/chained-function-serving/log_file
+
+  bench-serving:
+    name: Serving uBenchmark (Knative)
+    needs: push-chained-functions-serving
+    env:
+        GOCACHE: /root/tmp/gocache
+        GOPATH: /root/tmp/gopath
+        TMPDIR: /root/tmp
+    runs-on: [stock-knative]
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
+
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
+      - name: Start consumer and producer
+        run: |
+          set -x
+
+          kn service apply -f ./function-images/tests/chained-function-serving/service-consumer.yaml
+          kn service apply -f ./function-images/tests/chained-function-serving/service-producer.yaml
+
+      - name: Call producer
+        run: |
+          set -x
+
+          NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          HOSTNAME=$(kubectl get ksvc producer -n default -o jsonpath='{.status.url}' | cut -c8-)
+
+          ./bin/grpcurl -max-time 10 -d '{"name": "Michal"}' -plaintext $HOSTNAME:$NODEPORT helloworld.Greeter.SayHello
+
+      - name: Print logs
+        if: ${{ always() }}
+        run: |
+          set -x
+
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=producer
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=consumer
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: |
+          kn service delete --all --namespace default --wait
+
+  bench-eventing:
+    name: Eventing uBenchmark (Knative)
+    needs: push-chained-functions-eventing
+    env:
+        GOCACHE: /root/tmp/gocache
+        GOPATH: /root/tmp/gopath
+        TMPDIR: /root/tmp
+    runs-on: [stock-knative]
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
+
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
+      - name: Apply
+        run: ./function-images/tests/chained-function-eventing/manifests/apply.sh && sleep 30
+
+      - name: Describe
+        run: |
+          set -x
+
+          kubectl get -n chained-functions-eventing broker
+          kubectl get -n chained-functions-eventing sinkbinding
+          kubectl get -n chained-functions-eventing ksvc
+          kubectl get -n chained-functions-eventing trigger
+
+      - name: grpcurl
+        run: |
+          set -x
+
+          NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          HOSTNAME=$(kubectl get ksvc producer -n chained-functions-eventing -o jsonpath='{.status.url}' | cut -c8-)
+
+          ./bin/grpcurl -max-time 10 -d '{"name": "Bora", "vHiveMetadata": "eyAiV29ya2Zsb3dJZCI6ICJXRklEIiwgIkludm9jYXRpb25JZCI6ICJJVklEIiwgIkludm9rZWRPbiI6ICIyMDIxLTA3LTEzVDA5OjM4OjE3Ljc5OTI3NzE0Mi0wNDowMCIgfQ=="}' -plaintext $HOSTNAME:$NODEPORT helloworld.Greeter.SayHello
+
+      - name: Print logs
+        if: ${{ always() }}
+        run: |
+          set -x
+
+          kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=producer
+          kubectl logs -n chained-functions-eventing -c user-container -l serving.knative.dev/service=consumer
+          kubectl logs -n chained-functions-eventing svc/timeseriesdb
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: ./function-images/tests/chained-function-eventing/manifests/delete.sh

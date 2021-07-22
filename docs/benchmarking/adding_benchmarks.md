@@ -144,7 +144,7 @@ Below one can see screenshots from a producer-consumer trace visualized with Zip
 ### Continuous Integration
 New vHive workloads should be included in the automatic CI for regular testing, as this is helpful
 both for code maintenance and in demonstrating how the workload should be deployed. The vHive
-[function composition workflow](/.github/workflows/function-composition-bench.yml) can be referred
+[function composition workflow](/.github/workflows/function-composition.yml) can be referred
 to as an example in which the demo serving and eventing workloads are ran both "locally" and on
 a Knative cluster.
 
