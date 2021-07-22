@@ -31,6 +31,7 @@ spec:
       containers:
         - image: docker.io/vhiveease/chained-functions-serving-producer:latest
           imagePullPolicy: Always
+          args: ["-addr", "consumer.default.svc.cluster.local"]
           env:
             - name: TRANSFER_TYPE
               value: "S3"
