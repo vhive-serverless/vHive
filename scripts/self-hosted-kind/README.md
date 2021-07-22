@@ -26,7 +26,7 @@ for run in {1..10}; do GH_ACCESS_TOKEN=... ansible-playbook -u YOUR_SSH_USERNAME
 ## Deleting All Runners
 On your **local** machine, use Ansible to delete all runners:
 ```bash
-ansible-playbook -u YOUR_SSH_USERNAME -i REMOTE_HOSTNAME, delete-runners.yaml
+GH_ACCESS_TOKEN=... ansible-playbook -u YOUR_SSH_USERNAME -i REMOTE_HOSTNAME, delete-runners.yaml
 ```
 
 ## Delete All Runners and Start New _N_ Runners
@@ -38,7 +38,7 @@ GH_ACCESS_TOKEN=... ./scripts/self-hosted-kind/easy-recreate.sh REMOTE_HOSTNAME 
 ## Restarting the Host
 1. On your **local** machine, use Ansible to delete all runners:
    ```bash
-   ansible-playbook -u YOUR_SSH_USERNAME -i REMOTE_HOSTNAME, delete-runners.yaml
+   GH_ACCESS_TOKEN=... ansible-playbook -u YOUR_SSH_USERNAME -i REMOTE_HOSTNAME, delete-runners.yaml
    ```
 2. Restart the remote host:
    ```bash

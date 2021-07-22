@@ -50,6 +50,7 @@ type producerServer struct {
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
 	// establish a connection
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
+	log.Printf("producer dialling consumer at %s ...\n", addr)
 	var conn *grpc.ClientConn
 	if tracing.IsTracingEnabled() {
 		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
@@ -60,6 +61,7 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 		log.Fatalf("[producer] fail to dial: %s", err)
 	}
 	defer conn.Close()
+	log.Printf("producer has successfully dialled the consumer!")
 
 	client := pb_client.NewProducerConsumerClient(conn)
 
@@ -86,11 +88,14 @@ func main() {
 	log.SetOutput(os.Stdout)
 
 	if tracing.IsTracingEnabled() {
+		log.Println("producer has tracing enabled")
 		shutdown, err := tracing.InitBasicTracer(*url, "producer")
 		if err != nil {
 			log.Warn(err)
 		}
 		defer shutdown()
+	} else {
+		log.Println("producer has tracing DISABLED")
 	}
 
 	var grpcServer *grpc.Server
@@ -104,7 +109,7 @@ func main() {
 	// err = grpcServer.Serve(lis)
 
 	//client setup
-	log.Printf("[producer] Client using address: %v\n", *flagAddress)
+	log.Printf("[producer] Client using address: %v:%d\n", *flagAddress, *flagClientPort)
 
 	s := producerServer{}
 	s.consumerAddr = *flagAddress

@@ -81,11 +81,14 @@ func main() {
 	log.SetOutput(os.Stdout)
 
 	if tracing.IsTracingEnabled() {
+		log.Println("consumer has tracing enabled")
 		shutdown, err := tracing.InitBasicTracer(*url, "consumer")
 		if err != nil {
 			log.Warn(err)
 		}
 		defer shutdown()
+	} else {
+		log.Println("consumer has tracing DISABLED")
 	}
 
 	//set up server
