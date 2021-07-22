@@ -72,6 +72,7 @@ COPY ./video_streaming/reference ./reference
 COPY ./go.mod ./
 COPY ./go.sum ./
 COPY ./proto ./proto
+
 RUN go mod download && \
    CGO_ENABLED=0 GOOS=linux go build -v -o ./video_streaming/streaming-bin ./video_streaming
 

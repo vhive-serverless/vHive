@@ -42,6 +42,8 @@ import (
 
 	pb_video "tests/video_analytics/proto"
 
+	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
+	"github.com/ease-lab/vhive-xdt/utils"
 	pb_helloworld "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
@@ -58,11 +60,17 @@ var (
 const (
 	AWS_S3_BUCKET = "vhive-video-bench"
 	TOKEN         = ""
+	INLINE        = "INLINE"
+	XDT           = "XDT"
+	S3            = "S3"
 )
 
 type server struct {
-	decoderAddr string
-	decoderPort int
+	decoderAddr  string
+	decoderPort  int
+	transferType string
+	config       utils.Config
+	XDTclient    sdk.XDTclient
 	pb_helloworld.UnimplementedGreeterServer
 }
 
@@ -86,6 +94,7 @@ func setAWSCredentials() {
 func uploadToS3(ctx context.Context) {
 	span := tracing.Span{SpanName: "Video upload", TracerName: "S3 video upload - tracer"}
 	ctx = span.StartSpan(ctx)
+	defer span.EndSpan()
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(AWS_S3_REGION),
 		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
@@ -107,7 +116,7 @@ func uploadToS3(ctx context.Context) {
 	if err != nil {
 		log.Fatalf("[Video Streaming] Failed to upload file to s3: %s", err)
 	}
-	span.EndSpan()
+	log.Infof("[Video Streaming] Uploaded video to s3")
 }
 
 // SayHello implements the helloworld interface. Used to trigger the video streamer to start the benchmark.
@@ -117,43 +126,46 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	addr := fmt.Sprintf("%v:%v", s.decoderAddr, s.decoderPort)
 	log.Infof("[Video Streaming] Using addr: %v", addr)
 
-	var conn *grpc.ClientConn
-	if tracing.IsTracingEnabled() {
-		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
-	} else {
-		conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
-	}
-
-	if err != nil {
-		log.Fatalf("[Video Streaming] Failed to dial decoder: %s", err)
-	}
-	defer conn.Close()
-
 	client := pb_video.NewVideoDecoderClient(conn)
 
 	// send message
 	log.Infof("[Video Streaming] Video Fragment length: %v", len(videoFragment))
 
-	var uses3 bool
-	if val, ok := os.LookupEnv("USES3"); !ok || val == "false" {
-		uses3 = false
-	} else if val == "true" {
-		uses3 = true
-	} else {
-		log.Fatalf("Invalid USES3 value")
-	}
-
 	var reply *pb_video.DecodeReply
-	if uses3 {
-		// upload video to s3
-		uploadToS3(ctx)
-		log.Infof("[Video Streaming] Uploaded video to s3")
-		// issue request
-		reply, err = client.Decode(ctx, &pb_video.DecodeRequest{S3Key: "streaming-video.mp4"})
 
+	if s.transferType == XDT {
+		payloadToSend := utils.Payload{
+			FunctionName: "HelloXDT",
+			Data:         videoFragment,
+		}
+		if err := s.XDTclient.Invoke(addr, payloadToSend); err != nil {
+			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
+		}
+	} else if s.transferType == S3 || s.transferType == INLINE {
+		var conn *grpc.ClientConn
+		if tracing.IsTracingEnabled() {
+			conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
+		} else {
+			conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
+		}
+
+		if err != nil {
+			log.Fatalf("[Video Streaming] Failed to dial decoder: %s", err)
+		}
+		defer conn.Close()
+
+		if s.transferType == S3 {
+			// upload video to s3
+			uploadToS3(ctx)
+			// issue request
+			reply, err = client.Decode(ctx, &pb_video.DecodeRequest{S3Key: "streaming-video.mp4"})
+		} else {
+			reply, err = client.Decode(ctx, &pb_video.DecodeRequest{Video: videoFragment})
+		}
 	} else {
-		reply, err = client.Decode(ctx, &pb_video.DecodeRequest{Video: videoFragment})
+		log.Fatalf("Invalid TRANSFER_TYPE value")
 	}
+
 	if err != nil {
 		log.Fatalf("[Video Streaming] Failed to send video to decoder: %s", err)
 	}
@@ -182,8 +194,6 @@ func main() {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	setAWSCredentials()
-
 	shutdown, err := tracing.InitBasicTracer(*zipkin, "Video Streaming")
 	if err != nil {
 		log.Warn(err)
@@ -210,6 +220,20 @@ func main() {
 	server := server{}
 	server.decoderAddr = *decoderAddr
 	server.decoderPort = *decoderPort
+	server.transferType = os.Getenv("TRANSFER_TYPE")
+	if server.transferType == S3 {
+		setAWSCredentials()
+	} else if server.transferType == XDT {
+		config := utils.ReadConfig()
+		config.SQPServerHostname = fetchSelfIP()
+		xdtClient, err := sdk.NewXDTclient(config)
+		if err != nil {
+			log.Fatalf("InitXDT failed %v", err)
+		}
+
+		server.config = config
+		server.XDTclient = xdtClient
+	}
 	pb_helloworld.RegisterGreeterServer(grpcServer, &server)
 
 	if err := grpcServer.Serve(lis); err != nil {
