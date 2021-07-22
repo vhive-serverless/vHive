@@ -174,7 +174,7 @@ function C and a server for function A.
 The serving function composition example can be found
 [here](/function-images/tests/chained-function-serving), and additional CI implementation which shows
 how this code is executed can be found
-[here](https://github.com/ease-lab/vhive/blob/main/.github/workflows/function-composition-bench.yml).
+[here](https://github.com/ease-lab/vhive/blob/main/.github/workflows/function-composition.yml).
 This example implements a simple Client -> Producer -> Consumer function chain, whereby the client
 triggers the producer function to generate a random string, and the consumer consumes said string
 (by logging it to a file).
@@ -238,7 +238,7 @@ An example of function composition using eventing can be found
 (grpcurl) -> Producer -> Consumer function chain, whereby the client triggers the producer function
 to generate an event, and the consumer consumes said event. The CI workflow for this example can be
 found
-[here](https://github.com/ease-lab/vhive/blob/main/.github/workflows/function-composition-bench.yml),
+[here](https://github.com/ease-lab/vhive/blob/main/.github/workflows/function-composition.yml),
 showing how the example can be deployed.
 
 In general, to deploy a workload with eventing one will need to:
