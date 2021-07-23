@@ -1,0 +1,120 @@
+# MIT License
+#
+# Copyright (c) 2021 Mert Bora Alper and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+name: Word Count (Corral) Benchmark
+
+# > Concurrency ensures that only a single job or workflow using the
+# > same concurrency group will run at a time.
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency
+#
+# Since we are using Docker Hub for our images, this helps us prevent
+# concurrency bugs related to using the same image:tag across different
+# CI pipelines.
+concurrency: word_count
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  GOOS: linux
+  GO111MODULE: on
+  KUBECONFIG: /etc/kubernetes/admin.conf
+
+jobs:
+  push:
+    name: Push Docker Image
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        working-directory: function-images/tests/word_count
+        env:
+          GOPRIVATE_KEY: ${{ secrets.EASE_LAB_ACCESS_KEY }}
+        run: |
+          set -x
+
+          docker build --tag=vhiveease/word_count:volatile .
+          docker push vhiveease/word_count:volatile
+
+  test:
+    name: Test
+    needs: push
+    env:
+        GOCACHE: /root/tmp/gocache
+        GOPATH: /root/tmp/gopath
+        TMPDIR: /root/tmp
+    runs-on: [stock-knative]
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
+
+      - uses: actions/checkout@v2
+
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Build
+        working-directory: function-images/tests/word_count
+        run: make
+
+      - name: Apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        working-directory: function-images/tests/word_count
+        run: |
+          kn service apply --wait-timeout 60 --filename word-count.yml --env AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID --env AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY || { kubectl describe ksvc/word-count; exit 1; }
+
+      - name: Run
+        working-directory: function-images/tests/word_count
+        env:
+          CORRAL_KNATIVEFUNCTIONNAME: word-count
+        run: ./bin/word_count --knative metamorphosis.txt
+
+      - name: Print logs
+        if: ${{ always() }}
+        run: kubectl logs -c user-container -l serving.knative.dev/service=word_count
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: |
+          kn service delete --all --namespace default --wait
