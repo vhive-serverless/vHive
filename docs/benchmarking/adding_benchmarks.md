@@ -312,7 +312,7 @@ spec:
   [attribute extensions](https://github.com/cloudevents/spec/blob/master/primer.md#cloudevent-attributes).
 - A Trigger must be in the same namespace with the broker it is attached to, but can relay
   CloudEvents to any
-  [_addressable_](https://github.com/knative/specs/blob/main/specs/eventing/interfaces.md#addressable)
+  [_addressable_](https://github.com/knative/specs/blob/main/specs/eventing/overview.md#addressable)
   _subscriber_ in any namespace.
 
 
