@@ -23,13 +23,13 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: streaming
+  name: recog
   namespace: default
 spec:
   template:
     spec:
       containers:
-        - image: docker.io/vhiveease/video-bench-streaming:latest
+        - image: docker.io/vhiveease/video-bench-recog:latest
           imagePullPolicy: Always
           env:
             - name: USES3
@@ -40,6 +40,8 @@ spec:
               value: ${AWS_SECRET_KEY}
             - name: AWS_REGION
               value: "us-west-1"
+            - name: MAX_RECOG_SERVER_THREADS
+              value: "10"
             - name: ENABLE_TRACING
               value: "false"
           ports:

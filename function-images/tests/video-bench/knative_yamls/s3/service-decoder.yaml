@@ -32,8 +32,8 @@ spec:
         - image: docker.io/vhiveease/video-bench-decoder:latest
           imagePullPolicy: Always
           env:
-            - name: USES3
-              value: "true"
+            - name: TRANSFER_TYPE
+              value: "S3"
             - name: AWS_ACCESS_KEY
               value: ${AWS_ACCESS_KEY}
             - name: AWS_SECRET_KEY

@@ -185,6 +185,8 @@ jobs:
 
     - name: Build and push
       working-directory: ./function-images/tests/video-bench
+      env:
+        GOPRIVATE_KEY: ${{ secrets.EASE_LAB_ACCESS_KEY }}
       run: |
         make all-image
         make all-image-push

@@ -91,6 +91,23 @@ func setAWSCredentials() {
 	fmt.Printf("USING AWS ID: %v", AKID)
 }
 
+func fetchSelfIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		log.Errorf("Error fetching self IP: " + err.Error())
+	}
+
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	log.Errorf("unable to find IP, returning empty string")
+	return ""
+}
+
 func uploadToS3(ctx context.Context) {
 	span := tracing.Span{SpanName: "Video upload", TracerName: "S3 video upload - tracer"}
 	ctx = span.StartSpan(ctx)
@@ -126,20 +143,21 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 	addr := fmt.Sprintf("%v:%v", s.decoderAddr, s.decoderPort)
 	log.Infof("[Video Streaming] Using addr: %v", addr)
 
-	client := pb_video.NewVideoDecoderClient(conn)
-
 	// send message
 	log.Infof("[Video Streaming] Video Fragment length: %v", len(videoFragment))
 
 	var reply *pb_video.DecodeReply
-
+	var response string
 	if s.transferType == XDT {
 		payloadToSend := utils.Payload{
 			FunctionName: "HelloXDT",
 			Data:         videoFragment,
 		}
-		if err := s.XDTclient.Invoke(addr, payloadToSend); err != nil {
+		url := s.config.ProxyHostname + s.config.ProxyPort
+		if message, _, err := s.XDTclient.Invoke(url, payloadToSend); err != nil {
 			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
+		} else {
+			response = string(message)
 		}
 	} else if s.transferType == S3 || s.transferType == INLINE {
 		var conn *grpc.ClientConn
@@ -148,12 +166,12 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 		} else {
 			conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
 		}
-
 		if err != nil {
 			log.Fatalf("[Video Streaming] Failed to dial decoder: %s", err)
 		}
 		defer conn.Close()
 
+		client := pb_video.NewVideoDecoderClient(conn)
 		if s.transferType == S3 {
 			// upload video to s3
 			uploadToS3(ctx)
@@ -162,15 +180,16 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 		} else {
 			reply, err = client.Decode(ctx, &pb_video.DecodeRequest{Video: videoFragment})
 		}
+		if err != nil {
+			log.Fatalf("[Video Streaming] Failed to send video to decoder: %s", err)
+		}
+		response = reply.Classification
 	} else {
 		log.Fatalf("Invalid TRANSFER_TYPE value")
 	}
 
-	if err != nil {
-		log.Fatalf("[Video Streaming] Failed to send video to decoder: %s", err)
-	}
 	log.Infof("[Video Streaming] Received Decoder reply")
-	return &pb_helloworld.HelloReply{Message: reply.Classification}, err
+	return &pb_helloworld.HelloReply{Message: response}, err
 }
 
 func main() {
@@ -220,12 +239,22 @@ func main() {
 	server := server{}
 	server.decoderAddr = *decoderAddr
 	server.decoderPort = *decoderPort
-	server.transferType = os.Getenv("TRANSFER_TYPE")
+
+	server.transferType = INLINE
+	if transferType, ok := os.LookupEnv("TRANSFER_TYPE"); !ok {
+		server.transferType = INLINE
+	} else {
+		server.transferType = transferType
+	}
+
 	if server.transferType == S3 {
 		setAWSCredentials()
 	} else if server.transferType == XDT {
+		log.Infof("[streaming] TransferType = %s", server.transferType)
 		config := utils.ReadConfig()
-		config.SQPServerHostname = fetchSelfIP()
+		log.Info(config)
+		// TODO: prevent hostname patching in docker-compose env
+		//config.SQPServerHostname = fetchSelfIP()
 		xdtClient, err := sdk.NewXDTclient(config)
 		if err != nil {
 			log.Fatalf("InitXDT failed %v", err)
@@ -233,6 +262,7 @@ func main() {
 
 		server.config = config
 		server.XDTclient = xdtClient
+		log.Infof("[streaming] XDT client created")
 	}
 	pb_helloworld.RegisterGreeterServer(grpcServer, &server)
 
