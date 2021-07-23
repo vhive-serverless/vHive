@@ -1,8 +1,6 @@
-#!/bin/bash
-
 # MIT License
 #
-# Copyright (c) 2020 Dmitrii Ustiugov, Shyam Jesalpura and EASE lab
+# Copyright (c) 2020 Shyam Jesalpura and EASE lab
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,22 +20,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# download and install docker
-sudo apt-get update
-
+#!/bin/bash
 sudo apt-get install -y \
-    jq >> /dev/null
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common >> /dev/null
 
-PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-$PWD/../install_go.sh
-$PWD/../install_docker.sh
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 
-# install kind from ease-lab/kind
-rm -rf /tmp/kind/
-git clone -b custom_docker_params_for_vHive https://github.com/ease-lab/kind /tmp/kind/
-cd /tmp/kind
-source /etc/profile && go build
-sudo mv kind /usr/local/bin/
+sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
 
-# Allow profiling using Perf / PMU tools
-sudo sysctl -w kernel.perf_event_paranoid=-1
+sudo apt-get update && sudo apt-get install --yes docker-ce docker-ce-cli containerd.io
+
+sudo usermod -aG docker $USER
