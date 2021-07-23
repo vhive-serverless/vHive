@@ -23,25 +23,14 @@
 version: "3.7"
 
 services:
-    zipkin:
-        image: openzipkin/zipkin
-        ports:
-            - 9411:9411
-
     recog:
         image: vhiveease/video-bench-recog
         command:
             - -sp=50053
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
-            - USES3=true
-            - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-            - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-            - AWS_REGION=us-west-1
-            - ENABLE_TRACING=true
+            - USES3=false
             - MAX_RECOG_SERVER_THREADS=10
-        depends_on:
-            - zipkin
 
     decoder:
         image: vhiveease/video-bench-decoder
@@ -51,18 +40,48 @@ services:
             - -frames=3
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
-            - TRANSFER_TYPE=S3
-            - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-            - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-            - AWS_REGION=us-west-1
-            - ENABLE_TRACING=true
+            - TRANSFER_TYPE=XDT
             - MAX_DECODER_SERVER_THREADS=10
-        depends_on:
+            - SQP_SERVER_HOSTNAME=sQP
+            - SQP_SERVER_PORT=:50005
+            - DQP_SERVER_HOSTNAME=dQP
+            - DQP_SERVER_PORT=:50006
+            - DST_SERVER_HOSTNAME=decoder
+            - DST_SERVER_PORT=:50052
+            - PROXY_HOSTNAME=dQP
+            - PROXY_PORT=:50008
+        depends_on: 
             - recog
-
+    sQP:
+        image: vhiveease/sqp
+        environment:
+            - SQP_SERVER_HOSTNAME=sQP
+            - SQP_SERVER_PORT=:50005
+            - DQP_SERVER_HOSTNAME=dQP
+            - DQP_SERVER_PORT=:50006
+            - DST_SERVER_HOSTNAME=decoder
+            - DST_SERVER_PORT=:50052
+            - PROXY_HOSTNAME=dQP
+            - PROXY_PORT=:50008
+        expose:
+            - "50005"
+    dQP:
+        image: vhiveease/dqp
+        environment:
+            - SQP_SERVER_HOSTNAME=sQP
+            - SQP_SERVER_PORT=:50005
+            - DQP_SERVER_HOSTNAME=dQP
+            - DQP_SERVER_PORT=:50006
+            - DST_SERVER_HOSTNAME=decoder
+            - DST_SERVER_PORT=:50052
+            - PROXY_HOSTNAME=dQP
+            - PROXY_PORT=:50008
+        expose:
+            - "50006"
+            - "50008"
     streaming:
         image: vhiveease/video-bench-streaming
-        ports:
+        ports: 
             - "50051:50051"
         command:
             - -addr=decoder
@@ -70,10 +89,16 @@ services:
             - -sp=50051
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
-            - TRANSFER_TYPE=S3
-            - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-            - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-            - AWS_REGION=us-west-1
-            - ENABLE_TRACING=true
+            - TRANSFER_TYPE=XDT
+            - SQP_SERVER_HOSTNAME=sQP
+            - SQP_SERVER_PORT=:50005
+            - DQP_SERVER_HOSTNAME=dQP
+            - DQP_SERVER_PORT=:50006
+            - DST_SERVER_HOSTNAME=decoder
+            - DST_SERVER_PORT=:50052
+            - PROXY_HOSTNAME=dQP
+            - PROXY_PORT=:50008
         depends_on:
             - decoder
+            - sQP
+            - dQP

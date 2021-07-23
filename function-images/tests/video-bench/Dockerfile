@@ -43,7 +43,7 @@ FROM vhiveease/python:latest as decodeBuilder
 WORKDIR /py
 COPY ./function-images/tests/video-bench/requirements.txt ./
 RUN apt update && \
-    apt-get install ffmpeg libsm6 libxext6  -y && \
+    apt-get install ffmpeg libsm6 libxext6 git -y && \
     pip3 install --no-cache-dir --user ffmpeg-python && \
     pip3 install --no-cache-dir --user opencv-python && \
     pip3 install --no-cache-dir --user -r requirements.txt
@@ -52,11 +52,16 @@ COPY ./function-images/tests/video-bench/decoder/decode.py ./
 RUN mkdir frames
 COPY ./function-images/tests/video-bench/proto/videoservice_pb2_grpc.py ./
 COPY ./function-images/tests/video-bench/proto/videoservice_pb2.py ./
+RUN --mount=type=secret,id=GOPRIVATE_KEY \
+        git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
+RUN git clone -b python-sdk-use-metadata-at-dst --depth 1 https://github.com/ease-lab/vhive-xdt /xdt
 
 FROM vhiveease/python-slim:latest as decode
 RUN apt update && apt-get install ffmpeg libsm6 libxext6  -y
 COPY --from=decodeBuilder /root/.local /root/.local
 COPY --from=decodeBuilder /py /app
+COPY --from=decodeBuilder /xdt/sdk/python/ /app
+COPY --from=decodeBuilder /xdt/proto/downXDT/ /app
 WORKDIR /app
 ENV PATH=/root/.local/bin:$PATH
 ENTRYPOINT ["python3", "-u", "./decode.py"]
@@ -65,14 +70,16 @@ ENTRYPOINT ["python3", "-u", "./decode.py"]
 
 FROM vhiveease/golang:latest as streamingBuilder
 WORKDIR /app
-RUN apk add --no-cache make
+RUN apk add --no-cache make git
 RUN apk add -U --no-cache ca-certificates
 COPY ./video_streaming/video-streaming.go ./video_streaming/
 COPY ./video_streaming/reference ./reference
 COPY ./go.mod ./
 COPY ./go.sum ./
 COPY ./proto ./proto
-
+RUN --mount=type=secret,id=GOPRIVATE_KEY \
+    git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
+RUN go env -w GOPRIVATE=github.com/ease-lab/vhive-xdt
 RUN go mod download && \
    CGO_ENABLED=0 GOOS=linux go build -v -o ./video_streaming/streaming-bin ./video_streaming
 

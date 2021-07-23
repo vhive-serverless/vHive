@@ -30,13 +30,21 @@ all-image: decoder-image recog-image streaming-image
 all-image-push: decoder-image-push recog-image-push streaming-image-push
 
 decoder-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py decoder/decode.py
-	cd $(ROOT) && docker build -t vhiveease/video-bench-decoder --target decode --load -f $(HERE)/Dockerfile .
+	cd $(ROOT) && DOCKER_BUILDKIT=1 docker build \
+	-t vhiveease/video-bench-decoder \
+	--target decode \
+	--secret id=GOPRIVATE_KEY \
+	--load -f $(HERE)/Dockerfile .
 
 recog-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py object_recognition/recog.py object_recognition/imagenet_labels.txt
 	cd $(ROOT) && docker build -t vhiveease/video-bench-recog --target recog --load -f $(HERE)/Dockerfile .
 
 streaming-image: Dockerfile proto/videoservice_grpc.pb.go proto/videoservice.pb.go video_streaming/video-streaming.go video_streaming/reference/video.mp4
-	docker build -t vhiveease/video-bench-streaming --target streaming --load .
+	DOCKER_BUILDKIT=1 docker build \
+	-t vhiveease/video-bench-streaming \
+	--target streaming \
+	--secret id=GOPRIVATE_KEY \
+	--load .
 
 decoder-image-push: decoder-image
 	docker push vhiveease/video-bench-decoder:latest
