@@ -153,8 +153,7 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 			FunctionName: "HelloXDT",
 			Data:         videoFragment,
 		}
-		url := s.config.ProxyHostname + s.config.ProxyPort
-		if message, _, err := s.XDTclient.Invoke(url, payloadToSend); err != nil {
+		if message, _, err := s.XDTclient.Invoke(addr, payloadToSend); err != nil {
 			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
 		} else {
 			response = string(message)
@@ -194,6 +193,7 @@ func (s *server) SayHello(ctx context.Context, req *pb_helloworld.HelloRequest) 
 
 func main() {
 	debug := flag.Bool("d", false, "Debug level in logs")
+	dockerCompose := flag.Bool("dockerCompose", false, "Execution env")
 	decoderAddr := flag.String("addr", "decoder.default.192.168.1.240.sslip.io", "Decoder address")
 	decoderPort := flag.Int("p", 80, "Decoder port")
 	servePort := flag.Int("sp", 80, "Port listened to by this streamer")
@@ -253,8 +253,9 @@ func main() {
 		log.Infof("[streaming] TransferType = %s", server.transferType)
 		config := utils.ReadConfig()
 		log.Info(config)
-		// TODO: prevent hostname patching in docker-compose env
-		//config.SQPServerHostname = fetchSelfIP()
+		if !*dockerCompose {
+			config.SQPServerHostname = fetchSelfIP()
+		}
 		xdtClient, err := sdk.NewXDTclient(config)
 		if err != nil {
 			log.Fatalf("InitXDT failed %v", err)

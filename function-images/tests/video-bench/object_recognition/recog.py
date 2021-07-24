@@ -35,6 +35,8 @@ sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
 import tracing
 import videoservice_pb2_grpc
 import videoservice_pb2
+import destination as XDTdst
+import utils as XDTutil
 
 import io
 import grpc
@@ -43,7 +45,6 @@ import boto3
 import logging as log
 
 from concurrent import futures
-from timeit import default_timer as now
 
 
 parser = argparse.ArgumentParser()
@@ -51,6 +52,10 @@ parser.add_argument("-sp", "--sp", dest = "sp", default = "80", help="serve port
 parser.add_argument("-zipkin", "--zipkin", dest = "url", default = "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", help="Zipkin endpoint url")
 
 args = parser.parse_args()
+
+INLINE = "INLINE"
+S3 = "S3"
+XDT = "XDT"
 
 # set aws credentials:
 AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
@@ -124,23 +129,20 @@ def fetchFrameS3(key):
 
 
 class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer):
+    def __init__(self, transferType):
+
+        self.transferType = transferType
+
     def Recognise(self, request, context):
         log.info("received a call")
-        uses3 = os.getenv('USES3', "false")
-        if uses3 == "false":
-            uses3 = False
-        elif uses3 == "true":
-            uses3 = True
-        else:
-            log.info("Invalid USES3 value")
 
         # get the frame from s3 or inline
         frame = None
-        if uses3:
+        if self.transferType == S3:
             log.info("retrieving target frame '%s' from s3" % request.s3key)
             with tracing.Span("Frame fetch"):
                 frame = fetchFrameS3(request.s3key)
-        else:
+        elif self.transferType == INLINE:
             frame = request.frame
 
         log.info("performing image recognition on frame")
@@ -150,13 +152,25 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
 
 
 def serve():
-    max_workers = int(os.getenv("MAX_RECOG_SERVER_THREADS", 10))
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
-    videoservice_pb2_grpc.add_ObjectRecognitionServicer_to_server(
-        ObjectRecognitionServicer(), server)
-    server.add_insecure_port('[::]:'+args.sp)
-    server.start()
-    server.wait_for_termination()
+    transferType = os.getenv('TRANSFER_TYPE', INLINE)
+    if transferType == S3 or transferType == INLINE:
+        max_workers = int(os.getenv("MAX_RECOG_SERVER_THREADS", 10))
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
+        videoservice_pb2_grpc.add_ObjectRecognitionServicer_to_server(
+            ObjectRecognitionServicer(transferType=transferType), server)
+        server.add_insecure_port('[::]:'+args.sp)
+        server.start()
+        server.wait_for_termination()
+    elif transferType == XDT:
+        config = XDTutil.loadConfig()
+        log.info("[recog] transfering via XDT")
+        log.info(config)
+
+        def handler(imageBytes):
+            classification = infer(preProcessImage(imageBytes))
+            return classification.encode(), True
+
+        XDTdst.StartDstServer(config, handler)
 
 
 if __name__ == '__main__':

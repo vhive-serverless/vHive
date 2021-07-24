@@ -33,13 +33,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: TRANSFER_TYPE
-              value: "S3"
-            - name: AWS_ACCESS_KEY
-              value: ${AWS_ACCESS_KEY}
-            - name: AWS_SECRET_KEY
-              value: ${AWS_SECRET_KEY}
-            - name: AWS_REGION
-              value: "us-west-1"
+              value: "INLINE"
             - name: MAX_RECOG_SERVER_THREADS
               value: "10"
             - name: ENABLE_TRACING

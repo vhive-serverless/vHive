@@ -37,7 +37,11 @@ decoder-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.
 	--load -f $(HERE)/Dockerfile .
 
 recog-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py object_recognition/recog.py object_recognition/imagenet_labels.txt
-	cd $(ROOT) && docker build -t vhiveease/video-bench-recog --target recog --load -f $(HERE)/Dockerfile .
+	cd $(ROOT) && DOCKER_BUILDKIT=1 docker build \
+	-t vhiveease/video-bench-recog \
+	--target recog \
+	--secret id=GOPRIVATE_KEY \
+	--load -f $(HERE)/Dockerfile .
 
 streaming-image: Dockerfile proto/videoservice_grpc.pb.go proto/videoservice.pb.go video_streaming/video-streaming.go video_streaming/reference/video.mp4
 	DOCKER_BUILDKIT=1 docker build \
