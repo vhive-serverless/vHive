@@ -31,6 +31,7 @@ import tracing
 import videoservice_pb2_grpc
 import videoservice_pb2
 import destination as XDTdst
+import source as XDTsrc
 import utils as XDTutil
 
 import cv2
@@ -80,70 +81,85 @@ def decode(bytes):
     return all_frames
 
 
-def fetchFromS3(key):
-    s3_client = boto3.resource(
-        service_name='s3',
-        region_name=os.getenv("AWS_REGION", 'us-west-1'),
-        aws_access_key_id=AWS_ID,
-        aws_secret_access_key= AWS_SECRET
-    )
+def fetchFromS3(s3_client, key):
     obj = s3_client.Object(bucket_name='vhive-video-bench', key=key)
     response = obj.get()
     return s3_client, response['Body'].read()
 
 
 class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
-    def __init__(self, transferType):
+    def __init__(self, transferType, XDTconfig=None):
 
         self.frameCount = 0
         self.transferType = transferType
+        if transferType == S3:
+            self.s3_client = boto3.resource(
+                service_name='s3',
+                region_name=os.getenv("AWS_REGION", 'us-west-1'),
+                aws_access_key_id=AWS_ID,
+                aws_secret_access_key=AWS_SECRET
+            )
+        elif transferType == XDT:
+            if XDTconfig is None:
+                log.fatal("Empty XDT config")
+            self.XDTconfig = XDTconfig
 
     def Decode(self, request, context):
         log.info("Decoder recieved a request")
 
         s3 = None
+        videoBytes = b''
         if self.transferType == S3:
             log.info("Using s3, getting bucket")
             with tracing.Span("Video fetch"):
-                s3, videoBytes = fetchFromS3(request.s3key)
+                s3, videoBytes = fetchFromS3(self.s3_client, request.s3key)
             log.info("decoding frames of the s3 object")
         elif self.transferType == INLINE:
             log.info("Inline video decode. Decoding frames.")
             videoBytes = request.video
-        results = self.processFrames(videoBytes, s3)
+        results = self.processFrames(videoBytes)
         return videoservice_pb2.DecodeReply(classification=results)
 
-    def processFrames(self, videoBytes, s3):
+    def processFrames(self, videoBytes):
         frames = decode(videoBytes)
         with tracing.Span("Recognise all frames"):  
             all_result_futures = []
             # send all requests
             for i in range(int(os.getenv('DecoderFrames', int(args.frames)))):
-                all_result_futures.append(self.Recognise(frames[i], s3))
+                if self.transferType == S3 or self.transferType == INLINE:
+                    all_result_futures.append(self.Recognise(frames[i]))
+                if self.transferType == XDT:
+                    all_result_futures.append(self.Recognise(frames[i]))
             # concat all results
             log.info("returning result of frame classification")
             results = ""
             for result in all_result_futures:
-                results = results + result.result().classification + ","
+                results = results + result + ","
 
             return results
     
-    def Recognise(self, frame, s3):
+    def Recognise(self, frame):
         channel = grpc.insecure_channel(args.addr)
         stub = videoservice_pb2_grpc.ObjectRecognitionStub(channel)
-        if s3 is not None:
+        if self.transferType == S3:
             name = "decoder-frame-" + str(self.frameCount) + ".jpg"
             with tracing.Span("Upload frame"):
-                s3object = s3.Object('vhive-video-bench', name)
+                s3object = self.s3_client.Object('vhive-video-bench', name)
                 self.frameCount += 1
                 log.info("uploading frame %d to s3" % self.frameCount)
                 s3object.put(Body=frame)
             log.info("calling recog with s3 key")
             response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(s3key=name))
-        else:
+            result = response_future.result().classification
+        elif self.transferType == INLINE:
             response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(frame=frame))
+            result = response_future.result().classification
+        elif self.transferType == XDT:
+            xdtPayload = XDTutil.Payload(FunctionName="HelloXDT", Data=frame)
+            response_future, ok = XDTsrc.InvokeWithXDT(args.addr, xdtPayload, self.XDTconfig)
+            result = response_future.decode()
         
-        return response_future
+        return result
 
 
 def serve():
@@ -157,14 +173,16 @@ def serve():
         server.start()
         server.wait_for_termination()
     elif transferType == XDT:
-        config = XDTutil.loadConfig()
-        log.info("transfering via XDT")
-        log.info(config)
+        XDTconfig = XDTutil.loadConfig()
+        log.info("[decode] transfering via XDT")
+        log.info(XDTconfig)
+
         def handler(videoBytes):
-            decoderService = VideoDecoderServicer(transferType=transferType)
-            results = decoderService.processFrames(videoBytes, None)
+            decoderService = VideoDecoderServicer(transferType=transferType, XDTconfig=XDTconfig)
+            results = decoderService.processFrames(videoBytes)
             return results.encode(), True
-        XDTdst.StartDstServer(config, handler)
+
+        XDTdst.StartDstServer(XDTconfig, handler)
     else:
         log.fatal("Invalid Transfer type")
 
