@@ -40,15 +40,17 @@ import tempfile
 import argparse
 import boto3
 import logging as log
+import socket
 
 from concurrent import futures
 
 # USE ENV VAR "DecoderFrames" to set the number of frames to be sent
 parser = argparse.ArgumentParser()
-parser.add_argument("-addr", "--addr", dest = "addr", default = "recog.default.192.168.1.240.sslip.io:80", help="recog address")
-parser.add_argument("-sp", "--sp", dest = "sp", default = "80", help="serve port")
-parser.add_argument("-frames", "--frames", dest = "frames", default = "1", help="Default number of frames- overwritten by environment variable")
-parser.add_argument("-zipkin", "--zipkin", dest = "url", default = "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", help="Zipkin endpoint url")
+parser.add_argument("-dockerCompose", "--dockerCompose", dest="dockerCompose", default=False, help="Env docker compose")
+parser.add_argument("-addr", "--addr", dest="addr", default="recog.default.192.168.1.240.sslip.io:80", help="recog address")
+parser.add_argument("-sp", "--sp", dest="sp", default="80", help="serve port")
+parser.add_argument("-frames", "--frames", dest="frames", default="1", help="Default number of frames- overwritten by environment variable")
+parser.add_argument("-zipkin", "--zipkin", dest="url", default="http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", help="Zipkin endpoint url")
 
 args = parser.parse_args()
 
@@ -85,6 +87,19 @@ def fetchFromS3(s3_client, key):
     obj = s3_client.Object(bucket_name='vhive-video-bench', key=key)
     response = obj.get()
     return s3_client, response['Body'].read()
+
+
+def get_self_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
 
 
 class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
@@ -156,6 +171,9 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
             result = response_future.result().classification
         elif self.transferType == XDT:
             xdtPayload = XDTutil.Payload(FunctionName="HelloXDT", Data=frame)
+            if not args.dockerCompose:
+                log.info("replacing SQP hostname")
+                self.XDTconfig["SQPServerHostname"] = get_self_ip()
             response_future, ok = XDTsrc.InvokeWithXDT(args.addr, xdtPayload, self.XDTconfig)
             result = response_future.decode()
         

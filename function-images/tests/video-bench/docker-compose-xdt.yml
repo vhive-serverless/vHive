@@ -36,6 +36,7 @@ services:
     decoder:
         image: vhiveease/video-bench-decoder
         command:
+            - -dockerCompose=True
             - -addr=recog-dQP:50008
             - -sp=50052
             - -frames=3
