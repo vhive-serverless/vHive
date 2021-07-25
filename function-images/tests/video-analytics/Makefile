@@ -21,7 +21,8 @@
 # SOFTWARE.
 
 ROOT = ../../../
-HERE = ./function-images/tests/video-bench
+
+.PHONY: proto
 
 all: all-image 
 
@@ -30,34 +31,47 @@ all-image: decoder-image recog-image streaming-image
 all-image-push: decoder-image-push recog-image-push streaming-image-push
 
 decoder-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py decoder/decode.py
-	cd $(ROOT) && DOCKER_BUILDKIT=1 docker build \
-	-t vhiveease/video-bench-decoder \
+	DOCKER_BUILDKIT=1 docker build \
+	-t vhiveease/video-analytics-decoder \
 	--target decode \
 	--secret id=GOPRIVATE_KEY \
-	--load -f $(HERE)/Dockerfile .
+	--load \
+	-f Dockerfile \
+	$(ROOT)
 
 recog-image: Dockerfile proto/videoservice_pb2_grpc.py proto/videoservice_pb2.py object_recognition/recog.py object_recognition/imagenet_labels.txt
-	cd $(ROOT) && DOCKER_BUILDKIT=1 docker build \
-	-t vhiveease/video-bench-recog \
+	DOCKER_BUILDKIT=1 docker build \
+	-t vhiveease/video-analytics-recog \
 	--target recog \
 	--secret id=GOPRIVATE_KEY \
-	--load -f $(HERE)/Dockerfile .
+	--load \
+	-f Dockerfile \
+	$(ROOT)
 
 streaming-image: Dockerfile proto/videoservice_grpc.pb.go proto/videoservice.pb.go video_streaming/video-streaming.go video_streaming/reference/video.mp4
 	DOCKER_BUILDKIT=1 docker build \
-	-t vhiveease/video-bench-streaming \
+	-t vhiveease/video-analytics-streaming \
 	--target streaming \
 	--secret id=GOPRIVATE_KEY \
+	-f Dockerfile \
 	--load .
 
 decoder-image-push: decoder-image
-	docker push vhiveease/video-bench-decoder:latest
+	docker push vhiveease/video-analytics-decoder:latest
 
 recog-image-push: recog-image
-	docker push vhiveease/video-bench-recog:latest
+	docker push vhiveease/video-analytics-recog:latest
 
 streaming-image-push: streaming-image
-	docker push vhiveease/video-bench-streaming:latest
+	docker push vhiveease/video-analytics-streaming:latest
 
 proto: proto/videoservice.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative proto/videoservice.proto && cd proto && python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. videoservice.proto
+	protoc --go_out=. \
+	--go_opt=paths=source_relative \
+	--go-grpc_out=. \
+	--go-grpc_opt=paths=source_relative proto/videoservice.proto
+	cd proto && \
+	python -m grpc_tools.protoc -I. \
+	--python_out=. \
+	--grpc_python_out=. \
+	videoservice.proto

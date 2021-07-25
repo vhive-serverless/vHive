@@ -24,7 +24,7 @@ version: "3.7"
 
 services:
     recog:
-        image: vhiveease/video-bench-recog
+        image: vhiveease/video-analytics-recog
         command:
             - -sp=50053
             - -zipkin=http://zipkin:9411/api/v2/spans
@@ -36,7 +36,7 @@ services:
             - MAX_RECOG_SERVER_THREADS=10
 
     decoder:
-        image: vhiveease/video-bench-decoder
+        image: vhiveease/video-analytics-decoder
         command:
             - -addr=recog:50053
             - -sp=50052
@@ -52,7 +52,7 @@ services:
             - recog
 
     streaming:
-        image: vhiveease/video-bench-streaming
+        image: vhiveease/video-analytics-streaming
         ports: 
             - "50051:50051"
         command:

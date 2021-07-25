@@ -9,4 +9,4 @@ opentelemetry-sdk==1.3.0
 opentelemetry-semantic-conventions==0.22b0
 boto3==1.18.1
 grpcio-tools==1.38.1
-environs
+environs==9.3.2
