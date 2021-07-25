@@ -195,9 +195,6 @@ jobs:
         with:
           lfs: 'true'
 
-      - name: Checkout LFS objects
-        run: git lfs checkout
-
       - name: Start consumer and producer
         env:
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
@@ -245,9 +242,6 @@ jobs:
         with:
           lfs: 'true'
 
-      - name: Checkout LFS objects
-        run: git lfs checkout
-
       - name: Apply
         run: ./function-images/tests/chained-function-eventing/manifests/apply.sh && sleep 30
 
@@ -283,7 +277,7 @@ jobs:
         run: ./function-images/tests/chained-function-eventing/manifests/delete.sh
   bench-video-compose:
     name: Video Analytics (docker-compose)
-    needs: [ push-video-analytics  ]
+    needs: push-video-analytics
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
@@ -308,3 +302,118 @@ jobs:
       - name: show docker-compose log
         if: ${{ always() }}
         run: cat  ./function-images/tests/video-analytics/log_file
+  bench-video-knative:
+    name: Video analytics benchmark (Knative)
+    needs: push-video-analytics
+    env:
+      GOCACHE: /root/tmp/gocache
+      GOPATH: /root/tmp/gopath
+      TMPDIR: /root/tmp
+    runs-on: [ stock-knative ]
+    strategy:
+      fail-fast: false
+      matrix:
+        transfer-type: [ s3, inline ]
+    steps:
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
+
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+
+      - name: Deploy functions
+        env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        run: |
+          ./function-images/tests/kn_deploy.sh ./function-images/tests/video-analytics/knative_yamls/${{ matrix.transfer-type }}/service*
+
+      - name: Invoke functions
+        run: |
+          set -x
+
+          NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          HOSTNAME=$(kubectl get ksvc streaming -n default -o jsonpath='{.status.url}' | cut -c8-)
+
+          ./bin/grpcurl -max-time 10 -plaintext $HOSTNAME:$NODEPORT helloworld.Greeter.SayHello
+
+      - name: Print logs
+        if: ${{ always() }}
+        run: |
+          set -x
+
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=streaming
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=decoder
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=recog
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: |
+          kn service delete --all --namespace default --wait
+
+  bench-video-knative-XDT:
+    name: Video Analytics (Knative-XDT)
+    needs: push-video-analytics
+    env:
+      GITHUB_RUN_ID: ${{ github.run_id }}
+      LOGPATH: /tmp/bench-logs/${{ github.run_id }}
+      GOCACHE: /root/tmp/gocache
+      GOPATH: /root/tmp/gopath
+    runs-on: [ self-hosted, cri ]
+    strategy:
+      fail-fast: false
+    steps:
+
+      - name: Set up Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Setup LOGPATH
+        run: |
+          mkdir -p /tmp/bench-logs/${{ github.run_id }}
+
+      - name: Host Info
+        run: |
+          echo $HOSTNAME
+          echo $GITHUB_RUN_ID
+          echo $LOGPATH
+
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+          fetch-depth: 0
+
+      - name: Replace Knative yamls for XDT
+        run: |
+          rm ./configs/knative_yamls/*.yaml
+          git checkout test_knative_with_XDT -- configs/knative_yamls/*.yaml
+
+      - name: Start containerd
+        run: sudo containerd 1>$LOGPATH/containerd.out 2>$LOGPATH/containerd.err &
+
+      - name: Start one-node cluster
+        run: |
+          ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
+
+      - name: Deploy services
+        run: |
+          ./function-images/tests/kn_deploy.sh ./function-images/tests/video-analytics/knative_yamls/xdt/service*
+
+      # First use grpcurl to invoke and then use the invoker in the same
+      # job, since invoker would consider timeouts as an error so if
+      # function deployment failed, the CI would not catch an error.
+      - name: grpcurl
+        run: |
+          ./bin/grpcurl -plaintext streaming.default.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
+
+      - name: Archive log artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: logs
+          path: /tmp/bench-logs/${{ github.run_id }}
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: ./scripts/github_runner/clean_cri_runner.sh stock-only
