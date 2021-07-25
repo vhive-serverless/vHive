@@ -1,0 +1,98 @@
+// MIT License
+//
+// Copyright (c) 2021 Dmitrii Ustiugov and EASE lab
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.vhive.stacking";
+option java_outer_classname = "stacking";
+option go_package = "tests/stacking-training/proto";
+
+package stacking;
+
+service Trainer {
+    rpc Train(TrainRequest) returns (TrainReply) {}
+}
+
+service Reducer {
+    rpc Reduce(ReduceRequest) returns (ReduceReply) {}
+}
+
+service Metatrainer {
+    rpc Metatrain(MetaTrainRequest) returns (MetaTrainReply) {}
+}
+
+message TrainRequest {
+    // s3, xdt
+    bytes dataset = 1;
+    string dataset_key = 2;
+    bytes model_config = 3;
+    string trainer_id = 4;
+}
+
+message TrainReply {
+    // s3, xdt
+    bytes model = 1;
+    string model_key = 2;
+    string pred_key = 3;
+}
+
+message ReduceRequest {
+    // s3, xdt
+    repeated ModelPredTuple model_pred_tuples = 1;
+}
+
+message ModelPredTuple {
+    string model_key = 1;
+    string pred_key = 2;
+}
+
+message ReduceReply {
+    // inline but could be s3, xdt
+    bytes models = 1;
+    string models_key = 2;
+    bytes meta_features = 3;
+    string meta_features_key = 4;
+}
+
+message MetaTrainRequest {
+    // s3, xdt
+    bytes dataset = 1;
+    string dataset_key = 2;
+    // inline but could be s3, xdt
+    bytes models = 3;
+    string models_key = 4;
+    bytes meta_features = 5;
+    string meta_features_key = 6;
+
+    bytes model_config = 7;
+}
+
+message MetaTrainReply {
+    // s3, xdt
+    bytes model_full = 1;
+    string model_full_key = 2;
+    bytes meta_predictions = 3;
+    string meta_predictions_key = 4;
+    // inline
+    string score = 5;
+}
