@@ -35,7 +35,7 @@ RUN --mount=type=secret,id=GOPRIVATE_KEY \
         git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
     curl https://$(cat /run/secrets/GOPRIVATE_KEY):x-oauth-basic@api.github.com/repos/ease-lab/vhive-xdt/git/refs/heads/python-sdk-use-metadata-at-dst -o version.json
-RUN git clone -b python-sdk-use-metadata-at-dst --depth 1 https://github.com/ease-lab/vhive-xdt /xdt
+RUN git clone --depth 1 https://github.com/ease-lab/vhive-xdt /xdt
 
 FROM vhiveease/python-slim:latest as recog
 COPY --from=recogBuilder /root/.local /root/.local
@@ -64,7 +64,7 @@ RUN --mount=type=secret,id=GOPRIVATE_KEY \
         git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
     curl https://$(cat /run/secrets/GOPRIVATE_KEY):x-oauth-basic@api.github.com/repos/ease-lab/vhive-xdt/git/refs/heads/python-sdk-use-metadata-at-dst -o version.json
-RUN git clone -b python-sdk-use-metadata-at-dst --depth 1 https://github.com/ease-lab/vhive-xdt /xdt
+RUN git clone --depth 1 https://github.com/ease-lab/vhive-xdt /xdt
 
 FROM vhiveease/python-slim:latest as decode
 RUN apt update && apt-get install ffmpeg libsm6 libxext6  -y
