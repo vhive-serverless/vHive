@@ -23,37 +23,28 @@
 version: "3.7"
 
 services:
-    zipkin:
-        image: openzipkin/zipkin
-        ports:
-            - 9411:9411
-
     recog:
-        image: vhiveease/video-bench-recog
+        image: vhiveease/video-analytics-recog
         command:
             - -sp=50053
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
-            - ENABLE_TRACING=true
             - MAX_RECOG_SERVER_THREADS=10
-        depends_on:
-            - zipkin
 
     decoder:
-        image: vhiveease/video-bench-decoder
+        image: vhiveease/video-analytics-decoder
         command:
             - -addr=recog:50053
             - -sp=50052
             - -frames=3
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
-            - ENABLE_TRACING=true
             - MAX_DECODER_SERVER_THREADS=10
-        depends_on:
+        depends_on: 
             - recog
 
     streaming:
-        image: vhiveease/video-bench-streaming
+        image: vhiveease/video-analytics-streaming
         ports: 
             - "50051:50051"
         command:
@@ -61,7 +52,5 @@ services:
             - -p=50052
             - -sp=50051
             - -zipkin=http://zipkin:9411/api/v2/spans
-        environment:
-            - ENABLE_TRACING=true
         depends_on:
             - decoder

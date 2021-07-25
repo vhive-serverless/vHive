@@ -23,17 +23,21 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: streaming
+  name: decoder
   namespace: default
 spec:
   template:
     spec:
       containers:
-        - image: docker.io/vhiveease/video-bench-streaming:latest
+        - image: docker.io/vhiveease/video-analytics-decoder:latest
           imagePullPolicy: Always
           env:
             - name: TRANSFER_TYPE
               value: "INLINE"
+            - name: DecoderFrames
+              value: "3"
+            - name: MAX_DECODER_SERVER_THREADS
+              value: "10"
             - name: ENABLE_TRACING
               value: "false"
           ports:

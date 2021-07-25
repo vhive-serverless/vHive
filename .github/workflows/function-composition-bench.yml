@@ -200,7 +200,7 @@ jobs:
 
     - name: start multi-container program with docker-compose
       run: |
-        cd ./function-images/tests/video-bench/
+        cd ./function-images/tests/video-analytics/
         docker-compose up &> log_file &
         sleep 15s
     - name: invoke the chain
@@ -247,7 +247,7 @@ jobs:
 
     - name: Deploy services
       run: |
-       cd ./function-images/tests/video-bench && ./deploy.sh
+       cd ./function-images/tests/video-analytics && ./deploy.sh
 
     # First use grpcurl to invoke and then use the invoker in the same
     # job, since invoker would consider timeouts as an error so if

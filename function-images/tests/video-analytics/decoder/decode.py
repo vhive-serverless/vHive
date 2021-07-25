@@ -86,7 +86,7 @@ def decode(bytes):
 def fetchFromS3(s3_client, key):
     obj = s3_client.Object(bucket_name='vhive-video-bench', key=key)
     response = obj.get()
-    return s3_client, response['Body'].read()
+    return response['Body'].read()
 
 
 def get_self_ip():
@@ -122,12 +122,11 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
     def Decode(self, request, context):
         log.info("Decoder recieved a request")
 
-        s3 = None
         videoBytes = b''
         if self.transferType == S3:
             log.info("Using s3, getting bucket")
             with tracing.Span("Video fetch"):
-                s3, videoBytes = fetchFromS3(self.s3_client, request.s3key)
+                videoBytes = fetchFromS3(self.s3_client, request.s3key)
             log.info("decoding frames of the s3 object")
         elif self.transferType == INLINE:
             log.info("Inline video decode. Decoding frames.")
@@ -174,8 +173,9 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
             if not args.dockerCompose:
                 log.info("replacing SQP hostname")
                 self.XDTconfig["SQPServerHostname"] = get_self_ip()
-            response_future, ok = XDTsrc.InvokeWithXDT(args.addr, xdtPayload, self.XDTconfig)
-            result = response_future.decode()
+            response_bytes, ok = XDTsrc.InvokeWithXDT(args.addr, xdtPayload, self.XDTconfig)
+            # convert response bytes to string
+            result = response_bytes.decode()
         
         return result
 

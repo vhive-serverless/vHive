@@ -23,17 +23,21 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: streaming
+  name: recog
   namespace: default
 spec:
   template:
     spec:
       containers:
-        - image: docker.io/vhiveease/video-bench-streaming:latest
+        - image: docker.io/vhiveease/video-analytics-recog:latest
           imagePullPolicy: Always
           env:
             - name: TRANSFER_TYPE
               value: "XDT"
+            - name: MAX_RECOG_SERVER_THREADS
+              value: "10"
+            - name: ENABLE_TRACING
+              value: "false"
             - name: CHUNK_SIZE_IN_BYTES
               value: "65536"
             - name: CT_BUFFER_SIZE
@@ -52,10 +56,12 @@ spec:
               value: "60000"
             - name: RPC_RETRY_DELAY
               value: "1"
+            - name: MAX_DST_SERVER_THREADS_PYTHON
+              value: "10"
+            - name: DST_SERVER_PORT
+              value: ":80"
             - name: ZIPKIN_ENDPOINT
               value: "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans"
-            - name: ENABLE_TRACING
-              value: "false"
           ports:
             # For `h2c`, see https://knative.tips/networking/http2/
             - name: h2c

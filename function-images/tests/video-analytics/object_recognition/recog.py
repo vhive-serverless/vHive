@@ -76,7 +76,7 @@ for i in labels_fd:
 labels_fd.close()
 
 
-def preProcessImage(imageBytes):
+def preprocessImage(imageBytes):
     with tracing.Span("preprocess"):
         img = Image.open(io.BytesIO(imageBytes))
 
@@ -146,7 +146,7 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
             frame = request.frame
 
         log.info("performing image recognition on frame")
-        classification = infer(preProcessImage(frame))
+        classification = infer(preprocessImage(frame))
         log.info("object recogintion successful")
         return videoservice_pb2.RecogniseReply(classification=classification)
 
@@ -167,7 +167,7 @@ def serve():
         log.info(config)
 
         def handler(imageBytes):
-            classification = infer(preProcessImage(imageBytes))
+            classification = infer(preprocessImage(imageBytes))
             return classification.encode(), True
 
         XDTdst.StartDstServer(config, handler)

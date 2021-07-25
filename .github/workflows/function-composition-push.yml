@@ -184,7 +184,7 @@ jobs:
         install: true
 
     - name: Build and push
-      working-directory: ./function-images/tests/video-bench
+      working-directory: ./function-images/tests/video-analytics
       env:
         GOPRIVATE_KEY: ${{ secrets.EASE_LAB_ACCESS_KEY }}
       run: |

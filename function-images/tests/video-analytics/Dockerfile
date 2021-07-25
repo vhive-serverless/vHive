@@ -20,17 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM vhiveease/python:latest as recogBuilder
+FROM vhiveease/python-slim:latest as recogBuilder
 WORKDIR /py
-COPY ./function-images/tests/video-bench/requirements.txt ./
+COPY ./function-images/tests/video-analytics/requirements.txt ./
 RUN apt update && \
     apt install git curl -y && \
     pip3 install --no-cache-dir --user torch==1.9.0+cpu torchvision==0.10.0+cpu torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html && \
     pip3 install --no-cache-dir --user -r requirements.txt
 COPY ./utils/tracing/python/tracing.py ./
-COPY ./function-images/tests/video-bench/object_recognition/* ./
-COPY ./function-images/tests/video-bench/proto/videoservice_pb2_grpc.py ./
-COPY ./function-images/tests/video-bench/proto/videoservice_pb2.py ./
+COPY ./function-images/tests/video-analytics/object_recognition/* ./
+COPY ./function-images/tests/video-analytics/proto/videoservice_pb2_grpc.py ./
+COPY ./function-images/tests/video-analytics/proto/videoservice_pb2.py ./
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
         git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
@@ -47,19 +47,19 @@ ENV PATH=/root/.local/bin:$PATH
 ENTRYPOINT ["python3", "-u", "./recog.py"]
 
 
-FROM vhiveease/python:latest as decodeBuilder
+FROM vhiveease/python-slim:latest as decodeBuilder
 WORKDIR /py
-COPY ./function-images/tests/video-bench/requirements.txt ./
+COPY ./function-images/tests/video-analytics/requirements.txt ./
 RUN apt update && \
     apt-get install ffmpeg libsm6 libxext6 git curl -y && \
     pip3 install --no-cache-dir --user ffmpeg-python && \
     pip3 install --no-cache-dir --user opencv-python && \
     pip3 install --no-cache-dir --user -r requirements.txt
 COPY ./utils/tracing/python/tracing.py ./
-COPY ./function-images/tests/video-bench/decoder/decode.py ./
+COPY ./function-images/tests/video-analytics/decoder/decode.py ./
 RUN mkdir frames
-COPY ./function-images/tests/video-bench/proto/videoservice_pb2_grpc.py ./
-COPY ./function-images/tests/video-bench/proto/videoservice_pb2.py ./
+COPY ./function-images/tests/video-analytics/proto/videoservice_pb2_grpc.py ./
+COPY ./function-images/tests/video-analytics/proto/videoservice_pb2.py ./
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
         git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
