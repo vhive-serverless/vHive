@@ -20,11 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM vhiveease/golang:latest as builder
+FROM vhiveease/golang-builder AS builder
 
 WORKDIR /app
-RUN apk add --no-cache make
-RUN apk add -U --no-cache ca-certificates
 # We use ARG and ENV to have a single Dockerfile for the all three programs.
 # https://vsupalov.com/docker-build-pass-environment-variables/
 ARG target_arg
@@ -33,8 +31,6 @@ RUN mkdir /log
 COPY . .
 WORKDIR /app/function-images/tests/chained-function-serving
 RUN go env -w GOPRIVATE=github.com/ease-lab/vhive-xdt
-RUN apk update && \
-    apk add git
 # Using buidkit secrets to pass sensitive info during the build.
 # https://pythonspeed.com/articles/docker-build-secrets/
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
@@ -43,11 +39,10 @@ RUN go mod tidy
 RUN go mod download && \
    CGO_ENABLED=0 GOOS=linux go build -v -o ./${target}-bin ./${target}/
 
-FROM scratch
+FROM vhiveease/runner
 WORKDIR /app
 ARG target_arg
 ENV target=$target_arg
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /log/ /app/log/ 
+COPY --from=builder /log/ /app/log/
 COPY --from=builder /app/function-images/tests/chained-function-serving/${target}-bin /app/exe
 ENTRYPOINT [ "/app/exe" ]
