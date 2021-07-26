@@ -31,11 +31,9 @@ spec:
       containers:
         - image: docker.io/vhiveease/word_count:volatile
           imagePullPolicy: Always
-          args: ["--verbose", "--out", "s3://vhive-corral-bench/word_count/"]
+          args: ["--knative", "--verbose", "--out", "s3://vhive-corral-bench/word_count/vhive-ubench/out"]
           env:
             - name: KNATIVE
               value: "1"
-            - name: AWS_REGION
-              value: us-west-1
           ports:
             - containerPort: 80
