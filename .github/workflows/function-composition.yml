@@ -41,8 +41,6 @@ on:
 env:
   GOOS: linux
   GO111MODULE: on
-  VHIVE_GOLANG_VERSION: golang:1.16.4-alpine3.13
-  VHIVE_PYTHON_VERSION: python:3.8
   KUBECONFIG: /etc/kubernetes/admin.conf
 
 jobs:
@@ -126,7 +124,7 @@ jobs:
         run: make push-all
   push-video-analytics:
     name: Push video-analytics
-    needs: [ push-golang, push-python-slim ]
+    needs: push-base-images
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
@@ -351,90 +349,3 @@ jobs:
         if: ${{ always() }}
         run: |
           kn service delete --all --namespace default --wait
-
-  bench-video-knative-XDT:
-    name: Video analytics benchmark (Knative-XDT)
-    needs: push-video-analytics
-    env:
-      GITHUB_RUN_ID: ${{ github.run_id }}
-      LOGPATH: /tmp/bench-logs/${{ github.run_id }}
-      GOCACHE: /root/tmp/gocache
-      GOPATH: /root/tmp/gopath
-    runs-on: [ self-hosted, cri ]
-    strategy:
-      fail-fast: false
-    steps:
-
-      - name: Set up Golang
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.16
-
-      - name: Setup LOGPATH
-        run: |
-          mkdir -p /tmp/bench-logs/${{ github.run_id }}
-
-      - name: Host Info
-        run: |
-          echo $HOSTNAME
-          echo $GITHUB_RUN_ID
-          echo $LOGPATH
-
-      - uses: actions/checkout@v2
-        with:
-          lfs: 'true'
-          ref: test_knative_with_XDT
-          path: test_knative_with_XDT
-
-      - name: Start containerd
-        run: sudo containerd 1>$LOGPATH/containerd.out 2>$LOGPATH/containerd.err &
-
-      - name: Start one-node cluster
-        run: |
-          ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
-
-      - uses: actions/checkout@v2
-        with:
-          lfs: 'true'
-          path: default
-
-      - name: Deploy services
-        env:
-          KUBECONFIG: /etc/kubernetes/admin.conf
-        run: |
-          ./function-images/tests/kn_deploy.sh ./function-images/tests/video-analytics/knative_yamls/xdt/service*
-
-      # First use grpcurl to invoke and then use the invoker in the same
-      # job, since invoker would consider timeouts as an error so if
-      # function deployment failed, the CI would not catch an error.
-      - name: grpcurl
-        run: |
-          ./bin/grpcurl -plaintext streaming.default.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
-
-      - name: Print user-container logs
-        if: ${{ always() }}
-        run: |
-          set -x
-
-          kubectl logs -n default -c user-container -l serving.knative.dev/service=streaming
-          kubectl logs -n default -c user-container -l serving.knative.dev/service=decoder
-          kubectl logs -n default -c user-container -l serving.knative.dev/service=recog
-
-      - name: Print queue-proxy logs
-        if: ${{ always() }}
-        run: |
-          set -x
-
-          kubectl logs -n default -c queue-proxy -l serving.knative.dev/service=streaming
-          kubectl logs -n default -c queue-proxy -l serving.knative.dev/service=decoder
-          kubectl logs -n default -c queue-proxy -l serving.knative.dev/service=recog
-
-      - name: Archive log artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: logs
-          path: /tmp/bench-logs/${{ github.run_id }}
-
-      - name: Cleaning
-        if: ${{ always() }}
-        run: ./scripts/github_runner/clean_cri_runner.sh stock-only
