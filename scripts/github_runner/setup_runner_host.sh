@@ -53,6 +53,9 @@ cd /tmp/kind
 source /etc/profile && go build
 sudo mv kind /usr/local/bin/
 
+# Disable swap
+sudo swapoff -a
+
 sudo usermod -aG docker $USER
 newgrp docker
 
