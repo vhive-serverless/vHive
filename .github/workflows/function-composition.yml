@@ -41,15 +41,18 @@ on:
 env:
   GOOS: linux
   GO111MODULE: on
-  VHIVE_GOLANG_VERSION: golang:1.16.4-alpine3.13
   KUBECONFIG: /etc/kubernetes/admin.conf
 
 jobs:
-  push-golang:
-    name: Push Golang Build Image
+  push-base-images:
+    name: Push Base Images
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
+      matrix:
+        image:
+          - golang-builder
+          - runner
     steps:
       - uses: actions/checkout@v2
 
@@ -60,23 +63,18 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Set up Docker Buildx
-        id: buildx
         uses: docker/setup-buildx-action@v1
 
       - name: Build and push
-        id: docker_build
         uses: docker/build-push-action@v2
         with:
-            context: ./configs/golang/
-            file: ./configs/golang/Dockerfile
+            context: ./configs/docker-images/${{ matrix.image }}
             push: true
-            tags: |
-              ${{ secrets.DOCKER_HUB_USERNAME }}/golang:latest
-              ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.VHIVE_GOLANG_VERSION }}
+            tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ matrix.image }}:latest
 
   push-chained-functions-serving:
     name: Push chained-functions-serving
-    needs: push-golang
+    needs: push-base-images
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
@@ -103,7 +101,7 @@ jobs:
 
   push-chained-functions-eventing:
     name: Push chained-functions-eventing
-    needs: push-golang
+    needs: push-base-images
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
