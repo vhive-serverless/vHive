@@ -280,7 +280,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        transfer-type: [ s3, inline, xdt ]
+        transfer-type: [ s3, inline ]
     steps:
       - uses: actions/checkout@v2
         with:

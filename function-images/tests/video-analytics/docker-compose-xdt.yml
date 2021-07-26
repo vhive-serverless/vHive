@@ -33,6 +33,8 @@ services:
             - DQP_SERVER_HOSTNAME=recog-dQP
             - DQP_SERVER_PORT=:50006
             - DST_SERVER_PORT=:50053
+        depends_on:
+            -   recog-dQP
     decoder:
         image: vhiveease/video-analytics-decoder
         command:
@@ -43,7 +45,7 @@ services:
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
             - TRANSFER_TYPE=XDT
-            - SQP_SERVER_HOSTNAME=sQP
+            - SQP_SERVER_HOSTNAME=decoder-sQP
             - SQP_SERVER_PORT=:50005
             - DQP_SERVER_HOSTNAME=decoder-dQP
             - DQP_SERVER_PORT=:50006
@@ -51,10 +53,20 @@ services:
             - DST_SERVER_PORT=:50052
         depends_on: 
             - recog
-    sQP:
+            - decoder-dQP
+            - decoder-sQP
+    streaming-sQP:
         image: vhiveease/sqp
         environment:
             - SQP_SERVER_PORT=:50005
+            - NUMBER_OF_BUFFERS=5
+        expose:
+            - "50005"
+    decoder-sQP:
+        image: vhiveease/sqp
+        environment:
+            - SQP_SERVER_PORT=:50005
+            - NUMBER_OF_BUFFERS=5
         expose:
             - "50005"
     decoder-dQP:
@@ -64,6 +76,7 @@ services:
             - DST_SERVER_HOSTNAME=decoder
             - DST_SERVER_PORT=:50052
             - PROXY_PORT=:50008
+            - NUMBER_OF_BUFFERS=5
         expose:
             - "50006"
             - "50008"
@@ -74,6 +87,7 @@ services:
             - DST_SERVER_HOSTNAME=recog
             - DST_SERVER_PORT=:50053
             - PROXY_PORT=:50008
+            - NUMBER_OF_BUFFERS=5
         expose:
             - "50006"
             - "50008"
@@ -89,10 +103,8 @@ services:
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
             - TRANSFER_TYPE=XDT
-            - SQP_SERVER_HOSTNAME=sQP
+            - SQP_SERVER_HOSTNAME=streaming-sQP
             - SQP_SERVER_PORT=:50005
         depends_on:
             - decoder
-            - sQP
-            - decoder-dQP
-            - recog-dQP
+            - streaming-sQP
