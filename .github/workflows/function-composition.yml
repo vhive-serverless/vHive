@@ -336,7 +336,7 @@ jobs:
           NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
           HOSTNAME=$(kubectl get ksvc streaming -n default -o jsonpath='{.status.url}' | cut -c8-)
 
-          ./bin/grpcurl -max-time 10 -plaintext $HOSTNAME:$NODEPORT helloworld.Greeter.SayHello
+          ./bin/grpcurl -plaintext $HOSTNAME:$NODEPORT helloworld.Greeter.SayHello
 
       - name: Print logs
         if: ${{ always() }}
@@ -353,7 +353,7 @@ jobs:
           kn service delete --all --namespace default --wait
 
   bench-video-knative-XDT:
-    name: Video Analytics (Knative-XDT)
+    name: Video analytics benchmark (Knative-XDT)
     needs: push-video-analytics
     env:
       GITHUB_RUN_ID: ${{ github.run_id }}
@@ -383,12 +383,8 @@ jobs:
       - uses: actions/checkout@v2
         with:
           lfs: 'true'
-          fetch-depth: 0
-
-      - name: Replace Knative yamls for XDT
-        run: |
-          rm ./configs/knative_yamls/*.yaml
-          git checkout test_knative_with_XDT -- configs/knative_yamls/*.yaml
+          ref: test_knative_with_XDT
+          path: test_knative_with_XDT
 
       - name: Start containerd
         run: sudo containerd 1>$LOGPATH/containerd.out 2>$LOGPATH/containerd.err &
@@ -397,7 +393,14 @@ jobs:
         run: |
           ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
 
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+          path: default
+
       - name: Deploy services
+        env:
+          KUBECONFIG: /etc/kubernetes/admin.conf
         run: |
           ./function-images/tests/kn_deploy.sh ./function-images/tests/video-analytics/knative_yamls/xdt/service*
 
@@ -407,6 +410,24 @@ jobs:
       - name: grpcurl
         run: |
           ./bin/grpcurl -plaintext streaming.default.192.168.1.240.sslip.io:80 helloworld.Greeter.SayHello
+
+      - name: Print user-container logs
+        if: ${{ always() }}
+        run: |
+          set -x
+
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=streaming
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=decoder
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=recog
+
+      - name: Print queue-proxy logs
+        if: ${{ always() }}
+        run: |
+          set -x
+
+          kubectl logs -n default -c queue-proxy -l serving.knative.dev/service=streaming
+          kubectl logs -n default -c queue-proxy -l serving.knative.dev/service=decoder
+          kubectl logs -n default -c queue-proxy -l serving.knative.dev/service=recog
 
       - name: Archive log artifacts
         uses: actions/upload-artifact@v2
