@@ -96,19 +96,46 @@ jobs:
         working-directory: function-images/tests/word_count
         run: make
 
+      - name: Configure AWS credentials using EASE lab account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-west-1
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Install AWS CLI
+        shell: bash
+        run: |
+          set -x
+
+          if ! command -v aws &> /dev/null
+          then
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip -qq awscliv2.zip
+            sudo ./aws/install
+          fi
+
       - name: Apply
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
         working-directory: function-images/tests/word_count
         run: |
-          kn service apply --wait-timeout 60 --filename word-count.yml --env AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID --env AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY || { kubectl describe ksvc/word-count; exit 1; }
+          set -x
 
-      - name: Run
+          kn service apply --wait-timeout 60 --filename word-count.yml --env AWS_REGION=us-west-1 --env AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" --env AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" || { kubectl describe ksvc/word-count; exit 1; }
+
+      - name: Test
         working-directory: function-images/tests/word_count
         env:
           CORRAL_KNATIVEFUNCTIONNAME: word-count
-        run: ./bin/word_count --knative metamorphosis.txt
+        run: |
+          ./bin/word_count --verbose --out s3://vhive-corral-bench/word_count/vhive-ubench/out --knative s3://vhive-corral-bench/word_count/sample-inputs/metamorphosis.txt
+
+      - name: Verify
+        working-directory: function-images/tests/word_count
+        run: |
+          aws s3 cp s3://vhive-corral-bench/word_count/vhive-ubench/out/output-part-0 - | LC_ALL=C sort - | cmp expected-sorted-output.txt -
 
       - name: Print logs
         if: ${{ always() }}
@@ -118,3 +145,8 @@ jobs:
         if: ${{ always() }}
         run: |
           kn service delete --all --namespace default --wait
+
+      - name: Clean up S3
+        if: ${{ always() }}
+        run: |
+          aws s3 rm s3://vhive-corral-bench/word_count/vhive-ubench/out --recursive
