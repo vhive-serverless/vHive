@@ -1,0 +1,63 @@
+name: "testBench"
+services:
+  - name: recog
+    image: vhiveease/video-analytics-recog
+    env:
+      - name: MAX_RECOG_SERVER_THREADS
+        value: "10"
+      - name: MAX_DST_SERVER_THREADS_PYTHON
+        value: "10"
+      - name: DST_SERVER_PORT
+        value: ":80"
+    ports:
+      - name: h2c
+        containerPort: 80
+  - name: decoder
+    image: vhiveease/video-analytics-decoder
+    env:
+      - name: MAX_DECODER_SERVER_THREADS
+        value: "10"
+      - name: MAX_DST_SERVER_THREADS_PYTHON
+        value: "10"
+      - name: DST_SERVER_PORT
+        value: ":80"
+    ports:
+      - name: h2c
+        containerPort: 80
+  - name: streaming
+    image: vhiveease/video-analytics-streaming
+    ports:
+      - name: h2c
+        containerPort: 80
+commonEnv:
+  - name: TRANSFER_TYPE
+    value: "XDT"
+  - name: CHUNK_SIZE_IN_BYTES
+    value: "65536"
+  - name: CT_BUFFER_SIZE
+    value: "25"
+  - name: NUMBER_OF_BUFFERS
+    value: "2"
+  - name: ST_AND_FW_BUFFER_SIZE
+    value: "1600"
+  - name: ROUTING
+    value: "CutThrough"
+  - name: TRACING_ENABLED
+    value: "false"
+  - name: RPC_TIMEOUT_MAX_BACK_OFF
+    value: "1000"
+  - name: RPC_TIMEOUT_DURATION
+    value: "60000"
+  - name: RPC_RETRY_DELAY
+    value: "1"
+  - name: ZIPKIN_ENDPOINT
+    value: "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans"
+  - name: ENABLE_TRACING
+    value: "false"
+tunable:
+  name: DecoderFrames
+  values:
+    - 3
+    - 5
+    - 7
+    - 9

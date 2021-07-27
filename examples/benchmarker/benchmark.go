@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/creasty/defaults"
@@ -16,9 +17,29 @@ import (
 func main() {
 	filename := flag.String("file", "", "Input experiment file")
 	flag.Parse()
-	experiment := readJSON(*filename)
-	writeYAMLS(experiment)
-	//toYAML(experiment)
+	splitName := strings.Split(*filename, ".")
+	extension := splitName[len(splitName)-1]
+
+	var experiment Experiment
+	if strings.EqualFold(extension, "json") {
+		experiment = readJSON(*filename)
+	} else if strings.EqualFold(extension, "yaml") || strings.EqualFold(extension, "yml") {
+		experiment = readYAML(*filename)
+	}
+	experimentCopy := experiment
+	for _, value := range experiment.Tunable.Values {
+		if varInEnv(experiment.Tunable.Name, experiment.CommonEnv) {
+			log.Fatalf("can't have tunable as common env variable")
+		} else {
+			var env Env
+			env.Name = experiment.Tunable.Name
+			env.Value = value
+			experiment.CommonEnv = append(experiment.CommonEnv, env)
+		}
+		tag := fmt.Sprintf("[%s-%s]", experiment.Tunable.Name, value)
+		writeYAMLS(experiment, tag)
+		experiment = experimentCopy
+	}
 }
 
 func readJSON(filename string) Experiment {
@@ -33,6 +54,24 @@ func readJSON(filename string) Experiment {
 	var result Experiment
 
 	json.Unmarshal([]byte(data), &result)
+	return result
+}
+
+func readYAML(filename string) Experiment {
+
+	// read file
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatal(err)
+
+	}
+
+	var result Experiment
+
+	err = yaml.Unmarshal(data, &result)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return result
 }
 
@@ -51,9 +90,9 @@ func toYAML(manifest Manifest, directory string) {
 	//log.Infoln(string(y))
 }
 
-func writeYAMLS(experiment Experiment) {
+func writeYAMLS(experiment Experiment, tag string) {
 	currentTime := time.Now()
-	directory := fmt.Sprintf(experiment.Name + "_" + currentTime.Format("02-Feb-06_15:04:05"))
+	directory := fmt.Sprintf("%s_%s_%s", experiment.Name, tag, currentTime.Format("02-Feb-06_15:04:05"))
 	err := os.Mkdir(directory, 0755)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)

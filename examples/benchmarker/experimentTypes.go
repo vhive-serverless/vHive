@@ -4,6 +4,10 @@ type Experiment struct {
 	Name      string    `json:"name"`
 	Services  []Service `json:"services"`
 	CommonEnv []Env     `json:"commonEnv"`
+	Tunable   struct {
+		Name   string   `json:"name"`
+		Values []string `json:"values"`
+	} `json:"tunable"`
 }
 
 type Service struct {
