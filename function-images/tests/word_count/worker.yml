@@ -23,7 +23,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: word-count
+  name: word-count-worker
   namespace: default
 spec:
   template:
@@ -36,4 +36,5 @@ spec:
             - name: KNATIVE
               value: "1"
           ports:
-            - containerPort: 80
+            - name: h2c
+              containerPort: 80
