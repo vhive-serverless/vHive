@@ -25,15 +25,15 @@ package ctriface
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-	"net"
-	"net/url"
-	"net/http"
 
 	log "github.com/sirupsen/logrus"
 
@@ -66,7 +66,7 @@ type StartVMResponse struct {
 }
 
 const (
-	testImageName = "vhiveease/helloworld:var_workload"
+	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
 )
 
 // StartVM Boots a VM if it does not exist
@@ -282,7 +282,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 
 // Checks whether a URL has a .local domain
 func isLocalDomain(s string) (bool, error) {
-	if ! strings.Contains(s, "://") {
+	if !strings.Contains(s, "://") {
 		s = "dummy://" + s
 	}
 
@@ -309,7 +309,7 @@ func getImageURL(image string) string {
 		return image
 	}
 	return "docker.io/" + image
-	
+
 }
 
 func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*containerd.Image, error) {

@@ -286,16 +286,16 @@ func TestAllFunctions(t *testing.T) {
 	}
 
 	images := []string{
-		"vhiveease/helloworld:var_workload",
-		"vhiveease/chameleon:var_workload",
-		"vhiveease/pyaes:var_workload",
-		"vhiveease/image_rotate:var_workload",
-		"vhiveease/json_serdes:var_workload",
-		"vhiveease/lr_serving:var_workload",
-		"vhiveease/cnn_serving:var_workload",
-		"vhiveease/rnn_serving:var_workload",
-		"vhiveease/lr_training:var_workload",
-		"vhiveease/springboot:var_workload",
+		"ghcr.io/ease-lab/helloworld:var_workload",
+		"ghcr.io/ease-lab/chameleon:var_workload",
+		"ghcr.io/ease-lab/pyaes:var_workload",
+		"ghcr.io/ease-lab/image_rotate:var_workload",
+		"ghcr.io/ease-lab/json_serdes:var_workload",
+		"ghcr.io/ease-lab/lr_serving:var_workload",
+		"ghcr.io/ease-lab/cnn_serving:var_workload",
+		"ghcr.io/ease-lab/rnn_serving:var_workload",
+		"ghcr.io/ease-lab/lr_training:var_workload",
+		"ghcr.io/ease-lab/springboot:var_workload",
 	}
 	var (
 		servedTh      uint64
