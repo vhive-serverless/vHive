@@ -2,13 +2,20 @@ module github.com/ease-lab/vhive/examples/benchmarker
 
 go 1.16
 
+replace (
+	github.com/ease-lab/vhive/utils/tracing/go => ../../utils/tracing/go
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0
+)
+
 require (
+	github.com/containerd/containerd v1.5.4
 	github.com/creasty/defaults v1.5.1
+	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-20210726194144-23534d39facf
+	github.com/ease-lab/vhive/utils/tracing/go v0.0.0-00010101000000-000000000000
 	github.com/ghodss/yaml v1.0.0
-	github.com/kr/pretty v0.2.1 // indirect
 	github.com/sirupsen/logrus v1.8.1
-	github.com/stretchr/testify v1.6.1 // indirect
-	golang.org/x/sys v0.0.0-20210324051608-47abb6519492 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0
+	gonum.org/v1/gonum v0.9.3
+	gonum.org/v1/plot v0.9.0
+	google.golang.org/grpc v1.39.0
 )
