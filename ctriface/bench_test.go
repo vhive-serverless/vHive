@@ -116,14 +116,14 @@ func getOutFile(name string) string {
 
 func getAllImages() map[string]string {
 	return map[string]string{
-		"helloworld":   "vhiveease/helloworld:var_workload",
-		"chameleon":    "vhiveease/chameleon:var_workload",
-		"pyaes":        "vhiveease/pyaes:var_workload",
-		"image_rotate": "vhiveease/image_rotate:var_workload",
-		"json_serdes":  "vhiveease/json_serdes:var_workload",
-		"lr_serving":   "vhiveease/lr_serving:var_workload",
-		"cnn_serving":  "vhiveease/cnn_serving:var_workload",
-		"rnn_serving":  "vhiveease/rnn_serving:var_workload",
-		"lr_training":  "vhiveease/lr_training:var_workload",
+		"helloworld":   "ghcr.io/ease-lab/helloworld:var_workload",
+		"chameleon":    "ghcr.io/ease-lab/chameleon:var_workload",
+		"pyaes":        "ghcr.io/ease-lab/pyaes:var_workload",
+		"image_rotate": "ghcr.io/ease-lab/image_rotate:var_workload",
+		"json_serdes":  "ghcr.io/ease-lab/json_serdes:var_workload",
+		"lr_serving":   "ghcr.io/ease-lab/lr_serving:var_workload",
+		"cnn_serving":  "ghcr.io/ease-lab/cnn_serving:var_workload",
+		"rnn_serving":  "ghcr.io/ease-lab/rnn_serving:var_workload",
+		"lr_training":  "ghcr.io/ease-lab/lr_training:var_workload",
 	}
 }
