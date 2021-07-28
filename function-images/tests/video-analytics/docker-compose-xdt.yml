@@ -45,13 +45,14 @@ services:
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
             - TRANSFER_TYPE=XDT
+            - CONCURRENT_RECOG=false
             - SQP_SERVER_HOSTNAME=decoder-sQP
             - SQP_SERVER_PORT=:50005
             - DQP_SERVER_HOSTNAME=decoder-dQP
             - DQP_SERVER_PORT=:50006
             - DST_SERVER_HOSTNAME=decoder
             - DST_SERVER_PORT=:50052
-        depends_on: 
+        depends_on:
             - recog
             - decoder-dQP
             - decoder-sQP

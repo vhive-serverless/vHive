@@ -48,6 +48,7 @@ services:
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
             - AWS_REGION=us-west-1
             - MAX_DECODER_SERVER_THREADS=10
+            - CONCURRENT_RECOG=false
         depends_on: 
             - recog
 
