@@ -45,13 +45,13 @@ spec:
             - name: AWS_REGION
               value: "us-west-1"
             - name: DecoderFrames
-              value: "3"
+              value: "6"
             - name: CONCURRENT_RECOG
               value: "false"
             - name: MAX_DECODER_SERVER_THREADS
               value: "10"
             - name: ENABLE_TRACING
-              value: "false"
+              value: "true"
           ports:
             # For `h2c`, see https://knative.tips/networking/http2/
             - name: h2c
