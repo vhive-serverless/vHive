@@ -37,8 +37,8 @@ spec:
               value: "1"
             - name: CORRAL_DRIVER
               value: "1"
-            - name: CORRAL_KNATIVEFUNCTIONNAME
-              value: "word-count-worker"
+            - name: CORRAL_KNATIVESERVICEURL
+              value: "word-count-worker.default.svc.cluster.local:80"
           ports:
             - name: h2c
               containerPort: 80

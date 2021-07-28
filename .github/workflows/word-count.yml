@@ -80,17 +80,11 @@ jobs:
         run: mkdir -p $TMPDIR
 
       - uses: actions/checkout@v2
+        with:
+          lfs: true
 
       - name: Checkout LFS objects
         run: git lfs checkout
-
-      - uses: actions/setup-go@v2
-        with:
-          go-version: 1.16
-
-      - name: Build invoker
-        working-directory: examples/invoker
-        run: make invoker
 
       - name: Configure AWS credentials using EASE lab account
         uses: aws-actions/configure-aws-credentials@v1
@@ -124,22 +118,21 @@ jobs:
           kn service apply --wait-timeout 60 --filename driver.yml --env AWS_REGION=us-west-1 --env AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" --env AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" || { kubectl describe ksvc/word-count-driver; exit 1; }
 
       - name: Test
-        working-directory: examples/invoker
+        run: ./bin/grpcurl -max-time 180 -plaintext word-count-driver.default.127.0.0.1.nip.io:31080 helloworld.Greeter.SayHello
+
+      - name: Print logs
+        if: ${{ always() }}
         run: |
           set -x
 
-          echo '[ { "hostname": "word-count-worker.default.127.0.0.1.nip.io" } ]' > endpoints.json
+          kubectl logs -c user-container -l serving.knative.dev/service=word-count-worker
 
-          ./invoker -port 3031 -dbg -trace
+          kubectl logs -c user-container -l serving.knative.dev/service=word-count-driver
 
       - name: Verify
         working-directory: function-images/tests/word_count
         run: |
           aws s3 cp s3://vhive-corral-bench/word_count/vhive-ubench/out/output-part-0 - | LC_ALL=C sort - | cmp expected-sorted-output.txt -
-
-      - name: Print logs
-        if: ${{ always() }}
-        run: kubectl logs -c user-container -l serving.knative.dev/service=word_count
 
       - name: Cleaning
         if: ${{ always() }}
