@@ -27,6 +27,10 @@ metadata:
   namespace: default
 spec:
   template:
+    metadata:
+      annotations:
+        # prevent cold boots
+        autoscaling.knative.dev/minScale: "1"
     spec:
       containers:
         - image: docker.io/vhiveease/video-analytics-decoder:latest

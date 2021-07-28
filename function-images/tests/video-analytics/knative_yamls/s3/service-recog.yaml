@@ -27,6 +27,10 @@ metadata:
   namespace: default
 spec:
   template:
+    metadata:
+      annotations:
+        # set this equal to DecoderFrames in decoder manifest
+        autoscaling.knative.dev/minScale: "3"
     spec:
       containers:
         - image: docker.io/vhiveease/video-analytics-recog:latest
