@@ -139,12 +139,15 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         with tracing.Span("Recognise all frames"):  
             all_result_futures = []
             # send all requests
-            for i in range(int(os.getenv('DecoderFrames', int(args.frames)))):
-                if self.transferType == S3 or self.transferType == INLINE:
-                    all_result_futures.append(self.Recognise(frames[i]))
-                if self.transferType == XDT:
-                    all_result_futures.append(self.Recognise(frames[i]))
-            # concat all results
+            decoderFrames = int(os.getenv('DecoderFrames', args.frames))
+            frames = frames[0:decoderFrames]
+            if os.getenv('CONCURRENT_RECOG', "false").lower() == "false":
+                # concat all results
+                for frame in frames:
+                    all_result_futures.append(self.Recognise(frame))
+            else:
+                ex = futures.ThreadPoolExecutor(max_workers=decoderFrames)
+                all_result_futures = ex.map(self.Recognise, frames)
             log.info("returning result of frame classification")
             results = ""
             for result in all_result_futures:
@@ -155,6 +158,7 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
     def Recognise(self, frame):
         channel = grpc.insecure_channel(args.addr)
         stub = videoservice_pb2_grpc.ObjectRecognitionStub(channel)
+        result = b''
         if self.transferType == S3:
             name = "decoder-frame-" + str(self.frameCount) + ".jpg"
             with tracing.Span("Upload frame"):
@@ -163,11 +167,11 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
                 log.info("uploading frame %d to s3" % self.frameCount)
                 s3object.put(Body=frame)
             log.info("calling recog with s3 key")
-            response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(s3key=name))
-            result = response_future.result().classification
+            response = stub.Recognise(videoservice_pb2.RecogniseRequest(s3key=name))
+            result = response.classification
         elif self.transferType == INLINE:
-            response_future = stub.Recognise.future(videoservice_pb2.RecogniseRequest(frame=frame))
-            result = response_future.result().classification
+            response = stub.Recognise(videoservice_pb2.RecogniseRequest(frame=frame))
+            result = response.classification
         elif self.transferType == XDT:
             xdtPayload = XDTutil.Payload(FunctionName="HelloXDT", Data=frame)
             if not args.dockerCompose:

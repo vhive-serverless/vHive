@@ -36,6 +36,8 @@ spec:
               value: "XDT"
             - name: DecoderFrames
               value: "3"
+            - name: CONCURRENT_RECOG
+              value: "false"
             - name: MAX_DECODER_SERVER_THREADS
               value: "10"
             - name: ENABLE_TRACING

@@ -49,6 +49,7 @@ services:
         environment:
             - ENABLE_TRACING=true
             - MAX_DECODER_SERVER_THREADS=10
+            - CONCURRENT_RECOG=false
         depends_on:
             - recog
 

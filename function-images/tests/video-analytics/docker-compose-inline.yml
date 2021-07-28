@@ -40,6 +40,7 @@ services:
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
             - MAX_DECODER_SERVER_THREADS=10
+            - CONCURRENT_RECOG=false
         depends_on: 
             - recog
 
