@@ -34,7 +34,7 @@ class Greeter(helloworld_pb2_grpc.GreeterServicer):
                     objects = client.list_objects(bucket.name)
                     for objs in objects:
                         data = client.stat_object(bucket.name, objs.object_name)
-                        if data.size == targetsize/1000*1024:
+                        if data.size == targetsize: #/1000*1024:
                             objectname = objs.object_name
                             print('desired object found: '+objectname)
                             break
