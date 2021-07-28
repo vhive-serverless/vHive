@@ -3,7 +3,6 @@ import time
 import json
 import logging
 import os
-import pickle
 
 from concurrent import futures
 from minio.commonconfig import CopySource
@@ -44,9 +43,12 @@ class Greeter(helloworld_pb2_grpc.GreeterServicer):
                 print('object not found')
                 return helloworld_pb2.HelloReply(message = msg)
             
-            obj = client.fget_object('mybucket', objectname, 'mybucket'+objectname)
+            obj = client.get_object('mybucket', objectname)
             with open("/tmp/" + objectname, "wb") as tmpfile:
-                pickle.dump(obj, tmpfile)
+                
+                for d in obj.stream(32*1024):
+                    tmpfile.write(d)
+                    
                 print('saved to //tmp directory')
                 
             elapsedtime = time.time()-initialtime
@@ -58,7 +60,7 @@ class Greeter(helloworld_pb2_grpc.GreeterServicer):
             print('waiting for ' + str(targettime) +' miliseconds')
             timeout = time.time() + targettime * 0.001
             while time.time() < timeout:
-
+                
                 dummyoperation = 1 + 1
 
             msg = msg + 'Executiontime benchmark completed for ' + str(targettime) + 'miliseconds. Terminated at: ' + str(timeout) + '\n'
