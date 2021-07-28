@@ -39,13 +39,13 @@ spec:
             - name: TRANSFER_TYPE
               value: "XDT"
             - name: DecoderFrames
-              value: "3"
+              value: "6"
             - name: CONCURRENT_RECOG
               value: "false"
             - name: MAX_DECODER_SERVER_THREADS
               value: "10"
             - name: ENABLE_TRACING
-              value: "false"
+              value: "true"
             - name: CHUNK_SIZE_IN_BYTES
               value: "65536"
             - name: CT_BUFFER_SIZE
@@ -57,7 +57,7 @@ spec:
             - name: ROUTING
               value: "CutThrough"
             - name: TRACING_ENABLED
-              value: "false"
+              value: "true"
             - name: RPC_TIMEOUT_MAX_BACK_OFF
               value: "1000"
             - name: RPC_TIMEOUT_DURATION
