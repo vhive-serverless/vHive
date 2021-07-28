@@ -51,6 +51,9 @@ class Greeter(helloworld_pb2_grpc.GreeterServicer):
                     
                 print('saved to //tmp directory')
                 
+            response.close()
+            response.release_conn()
+            
             elapsedtime = time.time()-initialtime
             msg = msg + 'Objectsize benchmark completed for ' + str(targetsize) +' bytes. File stored in \\tmp, used '+ str(elapsedtime)+' miliseconds.\n'
 
