@@ -61,7 +61,7 @@ var (
 
 func main() {
 	endpointsFile := flag.String("endpointsFile", "endpoints.json", "File with endpoints' metadata")
-	rps := flag.Int("rps", 1, "Target requests per second")
+	rps := flag.Float64("rps", 1.0, "Target requests per second")
 	runDuration := flag.Int("time", 5, "Run the experiment for X seconds")
 	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
 	portFlag = flag.Int("port", 80, "The port that functions listen to")
@@ -120,7 +120,7 @@ func readEndpoints(path string) (endpoints []*endpoint.Endpoint, _ error) {
 	return
 }
 
-func runExperiment(endpoints []*endpoint.Endpoint, runDuration, targetRPS int) (realRPS float64) {
+func runExperiment(endpoints []*endpoint.Endpoint, runDuration int, targetRPS float64) (realRPS float64) {
 	var issued int
 
 	Start(TimeseriesDBAddr, endpoints, workflowIDs)
