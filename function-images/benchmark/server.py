@@ -2,7 +2,13 @@ import grpc
 import time
 import json
 import logging
+import os
+import pickle
+
 from concurrent import futures
+from minio.commonconfig import CopySource
+from minio import Minio
+
 import helloworld_pb2
 import helloworld_pb2_grpc
 
@@ -10,70 +16,55 @@ class Greeter(helloworld_pb2_grpc.GreeterServicer):
     
     def SayHello(self, request, context):
         
- 
-        
+        msg = ''
         print('received: ' + request.name)
         userinput = json.loads(request.name)
         
         if 'objectsize' in userinput:
-
+            
             initialtime = time.time()
             targetsize = userinput['objectsize']
-            print('fetching an object of size' + str(targetsize) +'bytes')
+            print('Fetching an object of size ' + str(targetsize) +' bytes')
             client = Minio("10.138.0.34:9000", access_key="minioadmin", secret_key="minioadmin", secure=False)
-            print('Minio is fine')
-
             buckets = client.list_buckets()
-            print('check0')
-            objectname = 'tba'
+            objectname = ''
             for bucket in buckets:
-#                print(bucket.name, bucket.creation_date)                                                                                                                                           
-#                print(client.stat_object(bucket.name, 'client.go'))                                                                                                                                
+                
+                if bucket.name == 'mybucket':
+                    objects = client.list_objects(bucket.name)
+                    for objs in objects:
+                        data = client.stat_object(bucket.name, objs.object_name)
+                        if data.size == targetsize/1000*1024:
+                            objectname = objs.object_name
+                            print('desired object found: '+objectname)
+                            break
+                            
+            if objectname == '':
+                msg = 'object of desired size does not exist in the bucket.'
+                print('object not found')
+                return helloworld_pb2.HelloReply(message = msg)
+            
+            obj = client.fget_object('mybucket', objectname, 'mybucket'+objectname)
+            with open("/tmp/" + objectname, "wb") as tmpfile:
+                pickle.dump(obj, tmpfile)
+                print('saved to //tmp directory')
+                
+            elapsedtime = time.time()-initialtime
+            msg = msg + 'Objectsize benchmark completed for ' + str(targetsize) +' bytes. File stored in \\tmp, used '+ str(elapsedtime)+' miliseconds.\n'
 
-                objects = client.list_objects(bucket.name)
-                print('check0.5')
-                print(str(objects))
-                print('why wony you print')
-                count = 0
-
-                for objs in objects:
-                    print(str(objs))
-                    print('object^')
-                    count = count + 1
-                    print(count)
-                    
-                    
-                    
-                for objs in objects:
-                    print('check0.6')
-                    data = client.stat_object(bucket.name, objs.object_name)
-                    print('check0.7')
-                    print(data.size)
-                    if data.size == targetsize:
-                        objectname = objs.object_name
-                        print(objectname)
-                        break
-                        
-            obj = client.fget_object('mybucket', objectname, '/home/yalew/vhive/function-images/minio_scripts/myminio/mybucket/'+objectname)
-            print('check1')
-            new_file = open("/tmp/client.go", "a")
-            new_file.write(str(obj))
-            finaltime = time.time()
-            elapsedtime = finaltime-initialtime
-            msg = 'stored in tmp, used '+ str(elapsedtime)+'miliseconds'
-            return helloworld_pb2.HelloReply(message=msg)
-        
-        
         if 'executiontime' in userinput:
+
             targettime = userinput['executiontime']
             print('waiting for ' + str(targettime) +' miliseconds')
             timeout = time.time() + targettime * 0.001
             while time.time() < timeout:
+
                 dummyoperation = 1 + 1
-            msg = 'Terminated at: ' + str(timeout)
+
+            msg = msg + 'Executiontime benchmark completed for ' + str(targettime) + 'miliseconds. Terminated at: ' + str(timeout) + '\n'
             print(msg)
-            return helloworld_pb2.HelloReply(message=msg)
-        
+
+        return helloworld_pb2.HelloReply(message=msg)
     
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
