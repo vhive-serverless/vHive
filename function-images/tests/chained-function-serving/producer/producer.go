@@ -34,6 +34,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 
 	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
 	"github.com/ease-lab/vhive-xdt/utils"
@@ -134,39 +136,54 @@ func uploadToS3(ctx context.Context, payloadData []byte) string {
 	}
 	return key
 }
+func getGRPCclient(addr string) (pb_client.ProducerConsumerClient, *grpc.ClientConn) {
+	// establish a connection
+	var conn *grpc.ClientConn
+	var err error
+	if tracing.IsTracingEnabled() {
+		conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
+	} else {
+		conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
+	}
+	if err != nil {
+		log.Fatalf("[producer] fail to dial: %s", err)
+	}
+	return pb_client.NewProducerConsumerClient(conn), conn
+}
 
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
-	if ps.transferType == INLINE || ps.transferType == S3 {
-		// establish a connection
-		var conn *grpc.ClientConn
-		if tracing.IsTracingEnabled() {
-			conn, err = tracing.DialGRPCWithUnaryInterceptor(addr, grpc.WithBlock(), grpc.WithInsecure())
-		} else {
-			conn, err = grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
+	var fanAmount int
+	if strings.HasPrefix(req.Name, "1to"){
+		fanAmount, err = strconv.Atoi(strings.TrimPrefix(req.Name, "1to"))
+		if err !=nil {
+			fanAmount = 1
 		}
-		if err != nil {
-			log.Fatalf("[producer] fail to dial: %s", err)
-		}
-		defer conn.Close()
+	}
 
-		client := pb_client.NewProducerConsumerClient(conn)
+	if ps.transferType == INLINE || ps.transferType == S3 {
+		client, conn := getGRPCclient(addr)
+		defer conn.Close()
 		payloadToSend := ps.payloadData
 		if ps.transferType == S3 {
 			payloadToSend = []byte(uploadToS3(ctx, ps.payloadData))
 		}
-		ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
-		if err != nil {
-			log.Fatalf("[producer] client error in string consumption: %s", err)
+		for i:=0; i<fanAmount; i++ {
+			ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
+			if err != nil {
+				log.Fatalf("[producer] client error in string consumption: %s", err)
+			}
+			log.Printf("[producer] (single) Ack: %v\n", ack.Value)
 		}
-		log.Printf("[producer] (single) Ack: %v\n", ack.Value)
 	} else if ps.transferType == XDT {
 		payloadToSend := utils.Payload{
 			FunctionName: "HelloXDT",
 			Data:         ps.payloadData,
 		}
-		if err := ps.XDTclient.Invoke(addr, payloadToSend); err != nil {
-			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
+		for i:=0; i<fanAmount; i++ {
+			if err := ps.XDTclient.Invoke(addr, payloadToSend); err != nil {
+				log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
+			}
 		}
 	}
 	return &pb.HelloReply{Message: "Success"}, err
@@ -178,6 +195,7 @@ func main() {
 	flagServerPort := flag.Int("ps", 80, "Server Port")
 	url := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
 	transferSize := flag.Int("transferSize", 4095, "Number of KB's to transfer")
+	dockerCompose := flag.Bool("dockerCompose", false, "Env docker Compose?")
 	flag.Parse()
 
 	log.SetFormatter(&log.TextFormatter{
@@ -229,7 +247,9 @@ func main() {
 	s.payloadData = payloadData
 	if transferType == XDT {
 		config := utils.ReadConfig()
-		config.SQPServerHostname = fetchSelfIP()
+		if !*dockerCompose {
+			config.SQPServerHostname = fetchSelfIP()
+		}
 		xdtClient, err := sdk.NewXDTclient(config)
 		if err != nil {
 			log.Fatalf("InitXDT failed %v", err)
