@@ -1,0 +1,37 @@
+name: "testBench"
+services:
+  - name: recog
+    image: vhiveease/video-analytics-recog
+    env:
+      - name: MAX_RECOG_SERVER_THREADS
+        value: "10"
+    ports:
+      - name: h2c
+        containerPort: 80
+    scale:
+      minScale: tunable
+  - name: decoder
+    image: vhiveease/video-analytics-decoder
+    env:
+      - name: MAX_DECODER_SERVER_THREADS
+        value: "10"
+      - name: CONCURRENT_RECOG
+        value: "false"
+    ports:
+      - name: h2c
+        containerPort: 80
+  - name: streaming
+    image: vhiveease/video-analytics-streaming
+    ports:
+      - name: h2c
+        containerPort: 80
+commonEnv:
+  - name: TRANSFER_TYPE
+    value: "INLINE"
+  - name: ENABLE_TRACING
+    value: "true"
+tunable:
+  name: DecoderFrames
+  values:
+    - 3
+    - 5

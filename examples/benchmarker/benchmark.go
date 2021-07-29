@@ -36,8 +36,7 @@ func main() {
 			env.Value = value
 			experiment.CommonEnv = append(experiment.CommonEnv, env)
 		}
-		tag := fmt.Sprintf("[%s-%s]", experiment.Tunable.Name, value)
-		writeYAMLS(experiment, tag)
+		writeYAMLS(experiment, experiment.Tunable.Name, value)
 		experiment = experimentCopy
 	}
 }
@@ -90,9 +89,9 @@ func toYAML(manifest Manifest, directory string) {
 	//log.Infoln(string(y))
 }
 
-func writeYAMLS(experiment Experiment, tag string) {
+func writeYAMLS(experiment Experiment, tag, value string) {
 	currentTime := time.Now()
-	directory := fmt.Sprintf("%s_%s_%s", experiment.Name, tag, currentTime.Format("02-Feb-06_15:04:05"))
+	directory := fmt.Sprintf("%s_[%s-%s]_%s", experiment.Name, tag, value, currentTime.Format("02-Feb-06_15:04:05"))
 	err := os.Mkdir(directory, 0755)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
@@ -118,6 +117,12 @@ func writeYAMLS(experiment Experiment, tag string) {
 		}
 		container.Ports = service.Ports
 		manifest.Spec.Template.Spec.Containers = append(manifest.Spec.Template.Spec.Containers, container)
+		if service.Scale.MinScale == "tunable" {
+			manifest.Spec.Template.ScaleMetaData.Annotations.MinScale = value
+		}
+		if service.ContainerConcurrency == "tunable"{
+			manifest.Spec.Template.Spec.ContainerConcurrency = value
+		}
 		toYAML(manifest, directory)
 	}
 }

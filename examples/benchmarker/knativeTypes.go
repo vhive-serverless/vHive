@@ -26,9 +26,20 @@ type Container struct {
 }
 type Spec struct {
 	Containers []Container `json:"containers"`
+	ContainerConcurrency string `json:"containerConcurrency"`
 }
+
+type Annotations struct {
+	MinScale string `json:"autoscaling.knative.dev/minScale"`
+}
+
+type ScaleMetaData struct {
+	Annotations Annotations `json:"annotations"`
+}
+
 type Template struct {
 	Spec Spec `json:"spec"`
+	ScaleMetaData ScaleMetaData `json:"metadata"`
 }
 type OuterSpec struct {
 	Template Template `json:"template"`
