@@ -34,8 +34,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"net"
 	"os"
-	"strconv"
-	"strings"
 
 	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
 	"github.com/ease-lab/vhive-xdt/utils"
@@ -56,10 +54,18 @@ type producerServer struct {
 	consumerAddr string
 	consumerPort int
 	payloadData  []byte
-	config       utils.Config
 	XDTclient    sdk.XDTclient
 	transferType string
 	pb.UnimplementedGreeterServer
+}
+
+type ubenchServer struct {
+	consumerAddr string
+	consumerPort int
+	transferType string
+	payloadData  []byte
+	XDTclient    sdk.XDTclient
+	pb_client.UnimplementedProdConDriverServer
 }
 
 const (
@@ -75,23 +81,6 @@ var (
 	SECRET_KEY    string
 	AWS_S3_REGION string
 )
-
-func fetchSelfIP() string {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		log.Errorf("Error fetching self IP: " + err.Error())
-	}
-
-	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-	log.Errorf("unable to find IP, returning empty string")
-	return ""
-}
 
 func setAWSCredentials() {
 	awsAccessKey, ok := os.LookupEnv("AWS_ACCESS_KEY")
@@ -153,14 +142,6 @@ func getGRPCclient(addr string) (pb_client.ProducerConsumerClient, *grpc.ClientC
 
 func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
 	addr := fmt.Sprintf("%v:%v", ps.consumerAddr, ps.consumerPort)
-	var fanAmount int
-	if strings.HasPrefix(req.Name, "1to"){
-		fanAmount, err = strconv.Atoi(strings.TrimPrefix(req.Name, "1to"))
-		if err !=nil {
-			fanAmount = 1
-		}
-	}
-
 	if ps.transferType == INLINE || ps.transferType == S3 {
 		client, conn := getGRPCclient(addr)
 		defer conn.Close()
@@ -168,22 +149,18 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 		if ps.transferType == S3 {
 			payloadToSend = []byte(uploadToS3(ctx, ps.payloadData))
 		}
-		for i:=0; i<fanAmount; i++ {
-			ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
-			if err != nil {
-				log.Fatalf("[producer] client error in string consumption: %s", err)
-			}
-			log.Printf("[producer] (single) Ack: %v\n", ack.Value)
+		ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
+		if err != nil {
+			log.Fatalf("[producer] client error in string consumption: %s", err)
 		}
+		log.Printf("[producer] (single) Ack: %v\n", ack.Value)
 	} else if ps.transferType == XDT {
 		payloadToSend := utils.Payload{
 			FunctionName: "HelloXDT",
 			Data:         ps.payloadData,
 		}
-		for i:=0; i<fanAmount; i++ {
-			if err := ps.XDTclient.Invoke(addr, payloadToSend); err != nil {
-				log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
-			}
+		if _, _, err := ps.XDTclient.Invoke(addr, payloadToSend); err != nil {
+			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
 		}
 	}
 	return &pb.HelloReply{Message: "Success"}, err
@@ -227,9 +204,8 @@ func main() {
 	//client setup
 	log.Printf("[producer] Client using address: %v:%d\n", *flagAddress, *flagClientPort)
 
-	s := producerServer{}
-	s.consumerAddr = *flagAddress
-	s.consumerPort = *flagClientPort
+	ps := producerServer{consumerAddr: *flagAddress, consumerPort: *flagClientPort}
+    us := ubenchServer{consumerAddr: *flagAddress, consumerPort: *flagClientPort}
 
 	transferType, ok := os.LookupEnv("TRANSFER_TYPE")
 	if !ok {
@@ -237,30 +213,33 @@ func main() {
 		transferType = INLINE
 	}
 	log.Infof("[producer] transfering via %s",transferType)
-	s.transferType = transferType
+	ps.transferType = transferType
+	us.transferType = transferType
 	// 4194304 bytes is the limit by gRPC
 	payloadData := make([]byte, *transferSize*1024) // 10MiB
 	if _, err := rand.Read(payloadData); err != nil {
 		log.Fatal(err)
 	}
 	log.Infof("sending %d bytes to consumer", len(payloadData))
-	s.payloadData = payloadData
+	ps.payloadData = payloadData
+	us.payloadData = payloadData
 	if transferType == XDT {
 		config := utils.ReadConfig()
 		if !*dockerCompose {
-			config.SQPServerHostname = fetchSelfIP()
+			config.SQPServerHostname = utils.FetchSelfIP()
 		}
 		xdtClient, err := sdk.NewXDTclient(config)
 		if err != nil {
 			log.Fatalf("InitXDT failed %v", err)
 		}
 
-		s.config = config
-		s.XDTclient = xdtClient
+		ps.XDTclient = xdtClient
+		us.XDTclient = xdtClient
 	}else if transferType == S3 {
 		setAWSCredentials()
 	}
-	pb.RegisterGreeterServer(grpcServer, &s)
+	pb.RegisterGreeterServer(grpcServer, &ps)
+	pb_client.RegisterProdConDriverServer(grpcServer, &us)
 
 	//server setup
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *flagServerPort))

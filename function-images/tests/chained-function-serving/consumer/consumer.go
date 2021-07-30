@@ -40,6 +40,7 @@ import (
 	"google.golang.org/grpc"
 
 	pb "tests/chained-functions-serving/proto"
+	pb_client "tests/chained-functions-serving/proto"
 
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 
@@ -64,6 +65,12 @@ var (
 type consumerServer struct {
 	transferType string
 	pb.UnimplementedProducerConsumerServer
+}
+
+type ubenchServer struct {
+	transferType string
+	XDTconfig utils.Config
+	pb_client.UnimplementedProdConDriverServer
 }
 
 func setAWSCredentials() {
@@ -168,34 +175,34 @@ func main() {
 		setAWSCredentials()
 	}
 
-	if transferType == INLINE || transferType == S3  {
-		//set up server
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
-		if err != nil {
-			log.Fatalf("[consumer] failed to listen: %v", err)
-		}
 
-		var grpcServer *grpc.Server
-		if tracing.IsTracingEnabled() {
-			grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
-		} else {
-			grpcServer = grpc.NewServer()
-		}
+	//set up server
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if err != nil {
+		log.Fatalf("[consumer] failed to listen: %v", err)
+	}
 
-		s := consumerServer{}
-		s.transferType = transferType
-		pb.RegisterProducerConsumerServer(grpcServer, &s)
+	var grpcServer *grpc.Server
+	if tracing.IsTracingEnabled() {
+		grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
+	} else {
+		grpcServer = grpc.NewServer()
+	}
+	cs := consumerServer{transferType: transferType}
+	pb.RegisterProducerConsumerServer(grpcServer, &cs)
+	us := ubenchServer{transferType: transferType,XDTconfig: utils.ReadConfig()}
+	pb_client.RegisterProdConDriverServer(grpcServer, &us)
 
-		log.Printf("[consumer] Server Started on port %v\n", *port)
-
-		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("[consumer] failed to serve: %s", err)
-		}
-	} else if transferType == XDT {
-		var handler = func(data []byte) {
+	if transferType == XDT {
+		var handler = func(data []byte) ([]byte, bool){
 			log.Infof("gx: destination handler received data of size %d", len(data))
+			return nil, true
 		}
 		config := utils.ReadConfig()
-		sdk.StartDstServer(config, handler)
+		go sdk.StartDstServer(config, handler)
+	}
+
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("[consumer] failed to serve: %s", err)
 	}
 }

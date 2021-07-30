@@ -20,50 +20,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-syntax = "proto3";
+package main
 
-option go_package = "tests/chained-functions-serving/proto";
+import (
+	"context"
+	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
+	tracing "github.com/ease-lab/vhive/utils/tracing/go"
+	log "github.com/sirupsen/logrus"
+	pb "tests/chained-functions-serving/proto"
+)
 
-package prodcon;
-
-service ProducerConsumer {
-    rpc ConsumeByte(ConsumeByteRequest) returns (ConsumeByteReply) {}
-    rpc ConsumeStream(stream ConsumeByteRequest) returns (ConsumeByteReply) {}
+func (s *ubenchServer) FetchByte(ctx context.Context, str *pb.ReductionRequest	) (*pb.ConsumeByteReply, error) {
+	if tracing.IsTracingEnabled() {
+		span1 := tracing.Span{SpanName: "custom-span-1", TracerName: "tracer"}
+		span2 := tracing.Span{SpanName: "custom-span-2", TracerName: "tracer"}
+		ctx = span1.StartSpan(ctx)
+		ctx = span2.StartSpan(ctx)
+		defer span1.EndSpan()
+		defer span2.EndSpan()
+	}
+	if s.transferType == S3 {
+		for _, capability := range str.Capability {
+			log.Printf("[consumer] Consumed %d bytes\n", fetchFromS3(ctx, capability))
+		}
+	}else if s.transferType == XDT{
+		for _, capability := range str.Capability {
+			bytes, err := sdk.Get(ctx, capability, s.XDTconfig)
+			if err !=nil {
+				log.Printf("[consumer] Consumed %d bytes\n", len(bytes))
+			}
+		}
+	}
+	return &pb.ConsumeByteReply{Value: true}, nil
 }
-
-service ProdConDriver {
-    rpc Benchmark(BenchType) returns (BenchResponse) {}
-    rpc FetchByte(ReductionRequest) returns (ConsumeByteReply) {}
-}
-
-message BenchType {
-    string name = 1;
-    int64 fanAmount = 2;
-}
-
-message ReductionRequest {
-    repeated string capability= 1;
-}
-
-message BenchResponse {
-    string capability= 1;
-    bool ok = 2;
-}
-
-service ClientProducer {
-    rpc ProduceBytes(ProduceBytesRequest) returns (Empty);
-}
-
-message ConsumeByteRequest {
-    bytes value = 1;
-}
-
-message ConsumeByteReply {
-    bool value = 1;
-}
-
-message ProduceBytesRequest {
-    int32 value = 1;
-}
-
-message Empty {}
