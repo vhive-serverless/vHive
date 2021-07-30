@@ -3,7 +3,7 @@ module tests/word_count
 go 1.16
 
 replace (
-	github.com/bcongdon/corral => github.com/ease-lab/corral v0.0.0-20210728145924-4eeb856371b7
+	github.com/bcongdon/corral => github.com/ease-lab/corral v0.0.0-20210730111132-e1dcd31f1680
 	github.com/ease-lab/vhive/utils/tracing/go => ../../../utils/tracing/go
 )
 
