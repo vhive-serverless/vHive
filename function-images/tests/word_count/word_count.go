@@ -19,7 +19,7 @@ import (
 
 type wordCount struct{}
 
-func (w wordCount) Map(key, value string, emitter corral.Emitter) {
+func (w wordCount) Map(ctx context.Context, key, value string, emitter corral.Emitter) {
 	re := regexp.MustCompile(`[^a-zA-Z0-9\s]+`)
 
 	sanitized := strings.ToLower(re.ReplaceAllString(value, " "))
@@ -27,19 +27,19 @@ func (w wordCount) Map(key, value string, emitter corral.Emitter) {
 		if len(word) == 0 {
 			continue
 		}
-		err := emitter.Emit(word, strconv.Itoa(1))
+		err := emitter.Emit(ctx, word, strconv.Itoa(1))
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 }
 
-func (w wordCount) Reduce(key string, values corral.ValueIterator, emitter corral.Emitter) {
+func (w wordCount) Reduce(ctx context.Context, key string, values corral.ValueIterator, emitter corral.Emitter) {
 	count := 0
 	for range values.Iter() {
 		count++
 	}
-	emitter.Emit(key, strconv.Itoa(count))
+	emitter.Emit(ctx, key, strconv.Itoa(count))
 }
 
 func main() {
@@ -65,7 +65,7 @@ func workerMain() {
 		corral.WithMapBinSize(10 * 1024),
 	}
 	driver := corral.NewDriver(job, options...)
-	driver.Main()
+	driver.Main(context.Background())
 }
 
 type server struct {
@@ -104,6 +104,6 @@ func (s *server) SayHello(ctx context.Context, req *HelloRequest) (*HelloReply, 
 		corral.WithMapBinSize(10 * 1024),
 	}
 	driver := corral.NewDriver(job, options...)
-	driver.Main()
+	driver.Main(ctx)
 	return &HelloReply{Message: fmt.Sprintf("Hello, %s!", req.Name)}, nil
 }

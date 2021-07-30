@@ -2,7 +2,7 @@ BUCKET = ${AWS_TEST_BUCKET}
 BIN_DIR = ./bin
 PROG_NAME = word_count
 
-.PHONY: all clean $(PROG_NAME) input_in_s3
+.PHONY: all clean $(PROG_NAME) input_in_s3 push
 
 all: $(PROG_NAME)
 
@@ -11,6 +11,10 @@ $(PROG_NAME):
 
 input_in_s3:
 	aws s3 cp ./metamorphosis.txt s3://${BUCKET}
+
+push:
+	docker build --tag docker.io/vhiveease/word_count:local -f ./Dockerfile ../../..
+	docker push docker.io/vhiveease/word_count:local
 
 test_wc_local: $(PROG_NAME)
 	$(BIN_DIR)/$(PROG_NAME) metamorphosis.txt
