@@ -31,7 +31,9 @@ spec:
       annotations:
         # prevent cold boots
         autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
     spec:
+      containerConcurrency: 1
       containers:
         - image: docker.io/vhiveease/video-analytics-streaming:latest
           imagePullPolicy: Always

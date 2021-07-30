@@ -31,7 +31,9 @@ spec:
       annotations:
         # set this equal to DecoderFrames in decoder manifest
         autoscaling.knative.dev/minScale: "6"
+        autoscaling.knative.dev/maxScale: "6"
     spec:
+      containerConcurrency: 1
       containers:
         - image: docker.io/vhiveease/video-analytics-recog:latest
           imagePullPolicy: Always
