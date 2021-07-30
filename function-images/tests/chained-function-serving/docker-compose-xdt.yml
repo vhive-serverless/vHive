@@ -29,6 +29,8 @@ services:
       - 9411:9411
   consumer:
     image: vhiveease/chained-functions-serving-consumer
+    ports:
+      - 3030:3030
     volumes:
       - log-volume:/log
     command:
@@ -38,7 +40,8 @@ services:
       - TRANSFER_TYPE=XDT
       - DQP_SERVER_HOSTNAME=dQP
       - DQP_SERVER_PORT=:50006
-      - DST_SERVER_PORT=:3030
+      - DST_SERVER_PORT=:3032
+      - ROUTING=Store&Forward
     depends_on:
       - zipkin
       - dQP
@@ -49,6 +52,7 @@ services:
     environment:
       - SQP_SERVER_PORT=:50005
       - NUMBER_OF_BUFFERS=5
+      - ROUTING=Store&Forward
     expose:
       - "50005"
   dQP:
@@ -56,9 +60,10 @@ services:
     environment:
       - DQP_SERVER_PORT=:50006
       - DST_SERVER_HOSTNAME=consumer
-      - DST_SERVER_PORT=:3030
+      - DST_SERVER_PORT=:3032
       - PROXY_PORT=:50008
       - NUMBER_OF_BUFFERS=5
+      - ROUTING=Store&Forward
     expose:
       - "50006"
       - "50008"
@@ -78,6 +83,7 @@ services:
       - TRANSFER_TYPE=XDT
       - SQP_SERVER_HOSTNAME=sQP
       - SQP_SERVER_PORT=:50005
+      - ROUTING=Store&Forward
     depends_on:
       - consumer
       - sQP
