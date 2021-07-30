@@ -29,6 +29,8 @@ services:
             - 9411:9411
     consumer:
         image: vhiveease/chained-functions-serving-consumer
+        ports:
+            - 3030:3030
         volumes:
             - log-volume:/log
         command:

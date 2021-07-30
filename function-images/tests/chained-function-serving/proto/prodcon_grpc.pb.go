@@ -171,6 +171,128 @@ var ProducerConsumer_ServiceDesc = grpc.ServiceDesc{
 	Metadata: "prodcon.proto",
 }
 
+// ProdConDriverClient is the client API for ProdConDriver service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ProdConDriverClient interface {
+	Benchmark(ctx context.Context, in *BenchType, opts ...grpc.CallOption) (*BenchResponse, error)
+	FetchByte(ctx context.Context, in *ReductionRequest, opts ...grpc.CallOption) (*ConsumeByteReply, error)
+}
+
+type prodConDriverClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewProdConDriverClient(cc grpc.ClientConnInterface) ProdConDriverClient {
+	return &prodConDriverClient{cc}
+}
+
+func (c *prodConDriverClient) Benchmark(ctx context.Context, in *BenchType, opts ...grpc.CallOption) (*BenchResponse, error) {
+	out := new(BenchResponse)
+	err := c.cc.Invoke(ctx, "/prodcon.ProdConDriver/Benchmark", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *prodConDriverClient) FetchByte(ctx context.Context, in *ReductionRequest, opts ...grpc.CallOption) (*ConsumeByteReply, error) {
+	out := new(ConsumeByteReply)
+	err := c.cc.Invoke(ctx, "/prodcon.ProdConDriver/FetchByte", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ProdConDriverServer is the server API for ProdConDriver service.
+// All implementations must embed UnimplementedProdConDriverServer
+// for forward compatibility
+type ProdConDriverServer interface {
+	Benchmark(context.Context, *BenchType) (*BenchResponse, error)
+	FetchByte(context.Context, *ReductionRequest) (*ConsumeByteReply, error)
+	mustEmbedUnimplementedProdConDriverServer()
+}
+
+// UnimplementedProdConDriverServer must be embedded to have forward compatible implementations.
+type UnimplementedProdConDriverServer struct {
+}
+
+func (UnimplementedProdConDriverServer) Benchmark(context.Context, *BenchType) (*BenchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Benchmark not implemented")
+}
+func (UnimplementedProdConDriverServer) FetchByte(context.Context, *ReductionRequest) (*ConsumeByteReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FetchByte not implemented")
+}
+func (UnimplementedProdConDriverServer) mustEmbedUnimplementedProdConDriverServer() {}
+
+// UnsafeProdConDriverServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ProdConDriverServer will
+// result in compilation errors.
+type UnsafeProdConDriverServer interface {
+	mustEmbedUnimplementedProdConDriverServer()
+}
+
+func RegisterProdConDriverServer(s grpc.ServiceRegistrar, srv ProdConDriverServer) {
+	s.RegisterService(&ProdConDriver_ServiceDesc, srv)
+}
+
+func _ProdConDriver_Benchmark_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BenchType)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProdConDriverServer).Benchmark(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/prodcon.ProdConDriver/Benchmark",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProdConDriverServer).Benchmark(ctx, req.(*BenchType))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProdConDriver_FetchByte_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReductionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProdConDriverServer).FetchByte(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/prodcon.ProdConDriver/FetchByte",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProdConDriverServer).FetchByte(ctx, req.(*ReductionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// ProdConDriver_ServiceDesc is the grpc.ServiceDesc for ProdConDriver service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var ProdConDriver_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "prodcon.ProdConDriver",
+	HandlerType: (*ProdConDriverServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Benchmark",
+			Handler:    _ProdConDriver_Benchmark_Handler,
+		},
+		{
+			MethodName: "FetchByte",
+			Handler:    _ProdConDriver_FetchByte_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "prodcon.proto",
+}
+
 // ClientProducerClient is the client API for ClientProducer service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
