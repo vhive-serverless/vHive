@@ -171,6 +171,7 @@ jobs:
           ./bin/grpcurl -max-time 10 -plaintext localhost:3031 helloworld.Greeter.SayHello
 
       - name: show docker-compose log
+        if: ${{ always() }}
         run: cat function-images/tests/chained-function-serving/log_file
 
   bench-serving:
@@ -327,14 +328,25 @@ jobs:
         run: |
           ./function-images/tests/kn_deploy.sh ./function-images/tests/video-analytics/knative_yamls/${{ matrix.transfer-type }}/service*
 
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Build invoker
+        working-directory: examples/invoker
+        run: make invoker
+
       - name: Invoke functions
+        working-directory: examples/invoker
         run: |
           set -x
 
           NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
           HOSTNAME=$(kubectl get ksvc streaming -n default -o jsonpath='{.status.url}' | cut -c8-)
 
-          ./bin/grpcurl -plaintext $HOSTNAME:$NODEPORT helloworld.Greeter.SayHello
+          echo '[ { "hostname": "$HOSTNAME" } ]' > endpoints.json
+          ./invoker -port $NODEPORT -dbg
+          cat rps*lat.csv
 
       - name: Print logs
         if: ${{ always() }}
