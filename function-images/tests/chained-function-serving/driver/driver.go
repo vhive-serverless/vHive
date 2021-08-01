@@ -1,14 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
 	"fmt"
+	"google.golang.org/grpc/reflection"
+	"net"
 	"os"
 	"strconv"
-	"sync"
-	"sync/atomic"
+	"strings"
 	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
@@ -29,22 +29,70 @@ const(
 )
 
 var (
-	completed   int64
-	latSlice    LatencySlice
-	portFlag    *int
+	consPort    *int
+	prodPort    *int
 	grpcTimeout time.Duration
 	withTracing *bool
 )
 
+type driverServer struct {
+	prodEndpoint string
+	consEndpoint string
+	consPort int
+	prodPort int
+	fanIn int
+	fanOut int
+	pb.UnimplementedGreeterServer
+}
+
+func (s *driverServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
+	prodAddr := fmt.Sprintf("%s:%d",s.prodEndpoint,s.prodPort)
+	consAddr := fmt.Sprintf("%s:%d",s.consEndpoint,s.consPort)
+	invokeServingFunction(prodAddr, consAddr, s.fanIn, s.fanOut)
+	return &pb.HelloReply{Message: "Success"}, err
+}
+
+func setEnv(server *driverServer, fanIn, fanOut int, prodEndpoint, consEndpoint string, prodPort, consPort int){
+	server.fanIn = fanIn
+	if value, ok := os.LookupEnv("FANIN"); ok {
+		server.fanIn, _ = strconv.Atoi(value)
+	}
+	server.fanOut = fanOut
+	if value, ok := os.LookupEnv("FANOUT"); ok {
+		server.fanOut, _ = strconv.Atoi(value)
+	}
+	server.prodEndpoint = prodEndpoint
+	if value, ok := os.LookupEnv("ENDPOINT"); ok {
+		server.prodEndpoint = value
+	}
+	server.consEndpoint = consEndpoint
+	if value, ok := os.LookupEnv("ENDPOINT"); ok {
+		server.consEndpoint = value
+	}
+	server.prodPort = prodPort
+	if value, ok := os.LookupEnv("PROD_PORT"); ok {
+		if intValue, err := strconv.Atoi(value); err!=nil {
+			server.prodPort = intValue
+		}
+	}
+	server.consPort = consPort
+	if value, ok := os.LookupEnv("CONS_PORT"); ok {
+		if intValue, err := strconv.Atoi(value); err!=nil {
+			server.consPort = intValue
+		}
+	}
+}
+
 func main() {
-	endpoint := flag.String("endpoint", "", "Endpoint to ping")
-	sampleSize := flag.Int64("sampleSize", 10, "Number of samples")
-	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
-	portFlag = flag.Int("port", 80, "The port that functions listen to")
+	prodEndpoint := flag.String("prodEndpoint", "producer.default.192.168.1.240.sslip.io", "Endpoint to ping")
+	prodPort = flag.Int("prodPort", 80, "The port that the producer is listening to")
+	consEndpoint := flag.String("consEndpoint", "consumer.default.192.168.1.240.sslip.io", "Endpoint to ping")
+	consPort = flag.Int("consPort", 80, "The port that the consumer is listening to")
+	servePort := flag.Int("sp", 80, "Port listened to by this streamer")
 	withTracing = flag.Bool("trace", false, "Enable tracing in the client")
-	zipkin := flag.String("zipkin", "http://localhost:9411/api/v2/spans", "zipkin url")
+	zipkin := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
-	grpcTimeout = time.Duration(*flag.Int("grpcTimeout", 30, "Timeout in seconds for gRPC requests")) * time.Second
+	grpcTimeout = time.Duration(*flag.Int("grpcTimeout", 60, "Timeout in seconds for gRPC requests")) * time.Second
 	fanIn := flag.Int("fanIn",0,"Fan in amount")
 	fanOut := flag.Int("fanOut",0,"Fan out amount")
 
@@ -55,33 +103,38 @@ func main() {
 		FullTimestamp:   true,
 	})
 	log.SetOutput(os.Stdout)
-	if *debug {
+	if strings.EqualFold(os.Getenv("DEBUG"), "true") || *debug {
 		log.SetLevel(log.DebugLevel)
 		log.Debug("Debug logging is enabled")
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	if *withTracing {
+	var grpcServer *grpc.Server
+	if strings.EqualFold(os.Getenv("ENABLE_TRACING"), "true") || *withTracing {
 		shutdown, err := tracing.InitBasicTracer(*zipkin, "invoker")
 		if err != nil {
 			log.Print(err)
 		}
 		defer shutdown()
+		grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
+	}else {
+		grpcServer = grpc.NewServer()
+	}
+	server := driverServer{}
+	setEnv(&server, *fanIn, *fanOut, *prodEndpoint, *consEndpoint, *prodPort, *consPort)
+	pb.RegisterGreeterServer(grpcServer, &server)
+	reflection.Register(grpcServer)
+
+	// server setup: listen on port.
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *servePort))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
 	}
 
-	runExperiment(*endpoint, *sampleSize, *fanIn, *fanOut)
-
-	writeLatencies(*sampleSize, *latencyOutputFile)
-}
-
-func runExperiment(endpoint string, sampleSize int64, fanInAmount, fanOutAmount int) {
-	var i int64
-	for i = 0; i < sampleSize; i++ {
-		invokeServingFunction(endpoint, fanInAmount, fanOutAmount)
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
 	}
-	log.Println("Experiment finished!")
-
 }
 
 func SayHello(address string) {
@@ -106,12 +159,12 @@ func SayHello(address string) {
 	}
 }
 
-func benchFanIn(address string, fanInAmount int) {
+func benchFanIn(prodAddr, consAddr string, fanInAmount int) {
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	}
-	conn, err := grpc.Dial(address, dialOptions...)
+	conn, err := grpc.Dial(prodAddr, dialOptions...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -126,20 +179,21 @@ func benchFanIn(address string, fanInAmount int) {
 	for i :=0; i<fanInAmount; i++ {
 		benchResponse, err = c.Benchmark (ctx, &pb_client.BenchType{Name: FANIN, FanAmount: int64(fanInAmount)})
 		if err != nil {
-			log.Warnf("Failed to invoke %v, err=%v", address, err)
+			log.Warnf("Failed to invoke %v, err=%v", prodAddr, err)
 		}
 		capabilities = append(capabilities, benchResponse.Capability)
 	}
 	log.Infof("received capabilites %v",capabilities)
-	reduce(capabilities)
+	reduce(consAddr, capabilities)
 }
 
-func reduce(capabilities []string) {
+func reduce(consEndpoint string, capabilities []string) {
+	log.Infof("Attempting reduction using addr:%s",consEndpoint)
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	}
-	conn, err := grpc.Dial("localhost:3030", dialOptions...)
+	conn, err := grpc.Dial(consEndpoint, dialOptions...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -155,12 +209,12 @@ func reduce(capabilities []string) {
 	}
 }
 
-func benchFanOut(address string, fanOutAmount int) {
+func benchFanOut(prodAddr string, fanOutAmount int) {
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	}
-	conn, err := grpc.Dial(address, dialOptions...)
+	conn, err := grpc.Dial(prodAddr, dialOptions...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -173,75 +227,21 @@ func benchFanOut(address string, fanOutAmount int) {
 
 	_, err = c.Benchmark (ctx, &pb_client.BenchType{Name: FANOUT, FanAmount: int64(fanOutAmount)})
 	if err != nil {
-		log.Warnf("Failed to invoke %v, err=%v", address, err)
+		log.Warnf("Failed to invoke %v, err=%v", prodAddr, err)
 	}
 }
 
-func invokeServingFunction(endpoint string, fanInAmount, fanOutAmount int) {
-	defer getDuration(startMeasurement(endpoint)) // measure entire invocation time
+func invokeServingFunction(prodAddr, consAddr string, fanInAmount, fanOutAmount int) {
 
-	address := fmt.Sprintf("%s:%d", endpoint, *portFlag)
-	log.Debug("Invoking by the address: %v", address)
+	log.Debug("Invoking by the address: %v", prodAddr)
 
 	if fanInAmount > 0 {
-		benchFanIn(address, fanInAmount)
+		benchFanIn(prodAddr, consAddr, fanInAmount)
 	}else if fanOutAmount > 0 {
-		benchFanOut(address, fanOutAmount)
+		benchFanOut(prodAddr, fanOutAmount)
 	}else {
-		SayHello(address)
+		SayHello(prodAddr)
 	}
 
-	atomic.AddInt64(&completed, 1)
-	return
-}
-
-// LatencySlice is a thread-safe slice to hold a slice of latency measurements.
-type LatencySlice struct {
-	sync.Mutex
-	slice []int64
-}
-
-func startMeasurement(msg string) (string, time.Time) {
-	return msg, time.Now()
-}
-
-func getDuration(msg string, start time.Time) {
-	latency := time.Since(start)
-	log.Debugf("Invoked %v in %v usec\n", msg, latency.Microseconds())
-	addDurations([]time.Duration{latency})
-}
-
-func addDurations(ds []time.Duration) {
-	latSlice.Lock()
-	for _, d := range ds {
-		latSlice.slice = append(latSlice.slice, d.Microseconds())
-	}
-	latSlice.Unlock()
-}
-
-func writeLatencies(sampleSize int64, latencyOutputFile string) {
-	latSlice.Lock()
-	defer latSlice.Unlock()
-
-	fileName := fmt.Sprintf("%d_%s", sampleSize, latencyOutputFile)
-	log.Info("The measured latencies are saved in ", fileName)
-
-	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-
-	if err != nil {
-		log.Fatal("Failed creating file: ", err)
-	}
-
-	datawriter := bufio.NewWriter(file)
-
-	for _, lat := range latSlice.slice {
-		_, err := datawriter.WriteString(strconv.FormatInt(lat, 10) + "\n")
-		if err != nil {
-			log.Fatal("Failed to write the latencies to a file ", err)
-		}
-	}
-
-	datawriter.Flush()
-	file.Close()
 	return
 }
