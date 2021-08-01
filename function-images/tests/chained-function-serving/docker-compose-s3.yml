@@ -66,5 +66,28 @@ services:
             - consumer
             - zipkin
 
+    driver:
+        image: vhiveease/chained-functions-serving-driver
+        ports:
+            - 3032:3032
+        volumes:
+            - log-volume:/log
+        command:
+            - -prodEndpoint=producer
+            - -consEndpoint=consumer
+            - -prodPort=3031
+            - -consPort=3030
+            - -sp=3032
+            - -dbg=true
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - FANIN=0
+            - FANOUT=0
+            - ENABLE_TRACING=false
+        depends_on:
+            - consumer
+            - producer
+            - zipkin
+
 volumes:
     log-volume:

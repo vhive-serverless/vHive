@@ -22,7 +22,7 @@
 
 all: all-image 
 
-all-image: producer-image consumer-image
+all-image: producer-image consumer-image driver-image
 
 all-image-push: producer-image-push consumer-image-push
 
@@ -52,6 +52,12 @@ consumer-image: Dockerfile consumer/consumer.go proto/prodcon.pb.go proto/prodco
 consumer-image-push: consumer-image
 	docker push vhiveease/chained-functions-serving-consumer:latest
 
+driver-image: Dockerfile driver/driver.go proto/prodcon.pb.go proto/prodcon_grpc.pb.go
+	DOCKER_BUILDKIT=1 docker build \
+	--tag vhiveease/chained-functions-serving-driver:latest \
+	--build-arg target_arg=driver \
+	--secret id=GOPRIVATE_KEY \
+	-f Dockerfile ../../..
 
 cmd/server/tempReader_grpc.pb.go cmd/server/tempReader.pb.go: cmd/server/tempReader.proto
 	protoc \
@@ -60,3 +66,4 @@ cmd/server/tempReader_grpc.pb.go cmd/server/tempReader.pb.go: cmd/server/tempRea
 		--go-grpc_out=. \
 		--go-grpc_opt="paths=source_relative" \
 		cmd/server/tempReader.proto
+
