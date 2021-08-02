@@ -171,7 +171,7 @@ func SayHello(address, workflowID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 	
-	mapD := map[string]int{"executiontime":500, "objectsize":10000,}
+	mapD := map[string]int{"executiontime":500, "objectsize":10000}
         mapB,_ := json.Marshal(mapD)
         inputstr := string(mapB)
 	resp, errh = c.SayHello(ctx, &pb.HelloRequest{Name: inputstr})
