@@ -36,8 +36,7 @@ class Greeter(helloworld_pb2_grpc.GreeterServicer):
                 dummylist = [0]*int((memorysize/8))
                 dummylist = ['cleaned']
                 elapsedtime = time.time() - initialtime
-                msg = msg + 'Memory Allocation benchmark Completled for ' + str(memorysize) \
-+ ' bytes. Used ' + str(elapsedtime) + ' seconds.'
+                msg = msg + 'Memory Allocation benchmark Completled for ' + str(memorysize) + ' bytes. Used ' + str(elapsedtime) + ' seconds.'
         
         if 'objectsize' in userinput:
             
