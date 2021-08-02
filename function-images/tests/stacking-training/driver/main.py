@@ -38,6 +38,7 @@ import source as XDTsrc
 import utils as XDTutil
 
 import grpc
+from grpc_reflection.v1alpha import reflection
 import argparse
 import boto3
 import logging as log
@@ -336,6 +337,11 @@ def serve():
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
         helloworld_pb2_grpc.add_GreeterServicer_to_server(
             GreeterServicer(transferType=transferType), server)
+        SERVICE_NAMES = (
+            helloworld_pb2.DESCRIPTOR.services_by_name['Greeter'].full_name,
+            reflection.SERVICE_NAME,
+        )
+        reflection.enable_server_reflection(SERVICE_NAMES, server)
         server.add_insecure_port('[::]:' + args.sp)
         server.start()
         server.wait_for_termination()
