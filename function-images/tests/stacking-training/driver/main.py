@@ -59,11 +59,11 @@ from concurrent import futures
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-dockerCompose", "--dockerCompose", dest="dockerCompose", default=False, help="Env docker compose")
-parser.add_argument("-tAddr", "--tAddr", dest="tAddr", default="trainer.default.svc.cluster.local:80",
+parser.add_argument("-tAddr", "--tAddr", dest="tAddr", default="trainer.default.192.168.1.240.sslip.io:80",
                     help="trainer address")
-parser.add_argument("-rAddr", "--rAddr", dest="rAddr", default="reducer.default.svc.cluster.local:80",
+parser.add_argument("-rAddr", "--rAddr", dest="rAddr", default="reducer.default.192.168.1.240.sslip.io:80",
                     help="reducer address")
-parser.add_argument("-mAddr", "--mAddr", dest="mAddr", default="metatrainer.default.svc.cluster.local:80",
+parser.add_argument("-mAddr", "--mAddr", dest="mAddr", default="metatrainer.default.192.168.1.240.sslip.io:80",
                     help="metatrainer address")
 parser.add_argument("-trainersNum", "--trainersNum", dest="trainersNum", default="3", help="number of training models")
 parser.add_argument("-sp", "--sp", dest="sp", default="80", help="serve port")

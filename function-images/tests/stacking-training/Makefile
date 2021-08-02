@@ -34,7 +34,7 @@ MODE = --load
 
 all: all-image 
 
-all-image: driver-image trainer-image reducer-image metatrainer-imag
+all-image: driver-image trainer-image reducer-image metatrainer-image
 
 all-image-push: driver-image-push trainer-image-push reducer-image-push metatrainer-image-push
 
