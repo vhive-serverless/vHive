@@ -19,6 +19,26 @@ class Greeter(helloworld_pb2_grpc.GreeterServicer):
         print('received: ' + request.name)
         userinput = json.loads(request.name)
         
+        if 'memoryallocate' in userinput:
+
+            initialtime = time.time()
+            memorysize = userinput['memoryallocate']
+            mem = psutil.virtual_memory().available
+
+            if mem < memorysize:
+                msg = 'Not enough memory on the heap. Try a smaller size.'
+                print('Not enough free memory!')
+                return helloworld_pb2.HelloReply(message = msg)
+
+            else :
+                print('Allocating Memory of ' + str(memorysize) + ' bytes')
+
+                dummylist = [0]*int((memorysize/8))
+                dummylist = ['cleaned']
+                elapsedtime = time.time() - initialtime
+                msg = msg + 'Memory Allocation benchmark Completled for ' + str(memorysize) \
++ ' bytes. Used ' + str(elapsedtime) + ' seconds.'
+        
         if 'objectsize' in userinput:
             
             initialtime = time.time()
