@@ -62,11 +62,11 @@ func setEnv(server *driverServer, fanIn, fanOut int, prodEndpoint, consEndpoint 
 		server.fanOut, _ = strconv.Atoi(value)
 	}
 	server.prodEndpoint = prodEndpoint
-	if value, ok := os.LookupEnv("ENDPOINT"); ok {
+	if value, ok := os.LookupEnv("PROD_ENDPOINT"); ok {
 		server.prodEndpoint = value
 	}
 	server.consEndpoint = consEndpoint
-	if value, ok := os.LookupEnv("ENDPOINT"); ok {
+	if value, ok := os.LookupEnv("CONS_ENDPOINT"); ok {
 		server.consEndpoint = value
 	}
 	server.prodPort = prodPort
@@ -179,7 +179,7 @@ func benchFanIn(prodAddr, consAddr string, fanInAmount int) {
 	for i :=0; i<fanInAmount; i++ {
 		benchResponse, err = c.Benchmark (ctx, &pb_client.BenchType{Name: FANIN, FanAmount: int64(fanInAmount)})
 		if err != nil {
-			log.Warnf("Failed to invoke %v, err=%v", prodAddr, err)
+			log.Warnf("Failed to invoke %s, err=%v", prodAddr, err)
 		}
 		capabilities = append(capabilities, benchResponse.Capability)
 	}

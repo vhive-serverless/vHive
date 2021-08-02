@@ -199,7 +199,6 @@ func main() {
 		grpcServer = grpc.NewServer()
 	}
 
-	reflection.Register(grpcServer)
 
 	//client setup
 	log.Printf("[producer] Client using address: %v:%d\n", *flagAddress, *flagClientPort)
@@ -240,6 +239,7 @@ func main() {
 	}
 	pb.RegisterGreeterServer(grpcServer, &ps)
 	pb_client.RegisterProdConDriverServer(grpcServer, &us)
+	reflection.Register(grpcServer)
 
 	//server setup
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *flagServerPort))
