@@ -54,7 +54,7 @@ func (s *ubenchServer) putData(ctx context.Context) (pb_client.BenchResponse, er
 		return pb_client.BenchResponse{Capability: key, Ok: true}, nil
 
 	} else if s.transferType == XDT {
-		if capability, err := s.XDTclient.Put(s.payloadData); err != nil {
+		if capability, err := s.XDTclient.Put(ctx, s.payloadData); err != nil {
 			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
 			return pb_client.BenchResponse{Ok: false}, err
 		}else {
@@ -65,6 +65,7 @@ func (s *ubenchServer) putData(ctx context.Context) (pb_client.BenchResponse, er
 }
 
 func (s *ubenchServer) fanOut(ctx context.Context, fanAmount int64, addr string) pb_client.BenchResponse{
+	errorChannel := make(chan error, fanAmount)
 	if s.transferType == INLINE || s.transferType == S3 {
 		client, conn := getGRPCclient(addr)
 		defer conn.Close()
@@ -73,11 +74,16 @@ func (s *ubenchServer) fanOut(ctx context.Context, fanAmount int64, addr string)
 			payloadToSend = []byte(uploadToS3(ctx, s.payloadData))
 		}
 		for i:=int64(0); i<fanAmount; i++ {
-			ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
-			if err != nil {
-				log.Fatalf("[producer] client error in string consumption: %s", err)
-			}
-			log.Printf("[producer] (single) Ack: %v\n", ack.Value)
+			go func() {
+				ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
+				if err != nil {
+					log.Fatalf("[producer] client error in string consumption: %s", err)
+					errorChannel <- err
+				}else {
+					errorChannel <- nil
+				log.Printf("[producer] (single) Ack: %v\n", ack.Value)
+				}
+			}()
 		}
 	} else if s.transferType == XDT {
 		payloadToSend := utils.Payload{
@@ -85,8 +91,23 @@ func (s *ubenchServer) fanOut(ctx context.Context, fanAmount int64, addr string)
 			Data:         s.payloadData,
 		}
 		for i:=int64(0); i<fanAmount; i++ {
-			if _, _, err := s.XDTclient.Invoke(addr, payloadToSend); err != nil {
-				log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
+			go func(){
+				if _, _, err := s.XDTclient.Invoke(ctx, addr, payloadToSend); err != nil {
+					log.Errorf("data_transfer failed %v", err)
+					errorChannel <- err
+				} else {
+					log.Infof("data_transfer successful")
+					errorChannel <- nil
+				}
+			}()
+		}
+	}
+	for i:=int64(0); i<fanAmount; i++ {
+		select {
+		case err := <-errorChannel:
+			if err != nil {
+				log.Errorf("Fanout failed: %v", err)
+				return pb_client.BenchResponse{Ok: false}
 			}
 		}
 	}

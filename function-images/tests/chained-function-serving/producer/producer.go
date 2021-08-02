@@ -159,7 +159,7 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 			FunctionName: "HelloXDT",
 			Data:         ps.payloadData,
 		}
-		if _, _, err := ps.XDTclient.Invoke(addr, payloadToSend); err != nil {
+		if _, _, err := ps.XDTclient.Invoke(ctx, addr, payloadToSend); err != nil {
 			log.Fatalf("SQP_to_dQP_data_transfer failed %v", err)
 		}
 	}

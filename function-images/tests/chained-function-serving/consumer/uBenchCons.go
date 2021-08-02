@@ -39,15 +39,38 @@ func (s *ubenchServer) FetchByte(ctx context.Context, str *pb.ReductionRequest	)
 		defer span1.EndSpan()
 		defer span2.EndSpan()
 	}
+	errorChannel := make(chan error, len(str.Capability))
 	if s.transferType == S3 {
 		for _, capability := range str.Capability {
-			log.Printf("[consumer] Consumed %d bytes\n", fetchFromS3(ctx, capability))
+			go func(capability string) {
+				payloadSize, err := fetchFromS3(ctx, capability)
+				if err !=nil {
+					errorChannel <- err
+				}else {
+					log.Printf("[consumer] Consumed %d bytes\n", payloadSize)
+					errorChannel <- nil
+				}
+			}(capability)
 		}
 	}else if s.transferType == XDT{
 		for _, capability := range str.Capability {
-			bytes, err := sdk.Get(ctx, capability, s.XDTconfig)
-			if err !=nil {
-				log.Printf("[consumer] Consumed %d bytes\n", len(bytes))
+			go func (capability string) {
+				bytes, err := sdk.Get(ctx, capability, s.XDTconfig)
+				if err != nil {
+					errorChannel <- err
+				} else {
+					log.Infof("[consumer] Consumed %d bytes\n", len(bytes))
+					errorChannel <- nil
+				}
+			}(capability)
+		}
+	}
+	for i:=0; i< len(str.Capability); i++ {
+		select {
+		case err := <-errorChannel:
+			if err != nil {
+				log.Errorf("Fanout failed: %v", err)
+				return &pb.ConsumeByteReply{Value: false}, err
 			}
 		}
 	}
