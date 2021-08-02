@@ -196,27 +196,38 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put_to_s3(self, obj, key):
+    def put(self, obj, key):
+        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
+        log.info(msg)
+        with tracing.Span(msg):
+            pickled = pickle.dumps(obj)
+            if self.transferType == S3:
+                self.put_to_s3(pickled, key)
+            elif self.transferType == XDT:
+                log.fatal("XDT is not supported")
+        return key
+
+    def get(self, key):
+        msg = "Driver gets key '" + key + "' from " + self.transferType
+        log.info(msg)
+        with tracing.Span(msg):
+            response = None
+            if self.transferType == S3:
+                response = self.get_from_s3(key)
+            elif self.transferType == XDT:
+                log.fatal("XDT is not yet supported")
+            return pickle.loads(response['Body'].read())
+    
+    def put_to_s3(self, pickled, key):
         s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        pickled = pickle.dumps(obj)
         s3object.put(Body=pickled)
 
     def get_from_s3(self, key):
         obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        response = obj.get()
-        return pickle.loads(response['Body'].read())
+        return obj.get()
 
     def upload_dataset(self):
-        if self.transferType == S3:
-            log.info("Using s3, uploading dataset")
-            with tracing.Span("Upload dataset"):
-                self.put_to_s3(self.dataset, "dataset")
-        elif self.transferType == XDT:
-            log.fatal("XDT is not supported")
-            # with tracing.Span("Upload dataset"):
-            #     self.writeToXDT(self.dataset, "dataset")
-
-        return
+        self.put(self.dataset, "dataset")
 
     def train(self, arg: dict) -> dict:
         log.info(f"Invoke Trainer {arg['trainer_id']}")
@@ -292,25 +303,8 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
     def get_final(self, outputs: dict):
         log.info("Get the final outputs")
 
-        if self.transferType == S3:
-            log.info("Driver gets the full model from S3")
-            with tracing.Span("Driver gets the full model from S3"):
-                _ = self.get_from_s3(outputs['model_full_key'])
-        elif self.transferType == XDT:
-            log.info("Driver gets the full model from XDT")
-            log.fatal("XDT is not yet supported")
-            # with tracing.Span("Driver gets the full model from XDT"):
-            #     _ = self.get_from_xdt(outputs['model_full'])
-
-            if self.transferType == S3:
-                log.info("Driver gets the meta predictions from S3")
-                with tracing.Span("Driver gets the meta predictions from S3"):
-                    _ = self.get_from_s3(outputs['meta_predictions_key'])
-            elif self.transferType == XDT:
-                log.info("Driver gets the meta predictions from XDT")
-                log.fatal("XDT is not yet supported")
-                # with tracing.Span("Driver gets the full model from XDT"):
-                #     _ = self.get_from_xdt(outputs['meta_predictions'])
+        _ = self.get(outputs['model_full_key'])
+        _ = self.get(outputs['meta_predictions_key'])
 
     # Driver code below
     def SayHello(self, request, context):

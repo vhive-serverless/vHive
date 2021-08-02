@@ -116,58 +116,55 @@ class ReducerServicer(stacking_pb2_grpc.ReducerServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put_to_s3(self, obj, key):
+    def put(self, obj, key):
+        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
+        log.info(msg)
+        with tracing.Span(msg):
+            pickled = pickle.dumps(obj)
+            if self.transferType == S3:
+                self.put_to_s3(pickled, key)
+            elif self.transferType == XDT:
+                log.fatal("XDT is not supported")
+        return key
+
+    def get(self, key):
+        msg = "Driver gets key '" + key + "' from " + self.transferType
+        log.info(msg)
+        with tracing.Span(msg):
+            response = None
+            if self.transferType == S3:
+                response = self.get_from_s3(key)
+            elif self.transferType == XDT:
+                log.fatal("XDT is not yet supported")
+            return pickle.loads(response['Body'].read())
+    
+    def put_to_s3(self, pickled, key):
         s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        pickled = pickle.dumps(obj)
         s3object.put(Body=pickled)
 
     def get_from_s3(self, key):
         obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        response = obj.get()
-        return pickle.loads(response['Body'].read())
+        return obj.get()
 
     def Reduce(self, request, context):
         log.info(f"Reducer is invoked")
 
         models = []
         predictions = []
-        if self.transferType == S3:
-            log.info("Reducer gets the models from S3")
-            with tracing.Span("Reducer gets models from S3"):
-                for i, model_pred_tuple in enumerate(request.model_pred_tuples):
-                    with tracing.Span(f"Reducer gets model {i} from S3"):
-                        models.append(self.get_from_s3(model_pred_tuple.model_key))
-                        predictions.append(self.get_from_s3(model_pred_tuple.pred_key))
-        elif self.transferType == XDT:
-            log.info("Reducer gets models from XDT")
-            log.fatal("XDT is not yet supported")
-            # with tracing.Span("Reducer gets models from XDT"):
-            #     for i in range(len(request.model_keys)):
-            #         with tracing.Span(f"Reducer gets model {i} from XDT"):
-            #             models.append(get_from_xdt(request.model_key[i]))
-            #             predictions.append(request.preds[i])
+
+        for i, model_pred_tuple in enumerate(request.model_pred_tuples):
+            with tracing.Span(f"Reducer gets model {i} from S3"):
+                models.append(self.get(model_pred_tuple.model_key))
+                predictions.append(self.get(model_pred_tuple.pred_key))
 
         meta_features = np.transpose(np.array(predictions))
 
         meta_features_key = 'meta_features'
         models_key = 'models'
-        if self.transferType == S3:
-            log.info("Reducer puts the meta features to S3")
-            with tracing.Span("Reducer puts the meta features to S3"):
-                self.put_to_s3(meta_features, meta_features_key)
+        self.put(meta_features, meta_features_key)
 
-            log.info("Reducer puts the models to S3")
-            with tracing.Span("Reducer puts the models to S3"):
-                self.put_to_s3(models, models_key)
-        elif self.transferType == XDT:
-            log.info("Reducer puts the meta features to XDT")
-            log.fatal("XDT is not yet supported")
-            # with tracing.Span("Reducer puts the meta features to XDT"):
-            #     self.put_to_xdt(meta_features, meta_features_key)
-            #
-            # log.info("Reducer puts the models to XDT")
-            # with tracing.Span("Reducer puts the models to XDT"):
-            #     self.put_to_xdt(models, models_key)
+        self.put(models, models_key)
+
 
         return stacking_pb2.ReduceReply(
             models=b'',

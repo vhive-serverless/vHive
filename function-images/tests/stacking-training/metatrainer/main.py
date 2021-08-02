@@ -125,67 +125,49 @@ class MetatrainerServicer(stacking_pb2_grpc.TrainerServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put_to_s3(self, obj, key):
+    def put(self, obj, key):
+        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
+        log.info(msg)
+        with tracing.Span(msg):
+            pickled = pickle.dumps(obj)
+            if self.transferType == S3:
+                self.put_to_s3(pickled, key)
+            elif self.transferType == XDT:
+                log.fatal("XDT is not supported")
+        return key
+
+    def get(self, key):
+        msg = "Driver gets key '" + key + "' from " + self.transferType
+        log.info(msg)
+        with tracing.Span(msg):
+            response = None
+            if self.transferType == S3:
+                response = self.get_from_s3(key)
+            elif self.transferType == XDT:
+                log.fatal("XDT is not yet supported")
+            return pickle.loads(response['Body'].read())
+    
+    def put_to_s3(self, pickled, key):
         s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        pickled = pickle.dumps(obj)
         s3object.put(Body=pickled)
 
     def get_from_s3(self, key):
         obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        response = obj.get()
-        return pickle.loads(response['Body'].read())
+        return obj.get()
 
     def get_inputs(self, request) -> dict:
         inputs: dict = {}
-
-        if self.transferType == S3:
-            log.info("MetaTrainer gets the dataset from S3")
-            with tracing.Span("Trainer gets dataset from S3"):
-                inputs['dataset'] = self.get_from_s3(request.dataset_key)
-        elif self.transferType == XDT:
-            log.info("MetaTrainer gets the dataset from S3")
-            log.fatal("XDT is not yet supported")
-            # with tracing.Span("Trainer gets dataset from XDT"):
-            #     inputs['dataset'] = get_from_xdt(request.dataset_key)
-
-        if self.transferType == S3:
-            log.info("MetaTrainer gets the meta features from S3")
-            with tracing.Span("Trainer gets the meta features from S3"):
-                inputs['meta_features'] = self.get_from_s3(request.meta_features_key)
-        elif self.transferType == XDT:
-            log.info("MetaTrainer gets the meta features from XDT")
-            log.fatal("XDT is not yet supported")
-            # with tracing.Span("Trainer gets the meta features from XDT"):
-            #     inputs['meta_features'] = get_from_xdt(request.meta_features_key)
-
-        if self.transferType == S3:
-            log.info("MetaTrainer gets the models from S3")
-            with tracing.Span("Trainer gets the models from S3"):
-                inputs['models'] = self.get_from_s3(request.models_key)
-        elif self.transferType == XDT:
-            log.info("MetaTrainer gets the models from XDT")
-            log.fatal("XDT is not yet supported")
-            # with tracing.Span("Trainer gets the models from XDT"):
-            #     inputs['models'] = get_from_xdt(request.models_key)
-            
+        inputs['dataset'] = self.get(request.dataset_key)
+        inputs['meta_features'] = self.get(request.meta_features_key)
+        inputs['models'] = self.get(request.models_key)
         return inputs
 
     def put_outputs(self, meta_predictions, model_full):
         model_full_key = 'model_full_key'
         meta_predictions_key = 'meta_predictions_key'
-        if self.transferType == S3:
-            log.info("Put the outputs to S3")
-            with tracing.Span("Put the meta predictions to S3"):
-                self.put_to_s3(meta_predictions, meta_predictions_key)
-            with tracing.Span("Put the full model to S3"):
-                self.put_to_s3(model_full, model_full_key)
-        elif self.transferType == XDT:
-            log.info("Put the outputs to XDT")
-            log.fatal("XDT is not yet supported")
-            # with tracing.Span("Put the meta predictions to XDT"):
-            #     meta_predictions_key = put_to_xdt(meta_predictions)
-            # with tracing.Span("Put the full model to XDT"):
-            #     model_full_key = put_to_xdt(model_full)
+
+        self.put(meta_predictions, meta_predictions_key)
+        self.put(model_full, model_full_key)
 
         return meta_predictions_key, model_full_key
 

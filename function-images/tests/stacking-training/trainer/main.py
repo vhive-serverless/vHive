@@ -126,27 +126,41 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put_to_s3(self, obj, key):
+    def put(self, obj, key):
+        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
+        log.info(msg)
+        with tracing.Span(msg):
+            pickled = pickle.dumps(obj)
+            if self.transferType == S3:
+                self.put_to_s3(pickled, key)
+            elif self.transferType == XDT:
+                log.fatal("XDT is not supported")
+        return key
+
+    def get(self, key):
+        msg = "Driver gets key '" + key + "' from " + self.transferType
+        log.info(msg)
+        with tracing.Span(msg):
+            response = None
+            if self.transferType == S3:
+                response = self.get_from_s3(key)
+            elif self.transferType == XDT:
+                log.fatal("XDT is not yet supported")
+            return pickle.loads(response['Body'].read())
+    
+    def put_to_s3(self, pickled, key):
         s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        pickled = pickle.dumps(obj)
         s3object.put(Body=pickled)
 
     def get_from_s3(self, key):
         obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        response = obj.get()
-        return pickle.loads(response['Body'].read())
+        return obj.get()
 
     def Train(self, request, context):
         self.trainer_id = request.trainer_id
         log.info(f"Trainer {self.trainer_id} is invoked")
 
-        if self.transferType == S3:
-            log.info("Trainer gets dataset from S3")
-            with tracing.Span("Trainer gets dataset from S3"):
-                dataset = self.get_from_s3(request.dataset_key)
-        elif self.transferType == XDT:
-            log.info("Trainer gets dataset from XDT")
-            log.fatal("XDT is not yet supported")
+        dataset = self.get(request.dataset_key)
 
         with tracing.Span("Training a model"):
             model_config = pickle.loads(request.model_config)
@@ -163,13 +177,9 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
         # Write to S3
         model_key = f"model_{self.trainer_id}"
         pred_key = f"pred_model_{self.trainer_id}"
-        if self.transferType == S3:
-            with tracing.Span("Trainer puts a model to S3"):
-                self.put_to_s3(model, model_key)
-            with tracing.Span("Trainer puts a prediction to S3"):
-                self.put_to_s3(y_pred, pred_key)
-        elif self.transferType == XDT:
-            log.fatal("XDT not yet supported")
+
+        self.put(model, model_key)
+        self.put(y_pred, pred_key)
 
         return stacking_pb2.TrainReply(
             model=b'',
