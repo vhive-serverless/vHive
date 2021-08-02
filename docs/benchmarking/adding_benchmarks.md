@@ -58,7 +58,7 @@ how many manifests are needed depends on whether serving or eventing is used, an
 are given in their appropriate sections.
 
 Since vHive functions use gRPC, for example in both the
-[serving](/function-images/tests/chained-function-serving/service-producer.yaml) and
+[serving](/function-images/tests/chained-function-serving/knative_yamls/inline/service-producer.yaml) and
 [eventing examples](/function-images/tests/chained-function-eventing/manifests/4-ksvc.yaml), one will
 need to include the `h2c` port translation in each relevant manifest.
 
@@ -144,7 +144,7 @@ Below one can see screenshots from a producer-consumer trace visualized with Zip
 ### Continuous Integration
 New vHive workloads should be included in the automatic CI for regular testing, as this is helpful
 both for code maintenance and in demonstrating how the workload should be deployed. The vHive
-[function composition workflow](/.github/workflows/function-composition-bench.yml) can be referred
+[function composition workflow](/.github/workflows/function-composition.yml) can be referred
 to as an example in which the demo serving and eventing workloads are ran both "locally" and on
 a Knative cluster.
 
@@ -174,7 +174,7 @@ function C and a server for function A.
 The serving function composition example can be found
 [here](/function-images/tests/chained-function-serving), and additional CI implementation which shows
 how this code is executed can be found
-[here](https://github.com/ease-lab/vhive/blob/main/.github/workflows/function-composition-bench.yml).
+[here](https://github.com/ease-lab/vhive/blob/main/.github/workflows/function-composition.yml).
 This example implements a simple Client -> Producer -> Consumer function chain, whereby the client
 triggers the producer function to generate a random string, and the consumer consumes said string
 (by logging it to a file).
@@ -204,7 +204,7 @@ need to be both a server of one proto service and a client of another proto serv
 ### Knative Manifests
 One will need a Knative service definition for each of their functions. Refer to the
 [Knative docs](https://knative.dev/docs/serving/getting-started-knative-app/) and see the
-[example manifests](/function-images/tests/chained-function-serving/service-producer.yaml) for
+[example manifests](/function-images/tests/chained-function-serving/knative_yamls/inline/service-producer.yaml) for
 support.
 
 ### Deployment
@@ -238,7 +238,7 @@ An example of function composition using eventing can be found
 (grpcurl) -> Producer -> Consumer function chain, whereby the client triggers the producer function
 to generate an event, and the consumer consumes said event. The CI workflow for this example can be
 found
-[here](https://github.com/ease-lab/vhive/blob/main/.github/workflows/function-composition-bench.yml),
+[here](https://github.com/ease-lab/vhive/blob/main/.github/workflows/function-composition.yml),
 showing how the example can be deployed.
 
 In general, to deploy a workload with eventing one will need to:
@@ -312,7 +312,7 @@ spec:
   [attribute extensions](https://github.com/cloudevents/spec/blob/master/primer.md#cloudevent-attributes).
 - A Trigger must be in the same namespace with the broker it is attached to, but can relay
   CloudEvents to any
-  [_addressable_](https://github.com/knative/specs/blob/main/specs/eventing/interfaces.md#addressable)
+  [_addressable_](https://github.com/knative/specs/blob/main/specs/eventing/overview.md#addressable)
   _subscriber_ in any namespace.
 
 

@@ -1,21 +1,21 @@
 name: MinIO tests
 
 on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-    - 'docs/**'
-    - '**.md'
-    - 'function-images/**'
-  pull_request:
-    branches: [ main ]
-    paths-ignore:
-    - 'docs/**'
-    - '**.md'
-    - 'function-images/**'
+  # push:
+  #   branches: [ main ]
+  #   paths-ignore:
+  #   - 'docs/**'
+  #   - '**.md'
+  #   - 'function-images/**'
+  # pull_request:
+  #   branches: [ main ]
+  #   paths-ignore:
+  #   - 'docs/**'
+  #   - '**.md'
+  #   - 'function-images/**'
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
+  # schedule:
+  #   - cron: '0 0 * * *'
 
 env:
   GOOS: linux
@@ -24,11 +24,12 @@ env:
   GOCACHE: /root/tmp/gocache
   GOPATH: /root/tmp/gopath
   GOROOT: $HOME/go
+  KUBECONFIG: /etc/kubernetes/admin.conf
 
 jobs:
   minio-test:
     name: Minio test
-    runs-on: [self-hosted, cri]
+    runs-on: [stock-knative]
 
     steps:
     - name: Setup TMPDIR
@@ -42,26 +43,18 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - name: Setup firecracker-containerd
-      run: ./scripts/setup_firecracker_containerd.sh
-
     - name: Build
       run: go build
-
-    - name: Start vHive cluster
-      run: ./scripts/cloudlab/start_onenode_vhive_cluster.sh
 
     - name: modify $PATH
       run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
     - name: Setup minio
-      run: sleep 1m && make -C ./function-images/tests/save_load_minio local
+      run: sleep 1m && make -C ./function-images/tests/save_load_minio build_local
 
     - name: Test minio
-      env:
-        KUBECONFIG: /etc/kubernetes/admin.conf
       run: ./function-images/tests/save_load_minio/scripts/run_minio_k8s.sh
-    
+
     - name: Archive log artifacts
       if: ${{ always() }}
       uses: actions/upload-artifact@v2
@@ -74,4 +67,3 @@ jobs:
       if: ${{ always() }}
       run: |
         make -C ./function-images/tests/save_load_minio clean
-        ./scripts/github_runner/clean_cri_runner.sh

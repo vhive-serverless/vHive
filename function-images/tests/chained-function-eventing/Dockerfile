@@ -20,21 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM vhiveease/golang:latest AS builder
+FROM vhiveease/golang-builder AS builder
 WORKDIR /app
-RUN apk add --no-cache make
 # We use ARG and ENV to have a single Dockerfile for the all three programs.
 # https://vsupalov.com/docker-build-pass-environment-variables/
 ARG target_arg
 ENV target=$target_arg
 COPY . ./
-# This is required if the final image is FROM scratch
-# See https://forums.docker.com/t/standard-init-linux-go-195-exec-user-process-caused-no-such-file-or-directory/43777/7
-ENV CGO_ENABLED=0
 WORKDIR /app/function-images/tests/chained-function-eventing
 RUN make bin/${target}
 
-FROM scratch
+FROM vhiveease/runner
 WORKDIR /app
 ARG target_arg
 COPY --from=builder /app/function-images/tests/chained-function-eventing/bin/${target_arg} /app/exe

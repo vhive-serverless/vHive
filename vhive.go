@@ -44,7 +44,7 @@ const (
 	port    = ":3333"
 	fwdPort = ":3334"
 
-	testImageName = "vhiveease/helloworld:var_workload"
+	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
 )
 
 var (

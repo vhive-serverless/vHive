@@ -1,0 +1,192 @@
+# MIT License
+#
+# Copyright (c) 2021 Mert Bora Alper and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# Execute this playbook using
+#   ansible-playbook -u YOUR_SSH_USERNAME -i REMOTE_HOSTNAME, setup-host.yaml
+
+---
+- name: Setup Knative-on-KinD Host
+  hosts: all
+  tasks:
+    - name: Remove any old Docker installations
+      become: yes
+      apt:
+        state: absent
+        purge: yes
+        autoremove: yes
+        name:
+          - docker
+          - docker-engine
+          - docker.io
+          - containerd
+          - runc
+
+    - name: Remove Docker directories
+      become: yes
+      file:
+        state: absent
+        path: "{{ item }}"
+      loop:
+        - /var/lib/docker
+        - /var/lib/containerd
+
+    - name: Install GPG
+      become: yes
+      apt:
+        state: latest
+        update_cache: yes
+        name:
+          - gpg
+          - dirmngr
+          - gpg-agent
+
+    - name: Add custom repository keys
+      become: yes
+      ansible.builtin.apt_key:
+        url: "{{ item }}"
+      loop:
+        - https://download.docker.com/linux/ubuntu/gpg
+
+    - name: Add custom repositories
+      become: yes
+      ansible.builtin.apt_repository:
+        repo: "{{ item }}"
+        update_cache: no
+      loop:
+        - ppa:git-core/ppa
+        - deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+
+    - name: Upgrade packages
+      become: yes
+      apt:
+        update_cache: yes
+        upgrade: safe
+
+    - name: Install required packages
+      become: yes
+      apt:
+        state: latest
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - git-lfs
+          - mosh
+
+    - name: Add user "{{ ansible_user }}" to group docker
+      become: yes
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Reset SSH connection to activate changes
+      meta: reset_connection
+
+    - name: Create /mydata/docker directory
+      become: yes
+      ansible.builtin.file:
+        path: /mydata/docker
+        state: directory
+        mode: '0755'
+
+    - name: Set docker storage to /mydata
+      become: yes
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "data-root": "/mydata/docker"
+          }
+
+    - name: Restart Docker daemon to activate changes
+      become: yes
+      ansible.builtin.systemd:
+        state: restarted
+        name: docker
+
+    - name: Download and install KinD
+      become: yes
+      get_url:
+        url: https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+        dest: /usr/local/bin/kind
+        mode: 0755
+        owner: root
+
+    - name: Ensure ~/.bashrc exists
+      ansible.builtin.file:
+        path: ~/.bashrc
+
+    - name: Enable KinD bash autocomplete
+      ansible.builtin.lineinfile:
+        path: ~/.bashrc
+        line: source <(kind completion bash)
+
+    - name: Download and install kubectl
+      become: yes
+      get_url:
+        url: https://dl.k8s.io/release/v1.21.2/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: 0755
+        owner: root
+
+    - name: Enable kubectl bash autocomplete
+      ansible.builtin.lineinfile:
+        path: ~/.bashrc
+        line: source <(kubectl completion bash)
+
+    - name: Download and install Go
+      become: yes
+      ansible.builtin.unarchive:
+        remote_src: true
+        src: https://golang.org/dl/go1.16.6.linux-amd64.tar.gz
+        dest: /usr/local
+
+    - name: Download knative-kind installation script
+      become: yes
+      get_url:
+        url: https://raw.githubusercontent.com/ease-lab/knative-kind/ease-lab/install.sh
+        dest: /usr/local/bin/install-konk
+        mode: 0755
+        owner: root
+
+    - name: Download predicates word-list
+      become: yes
+      get_url:
+        url: https://raw.githubusercontent.com/glitchdotcom/friendly-words/master/words/predicates.txt
+        dest: /usr/share/dict/predicates
+
+    - name: Download objects word-list
+      become: yes
+      get_url:
+        url: https://raw.githubusercontent.com/glitchdotcom/friendly-words/master/words/objects.txt
+        dest: /usr/share/dict/objects
+
+    - name: Add cron entry to reboot at midnight
+      become: yes
+      become_method: sudo
+      ansible.builtin.cron:
+        user: root
+        name: "reboot"
+        minute: "0"
+        hour: "0"
+        job: "/sbin/shutdown --reboot now"

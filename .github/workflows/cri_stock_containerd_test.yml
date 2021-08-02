@@ -21,36 +21,35 @@ env:
   GOOS: linux
   GO111MODULE: on
   TMPDIR: /root/tmp/
+  KUBECONFIG: /etc/kubernetes/admin.conf
 
 jobs:
   stock-containerd-test:
     name: Stock Containerd test
-    runs-on: [self-hosted, cri]
+    runs-on: [stock-knative]
 
     steps:
-    - name: Setup TMPDIR
-      run: mkdir -p $TMPDIR
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
 
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
 
-    - name: Start Containerd
-      run: sudo containerd &
+      - name: Fix namespace
+        run: kubectl config set-context --current --namespace=default
 
-    - name: Create k8s cluster
-      run: ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
-      
-    - name: Deploy zipkin
-      env:
-        KUBECONFIG: /etc/kubernetes/admin.conf
-      run: ./scripts/setup_zipkin.sh && sleep 5s
-    
-    - name: Create helloworld container
-      run: KUBECONFIG=/etc/kubernetes/admin.conf kn service create helloworld-go --image gcr.io/knative-samples/helloworld-go --env TARGET="vHive CRI test"
+      - name: Create helloworld container
+        run: kn service create helloworld-go --image gcr.io/knative-samples/helloworld-go --env TARGET="vHive CRI test"
 
-    - name: Invoke the deployed function
-      run: curl http://helloworld-go.default.192.168.1.240.nip.io
+      - name: Invoke the deployed function
+        run: |
+          set -x
 
-    - name: Cleaning
-      if: ${{ always() }}
-      run: ./scripts/github_runner/clean_cri_runner.sh stock-only
+          export NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          export URL=$(kubectl get ksvc -n default helloworld-go -o jsonpath='{.status.url}')
+
+          curl $URL:$NODEPORT
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: kn service delete helloworld-go --wait

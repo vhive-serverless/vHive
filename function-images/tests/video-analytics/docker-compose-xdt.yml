@@ -1,0 +1,111 @@
+# MIT License
+#
+# Copyright (c) 2021 Michal Baczun and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.7"
+
+services:
+    recog:
+        image: vhiveease/video-analytics-recog
+        command:
+            - -sp=50053
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - TRANSFER_TYPE=XDT
+            - DQP_SERVER_HOSTNAME=recog-dQP
+            - DQP_SERVER_PORT=:50006
+            - DST_SERVER_PORT=:50053
+        depends_on:
+            -   recog-dQP
+    decoder:
+        image: vhiveease/video-analytics-decoder
+        command:
+            - -dockerCompose=True
+            - -addr=recog-dQP:50008
+            - -sp=50052
+            - -frames=3
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - TRANSFER_TYPE=XDT
+            - CONCURRENT_RECOG=false
+            - SQP_SERVER_HOSTNAME=decoder-sQP
+            - SQP_SERVER_PORT=:50005
+            - DQP_SERVER_HOSTNAME=decoder-dQP
+            - DQP_SERVER_PORT=:50006
+            - DST_SERVER_HOSTNAME=decoder
+            - DST_SERVER_PORT=:50052
+        depends_on:
+            - recog
+            - decoder-dQP
+            - decoder-sQP
+    streaming-sQP:
+        image: vhiveease/sqp
+        environment:
+            - SQP_SERVER_PORT=:50005
+            - NUMBER_OF_BUFFERS=5
+        expose:
+            - "50005"
+    decoder-sQP:
+        image: vhiveease/sqp
+        environment:
+            - SQP_SERVER_PORT=:50005
+            - NUMBER_OF_BUFFERS=5
+        expose:
+            - "50005"
+    decoder-dQP:
+        image: vhiveease/dqp
+        environment:
+            - DQP_SERVER_PORT=:50006
+            - DST_SERVER_HOSTNAME=decoder
+            - DST_SERVER_PORT=:50052
+            - PROXY_PORT=:50008
+            - NUMBER_OF_BUFFERS=5
+        expose:
+            - "50006"
+            - "50008"
+    recog-dQP:
+        image: vhiveease/dqp
+        environment:
+            - DQP_SERVER_PORT=:50006
+            - DST_SERVER_HOSTNAME=recog
+            - DST_SERVER_PORT=:50053
+            - PROXY_PORT=:50008
+            - NUMBER_OF_BUFFERS=5
+        expose:
+            - "50006"
+            - "50008"
+    streaming:
+        image: vhiveease/video-analytics-streaming
+        ports: 
+            - "50051:50051"
+        command:
+            - -dockerCompose=true
+            - -addr=decoder-dQP
+            - -p=50008
+            - -sp=50051
+            - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - TRANSFER_TYPE=XDT
+            - SQP_SERVER_HOSTNAME=streaming-sQP
+            - SQP_SERVER_PORT=:50005
+        depends_on:
+            - decoder
+            - streaming-sQP

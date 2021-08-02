@@ -5,10 +5,12 @@
 ### Added
 
 - Added Python tracing module and an [example](./function-images/tests/tracing/python/integ-tests/client-server/) showing its usage.
+- Added self-hosted stock-Knative runners on KinD, see [`scripts/self-hosted-kind`](./scripts/self-hosted-kind/).
 
 ### Changed
 
 - Workload stdout/stderr is not directly redirected to vhive stdout/stderr anymore but is printed by vhive via `logrus.WithFields(logrus.Fields{"vmID": vmID})`.
+- Moved the CRI non-Firecracker tests to self-hosted stock-Knative runners.
 
 ### Fixed
 

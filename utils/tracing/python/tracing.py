@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import contextlib
+import os
 
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
@@ -34,6 +35,14 @@ from opentelemetry.sdk.trace.export import (
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 )
+
+def IsTracingEnabled():
+    val = os.getenv('ENABLE_TRACING', "false")
+    print("ISTRACINGENABLED: %s" % val)
+    if val == "false":
+        return False
+    else:
+        return True
 
 def initTracer(name, debug=False, url="http://localhost:9411/api/v2/spans"):
     trace.set_tracer_provider(TracerProvider(resource=Resource.create({SERVICE_NAME: name})))

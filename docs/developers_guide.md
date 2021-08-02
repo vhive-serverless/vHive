@@ -12,7 +12,7 @@ cd vhive
 ./scripts/cloudlab/setup_node.sh stock-only
 sudo containerd
 ./scripts/cluster/create_one_node_cluster.sh stock-only
-# wait for the containers to boot up using 
+# wait for the containers to boot up using
 watch kubectl get pods -A
 # once all the containers are ready/complete, you may start Knative functions
 kn service apply
@@ -23,10 +23,48 @@ kn service apply
 ./scripts/github_runner/clean_cri_runner.sh stock-only
 ```
 
+## Testing using stock-Knative on self-hosted KinD clusters
+We also offer self-hosted stock-Knative environments powered by KinD. To be able to use them, follow the instructions below:
+
+- [ ] Set [`jobs.<job_id>.runs-on`](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on) to `stock-knative`.
+- [ ] For your GitHub workflow, define `TMPDIR` environment variable in your manifest:
+    ```yaml
+    env:
+      TMPDIR: /root/tmp
+    ```
+    - [ ] As the first step of **all** jobs, "create `TMPDIR` if not exists":
+        ```yaml
+        jobs:
+          my-job:
+            name: My Job
+            runs-on: [stock-knative]
+
+            steps:
+              - name: Setup TMPDIR
+                run: mkdir -p $TMPDIR
+        ```
+- [ ] Make sure to **clean-up and wait** for it to end! This varies for each workload, but below are some examples:
+    ```yaml
+    jobs:
+      my-job:
+      name: My Job
+      runs-on: [stock-knative]
+
+      steps:
+        # ...
+
+        name: Cleaning
+        if: ${{ always() }}
+        run: |
+          # ...
+    ```
+    - If you have used `kubectl apply -f ...` then use `kubectl delete -f ...`
+    - If you have used `kn service apply` then use `kn service delete -f ... --wait`
+
 ## Deploying single node container environment
 
-You can use the image to build/test/develop vHive inside a [kind container](https://github.com/ease-lab/kind). 
-This image is preconfigured to run a single node Kubernetes cluster 
+You can use the image to build/test/develop vHive inside a [kind container](https://github.com/ease-lab/kind).
+This image is preconfigured to run a single node Kubernetes cluster
 inside a container and contains packages to setup vHive on top of it.
 
 ```bash
@@ -34,7 +72,7 @@ inside a container and contains packages to setup vHive on top of it.
 ./scripts/github_runner/setup_runner_host.sh
 # pull latest image
 docker pull vhiveease/vhive_dev_env
-# Start a container 
+# Start a container
 kind create cluster --image vhiveease/vhive_dev_env
 ```
 
@@ -60,8 +98,8 @@ docker exec -it <container name> bash
 
 ```bash
 # list all kind clusters
-kind get clusters 
-# delete a cluster 
+kind get clusters
+# delete a cluster
 kind delete cluster --name <name>
 ```
 

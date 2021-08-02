@@ -61,7 +61,7 @@ var (
 
 func main() {
 	endpointsFile := flag.String("endpointsFile", "endpoints.json", "File with endpoints' metadata")
-	rps := flag.Int("rps", 1, "Target requests per second")
+	rps := flag.Float64("rps", 1.0, "Target requests per second")
 	runDuration := flag.Int("time", 5, "Run the experiment for X seconds")
 	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
 	portFlag = flag.Int("port", 80, "The port that functions listen to")
@@ -120,41 +120,39 @@ func readEndpoints(path string) (endpoints []*endpoint.Endpoint, _ error) {
 	return
 }
 
-func runExperiment(endpoints []*endpoint.Endpoint, runDuration, targetRPS int) (realRPS float64) {
+func runExperiment(endpoints []*endpoint.Endpoint, runDuration int, targetRPS float64) (realRPS float64) {
 	var issued int
 
 	Start(TimeseriesDBAddr, endpoints, workflowIDs)
 
 	timeout := time.After(time.Duration(runDuration) * time.Second)
 	tick := time.Tick(time.Duration(1000/targetRPS) * time.Millisecond)
-	var (
-		start time.Time
-		once  sync.Once
-	)
-
+	start := time.Now()
+loop:
 	for {
+		ep := endpoints[issued%len(endpoints)]
+		if ep.Eventing {
+			go invokeEventingFunction(ep)
+		} else {
+			go invokeServingFunction(ep)
+		}
+		issued++
+
 		select {
 		case <-timeout:
-			duration := time.Since(start).Seconds()
-			realRPS = float64(completed) / duration
-			addDurations(End())
-			log.Infof("Issued / completed requests: %d, %d", issued, completed)
-			log.Infof("Real / target RPS: %.2f / %v", realRPS, targetRPS)
-			log.Println("Experiment finished!")
-			return
+			break loop
 		case <-tick:
-			once.Do(func() {
-				start = time.Now()
-			})
-			ep := endpoints[issued%len(endpoints)]
-			if ep.Eventing {
-				go invokeEventingFunction(ep)
-			} else {
-				go invokeServingFunction(ep)
-			}
-			issued++
+			continue
 		}
 	}
+
+	duration := time.Since(start).Seconds()
+	realRPS = float64(completed) / duration
+	addDurations(End())
+	log.Infof("Issued / completed requests: %d, %d", issued, completed)
+	log.Infof("Real / target RPS: %.2f / %v", realRPS, targetRPS)
+	log.Println("Experiment finished!")
+	return
 }
 
 func SayHello(address, workflowID string) {
@@ -188,26 +186,22 @@ func SayHello(address, workflowID string) {
 
 func invokeEventingFunction(endpoint *endpoint.Endpoint) {
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
-	log.Debug("Invoking asynchronously by the address: %v", address)
+	log.Debug("Invoking asynchronously: ", address)
 
 	SayHello(address, workflowIDs[endpoint])
 
 	atomic.AddInt64(&completed, 1)
-
-	return
 }
 
 func invokeServingFunction(endpoint *endpoint.Endpoint) {
 	defer getDuration(startMeasurement(endpoint.Hostname)) // measure entire invocation time
 
 	address := fmt.Sprintf("%s:%d", endpoint.Hostname, *portFlag)
-	log.Debug("Invoking by the address: %v", address)
+	log.Debug("Invoking: ", address)
 
 	SayHello(address, workflowIDs[endpoint])
 
 	atomic.AddInt64(&completed, 1)
-
-	return
 }
 
 // LatencySlice is a thread-safe slice to hold a slice of latency measurements.
@@ -258,5 +252,4 @@ func writeLatencies(rps float64, latencyOutputFile string) {
 
 	datawriter.Flush()
 	file.Close()
-	return
 }
