@@ -23,45 +23,20 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: consumer
+  name: driver
   namespace: default
 spec:
   template:
     spec:
       containers:
-        - image: docker.io/vhiveease/chained-functions-serving-consumer:latest
+        - image: vhiveease/chained-functions-serving-driver:latest
           imagePullPolicy: Always
           env:
-            - name: TRANSFER_TYPE
-              value: "XDT"
-            - name: CHUNK_SIZE_IN_BYTES
-              value: "65536"
-            - name: CT_BUFFER_SIZE
-              value: "25"
-            - name: NUMBER_OF_BUFFERS
-              value: "2"
-            - name: ST_AND_FW_BUFFER_SIZE
-              value: "1600"
-            - name: ROUTING
-              value: "CutThrough"
-            - name: TRACING_ENABLED
-              value: "false"
-            - name: RPC_TIMEOUT_MAX_BACK_OFF
-              value: "1000"
-            - name: RPC_TIMEOUT_DURATION
-              value: "60000"
-            - name: RPC_RETRY_DELAY
-              value: "1"
-            - name: MAX_DST_SERVER_THREADS_PYTHON
-              value: "10"
-            - name: DST_SERVER_PORT
-              value: ":80"
-            - name: ZIPKIN_ENDPOINT
-              value: "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans"
-            - name: FANIN
-              value: "3"
+            - name: ENABLE_TRACING
+              value: "true"
             - name: FANOUT
-              value: "0"
+              value: "3"
+
           ports:
             # For `h2c`, see https://knative.tips/networking/http2/
             - name: h2c

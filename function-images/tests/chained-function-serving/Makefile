@@ -24,7 +24,7 @@ all: all-image
 
 all-image: producer-image consumer-image driver-image
 
-all-image-push: producer-image-push consumer-image-push
+all-image-push: producer-image-push consumer-image-push driver-image-push
 
 clean:
 	rm -f ./producer-bin ./consumer-bin
@@ -58,6 +58,9 @@ driver-image: Dockerfile driver/driver.go proto/prodcon.pb.go proto/prodcon_grpc
 	--build-arg target_arg=driver \
 	--secret id=GOPRIVATE_KEY \
 	-f Dockerfile ../../..
+
+driver-image-push: driver-image
+	docker push vhiveease/chained-functions-serving-driver:latest
 
 cmd/server/tempReader_grpc.pb.go cmd/server/tempReader.pb.go: cmd/server/tempReader.proto
 	protoc \

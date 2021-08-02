@@ -34,6 +34,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -175,34 +176,40 @@ func main() {
 		setAWSCredentials()
 	}
 
-
-	//set up server
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
-	if err != nil {
-		log.Fatalf("[consumer] failed to listen: %v", err)
+	var fanIn = false
+	if value, ok := os.LookupEnv("FANIN"); ok{
+		if intValue, err := strconv.Atoi(value); err==nil && intValue > 0{
+			fanIn = true
+		}
 	}
 
-	var grpcServer *grpc.Server
-	if tracing.IsTracingEnabled() {
-		grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
-	} else {
-		grpcServer = grpc.NewServer()
-	}
-	cs := consumerServer{transferType: transferType}
-	pb.RegisterProducerConsumerServer(grpcServer, &cs)
-	us := ubenchServer{transferType: transferType,XDTconfig: utils.ReadConfig()}
-	pb_client.RegisterProdConDriverServer(grpcServer, &us)
-
-	if transferType == XDT {
+	if transferType == XDT && !fanIn {
 		var handler = func(data []byte) ([]byte, bool){
 			log.Infof("gx: destination handler received data of size %d", len(data))
 			return nil, true
 		}
 		config := utils.ReadConfig()
-		go sdk.StartDstServer(config, handler)
-	}
+		sdk.StartDstServer(config, handler)
+	} else {
+		//set up server
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+		if err != nil {
+			log.Fatalf("[consumer] failed to listen: %v", err)
+		}
 
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("[consumer] failed to serve: %s", err)
+		var grpcServer *grpc.Server
+		if tracing.IsTracingEnabled() {
+			grpcServer = tracing.GetGRPCServerWithUnaryInterceptor()
+		} else {
+			grpcServer = grpc.NewServer()
+		}
+		cs := consumerServer{transferType: transferType}
+		pb.RegisterProducerConsumerServer(grpcServer, &cs)
+		us := ubenchServer{transferType: transferType,XDTconfig: utils.ReadConfig()}
+		pb_client.RegisterProdConDriverServer(grpcServer, &us)
+
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("[consumer] failed to serve: %s", err)
+		}
 	}
 }
