@@ -41,7 +41,7 @@ services:
             - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
             - AWS_REGION=us-west-1
-            - ENABLE_TRACING=false
+            - ENABLE_TRACING=true
         depends_on: 
             - zipkin
 
@@ -61,7 +61,7 @@ services:
             - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
             - AWS_REGION=us-west-1
-            - ENABLE_TRACING=false
+            - ENABLE_TRACING=true
         depends_on:
             - consumer
             - zipkin
@@ -83,7 +83,7 @@ services:
         environment:
             - FANIN=0
             - FANOUT=3
-            - ENABLE_TRACING=false
+            - ENABLE_TRACING=true
         depends_on:
             - consumer
             - producer

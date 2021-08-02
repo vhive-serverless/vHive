@@ -91,7 +91,7 @@ func setAWSCredentials() {
 	fmt.Printf("USING AWS ID: %v", AKID)
 }
 
-func fetchFromS3(ctx context.Context, key string) int64 {
+func fetchFromS3(ctx context.Context, key string) (int64, error) {
 	span := tracing.Span{SpanName: "S3 get", TracerName: "S3 get - tracer"}
 	ctx = span.StartSpan(ctx)
 	defer span.EndSpan()
@@ -100,7 +100,8 @@ func fetchFromS3(ctx context.Context, key string) int64 {
 		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
 	})
 	if err != nil {
-		log.Fatalf("[consumer] Failed establish s3 session: %s", err)
+		log.Errorf("[consumer] Failed establish s3 session: %s", err)
+		return 0, err
 	}
 	log.Infof("[consumer] Fetching %s from S3", key)
 	downloader := s3manager.NewDownloader(sess)
@@ -109,9 +110,10 @@ func fetchFromS3(ctx context.Context, key string) int64 {
 		Bucket: aws.String(AWS_S3_BUCKET),
 		Key:    aws.String(key)})
 	if err != nil {
-		log.Fatalf("[consumer] Failed to fetch bytes from s3: %s", err)
+		log.Errorf("[consumer] Failed to fetch bytes from s3: %s", err)
+		return 0, err
 	}
-	return numBytes
+	return numBytes, nil
 }
 
 func (s *consumerServer) ConsumeByte(ctx context.Context, str *pb.ConsumeByteRequest) (*pb.ConsumeByteReply, error) {
@@ -124,7 +126,12 @@ func (s *consumerServer) ConsumeByte(ctx context.Context, str *pb.ConsumeByteReq
 		defer span2.EndSpan()
 	}
 	if s.transferType == S3 {
-		log.Printf("[consumer] Consumed %d bytes\n", fetchFromS3(ctx, string(str.Value)))
+		payloadSize, err := fetchFromS3(ctx, string(str.Value))
+		if err !=nil {
+			log.Printf("[consumer] Consumed %d bytes\n", payloadSize)
+		}else {
+			return &pb.ConsumeByteReply{Value: false}, err
+		}
 	}else if s.transferType == INLINE{
 		log.Printf("[consumer] Consumed %d bytes\n", len(str.Value))
 	}

@@ -29,26 +29,20 @@ services:
             - 9411:9411
     consumer:
         image: vhiveease/chained-functions-serving-consumer
-        ports:
-            - 3030:3030
         volumes:
             - log-volume:/log
         command:
             - -ps=3030
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
-            - TRANSFER_TYPE=S3
-            - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-            - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-            - AWS_REGION=us-west-1
-            - ENABLE_TRACING=false
+            - ENABLE_TRACING=true
         depends_on: 
             - zipkin
 
     producer:
         image: vhiveease/chained-functions-serving-producer
         ports: 
-            - 3031:3031
+            - "3031:3031"
         volumes:
             - log-volume:/log
         command:
@@ -57,11 +51,7 @@ services:
             - -pc=3030
             - -zipkin=http://zipkin:9411/api/v2/spans
         environment:
-            - TRANSFER_TYPE=S3
-            - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-            - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-            - AWS_REGION=us-west-1
-            - ENABLE_TRACING=false
+            - ENABLE_TRACING=true
         depends_on:
             - consumer
             - zipkin
@@ -83,7 +73,7 @@ services:
         environment:
             - FANIN=0
             - FANOUT=3
-            - ENABLE_TRACING=false
+            - ENABLE_TRACING=true
         depends_on:
             - consumer
             - producer

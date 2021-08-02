@@ -48,7 +48,10 @@ type driverServer struct {
 func (s *driverServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *pb.HelloReply, err error) {
 	prodAddr := fmt.Sprintf("%s:%d",s.prodEndpoint,s.prodPort)
 	consAddr := fmt.Sprintf("%s:%d",s.consEndpoint,s.consPort)
-	invokeServingFunction(prodAddr, consAddr, s.fanIn, s.fanOut)
+	span := tracing.Span{SpanName: "Driver", TracerName: "Driver - tracer"}
+	ctx = span.StartSpan(ctx)
+	defer span.EndSpan()
+	invokeServingFunction(ctx, prodAddr, consAddr, s.fanIn, s.fanOut)
 	return &pb.HelloReply{Message: "Success"}, err
 }
 
@@ -112,7 +115,8 @@ func main() {
 
 	var grpcServer *grpc.Server
 	if strings.EqualFold(os.Getenv("ENABLE_TRACING"), "true") || *withTracing {
-		shutdown, err := tracing.InitBasicTracer(*zipkin, "invoker")
+		*withTracing = true
+		shutdown, err := tracing.InitBasicTracer(*zipkin, "driver")
 		if err != nil {
 			log.Print(err)
 		}
@@ -137,7 +141,7 @@ func main() {
 	}
 }
 
-func SayHello(address string) {
+func SayHello(ctx context.Context, address string) {
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
@@ -150,7 +154,7 @@ func SayHello(address string) {
 
 	c := pb.NewGreeterClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
+	ctx, cancel := context.WithTimeout(ctx, grpcTimeout)
 	defer cancel()
 
 	_, err = c.SayHello(ctx, &pb.HelloRequest{Name: "faas"})
@@ -159,7 +163,7 @@ func SayHello(address string) {
 	}
 }
 
-func benchFanIn(prodAddr, consAddr string, fanInAmount int) {
+func benchFanIn(ctx context.Context, prodAddr, consAddr string, fanInAmount int) {
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
@@ -172,22 +176,38 @@ func benchFanIn(prodAddr, consAddr string, fanInAmount int) {
 
 	c := pb_client.NewProdConDriverClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
+	ctx, cancel := context.WithTimeout(ctx, grpcTimeout)
 	defer cancel()
 	var benchResponse *pb_client.BenchResponse
 	var capabilities []string
+	errorChannel := make(chan error, fanInAmount)
 	for i :=0; i<fanInAmount; i++ {
-		benchResponse, err = c.Benchmark (ctx, &pb_client.BenchType{Name: FANIN, FanAmount: int64(fanInAmount)})
-		if err != nil {
-			log.Warnf("Failed to invoke %s, err=%v", prodAddr, err)
+		go func() {
+			benchResponse, err = c.Benchmark(ctx, &pb_client.BenchType{Name: FANIN, FanAmount: int64(fanInAmount)})
+			if err != nil {
+				log.Warnf("Failed to invoke %s, err=%v", prodAddr, err)
+				errorChannel <- err
+			}else{
+				log.Infof("[driver] Push successful")
+				errorChannel <- nil
+			}
+			capabilities = append(capabilities, benchResponse.Capability)
+		}()
+	}
+	for i :=0; i<fanInAmount; i++ {
+		select {
+		case err := <-errorChannel:
+			if err != nil {
+				log.Errorf("[driver] FanIn push failed: %v",err)
+				return
+			}
 		}
-		capabilities = append(capabilities, benchResponse.Capability)
 	}
 	log.Infof("received capabilites %v",capabilities)
-	reduce(consAddr, capabilities)
+	reduce(ctx, consAddr, capabilities)
 }
 
-func reduce(consEndpoint string, capabilities []string) {
+func reduce(ctx context.Context, consEndpoint string, capabilities []string) {
 	log.Infof("Attempting reduction using addr:%s",consEndpoint)
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
@@ -201,15 +221,15 @@ func reduce(consEndpoint string, capabilities []string) {
 
 	c := pb_client.NewProdConDriverClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
+	ctx, cancel := context.WithTimeout(ctx, grpcTimeout)
 	defer cancel()
 	_, err = c.FetchByte(ctx, &pb_client.ReductionRequest{Capability: capabilities})
 	if err != nil {
-		log.Fatalf("Fetch@consumer failed %v",err)
+		log.Errorf("Fetch@consumer failed %v",err)
 	}
 }
 
-func benchFanOut(prodAddr string, fanOutAmount int) {
+func benchFanOut(ctx context.Context, prodAddr string, fanOutAmount int) {
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
@@ -222,7 +242,7 @@ func benchFanOut(prodAddr string, fanOutAmount int) {
 
 	c := pb_client.NewProdConDriverClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
+	ctx, cancel := context.WithTimeout(ctx, grpcTimeout)
 	defer cancel()
 
 	_, err = c.Benchmark (ctx, &pb_client.BenchType{Name: FANOUT, FanAmount: int64(fanOutAmount)})
@@ -231,16 +251,16 @@ func benchFanOut(prodAddr string, fanOutAmount int) {
 	}
 }
 
-func invokeServingFunction(prodAddr, consAddr string, fanInAmount, fanOutAmount int) {
+func invokeServingFunction(ctx context.Context, prodAddr, consAddr string, fanInAmount, fanOutAmount int) {
 
 	log.Debug("Invoking by the address: %v", prodAddr)
 
 	if fanInAmount > 0 {
-		benchFanIn(prodAddr, consAddr, fanInAmount)
+		benchFanIn(ctx, prodAddr, consAddr, fanInAmount)
 	}else if fanOutAmount > 0 {
-		benchFanOut(prodAddr, fanOutAmount)
+		benchFanOut(ctx, prodAddr, fanOutAmount)
 	}else {
-		SayHello(prodAddr)
+		SayHello(ctx, prodAddr)
 	}
 
 	return
