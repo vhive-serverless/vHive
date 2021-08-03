@@ -42,6 +42,7 @@ COPY --from=builder /py /app
 COPY --from=builder /xdt/sdk/python/ /app
 COPY --from=builder /xdt/proto/downXDT/ /app
 COPY --from=builder /xdt/proto/upXDT/ /app
+COPY --from=builder /xdt/proto/crossXDT/ /app
 WORKDIR /app
 ENV PATH=/root/.local/bin:$PATH
 ENTRYPOINT ["python3", "-u", "./main.py"]

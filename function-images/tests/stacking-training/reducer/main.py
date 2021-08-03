@@ -122,9 +122,11 @@ class ReducerServicer(stacking_pb2_grpc.ReducerServicer):
         with tracing.Span(msg):
             pickled = pickle.dumps(obj)
             if self.transferType == S3:
-                self.put_to_s3(pickled, key)
+                s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
+                s3object.put(Body=pickled)
             elif self.transferType == XDT:
                 log.fatal("XDT is not supported")
+
         return key
 
     def get(self, key):
@@ -133,18 +135,12 @@ class ReducerServicer(stacking_pb2_grpc.ReducerServicer):
         with tracing.Span(msg):
             response = None
             if self.transferType == S3:
-                response = self.get_from_s3(key)
+                obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
+                response = obj.get()
             elif self.transferType == XDT:
                 log.fatal("XDT is not yet supported")
-            return pickle.loads(response['Body'].read())
-    
-    def put_to_s3(self, pickled, key):
-        s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        s3object.put(Body=pickled)
 
-    def get_from_s3(self, key):
-        obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        return obj.get()
+        return pickle.loads(response['Body'].read())
 
     def Reduce(self, request, context):
         log.info(f"Reducer is invoked")
