@@ -25,13 +25,13 @@ type Container struct {
 	Ports           []Port `json:"ports"`
 }
 type Spec struct {
-	Containers []Container `json:"containers"`
-	ContainerConcurrency string `json:"containerConcurrency"`
+	Containers           []Container `json:"containers"`
+	ContainerConcurrency int         `json:"containerConcurrency"`
 }
 
 type Annotations struct {
-	MinScale string `json:"autoscaling.knative.dev/minScale"`
-	MaxScale string `json:"autoscaling.knative.dev/maxScale"`
+	MinScale string `json:"autoscaling.knative.dev/minScale" default:"0"`
+	MaxScale string `json:"autoscaling.knative.dev/maxScale" default:"0"`
 }
 
 type ScaleMetaData struct {
@@ -39,7 +39,7 @@ type ScaleMetaData struct {
 }
 
 type Template struct {
-	Spec Spec `json:"spec"`
+	Spec          Spec          `json:"spec"`
 	ScaleMetaData ScaleMetaData `json:"metadata"`
 }
 type OuterSpec struct {

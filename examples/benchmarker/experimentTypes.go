@@ -11,13 +11,13 @@ type Experiment struct {
 }
 
 type Service struct {
-	Name  string `json:"name"`
-	Image string `json:"image"`
-	Env   []Env  `json:"env"`
-	Ports []Port `json:"ports"`
-	ContainerConcurrency string `json:"containerConcurrency"`
-	Scale struct {
-		MinScale   string   `json:"minScale"`
-		MaxScale   string `json:"maxScale"`
+	Name                 string `json:"name"`
+	Image                string `json:"image"`
+	Env                  []Env  `json:"env"`
+	Ports                []Port `json:"ports"`
+	ContainerConcurrency int    `json:"containerConcurrency"`
+	Scale                struct {
+		MinScale string `json:"minScale"`
+		MaxScale string `json:"maxScale"`
 	} `json:"scale"`
 }

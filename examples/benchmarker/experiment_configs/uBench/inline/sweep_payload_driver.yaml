@@ -5,9 +5,6 @@ services:
     ports:
       - name: h2c
         containerPort: 80
-    scale:
-      minScale: tunable
-      maxScale: tunable
     containerConcurrency: 1
   - name: producer
     image: docker.io/vhiveease/chained-functions-serving-producer:latest

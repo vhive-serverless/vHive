@@ -14,6 +14,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	OUTPUT_DIR = "experiment_yamls"
+)
+
 func main() {
 	filename := flag.String("file", "", "Input experiment file")
 	flag.Parse()
@@ -91,7 +95,7 @@ func toYAML(manifest Manifest, directory string) {
 
 func writeYAMLS(experiment Experiment, tag, value string) {
 	currentTime := time.Now()
-	directory := fmt.Sprintf("%s_[%s-%s]_%s", experiment.Name, tag, value, currentTime.Format("02-Feb-06_15:04:05"))
+	directory := fmt.Sprintf("%s/%s_[%s-%s]_%s", OUTPUT_DIR, experiment.Name, tag, value, currentTime.Format("02-Feb-06_15:04:05"))
 	err := os.Mkdir(directory, 0755)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
