@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
+	// "time"
 
 	"github.com/creasty/defaults"
 	"github.com/ghodss/yaml"
@@ -94,8 +94,9 @@ func toYAML(manifest Manifest, directory string) {
 }
 
 func writeYAMLS(experiment Experiment, tag, value string) {
-	currentTime := time.Now()
-	directory := fmt.Sprintf("%s/%s_[%s-%s]_%s", OUTPUT_DIR, experiment.Name, tag, value, currentTime.Format("02-Feb-06_15:04:05"))
+	// currentTime := time.Now()
+	directory := fmt.Sprintf("%s/%s_[%s-%s]", OUTPUT_DIR, experiment.Name, tag, value)
+	// directory := fmt.Sprintf("%s/%s_[%s-%s]_%s", OUTPUT_DIR, experiment.Name, tag, value, currentTime.Format("02-Feb-06_15:04:05"))
 	err := os.Mkdir(directory, 0755)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
@@ -132,9 +133,13 @@ func writeYAMLS(experiment Experiment, tag, value string) {
 func setScale(service *Service, manifest *Manifest, value string) {
 	if service.Scale.MinScale == "tunable" {
 		manifest.Spec.Template.ScaleMetaData.Annotations.MinScale = value
+	} else {
+		manifest.Spec.Template.ScaleMetaData.Annotations.MinScale = service.Scale.MinScale
 	}
 	if service.Scale.MaxScale == "tunable" {
 		manifest.Spec.Template.ScaleMetaData.Annotations.MaxScale = value
+	} else {
+		manifest.Spec.Template.ScaleMetaData.Annotations.MaxScale = service.Scale.MinScale
 	}
 }
 

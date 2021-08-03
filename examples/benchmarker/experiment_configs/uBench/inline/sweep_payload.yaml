@@ -1,4 +1,4 @@
-name: "oneToOneInline"
+name: "oneToOneInlineNoDriver"
 services:
   - name: consumer
     image: docker.io/shyamjesal/chained-functions-serving-consumer:latest
@@ -11,15 +11,6 @@ services:
     containerConcurrency: 1
   - name: producer
     image: docker.io/shyamjesal/chained-functions-serving-producer:latest
-    ports:
-      - name: h2c
-        containerPort: 80
-    scale:
-      minScale: "1"
-      maxScale: "1"
-    containerConcurrency: 1
-  - name: driver
-    image: docker.io/shyamjesal/chained-functions-serving-driver:latest
     ports:
       - name: h2c
         containerPort: 80
