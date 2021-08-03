@@ -48,6 +48,8 @@ services:
             - -ps=3031
             - -pc=3030
             - -zipkin=http://zipkin:9411/api/v2/spans
+        environment:
+            - TRANSFER_SIZE_KB=10
         depends_on:
             - consumer
             - zipkin
