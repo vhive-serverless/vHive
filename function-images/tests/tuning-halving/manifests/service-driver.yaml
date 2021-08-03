@@ -1,0 +1,60 @@
+# MIT License
+#
+# Copyright (c) 2021 Michal Baczun and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: driver
+  namespace: default
+spec:
+  template:
+    metadata:
+      annotations:
+        # prevent cold boots
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
+    spec:
+      containerConcurrency: 1
+      containers:
+        - image: docker.io/vhiveease/stacking-training-driver:latest
+          imagePullPolicy: Always
+          env:
+            - name: TRANSFER_TYPE
+              value: "S3"
+            - name: AWS_ACCESS_KEY
+              value: ${AWS_ACCESS_KEY}
+            - name: AWS_SECRET_KEY
+              value: ${AWS_SECRET_KEY}
+            - name: AWS_REGION
+              value: "us-west-1"
+            - name: CONCURRENT_TRAINING
+              value: "false"
+            - name: TrainersNum
+              value: "4"
+            - name: MAX_SERVER_THREADS
+              value: "10"
+            - name: ENABLE_TRACING
+              value: "true"
+          ports:
+            # For `h2c`, see https://knative.tips/networking/http2/
+            - name: h2c
+              containerPort: 80
