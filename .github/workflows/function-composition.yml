@@ -205,6 +205,7 @@ jobs:
   bench-serving:
     name: Serving uBenchmark (Knative)
     needs: push-chained-functions-serving
+    timeout-minutes: 30
     env:
         GOCACHE: /root/tmp/gocache
         GOPATH: /root/tmp/gopath
@@ -254,6 +255,7 @@ jobs:
   bench-eventing:
     name: Eventing uBenchmark (Knative)
     needs: push-chained-functions-eventing
+    timeout-minutes: 30
     env:
         GOCACHE: /root/tmp/gocache
         GOPATH: /root/tmp/gopath
@@ -307,6 +309,7 @@ jobs:
     name: Video Analytics (docker-compose)
     needs: push-video-analytics
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -334,6 +337,7 @@ jobs:
   bench-video-knative:
     name: Video analytics benchmark (Knative)
     needs: push-video-analytics
+    timeout-minutes: 30
     env:
       GOCACHE: /root/tmp/gocache
       GOPATH: /root/tmp/gopath
@@ -396,6 +400,7 @@ jobs:
     name: Stacking Training (docker-compose)
     needs: push-stacking-training
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -423,6 +428,7 @@ jobs:
   bench-stacking-training-knative:
     name: Stacking Training (Knative)
     needs: push-stacking-training
+    timeout-minutes: 30
     env:
       GOCACHE: /root/tmp/gocache
       GOPATH: /root/tmp/gopath
