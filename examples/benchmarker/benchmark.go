@@ -117,13 +117,20 @@ func writeYAMLS(experiment Experiment, tag, value string) {
 		}
 		container.Ports = service.Ports
 		manifest.Spec.Template.Spec.Containers = append(manifest.Spec.Template.Spec.Containers, container)
-		if service.Scale.MinScale == "tunable" {
-			manifest.Spec.Template.ScaleMetaData.Annotations.MinScale = value
-		}
-		if service.ContainerConcurrency == "tunable"{
-			manifest.Spec.Template.Spec.ContainerConcurrency = value
-		}
+		setScale(&service, &manifest, value)
+
+		manifest.Spec.Template.Spec.ContainerConcurrency = service.ContainerConcurrency
+
 		toYAML(manifest, directory)
+	}
+}
+
+func setScale(service *Service, manifest *Manifest, value string) {
+	if service.Scale.MinScale == "tunable" {
+		manifest.Spec.Template.ScaleMetaData.Annotations.MinScale = value
+	}
+	if service.Scale.MaxScale == "tunable" {
+		manifest.Spec.Template.ScaleMetaData.Annotations.MaxScale = value
 	}
 }
 

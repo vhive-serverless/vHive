@@ -31,6 +31,7 @@ type Spec struct {
 
 type Annotations struct {
 	MinScale string `json:"autoscaling.knative.dev/minScale"`
+	MaxScale string `json:"autoscaling.knative.dev/maxScale"`
 }
 
 type ScaleMetaData struct {
