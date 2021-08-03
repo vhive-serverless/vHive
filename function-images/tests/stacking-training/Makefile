@@ -83,6 +83,5 @@ metatrainer-image-push: metatrainer-image
 	docker push vhiveease/stacking-training-metatrainer:latest
 
 proto: proto/stacking.proto proto/helloworld.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative proto/stacking.proto
 	python -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./proto ./proto/stacking.proto
 	python -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./proto ./proto/helloworld.proto

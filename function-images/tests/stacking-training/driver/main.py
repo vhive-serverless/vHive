@@ -202,9 +202,11 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
         with tracing.Span(msg):
             pickled = pickle.dumps(obj)
             if self.transferType == S3:
-                self.put_to_s3(pickled, key)
+                s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
+                s3object.put(Body=pickled)
             elif self.transferType == XDT:
                 log.fatal("XDT is not supported")
+
         return key
 
     def get(self, key):
@@ -213,21 +215,12 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
         with tracing.Span(msg):
             response = None
             if self.transferType == S3:
-                response = self.get_from_s3(key)
+                obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
+                response = obj.get()
             elif self.transferType == XDT:
                 log.fatal("XDT is not yet supported")
-            return pickle.loads(response['Body'].read())
-    
-    def put_to_s3(self, pickled, key):
-        s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        s3object.put(Body=pickled)
 
-    def get_from_s3(self, key):
-        obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-        return obj.get()
-
-    def upload_dataset(self):
-        self.put(self.dataset, "dataset")
+        return pickle.loads(response['Body'].read())
 
     def train(self, arg: dict) -> dict:
         log.info(f"Invoke Trainer {arg['trainer_id']}")
@@ -310,7 +303,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
     def SayHello(self, request, context):
         log.info("Driver received a request")
 
-        self.upload_dataset()
+        self.put(self.dataset, "dataset")
 
         training_responses = self.train_all()
 

@@ -419,3 +419,67 @@ jobs:
       - name: show docker-compose log
         if: ${{ always() }}
         run: cat  ./function-images/tests/stacking-training/log_file
+
+  bench-stacking-training-knative:
+    name: Stacking Training (Knative)
+    needs: push-stacking-training
+    env:
+      GOCACHE: /root/tmp/gocache
+      GOPATH: /root/tmp/gopath
+      TMPDIR: /root/tmp
+    runs-on: [ stock-knative ]
+    strategy:
+      fail-fast: false
+      #matrix:
+        #transfer-type: [ s3 ]
+    steps:
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
+
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+
+      - name: Deploy functions
+        env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        run: |
+          ./function-images/tests/kn_deploy.sh ./function-images/tests/stacking-training/manifests/s3/service*
+          sleep 1m
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Build invoker
+        working-directory: examples/invoker
+        run: make invoker
+
+      - name: Invoke functions
+        working-directory: examples/invoker
+        run: |
+          set -x
+
+          NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          HOSTNAME=$(kubectl get ksvc streaming -n default -o jsonpath='{.status.url}' | cut -c8-)
+
+          echo '[ { "hostname": "$HOSTNAME" } ]' > endpoints.json
+          ./invoker -port $NODEPORT -dbg -rps 0.3
+          sleep 2m
+          cat rps*lat.csv
+
+      - name: Print logs
+        if: ${{ always() }}
+        run: |
+          set -x
+
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=driver
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=trainer
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=reducer
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=metatrainer
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: |
+          kn service delete --all --namespace default --wait
