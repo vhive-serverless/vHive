@@ -34,6 +34,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"net"
 	"os"
+	"strconv"
 
 	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
 	"github.com/ease-lab/vhive-xdt/utils"
@@ -171,7 +172,6 @@ func main() {
 	flagClientPort := flag.Int("pc", 80, "Client Port")
 	flagServerPort := flag.Int("ps", 80, "Server Port")
 	url := flag.String("zipkin", "http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans", "zipkin url")
-	transferSize := flag.Int("transferSize", 4095, "Number of KB's to transfer")
 	dockerCompose := flag.Bool("dockerCompose", false, "Env docker Compose?")
 	flag.Parse()
 
@@ -199,7 +199,6 @@ func main() {
 		grpcServer = grpc.NewServer()
 	}
 
-
 	//client setup
 	log.Printf("[producer] Client using address: %v:%d\n", *flagAddress, *flagClientPort)
 
@@ -214,11 +213,22 @@ func main() {
 	log.Infof("[producer] transfering via %s",transferType)
 	ps.transferType = transferType
 	us.transferType = transferType
+
+	transferSizeKB := 4095
+	if value, ok := os.LookupEnv("TRANSFER_SIZE_KB"); ok{
+		if intValue, err := strconv.Atoi(value); err==nil {
+			transferSizeKB = intValue
+		}else{
+			log.Infof("invalid TRANSFER_SIZE_KB: %s, using default %d",value, transferSizeKB)
+		}
+	}
+
 	// 4194304 bytes is the limit by gRPC
-	payloadData := make([]byte, *transferSize*1024) // 10MiB
+	payloadData := make([]byte, transferSizeKB*1024)
 	if _, err := rand.Read(payloadData); err != nil {
 		log.Fatal(err)
 	}
+
 	log.Infof("sending %d bytes to consumer", len(payloadData))
 	ps.payloadData = payloadData
 	us.payloadData = payloadData
