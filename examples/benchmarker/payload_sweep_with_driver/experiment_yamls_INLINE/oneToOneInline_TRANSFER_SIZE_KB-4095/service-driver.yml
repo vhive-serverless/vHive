@@ -1,0 +1,26 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: driver
+  namespace: default
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "1"
+        autoscaling.knative.dev/minScale: "1"
+    spec:
+      containerConcurrency: 1
+      containers:
+      - env:
+        - name: TRANSFER_TYPE
+          value: INLINE
+        - name: ENABLE_TRACING
+          value: "false"
+        - name: TRANSFER_SIZE_KB
+          value: "4095"
+        image: docker.io/shyamjesal/chained-functions-serving-driver:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: h2c
