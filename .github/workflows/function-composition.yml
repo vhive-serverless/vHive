@@ -471,7 +471,7 @@ jobs:
           HOSTNAME=$(kubectl get ksvc streaming -n default -o jsonpath='{.status.url}' | cut -c8-)
 
           echo '[ { "hostname": "$HOSTNAME" } ]' > endpoints.json
-          ./invoker -port $NODEPORT -dbg -rps 0.3
+          ./invoker -port $NODEPORT -dbg -time 120 -rps 0.00833
           sleep 2m
           cat rps*lat.csv
 

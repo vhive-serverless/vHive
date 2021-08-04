@@ -40,6 +40,7 @@ COPY --from=recogBuilder /root/.local /root/.local
 COPY --from=recogBuilder /py /app
 COPY --from=recogBuilder /xdt/sdk/python/ /app
 COPY --from=recogBuilder /xdt/proto/downXDT/ /app
+COPY --from=builder /xdt/proto/crossXDT/ /app
 WORKDIR /app
 ENV PATH=/root/.local/bin:$PATH
 ENTRYPOINT ["python3", "-u", "./recog.py"]
@@ -69,6 +70,7 @@ COPY --from=decodeBuilder /py /app
 COPY --from=decodeBuilder /xdt/sdk/python/ /app
 COPY --from=decodeBuilder /xdt/proto/downXDT/ /app
 COPY --from=decodeBuilder /xdt/proto/upXDT/ /app
+COPY --from=builder /xdt/proto/crossXDT/ /app
 WORKDIR /app
 ENV PATH=/root/.local/bin:$PATH
 ENTRYPOINT ["python3", "-u", "./decode.py"]
