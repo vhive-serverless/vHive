@@ -468,7 +468,7 @@ jobs:
           set -x
 
           NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
-          HOSTNAME=$(kubectl get ksvc streaming -n default -o jsonpath='{.status.url}' | cut -c8-)
+          HOSTNAME=$(kubectl get ksvc driver -n default -o jsonpath='{.status.url}' | cut -c8-)
 
           echo '[ { "hostname": "$HOSTNAME" } ]' > endpoints.json
           ./invoker -port $NODEPORT -dbg -time 120 -rps 0.00833
