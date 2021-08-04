@@ -149,6 +149,32 @@ jobs:
         env:
           GOPRIVATE_KEY: ${{ secrets.EASE_LAB_ACCESS_KEY }}
         run: make all-image-push
+  push-tuning-halving:
+    name: Push tuning halving
+    needs: push-base-images
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        working-directory: ./function-images/tests/tuning-halving
+        env:
+          GOPRIVATE_KEY: ${{ secrets.EASE_LAB_ACCESS_KEY }}
+        run: make all-image-push
 
   push-stacking-training:
     name: Push stacking training
@@ -474,7 +500,6 @@ jobs:
           ./invoker -port $NODEPORT -dbg -time 120 -rps 0.00833
           sleep 2m
           cat rps*lat.csv
-
       - name: Print logs
         if: ${{ always() }}
         run: |
@@ -485,6 +510,93 @@ jobs:
           kubectl logs -n default -c user-container -l serving.knative.dev/service=reducer
           kubectl logs -n default -c user-container -l serving.knative.dev/service=metatrainer
 
+      - name: Cleaning
+        if: ${{ always() }}
+        run: |
+          kn service delete --all --namespace default --wait
+
+
+  bench-tuning-halving-compose:
+    name: Tuning Halving (docker-compose)
+    needs: push-tuning-halving
+    runs-on: ubuntu-18.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        transfer-type: [ s3 ]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+
+      - name: start multi-container program with docker-compose
+        env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        run: |
+          cd ./function-images/tests/tuning-halving/
+          docker-compose -f docker-compose-${{ matrix.transfer-type }}.yml up &> log_file &
+          sleep 1m
+      - name: invoke the chain
+        run: |
+          ./bin/grpcurl -plaintext localhost:50051 helloworld.Greeter.SayHello
+      - name: show docker-compose log
+        if: ${{ always() }}
+        run: cat  ./function-images/tests/tuning-halving/log_file
+
+  bench-tuning-halving-knative:
+    name: Tuning Halving (Knative)
+    needs: push-tuning-halving
+    timeout-minutes: 30
+    env:
+      GOCACHE: /root/tmp/gocache
+      GOPATH: /root/tmp/gopath
+      TMPDIR: /root/tmp
+    runs-on: [ stock-knative ]
+    strategy:
+      fail-fast: false
+      #matrix:
+        #transfer-type: [ s3 ]
+    steps:
+      - name: Setup TMPDIR
+        run: mkdir -p $TMPDIR
+
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+
+      - name: Deploy functions
+        env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        run: |
+          ./function-images/tests/kn_deploy.sh ./function-images/tests/tuning-halving/manifests/s3/service*
+          sleep 1m
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Build invoker
+        working-directory: examples/invoker
+        run: make invoker
+
+      - name: Invoke functions
+        working-directory: examples/invoker
+        run: |
+          set -x
+          NODEPORT=$(kubectl get svc kourier-ingress -n kourier-system -o=jsonpath='{.spec.ports[0].nodePort}')
+          HOSTNAME=$(kubectl get ksvc driver -n default -o jsonpath='{.status.url}' | cut -c8-)
+          echo '[ { "hostname": "$HOSTNAME" } ]' > endpoints.json
+          ./invoker -port $NODEPORT -dbg -time 120 -rps 0.00833
+          sleep 2m
+          cat rps*lat.csv
+      - name: Print logs
+        if: ${{ always() }}
+        run: |
+          set -x
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=driver
+          kubectl logs -n default -c user-container -l serving.knative.dev/service=trainer
       - name: Cleaning
         if: ${{ always() }}
         run: |

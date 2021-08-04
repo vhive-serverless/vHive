@@ -27,15 +27,10 @@ metadata:
   namespace: default
 spec:
   template:
-    metadata:
-      annotations:
-        # prevent cold boots
-        autoscaling.knative.dev/minScale: "4"
-        autoscaling.knative.dev/maxScale: "4"
     spec:
       containerConcurrency: 1
       containers:
-        - image: docker.io/vhiveease/stacking-training-trainer:latest
+        - image: docker.io/vhiveease/tuning-halving-trainer:latest
           imagePullPolicy: Always
           env:
             - name: TRANSFER_TYPE

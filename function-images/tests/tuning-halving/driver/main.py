@@ -137,6 +137,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 s3object.put(Body=pickled)
             elif self.transferType == XDT:
                 log.fatal("XDT is not supported")
+
         return key
 
     def get(self, key):
@@ -149,7 +150,8 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 response = obj.get()
             elif self.transferType == XDT:
                 log.fatal("XDT is not yet supported")
-            return pickle.loads(response['Body'].read())
+
+        return pickle.loads(response['Body'].read())
 
     def handler_broker(self, event, context):
         dataset = generate_dataset()
@@ -230,7 +232,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
             'sample_rate': 1.0
         })
 
-        #return final_response
+        log.info(f"Final result: score {final_response['score']}, model {final_response['params']['model']} ")
         return helloworld_pb2.HelloReply(message=self.benchName)
 
 

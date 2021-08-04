@@ -123,7 +123,7 @@ class TrainerServicer(tuning_pb2_grpc.TrainerServicer):
             self.XDTconfig = XDTconfig
 
     def put(self, obj, key):
-        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
+        msg = "Trainer uploading object with key '" + key + "' to " + self.transferType
         log.info(msg)
         with tracing.Span(msg):
             pickled = pickle.dumps(obj)
@@ -132,10 +132,11 @@ class TrainerServicer(tuning_pb2_grpc.TrainerServicer):
                 s3object.put(Body=pickled)
             elif self.transferType == XDT:
                 log.fatal("XDT is not supported")
+
         return key
 
     def get(self, key):
-        msg = "Driver gets key '" + key + "' from " + self.transferType
+        msg = "Trainer gets key '" + key + "' from " + self.transferType
         log.info(msg)
         with tracing.Span(msg):
             response = None
@@ -144,7 +145,8 @@ class TrainerServicer(tuning_pb2_grpc.TrainerServicer):
                 response = obj.get()
             elif self.transferType == XDT:
                 log.fatal("XDT is not yet supported")
-            return pickle.loads(response['Body'].read())
+
+        return pickle.loads(response['Body'].read())
 
     def Train(self, request, context):
         # Read from S3

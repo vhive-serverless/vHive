@@ -35,7 +35,7 @@ spec:
     spec:
       containerConcurrency: 1
       containers:
-        - image: docker.io/vhiveease/stacking-training-driver:latest
+        - image: docker.io/vhiveease/tuning-halving-driver:latest
           imagePullPolicy: Always
           env:
             - name: TRANSFER_TYPE
@@ -46,10 +46,6 @@ spec:
               value: ${AWS_SECRET_KEY}
             - name: AWS_REGION
               value: "us-west-1"
-            - name: CONCURRENT_TRAINING
-              value: "false"
-            - name: TrainersNum
-              value: "4"
             - name: MAX_SERVER_THREADS
               value: "10"
             - name: ENABLE_TRACING
