@@ -138,7 +138,7 @@ func writeLatencies(sampleSize int64, latencyOutputFile string) {
 	latSlice.Lock()
 	defer latSlice.Unlock()
 
-	fileName := fmt.Sprintf("%d_%s", sampleSize, latencyOutputFile)
+	fileName := fmt.Sprintf("%s", latencyOutputFile)
 	log.Info("The measured latencies are saved in ", fileName)
 
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
