@@ -61,6 +61,7 @@ var (
 	AKID          string
 	SECRET_KEY    string
 	AWS_S3_REGION string
+	S3_SESSION *session.Session
 )
 
 type consumerServer struct {
@@ -89,24 +90,31 @@ func setAWSCredentials() {
 		AWS_S3_REGION = awsRegion
 	}
 	fmt.Printf("USING AWS ID: %v", AKID)
+	var err error
+	S3_SESSION, err = session.NewSession(&aws.Config{
+		Region:      aws.String(AWS_S3_REGION),
+		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
+	})
+	if err != nil {
+		log.Fatalf("[consumer] Failed establish s3 session: %s", err)
+	}
 }
 
 func fetchFromS3(ctx context.Context, key string) (int64, error) {
 	span := tracing.Span{SpanName: "S3 get", TracerName: "S3 get - tracer"}
 	ctx = span.StartSpan(ctx)
 	defer span.EndSpan()
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(AWS_S3_REGION),
-		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
-	})
-	if err != nil {
-		log.Errorf("[consumer] Failed establish s3 session: %s", err)
+	log.Infof("[consumer] Fetching %s from S3", key)
+	svc := s3.New(S3_SESSION)
+	req, resp := svc.HeadObjectRequest(&s3.HeadObjectInput{Bucket: aws.String(AWS_S3_BUCKET),Key: aws.String(key)})
+	err := req.Send()
+	if err != nil { // resp is now filled
 		return 0, err
 	}
-	log.Infof("[consumer] Fetching %s from S3", key)
-	downloader := s3manager.NewDownloader(sess)
-	buf := aws.NewWriteAtBuffer([]byte{})
-	numBytes, err := downloader.Download(buf, &s3.GetObjectInput{
+	buf := make([]byte, *resp.ContentLength)
+	writeBuf := aws.NewWriteAtBuffer(buf)
+	downloader := s3manager.NewDownloader(S3_SESSION)
+	numBytes, err := downloader.Download(writeBuf, &s3.GetObjectInput{
 		Bucket: aws.String(AWS_S3_BUCKET),
 		Key:    aws.String(key)})
 	if err != nil {
@@ -128,9 +136,10 @@ func (s *consumerServer) ConsumeByte(ctx context.Context, str *pb.ConsumeByteReq
 	if s.transferType == S3 {
 		payloadSize, err := fetchFromS3(ctx, string(str.Value))
 		if err !=nil {
-			log.Printf("[consumer] Consumed %d bytes\n", payloadSize)
-		}else {
 			return &pb.ConsumeByteReply{Value: false}, err
+		}else {
+			log.Printf("[consumer] Consumed %d bytes\n", payloadSize)
+			return &pb.ConsumeByteReply{Value: true}, err
 		}
 	}else if s.transferType == INLINE{
 		log.Printf("[consumer] Consumed %d bytes\n", len(str.Value))
