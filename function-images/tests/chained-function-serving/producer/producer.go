@@ -25,19 +25,18 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
+	"github.com/ease-lab/vhive-xdt/utils"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
-
-	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
-	"github.com/ease-lab/vhive-xdt/utils"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
@@ -57,6 +56,7 @@ type producerServer struct {
 	payloadData  []byte
 	XDTclient    sdk.XDTclient
 	transferType string
+	randomStr string
 	pb.UnimplementedGreeterServer
 }
 
@@ -66,6 +66,7 @@ type ubenchServer struct {
 	transferType string
 	payloadData  []byte
 	XDTclient    sdk.XDTclient
+	randomStr string
 	pb_client.UnimplementedProdConDriverServer
 }
 
@@ -81,6 +82,7 @@ var (
 	AKID          string
 	SECRET_KEY    string
 	AWS_S3_REGION string
+	S3_SESSION *session.Session
 )
 
 func setAWSCredentials() {
@@ -97,30 +99,35 @@ func setAWSCredentials() {
 	if ok {
 		AWS_S3_REGION = awsRegion
 	}
-	fmt.Printf("USING AWS ID: %v", AKID)
-}
-
-func uploadToS3(ctx context.Context, payloadData []byte) string {
-	span := tracing.Span{SpanName: "S3 put", TracerName: "S3 put - tracer"}
-	ctx = span.StartSpan(ctx)
-	defer span.EndSpan()
-	sess, err := session.NewSession(&aws.Config{
+	var err error
+	S3_SESSION, err = session.NewSession(&aws.Config{
 		Region:      aws.String(AWS_S3_REGION),
 		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
 	})
 	if err != nil {
-		log.Fatalf("[producer] Failed establish s3 session: %s", err)
+		log.Fatalf("[consumer] Failed establish s3 session: %s", err)
 	}
-	log.Infof("[producer] uploading %d bytes to s3", len(payloadData))
-	uploader := s3manager.NewUploader(sess)
-	reader := bytes.NewReader(payloadData)
-	key := "payload_bytes.txt"
-	_, err = uploader.Upload(&s3manager.UploadInput{
+	fmt.Printf("USING AWS ID: %v", AKID)
+}
+
+func uploadToS3(ctx context.Context, payloadData []byte, randomStr string) string {
+	span := tracing.Span{SpanName: "S3 put", TracerName: "S3 put - tracer"}
+	ctx = span.StartSpan(ctx)
+	defer span.EndSpan()
+
+	s3uploader := s3manager.NewUploader(S3_SESSION)
+
+	key := fmt.Sprintf("payload_bytes_%s.txt", randomStr)
+	uploadOutput, err := s3uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(AWS_S3_BUCKET),
 		Key:    aws.String(key),
-		Body:   reader,
+		Body:   bytes.NewReader(payloadData),
 	})
-	log.Infof("[producer] S3 upload complete")
+	if err != nil {
+		log.Fatalf("Unable to upload %q to %q, %v", key, AWS_S3_BUCKET, err.Error())
+	}
+
+	log.Infof("[producer] Successfully uploaded %q to bucket %q (%s)", key, AWS_S3_BUCKET, uploadOutput.Location)
 	if err != nil {
 		log.Fatalf("[producer] Failed to upload bytes to s3: %s", err)
 	}
@@ -148,7 +155,7 @@ func (ps *producerServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_
 		defer conn.Close()
 		payloadToSend := ps.payloadData
 		if ps.transferType == S3 {
-			payloadToSend = []byte(uploadToS3(ctx, ps.payloadData))
+			payloadToSend = []byte(uploadToS3(ctx, ps.payloadData, ps.randomStr))
 		}
 		ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
 		if err != nil {
@@ -228,6 +235,8 @@ func main() {
 	if _, err := rand.Read(payloadData); err != nil {
 		log.Fatal(err)
 	}
+	ps.randomStr=os.Getenv("HOSTNAME")
+	us.randomStr=ps.randomStr
 
 	log.Infof("sending %d bytes to consumer", len(payloadData))
 	ps.payloadData = payloadData

@@ -30,8 +30,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"strconv"
@@ -61,7 +61,7 @@ var (
 	AKID          string
 	SECRET_KEY    string
 	AWS_S3_REGION string
-	S3_SESSION *session.Session
+	S3_SVC *s3.S3
 )
 
 type consumerServer struct {
@@ -90,38 +90,37 @@ func setAWSCredentials() {
 		AWS_S3_REGION = awsRegion
 	}
 	fmt.Printf("USING AWS ID: %v", AKID)
-	var err error
-	S3_SESSION, err = session.NewSession(&aws.Config{
+	sessionInstance, err := session.NewSession(&aws.Config{
 		Region:      aws.String(AWS_S3_REGION),
 		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
 	})
 	if err != nil {
 		log.Fatalf("[consumer] Failed establish s3 session: %s", err)
 	}
+	S3_SVC = s3.New(sessionInstance)
 }
 
-func fetchFromS3(ctx context.Context, key string) (int64, error) {
+func fetchFromS3(ctx context.Context, key string) (int, error) {
 	span := tracing.Span{SpanName: "S3 get", TracerName: "S3 get - tracer"}
 	ctx = span.StartSpan(ctx)
 	defer span.EndSpan()
 	log.Infof("[consumer] Fetching %s from S3", key)
-	svc := s3.New(S3_SESSION)
-	req, resp := svc.HeadObjectRequest(&s3.HeadObjectInput{Bucket: aws.String(AWS_S3_BUCKET),Key: aws.String(key)})
-	err := req.Send()
-	if err != nil { // resp is now filled
-		return 0, err
-	}
-	buf := make([]byte, *resp.ContentLength)
-	writeBuf := aws.NewWriteAtBuffer(buf)
-	downloader := s3manager.NewDownloader(S3_SESSION)
-	numBytes, err := downloader.Download(writeBuf, &s3.GetObjectInput{
+	object, err := S3_SVC.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(AWS_S3_BUCKET),
-		Key:    aws.String(key)})
+		Key:    aws.String(key),
+	})
 	if err != nil {
-		log.Errorf("[consumer] Failed to fetch bytes from s3: %s", err)
+		log.Errorf("Object %q not found in S3 bucket %q: %s", key, AWS_S3_BUCKET, err.Error())
 		return 0, err
 	}
-	return numBytes, nil
+
+	payload, err := ioutil.ReadAll(object.Body)
+	if err != nil {
+		log.Infof("Error reading object body: %v", err)
+		return 0, err
+	}
+
+	return len(payload), nil
 }
 
 func (s *consumerServer) ConsumeByte(ctx context.Context, str *pb.ConsumeByteRequest) (*pb.ConsumeByteReply, error) {

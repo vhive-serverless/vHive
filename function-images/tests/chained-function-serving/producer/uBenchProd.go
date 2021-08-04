@@ -49,7 +49,7 @@ func (s *ubenchServer) Benchmark(ctx context.Context, benchType *pb_client.Bench
 
 func (s *ubenchServer) putData(ctx context.Context) (pb_client.BenchResponse, error) {
 	if s.transferType == S3 {
-		key := uploadToS3(ctx, s.payloadData)
+		key := uploadToS3(ctx, s.payloadData, s.randomStr)
 		log.Printf("[producer] S3 push complete")
 		return pb_client.BenchResponse{Capability: key, Ok: true}, nil
 
@@ -71,7 +71,7 @@ func (s *ubenchServer) fanOut(ctx context.Context, fanAmount int64, addr string)
 		defer conn.Close()
 		payloadToSend := s.payloadData
 		if s.transferType == S3 {
-			payloadToSend = []byte(uploadToS3(ctx, s.payloadData))
+			payloadToSend = []byte(uploadToS3(ctx, s.payloadData, s.randomStr))
 		}
 		for i:=int64(0); i<fanAmount; i++ {
 			go func() {
