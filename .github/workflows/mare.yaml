@@ -1,6 +1,4 @@
-# MIT License
-#
-# Copyright (c) 2021 Mert Bora Alper and EASE lab
+# Copyright (c) 2021 Mert Bora Alper and EASE Lab
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,16 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-name: Word Count (Corral) Benchmark
-
-# > Concurrency ensures that only a single job or workflow using the
-# > same concurrency group will run at a time.
-# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency
-#
-# Since we are using Docker Hub for our images, this helps us prevent
-# concurrency bugs related to using the same image:tag across different
-# CI pipelines.
-concurrency: word_count
+name: Mare Benchmark
 
 on:
   workflow_dispatch:
@@ -49,6 +38,15 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
+      matrix:
+        path:
+          - ""
+          - word-count
+        include:
+          - path: ""
+            tag: driver
+          - path: word-count
+            tag: word-count
     steps:
       - uses: actions/checkout@v2
 
@@ -61,9 +59,9 @@ jobs:
 
       - uses: docker/build-push-action@v2
         with:
-            file: function-images/tests/word-count-corral/Dockerfile
+            file: function-images/tests/mare/${{ matrix.path }}/Dockerfile
             push: true
-            tags: vhiveease/word-count-corral:volatile
+            tags: vhiveease/mare-${{ matrix.tag }}:volatile
 
   test:
     name: Test
@@ -75,6 +73,9 @@ jobs:
     runs-on: [stock-knative]
     strategy:
       fail-fast: false
+      matrix:
+        example:
+          - word-count
     steps:
       - name: Setup TMPDIR
         run: mkdir -p $TMPDIR
@@ -109,30 +110,41 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
-        working-directory: function-images/tests/word-count-corral/manifests-ci
+        working-directory: function-images/tests/mare/
         run: |
           set -x
 
-          kn service apply --wait-timeout 60 --filename worker.yml --env AWS_REGION=us-west-1 --env AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" --env AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" || { kubectl describe ksvc/word-count-worker; exit 1; }
+          TAG=${{ matrix.example }} envsubst < worker.yml | kn service apply --wait-timeout 60 --filename /dev/stdin \
+            --env AWS_REGION=us-west-1 \
+            --env AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
+            --env AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+            || { kubectl describe ksvc/worker; exit 1; }
 
-          kn service apply --wait-timeout 60 --filename driver.yml --env AWS_REGION=us-west-1 --env AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" --env AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" || { kubectl describe ksvc/word-count-driver; exit 1; }
+          # driver
+          kn service apply --wait-timeout 60 --filename driver.yml \
+            --env AWS_REGION=us-west-1 \
+            --env AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
+            --env AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+            --env WORKER_URL="worker.default.svc.cluster.local:80" \
+            --env INTER_HINT="s3://ease-lab-vhive/workspaces/ci/${{ matrix.example }}/" \
+            --env OUTPUT_HINT="s3://ease-lab-vhive/workspaces/ci/${{ matrix.example }}/" \
+            --env INPUT_LOCATORS=$(aws s3api list-objects --bucket ease-lab-vhive --prefix benchmarks/${{ matrix.example }}/inputs/ | jq -r '.Contents[].Key' | grep '.*.tsv' | sed 's/^/s3:\/\/ease-lab-vhive\//') \
+            || { kubectl describe ksvc/driver; exit 1; }
 
-      - name: Test
-        run: ./bin/grpcurl -max-time 180 -plaintext word-count-driver.default.127.0.0.1.nip.io:31080 helloworld.Greeter.SayHello
+      - name: Test and Verify
+        run: |
+          set -x
+
+          LOCATOR=$(./bin/grpcurl -max-time 180 -plaintext driver.default.127.0.0.1.nip.io:31080 helloworld.Greeter.SayHello | jq -r '.message')
+          aws s3 cp $LOCATOR - | LC_ALL=C sort - | cmp function-images/tests/mare/${{ matrix.example }}/expected-output.tsv -
 
       - name: Print logs
         if: ${{ always() }}
         run: |
           set -x
 
-          kubectl logs -c user-container -l serving.knative.dev/service=word-count-worker
-
-          kubectl logs -c user-container -l serving.knative.dev/service=word-count-driver
-
-      - name: Verify
-        working-directory: function-images/tests/word-count-corral
-        run: |
-          aws s3 cp s3://vhive-corral-bench/word-count-corral/vhive-ubench/out/output-part-0 - | LC_ALL=C sort - | cmp expected-sorted-output.txt -
+          kubectl logs -c user-container -l serving.knative.dev/service=worker
+          kubectl logs -c user-container -l serving.knative.dev/service=driver
 
       - name: Cleaning
         if: ${{ always() }}
@@ -142,4 +154,4 @@ jobs:
       - name: Clean up S3
         if: ${{ always() }}
         run: |
-          aws s3 rm s3://vhive-corral-bench/word-count-corral/vhive-ubench/out --recursive
+          aws s3 rm s3://ease-lab-vhive/workspaces/ci/${{ matrix.example }}/ --recursive
