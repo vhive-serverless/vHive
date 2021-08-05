@@ -229,7 +229,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
 
         resp = stub.Train(stacking_pb2.TrainRequest(
             dataset=b'',  # via S3/XDT only
-            dataset_key="dataset",
+            dataset_key=arg['dataset_key'],
             model_config=pickle.dumps(arg['model_cfg']),
             trainer_id=str(arg['trainer_id'])
         ))
@@ -239,7 +239,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
             'pred_key': resp.pred_key
         }
 
-    def train_all(self) -> list:
+    def train_all(self, dataset_key: str) -> list:
         log.info("Invoke Trainers")
 
         with tracing.Span("Invoke all trainers"):
@@ -254,6 +254,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                     all_result_futures.append(
                         self.train(
                             {
+                                'dataset_key': dataset_key,
                                 'model_cfg': models[i % len(models)],
                                 'trainer_id': i
                             })
@@ -263,6 +264,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 all_result_futures = ex.map(
                     self.train,
                     [{
+                        'dataset_key': dataset_key,
                         'model_cfg': models[i % len(models)],
                         'trainer_id': i
                     } for i in range(trainers_num)]
@@ -273,14 +275,14 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
 
         return training_responses
 
-    def train_meta(self, reducer_response: dict) -> dict:
+    def train_meta(self, dataset_key: str, reducer_response: dict) -> dict:
         log.info("Invoke MetaTrainer")
         channel = grpc.insecure_channel(args.mAddr)
         stub = stacking_pb2_grpc.MetatrainerStub(channel)
 
         resp = stub.Metatrain(stacking_pb2.MetaTrainRequest(
             dataset=b'',  # via S3/XDT only
-            dataset_key="dataset",
+            dataset_key=dataset_key,
             models_key=reducer_response['models_key'],  # via S3 only
             meta_features=b'',
             meta_features_key=reducer_response['meta_features_key'],
@@ -303,13 +305,13 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
     def SayHello(self, request, context):
         log.info("Driver received a request")
 
-        self.put(self.dataset, "dataset")
+        dataset_key = self.put(self.dataset, "dataset")
 
-        training_responses = self.train_all()
+        training_responses = self.train_all(dataset_key)
 
         reducer_response = reduce(training_responses)
 
-        outputs = self.train_meta(reducer_response)
+        outputs = self.train_meta(dataset_key, reducer_response)
 
         self.get_final(outputs)
 
