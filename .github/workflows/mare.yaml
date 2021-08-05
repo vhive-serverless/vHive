@@ -43,6 +43,7 @@ jobs:
           - ""
           - word-count
           - amplab1
+          - amplab2
         include:
           - path: ""
             tag: driver
@@ -50,6 +51,8 @@ jobs:
             tag: word-count
           - path: amplab1
             tag: amplab1
+          - path: amplab2
+            tag: amplab2
     steps:
       - uses: actions/checkout@v2
 
@@ -80,6 +83,7 @@ jobs:
         example:
           - word-count
           - amplab1
+          - amplab2
     steps:
       - name: Setup TMPDIR
         run: mkdir -p $TMPDIR
