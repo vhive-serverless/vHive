@@ -1,0 +1,91 @@
+# MIT License
+#
+# Copyright (c) 2021 Michal Baczun and EASE lab
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+import pickle
+import logging as log
+import os
+import boto3
+import redis
+
+#all:
+transferType = ""
+benchName = ""
+#aws:
+AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
+AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
+#s3:
+s3_client = None
+#elasticache:
+elasticache_client = None
+
+#constants
+S3 = "S3"
+XDT = "XDT"
+ELASTICACHE = "ELASTICACHE"
+
+def init(service, bucket, redis_url=""):
+    global transferType, benchName, s3_client, elasticache_client
+    transferType = service
+    benchName = bucket
+    if transferType == S3:
+        s3_client = boto3.resource(
+            service_name='s3',
+            region_name=os.getenv("AWS_REGION", 'us-west-1'),
+            aws_access_key_id=AWS_ID,
+            aws_secret_access_key=AWS_SECRET
+        )
+    elif transferType == ELASTICACHE:
+        elasticache_client = redis.Redis.from_url(redis_url)
+
+def put(obj, key):
+    msg = "Driver uploading object with key '" + key + "' to " + transferType
+    log.info(msg)
+    pickled = pickle.dumps(obj)
+    if transferType == S3:
+        s3object = s3_client.Object(bucket_name=benchName, key=key)
+        s3object.put(Body=pickled)
+    elif transferType == XDT:
+        log.fatal("XDT is not supported")
+    elif transferType == ELASTICACHE:
+        elasticache_client.set(key, pickled)
+    else:
+        log.fatal("unsupported transfer type!")
+
+    return key
+
+def get(key):
+    msg = "Driver gets key '" + key + "' from " + transferType
+    log.info(msg)
+    response = None
+    if transferType == S3:
+        obj = s3_client.Object(bucket_name=benchName, key=key)
+        response = obj.get()
+        return pickle.loads(response['Body'].read())
+    elif transferType == XDT:
+        log.fatal("XDT is not yet supported")
+    elif transferType == ELASTICACHE:
+        response = elasticache_client.get(key)
+        print(response)
+        print(pickle.loads(response))
+        return pickle.loads(response)
+    else:
+         log.fatal("unsupported transfer type!")
