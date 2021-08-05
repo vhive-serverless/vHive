@@ -54,7 +54,7 @@ type producerServer struct {
 	consumerAddr string
 	consumerPort int
 	payloadData  []byte
-	XDTclient    sdk.XDTclient
+	XDTclient    *sdk.XDTclient
 	transferType string
 	randomStr string
 	pb.UnimplementedGreeterServer
@@ -65,7 +65,7 @@ type ubenchServer struct {
 	consumerPort int
 	transferType string
 	payloadData  []byte
-	XDTclient    sdk.XDTclient
+	XDTclient    *sdk.XDTclient
 	randomStr string
 	pb_client.UnimplementedProdConDriverServer
 }

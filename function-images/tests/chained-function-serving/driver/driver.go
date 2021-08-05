@@ -179,7 +179,7 @@ func benchFanIn(ctx context.Context, prodAddr, consAddr string, fanInAmount int)
 	ctx, cancel := context.WithTimeout(ctx, grpcTimeout)
 	defer cancel()
 	var benchResponse *pb_client.BenchResponse
-	var capabilities []string
+	capabilityChannel := make(chan string, fanInAmount)
 	errorChannel := make(chan error, fanInAmount)
 	for i :=0; i<fanInAmount; i++ {
 		go func() {
@@ -188,12 +188,13 @@ func benchFanIn(ctx context.Context, prodAddr, consAddr string, fanInAmount int)
 				log.Warnf("Failed to invoke %s, err=%v", prodAddr, err)
 				errorChannel <- err
 			}else{
-				log.Infof("[driver] Push successful")
+				log.Infof("[driver] Push successful, received %s", benchResponse.Capability)
 				errorChannel <- nil
+				capabilityChannel <- benchResponse.Capability
 			}
-			capabilities = append(capabilities, benchResponse.Capability)
 		}()
 	}
+	var capabilities []string
 	for i :=0; i<fanInAmount; i++ {
 		select {
 		case err := <-errorChannel:
@@ -202,6 +203,7 @@ func benchFanIn(ctx context.Context, prodAddr, consAddr string, fanInAmount int)
 				return
 			}
 		}
+		capabilities = append(capabilities, <-capabilityChannel)
 	}
 	log.Infof("received capabilites %v",capabilities)
 	reduce(ctx, consAddr, capabilities)
