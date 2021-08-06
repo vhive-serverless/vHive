@@ -41,10 +41,12 @@ from sklearn.metrics import roc_auc_score
 import numpy as np
 import pickle
 
-# adding python tracing sources to the system path
+# adding python tracing and storage sources to the system path
 sys.path.insert(0, os.getcwd() + '/../proto/')
 sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
+sys.path.insert(0, os.getcwd() + '/../../../../utils/storage/python')
 import tracing
+import storage
 import stacking_pb2_grpc
 import stacking_pb2
 import destination as XDTdst
@@ -126,37 +128,11 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put(self, obj, key):
-        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            pickled = pickle.dumps(obj)
-            if self.transferType == S3:
-                s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                s3object.put(Body=pickled)
-            elif self.transferType == XDT:
-                log.fatal("XDT is not supported")
-
-        return key
-
-    def get(self, key):
-        msg = "Driver gets key '" + key + "' from " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            response = None
-            if self.transferType == S3:
-                obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                response = obj.get()
-            elif self.transferType == XDT:
-                log.fatal("XDT is not yet supported")
-
-        return pickle.loads(response['Body'].read())
-
     def Train(self, request, context):
         self.trainer_id = request.trainer_id
         log.info(f"Trainer {self.trainer_id} is invoked")
 
-        dataset = self.get(request.dataset_key)
+        dataset = storage.get(request.dataset_key)
 
         with tracing.Span("Training a model"):
             model_config = pickle.loads(request.model_config)
@@ -174,8 +150,8 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
         model_key = f"model_{self.trainer_id}"
         pred_key = f"pred_model_{self.trainer_id}"
 
-        self.put(model, model_key)
-        self.put(y_pred, pred_key)
+        storage.put(model_key, model)
+        storage.put(pred_key, y_pred)
 
         return stacking_pb2.TrainReply(
             model=b'',
@@ -187,6 +163,7 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
     if transferType == S3:
+        storage.init("S3", 'vhive-stacking')
         log.info("Using inline or s3 transfers")
         max_workers = int(os.getenv("MAX_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
