@@ -42,7 +42,11 @@ S3 = "S3"
 XDT = "XDT"
 ELASTICACHE = "ELASTICACHE"
 
-def init(service, bucket, redis_url=""):
+# `init` initialises the storage modue. This function is used to provide information about
+# which service to use. If s3 is used, "bucket" is the bucket used for storage, and in the case
+# when elasticache is used "bucket" should be the redis URL and port.
+# Note that one must be on an AWS VPC (e.g. using EC2) to access elasticache.
+def init(service, bucket):
     global transferType, benchName, s3_client, elasticache_client
     transferType = service
     benchName = bucket
@@ -54,8 +58,9 @@ def init(service, bucket, redis_url=""):
             aws_secret_access_key=AWS_SECRET
         )
     elif transferType == ELASTICACHE:
-        elasticache_client = redis.Redis.from_url(redis_url)
+        elasticache_client = redis.Redis.from_url(bucket)
 
+# `put` uploads the payload to the storage service using the provided key
 def put(obj, key):
     msg = "Driver uploading object with key '" + key + "' to " + transferType
     log.info(msg)
@@ -72,6 +77,8 @@ def put(obj, key):
 
     return key
 
+# `get` retrieves a payload corresponding to the provided key from the storage service.
+# An error will occur if the key is not prescent on the service.
 def get(key):
     msg = "Driver gets key '" + key + "' from " + transferType
     log.info(msg)
