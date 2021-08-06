@@ -20,21 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import unittest
-import storage
-import random
+EXTRAGOARGS:=-v -race -cover
 
+test:
+	# Need to pass GOROOT because GitHub-hosted runners may have several
+	# go versions installed so that calling go from root may fail
+	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS)
 
-class MyTest(unittest.TestCase):
-    def test_s3(self):
-        storage.init("S3","storage-module-test")
-        msg = bytes(random.randint(1,10000))
-        storage.put(msg, "aws-test-key")
-        self.assertEqual(storage.get("aws-test-key"), msg)
+test-man:
+	echo "Nothing to test manually"
 
-    def test_elasticache(self):
-        storage.init("ELASTICACHE","redis://test2.0vgvbw.ng.0001.usw1.cache.amazonaws.com:6379")
-        self.assertEqual(storage.elasticache_client.ping(), True)
-        msg = b"test msg"
-        storage.put(msg, "elasticache-test-key")
-        self.assertEqual(storage.get("elasticache-test-key"), msg)
+.PHONY: test test-man
