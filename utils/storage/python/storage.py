@@ -61,10 +61,12 @@ def init(service, bucket):
         elasticache_client = redis.Redis.from_url(bucket)
 
 # `put` uploads the payload to the storage service using the provided key
-def put(obj, key):
+def put(key, obj, dontPickle = False):
     msg = "Driver uploading object with key '" + key + "' to " + transferType
     log.info(msg)
-    pickled = pickle.dumps(obj)
+    pickled = obj
+    if not dontPickle: 
+        pickled = pickle.dumps(obj)
     if transferType == S3:
         s3object = s3_client.Object(bucket_name=benchName, key=key)
         s3object.put(Body=pickled)
@@ -79,20 +81,24 @@ def put(obj, key):
 
 # `get` retrieves a payload corresponding to the provided key from the storage service.
 # An error will occur if the key is not prescent on the service.
-def get(key):
+def get(key, dontPickle = False):
     msg = "Driver gets key '" + key + "' from " + transferType
     log.info(msg)
     response = None
     if transferType == S3:
         obj = s3_client.Object(bucket_name=benchName, key=key)
         response = obj.get()
-        return pickle.loads(response['Body'].read())
+        if dontPickle:
+            return response['Body'].read()
+        else:
+            return pickle.loads(response['Body'].read())
     elif transferType == XDT:
         log.fatal("XDT is not yet supported")
     elif transferType == ELASTICACHE:
         response = elasticache_client.get(key)
-        print(response)
-        print(pickle.loads(response))
-        return pickle.loads(response)
+        if dontPickle:
+            return response['Body'].read()
+        else:
+            return pickle.loads(response['Body'].read())
     else:
          log.fatal("unsupported transfer type!")

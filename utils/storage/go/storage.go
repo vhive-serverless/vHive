@@ -125,6 +125,30 @@ func Put(key string, payloadData []byte) string {
 	return ""
 }
 
+// Put uploads the payload to the storage service using the provided key
+func PutFile(key string, file *os.File) string {
+	if transferType == S3 {
+		log.Infof("Uploading file to s3")
+		uploader := s3manager.NewUploader(s3session)
+		_, err := uploader.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(benchName),
+			Key:    aws.String(key),
+			Body:   file,
+		})
+		log.Infof("S3 upload complete")
+		if err != nil {
+			log.Fatalf("Failed to upload bytes to s3: %s", err)
+		}
+		return key
+
+	} else if transferType == ELASTICACHE {
+		log.Fatalf("File transfer via ElastiCahce currently unsupported, please use []bytes: `Put(key string, payloadData []byte) string`")
+	} else {
+		log.Fatalf("Unsupported transfer type: %s", transferType)
+	}
+	return ""
+}
+
 // Get retrieves a payload corresponding to the provided key from the storage service.
 // An error will occur if the key is not prescent on the service.
 func Get(key string) []byte {

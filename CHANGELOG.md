@@ -6,6 +6,7 @@
 
 - Added Python tracing module and an [example](./function-images/tests/tracing/python/integ-tests/client-server/) showing its usage.
 - Added self-hosted stock-Knative runners on KinD, see [`scripts/self-hosted-kind`](./scripts/self-hosted-kind/).
+- Added Golang and Python storage modules.
 
 ### Changed
 

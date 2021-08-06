@@ -24,10 +24,12 @@ from __future__ import print_function
 
 import sys
 import os
-# adding python tracing sources to the system path
+# adding python tracing and storage sources to the system path
 sys.path.insert(0, os.getcwd() + '/../proto/')
 sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
+sys.path.insert(0, os.getcwd() + '/../../../../utils/storage/python')
 import tracing
+import storage
 import videoservice_pb2_grpc
 import videoservice_pb2
 import destination as XDTdst
@@ -63,11 +65,6 @@ INLINE = "INLINE"
 S3 = "S3"
 XDT = "XDT"
 
-# set aws credentials:
-AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
-AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
-
-
 def decode(bytes):
     temp = tempfile.NamedTemporaryFile(suffix=".mp4")
     temp.write(bytes)
@@ -81,12 +78,6 @@ def decode(bytes):
             all_frames.append(cv2.imencode('.jpg', image)[1].tobytes())
 
     return all_frames
-
-
-def fetchFromS3(s3_client, key):
-    obj = s3_client.Object(bucket_name='vhive-video-bench', key=key)
-    response = obj.get()
-    return response['Body'].read()
 
 
 def get_self_ip():
@@ -107,14 +98,7 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
 
         self.frameCount = 0
         self.transferType = transferType
-        if transferType == S3:
-            self.s3_client = boto3.resource(
-                service_name='s3',
-                region_name=os.getenv("AWS_REGION", 'us-west-1'),
-                aws_access_key_id=AWS_ID,
-                aws_secret_access_key=AWS_SECRET
-            )
-        elif transferType == XDT:
+        if transferType == XDT:
             if XDTconfig is None:
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
@@ -126,7 +110,7 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         if self.transferType == S3:
             log.info("Using s3, getting bucket")
             with tracing.Span("Video fetch"):
-                videoBytes = fetchFromS3(self.s3_client, request.s3key)
+                videoBytes = storage.get(request.s3key, dontPickle=True)
             log.info("decoding frames of the s3 object")
         elif self.transferType == INLINE:
             log.info("Inline video decode. Decoding frames.")
@@ -162,10 +146,8 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         if self.transferType == S3:
             name = "decoder-frame-" + str(self.frameCount) + ".jpg"
             with tracing.Span("Upload frame"):
-                s3object = self.s3_client.Object('vhive-video-bench', name)
                 self.frameCount += 1
-                log.info("uploading frame %d to s3" % self.frameCount)
-                s3object.put(Body=frame)
+                storage.put(name, frame)
             log.info("calling recog with s3 key")
             response = stub.Recognise(videoservice_pb2.RecogniseRequest(s3key=name))
             result = response.classification
@@ -186,6 +168,8 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
 
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', INLINE)
+    if transferType == S3:
+        storage.init("S3", 'vhive-video-bench')
     if transferType == S3 or transferType == INLINE:
         max_workers = int(os.getenv("MAX_DECODER_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

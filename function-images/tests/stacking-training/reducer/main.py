@@ -35,10 +35,12 @@ import pickle
 
 from concurrent import futures
 
-# adding python tracing sources to the system path
+# adding python tracing and storage sources to the system path
 sys.path.insert(0, os.getcwd() + '/../proto/')
 sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
+sys.path.insert(0, os.getcwd() + '/../../../../utils/storage/python')
 import tracing
+import storage
 import stacking_pb2_grpc
 import stacking_pb2
 import destination as XDTdst
@@ -116,32 +118,6 @@ class ReducerServicer(stacking_pb2_grpc.ReducerServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put(self, obj, key):
-        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            pickled = pickle.dumps(obj)
-            if self.transferType == S3:
-                s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                s3object.put(Body=pickled)
-            elif self.transferType == XDT:
-                log.fatal("XDT is not supported")
-
-        return key
-
-    def get(self, key):
-        msg = "Driver gets key '" + key + "' from " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            response = None
-            if self.transferType == S3:
-                obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                response = obj.get()
-            elif self.transferType == XDT:
-                log.fatal("XDT is not yet supported")
-
-        return pickle.loads(response['Body'].read())
-
     def Reduce(self, request, context):
         log.info(f"Reducer is invoked")
 
@@ -150,16 +126,16 @@ class ReducerServicer(stacking_pb2_grpc.ReducerServicer):
 
         for i, model_pred_tuple in enumerate(request.model_pred_tuples):
             with tracing.Span(f"Reducer gets model {i} from S3"):
-                models.append(self.get(model_pred_tuple.model_key))
-                predictions.append(self.get(model_pred_tuple.pred_key))
+                models.append(storage.get(model_pred_tuple.model_key))
+                predictions.append(storage.get(model_pred_tuple.pred_key))
 
         meta_features = np.transpose(np.array(predictions))
 
         meta_features_key = 'meta_features'
         models_key = 'models'
-        self.put(meta_features, meta_features_key)
+        storage.put(meta_features_key, meta_features)
 
-        self.put(models, models_key)
+        storage.put(models_key, models)
 
 
         return stacking_pb2.ReduceReply(
@@ -173,6 +149,7 @@ class ReducerServicer(stacking_pb2_grpc.ReducerServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
     if transferType == S3:
+        storage.init("S3", 'vhive-stacking')
         log.info("Using inline or s3 transfers")
         max_workers = int(os.getenv("MAX_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

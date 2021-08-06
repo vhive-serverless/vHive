@@ -28,6 +28,7 @@ RUN apt update && \
     pip3 install --no-cache-dir --user torch==1.9.0+cpu torchvision==0.10.0+cpu torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html && \
     pip3 install --no-cache-dir --user -r requirements.txt
 COPY ./utils/tracing/python/tracing.py ./
+COPY ./utils/storage/python/storage.py ./
 COPY ./function-images/tests/video-analytics/object_recognition/* ./
 COPY ./function-images/tests/video-analytics/proto/videoservice_pb2_grpc.py ./
 COPY ./function-images/tests/video-analytics/proto/videoservice_pb2.py ./
@@ -40,7 +41,7 @@ COPY --from=recogBuilder /root/.local /root/.local
 COPY --from=recogBuilder /py /app
 COPY --from=recogBuilder /xdt/sdk/python/ /app
 COPY --from=recogBuilder /xdt/proto/downXDT/ /app
-COPY --from=builder /xdt/proto/crossXDT/ /app
+COPY --from=recogBuilder /xdt/proto/crossXDT/ /app
 WORKDIR /app
 ENV PATH=/root/.local/bin:$PATH
 ENTRYPOINT ["python3", "-u", "./recog.py"]
@@ -55,6 +56,7 @@ RUN apt update && \
     pip3 install --no-cache-dir --user opencv-python && \
     pip3 install --no-cache-dir --user -r requirements.txt
 COPY ./utils/tracing/python/tracing.py ./
+COPY ./utils/storage/python/storage.py ./
 COPY ./function-images/tests/video-analytics/decoder/decode.py ./
 RUN mkdir frames
 COPY ./function-images/tests/video-analytics/proto/videoservice_pb2_grpc.py ./
@@ -70,7 +72,7 @@ COPY --from=decodeBuilder /py /app
 COPY --from=decodeBuilder /xdt/sdk/python/ /app
 COPY --from=decodeBuilder /xdt/proto/downXDT/ /app
 COPY --from=decodeBuilder /xdt/proto/upXDT/ /app
-COPY --from=builder /xdt/proto/crossXDT/ /app
+COPY --from=decodeBuilder /xdt/proto/crossXDT/ /app
 WORKDIR /app
 ENV PATH=/root/.local/bin:$PATH
 ENTRYPOINT ["python3", "-u", "./decode.py"]
@@ -81,11 +83,12 @@ FROM vhiveease/golang:latest as streamingBuilder
 WORKDIR /app
 RUN apk add --no-cache make git
 RUN apk add -U --no-cache ca-certificates
-COPY ./video_streaming/video-streaming.go ./video_streaming/
-COPY ./video_streaming/reference ./reference
-COPY ./go.mod ./
-COPY ./go.sum ./
-COPY ./proto ./proto
+COPY ./function-images/tests/video-analytics/video_streaming/video-streaming.go ./video_streaming/
+COPY ./function-images/tests/video-analytics/video_streaming/reference ./reference
+COPY ./function-images/tests/video-analytics/go.mod ./
+COPY ./function-images/tests/video-analytics/go.sum ./
+COPY ./function-images/tests/video-analytics/proto ./proto
+COPY ./utils/storage/go ./storage
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
     git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
 RUN go env -w GOPRIVATE=github.com/ease-lab/vhive-xdt

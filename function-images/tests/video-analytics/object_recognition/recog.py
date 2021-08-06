@@ -29,10 +29,12 @@ import torchvision.models as models
 
 import sys
 import os
-# adding python tracing sources to the system path
+# adding python tracing and storage sources to the system path
 sys.path.insert(0, os.getcwd() + '/../proto/')
 sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
+sys.path.insert(0, os.getcwd() + '/../../../../utils/storage/python')
 import tracing
+import storage
 import videoservice_pb2_grpc
 import videoservice_pb2
 import destination as XDTdst
@@ -56,11 +58,6 @@ args = parser.parse_args()
 INLINE = "INLINE"
 S3 = "S3"
 XDT = "XDT"
-
-# set aws credentials:
-AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
-AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
-
 
 if tracing.IsTracingEnabled():
     tracing.initTracer("recog", url=args.url)
@@ -115,19 +112,6 @@ def infer(batch_t):
             out = out + labels[idx] + ","
         return out
 
-
-def fetchFrameS3(key):
-    s3_client = boto3.resource(
-        service_name='s3',
-        region_name=os.getenv("AWS_REGION", 'us-west-1'),
-        aws_access_key_id=AWS_ID,
-        aws_secret_access_key=AWS_SECRET
-    )
-    obj = s3_client.Object(bucket_name='vhive-video-bench', key=key)
-    response = obj.get()
-    return response['Body'].read()
-
-
 class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer):
     def __init__(self, transferType):
 
@@ -141,7 +125,7 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
         if self.transferType == S3:
             log.info("retrieving target frame '%s' from s3" % request.s3key)
             with tracing.Span("Frame fetch"):
-                frame = fetchFrameS3(request.s3key)
+                frame = storage.get(request.s3key)
         elif self.transferType == INLINE:
             frame = request.frame
 
@@ -153,6 +137,8 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
 
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', INLINE)
+    if transferType == S3:
+        storage.init("S3", 'vhive-video-bench')
     if transferType == S3 or transferType == INLINE:
         max_workers = int(os.getenv("MAX_RECOG_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

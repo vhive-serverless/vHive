@@ -41,10 +41,12 @@ from sklearn.metrics import roc_auc_score
 import numpy as np
 import pickle
 
-# adding python tracing sources to the system path
+# adding python tracing and storage sources to the system path
 sys.path.insert(0, os.getcwd() + '/../proto/')
 sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
+sys.path.insert(0, os.getcwd() + '/../../../../utils/storage/python')
 import tracing
+import storage
 import stacking_pb2_grpc
 import stacking_pb2
 import destination as XDTdst
@@ -125,45 +127,19 @@ class MetatrainerServicer(stacking_pb2_grpc.TrainerServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put(self, obj, key):
-        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            pickled = pickle.dumps(obj)
-            if self.transferType == S3:
-                s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                s3object.put(Body=pickled)
-            elif self.transferType == XDT:
-                log.fatal("XDT is not supported")
-                
-        return key
-
-    def get(self, key):
-        msg = "Driver gets key '" + key + "' from " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            response = None
-            if self.transferType == S3:
-                obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                response = obj.get()
-            elif self.transferType == XDT:
-                log.fatal("XDT is not yet supported")
-
-        return pickle.loads(response['Body'].read())
-
     def get_inputs(self, request) -> dict:
         inputs: dict = {}
-        inputs['dataset'] = self.get(request.dataset_key)
-        inputs['meta_features'] = self.get(request.meta_features_key)
-        inputs['models'] = self.get(request.models_key)
+        inputs['dataset'] = storage.get(request.dataset_key)
+        inputs['meta_features'] = storage.get(request.meta_features_key)
+        inputs['models'] = storage.get(request.models_key)
         return inputs
 
     def put_outputs(self, meta_predictions, model_full):
         model_full_key = 'model_full_key'
         meta_predictions_key = 'meta_predictions_key'
 
-        self.put(meta_predictions, meta_predictions_key)
-        self.put(model_full, model_full_key)
+        storage.put(meta_predictions_key, meta_predictions)
+        storage.put(model_full_key, model_full)
 
         return meta_predictions_key, model_full_key
 
@@ -207,6 +183,7 @@ class MetatrainerServicer(stacking_pb2_grpc.TrainerServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
     if transferType == S3:
+        storage.init("S3", 'vhive-stacking')
         log.info("Using inline or s3 transfers")
         max_workers = int(os.getenv("MAX_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

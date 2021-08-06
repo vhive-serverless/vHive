@@ -52,7 +52,7 @@ streaming-image: Dockerfile proto/videoservice_grpc.pb.go proto/videoservice.pb.
 	--target streaming \
 	--secret id=GOPRIVATE_KEY \
 	-f Dockerfile \
-	.
+	$(ROOT)
 
 decoder-image-push: decoder-image
 	docker push vhiveease/video-analytics-decoder:latest

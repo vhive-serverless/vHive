@@ -35,17 +35,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-
 	pb_video "tests/video_analytics/proto"
 
 	sdk "github.com/ease-lab/vhive-xdt/sdk/golang"
 	"github.com/ease-lab/vhive-xdt/utils"
 	pb_helloworld "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 
+	storage "github.com/ease-lab/vhive/utils/storage/go"
 	tracing "github.com/ease-lab/vhive/utils/tracing/go"
 )
 
@@ -74,23 +70,6 @@ type server struct {
 	pb_helloworld.UnimplementedGreeterServer
 }
 
-func setAWSCredentials() {
-	aws_access_key, ok := os.LookupEnv("AWS_ACCESS_KEY")
-	if ok {
-		AKID = aws_access_key
-	}
-	aws_secret_key, ok := os.LookupEnv("AWS_SECRET_KEY")
-	if ok {
-		SECRET_KEY = aws_secret_key
-	}
-	AWS_S3_REGION = "us-west-1"
-	aws_region, ok := os.LookupEnv("AWS_REGION")
-	if ok {
-		AWS_S3_REGION = aws_region
-	}
-	fmt.Printf("USING AWS ID: %v", AKID)
-}
-
 func fetchSelfIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -112,27 +91,11 @@ func uploadToS3(ctx context.Context) {
 	span := tracing.Span{SpanName: "Video upload", TracerName: "S3 video upload - tracer"}
 	ctx = span.StartSpan(ctx)
 	defer span.EndSpan()
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(AWS_S3_REGION),
-		Credentials: credentials.NewStaticCredentials(AKID, SECRET_KEY, TOKEN),
-	})
-	if err != nil {
-		log.Fatalf("[Video Streaming] Failed establish s3 session: %s", err)
-	}
 	file, err := os.Open(*videoFile)
 	if err != nil {
 		log.Fatalf("[Video Streaming] Failed to open file: %s", err)
 	}
-	log.Infof("[Video Streaming] uploading video to s3")
-	uploader := s3manager.NewUploader(sess)
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(AWS_S3_BUCKET),
-		Key:    aws.String("streaming-video.mp4"),
-		Body:   file,
-	})
-	if err != nil {
-		log.Fatalf("[Video Streaming] Failed to upload file to s3: %s", err)
-	}
+	storage.PutFile("streaming-video.mp4", file)
 	log.Infof("[Video Streaming] Uploaded video to s3")
 }
 
@@ -248,7 +211,7 @@ func main() {
 	}
 
 	if server.transferType == S3 {
-		setAWSCredentials()
+		storage.InitStorage("S3", "vhive-video-bench")
 	} else if server.transferType == XDT {
 		log.Infof("[streaming] TransferType = %s", server.transferType)
 		config := utils.ReadConfig()
