@@ -1,0 +1,38 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: driver
+  namespace: default
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "1"
+        autoscaling.knative.dev/minScale: "1"
+    spec:
+      containerConcurrency: 1
+      containers:
+      - env:
+        - name: TRANSFER_TYPE
+          value: S3
+        - name: ENABLE_TRACING
+          value: "false"
+        - name: AWS_ACCESS_KEY
+          value: ${AWS_ACCESS_KEY}
+        - name: AWS_SECRET_KEY
+          value: ${AWS_SECRET_KEY}
+        - name: AWS_REGION
+          value: us-west-1
+        - name: TRANSFER_SIZE_KB
+          value: "10000"
+        - name: FANIN
+          value: "0"
+        - name: FANOUT
+          value: "0"
+        - name: BROADCAST
+          value: "32"
+        image: docker.io/shyamjesal/chained-functions-serving-driver:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: h2c
