@@ -3,6 +3,7 @@ import time
 import json
 import logging
 import os
+import minio
 
 from concurrent import futures
 from minio.commonconfig import CopySource
