@@ -3132,7 +3132,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:72aeff96941416eeb6d50a3141b64f43f5f4fce7bb57d79ab24afed04b07c4de
+  image: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:ed65b795c625cc4da3f82e964b1ba0e5a1659094c58e851b825bafb1b76cdefb
 
 ---
 # Copyright 2018 The Knative Authors
@@ -3500,7 +3500,7 @@ metadata:
 data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  queueSidecarImage: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:72aeff96941416eeb6d50a3141b64f43f5f4fce7bb57d79ab24afed04b07c4de
+  queueSidecarImage: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:ed65b795c625cc4da3f82e964b1ba0e5a1659094c58e851b825bafb1b76cdefb
   _example: |
     ################################
     #                              #
