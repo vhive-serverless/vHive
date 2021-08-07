@@ -174,7 +174,7 @@ func SayHello(address, workflowID string) {
 	mapD := map[string]int{"executiontime":500, "objectsize":10000}
         mapB,_ := json.Marshal(mapD)
         inputstr := string(mapB)
-	resp, errh = c.SayHello(ctx, &pb.HelloRequest{Name: inputstr})
+	resp, errh = c.SayHello(ctx, &HelloRequest{Name: inputstr})
 	log.Infof("response:%s", resp.Message)
 	
 	if errh != nil {
