@@ -42,6 +42,7 @@ type driverServer struct {
 	prodPort int
 	fanIn int
 	fanOut int
+	broadcast int
 	pb.UnimplementedGreeterServer
 }
 
@@ -51,11 +52,11 @@ func (s *driverServer) SayHello(ctx context.Context, req *pb.HelloRequest) (_ *p
 	span := tracing.Span{SpanName: "Driver", TracerName: "Driver - tracer"}
 	ctx = span.StartSpan(ctx)
 	defer span.EndSpan()
-	invokeServingFunction(ctx, prodAddr, consAddr, s.fanIn, s.fanOut)
+	invokeServingFunction(ctx, prodAddr, consAddr, s.fanIn, s.fanOut, s.broadcast)
 	return &pb.HelloReply{Message: "Success"}, err
 }
 
-func setEnv(server *driverServer, fanIn, fanOut int, prodEndpoint, consEndpoint string, prodPort, consPort int){
+func setEnv(server *driverServer, fanIn, fanOut, broadcast int, prodEndpoint, consEndpoint string, prodPort, consPort int){
 	server.fanIn = fanIn
 	if value, ok := os.LookupEnv("FANIN"); ok {
 		server.fanIn, _ = strconv.Atoi(value)
@@ -63,6 +64,10 @@ func setEnv(server *driverServer, fanIn, fanOut int, prodEndpoint, consEndpoint 
 	server.fanOut = fanOut
 	if value, ok := os.LookupEnv("FANOUT"); ok {
 		server.fanOut, _ = strconv.Atoi(value)
+	}
+	server.broadcast = broadcast
+	if value, ok := os.LookupEnv("BROADCAST"); ok {
+		server.broadcast, _ = strconv.Atoi(value)
 	}
 	server.prodEndpoint = prodEndpoint
 	if value, ok := os.LookupEnv("PROD_ENDPOINT"); ok {
@@ -98,6 +103,7 @@ func main() {
 	grpcTimeout = time.Duration(*flag.Int("grpcTimeout", 60, "Timeout in seconds for gRPC requests")) * time.Second
 	fanIn := flag.Int("fanIn",0,"Fan in amount")
 	fanOut := flag.Int("fanOut",0,"Fan out amount")
+	broadcast := flag.Int("broadcast",0,"Broadcast amount")
 
 	flag.Parse()
 
@@ -126,7 +132,7 @@ func main() {
 		grpcServer = grpc.NewServer()
 	}
 	server := driverServer{}
-	setEnv(&server, *fanIn, *fanOut, *prodEndpoint, *consEndpoint, *prodPort, *consPort)
+	setEnv(&server, *fanIn, *fanOut, *broadcast, *prodEndpoint, *consEndpoint, *prodPort, *consPort)
 	pb.RegisterGreeterServer(grpcServer, &server)
 	reflection.Register(grpcServer)
 
@@ -178,12 +184,11 @@ func benchFanIn(ctx context.Context, prodAddr, consAddr string, fanInAmount int)
 
 	ctx, cancel := context.WithTimeout(ctx, grpcTimeout)
 	defer cancel()
-	var benchResponse *pb_client.BenchResponse
 	capabilityChannel := make(chan string, fanInAmount)
 	errorChannel := make(chan error, fanInAmount)
 	for i :=0; i<fanInAmount; i++ {
 		go func() {
-			benchResponse, err = c.Benchmark(ctx, &pb_client.BenchType{Name: FANIN, FanAmount: int64(fanInAmount)})
+			benchResponse, err := c.Benchmark(ctx, &pb_client.BenchType{Name: FANIN, FanAmount: int64(fanInAmount)})
 			if err != nil {
 				log.Warnf("Failed to invoke %s, err=%v", prodAddr, err)
 				errorChannel <- err
@@ -253,7 +258,29 @@ func benchFanOut(ctx context.Context, prodAddr string, fanOutAmount int) {
 	}
 }
 
-func invokeServingFunction(ctx context.Context, prodAddr, consAddr string, fanInAmount, fanOutAmount int) {
+func benchBroadcast(ctx context.Context, prodAddr string, broadcast int) {
+	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
+	if *withTracing {
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+	}
+	conn, err := grpc.Dial(prodAddr, dialOptions...)
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	c := pb_client.NewProdConDriverClient(conn)
+
+	ctx, cancel := context.WithTimeout(ctx, grpcTimeout)
+	defer cancel()
+
+	_, err = c.Benchmark (ctx, &pb_client.BenchType{Name: BROADCAST, FanAmount: int64(broadcast)})
+	if err != nil {
+		log.Warnf("Failed to invoke %v, err=%v", prodAddr, err)
+	}
+}
+
+func invokeServingFunction(ctx context.Context, prodAddr, consAddr string, fanInAmount, fanOutAmount, broadcast int) {
 
 	log.Debug("Invoking by the address: %v", prodAddr)
 
@@ -261,6 +288,8 @@ func invokeServingFunction(ctx context.Context, prodAddr, consAddr string, fanIn
 		benchFanIn(ctx, prodAddr, consAddr, fanInAmount)
 	}else if fanOutAmount > 0 {
 		benchFanOut(ctx, prodAddr, fanOutAmount)
+	}else if broadcast > 0 {
+		benchBroadcast(ctx, prodAddr, broadcast)
 	}else {
 		SayHello(ctx, prodAddr)
 	}

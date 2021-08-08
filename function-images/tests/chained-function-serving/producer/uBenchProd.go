@@ -43,6 +43,8 @@ func (s *ubenchServer) Benchmark(ctx context.Context, benchType *pb_client.Bench
 	}else if benchType.Name == FANIN {
 		benchResponse,err := s.putData(ctx)
 		return &benchResponse, err
+	}else if benchType.Name == BROADCAST {
+		s.broadcast(ctx, benchType.FanAmount, addr)
 	}
 	return &pb_client.BenchResponse{Ok: false}, nil
 }
@@ -70,9 +72,64 @@ func (s *ubenchServer) fanOut(ctx context.Context, fanAmount int64, addr string)
 		client, conn := getGRPCclient(addr)
 		defer conn.Close()
 		payloadToSend := s.payloadData
-		if s.transferType == S3 {
-			payloadToSend = []byte(uploadToS3(ctx, s.payloadData, s.randomStr))
+
+		for i:=int64(0); i<fanAmount; i++ {
+			go func(threadNumber int64) {
+				if s.transferType == S3 {
+					key := uploadToS3(ctx, s.payloadData, fmt.Sprintf("%s-%d",s.randomStr, threadNumber))
+					payloadToSend = []byte(key)
+				}
+				ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
+				if err != nil {
+					log.Fatalf("[producer] client error in string consumption: %s", err)
+					errorChannel <- err
+				}else {
+					errorChannel <- nil
+					log.Printf("[producer] (single) Ack: %v\n", ack.Value)
+				}
+			}(i)
 		}
+	} else if s.transferType == XDT {
+		payloadToSend := utils.Payload{
+			FunctionName: "HelloXDT",
+			Data:         s.payloadData,
+		}
+		for i:=int64(0); i<fanAmount; i++ {
+			go func(){
+				if _, _, err := s.XDTclient.Invoke(ctx, addr, payloadToSend); err != nil {
+					log.Errorf("data_transfer failed %v", err)
+					errorChannel <- err
+				} else {
+					log.Infof("data_transfer successful")
+					errorChannel <- nil
+				}
+			}()
+		}
+	}
+	for i:=int64(0); i<fanAmount; i++ {
+		select {
+		case err := <-errorChannel:
+			if err != nil {
+				log.Errorf("Fanout failed: %v", err)
+				return pb_client.BenchResponse{Ok: false}
+			}
+		}
+	}
+	return pb_client.BenchResponse{Ok: true}
+}
+
+func (s *ubenchServer) broadcast(ctx context.Context, fanAmount int64, addr string) pb_client.BenchResponse{
+	errorChannel := make(chan error, fanAmount)
+	if s.transferType == INLINE || s.transferType == S3 {
+		client, conn := getGRPCclient(addr)
+		defer conn.Close()
+		payloadToSend := s.payloadData
+
+		if s.transferType == S3 {
+			key := uploadToS3(ctx, s.payloadData, s.randomStr)
+			payloadToSend = []byte(key)
+		}
+
 		for i:=int64(0); i<fanAmount; i++ {
 			go func() {
 				ack, err := client.ConsumeByte(ctx, &pb_client.ConsumeByteRequest{Value: payloadToSend})
@@ -81,7 +138,7 @@ func (s *ubenchServer) fanOut(ctx context.Context, fanAmount int64, addr string)
 					errorChannel <- err
 				}else {
 					errorChannel <- nil
-				log.Printf("[producer] (single) Ack: %v\n", ack.Value)
+					log.Printf("[producer] (single) Ack: %v\n", ack.Value)
 				}
 			}()
 		}
