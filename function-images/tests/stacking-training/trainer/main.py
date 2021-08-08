@@ -175,8 +175,8 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
         model_key = f"model_{self.trainer_id}"
         pred_key = f"pred_model_{self.trainer_id}"
 
-        self.put(model, model_key)
-        self.put(y_pred, pred_key)
+        model_key = self.put(model, model_key)
+        pred_key = self.put(y_pred, pred_key)
 
         return stacking_pb2.TrainReply(
             model=b'',

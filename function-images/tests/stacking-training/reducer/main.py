@@ -158,9 +158,9 @@ class ReducerServicer(stacking_pb2_grpc.ReducerServicer):
 
         meta_features_key = 'meta_features'
         models_key = 'models'
-        self.put(meta_features, meta_features_key)
+        meta_features_key = self.put(meta_features, meta_features_key)
 
-        self.put(models, models_key)
+        models_key = self.put(models, models_key)
 
 
         return stacking_pb2.ReduceReply(
