@@ -1,0 +1,22 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: gg-port-0
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+            - image: docker.io/cbfarcan/gg_port:var_workload
+              imagePullPolicy: Always
+              ports:
+                - containerPort: 50051
+          
+          #ports:
+          # - name: 
+          # containerPort: 50051
+          # env:
+          # - name: GUEST_PORT # Port on which the firecracker-containerd container is accepting requests
+          #   value: "50051"
+          # - name: GUEST_IMAGE # Container image to use for firecracker-containerd container
+          #   value: "cbfarcan/gg_port:var_workload"

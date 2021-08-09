@@ -1,1 +1,2 @@
 function-images/tests/video-analytics/video_streaming/reference/*.mp4 filter=lfs diff=lfs merge=lfs -text
+function-images/gg_port/gg-execute-static filter=lfs diff=lfs merge=lfs -text
