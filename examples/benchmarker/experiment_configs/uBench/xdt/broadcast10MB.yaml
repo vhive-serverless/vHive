@@ -1,0 +1,55 @@
+name: "broadcastXDT"
+services:
+  - name: consumer
+    image: docker.io/shyamjesal/chained-functions-serving-consumer:latest
+    env:
+      - name: DST_SERVER_PORT
+        value: ":80"
+    ports:
+      - name: h2c
+        containerPort: 80
+    scale:
+      minScale: "tunable"
+      maxScale: "tunable"
+    containerConcurrency: 1
+  - name: producer
+    image: docker.io/shyamjesal/chained-functions-serving-producer:latest
+    ports:
+      - name: h2c
+        containerPort: 80
+    scale:
+      minScale: "1"
+      maxScale: "1"
+    containerConcurrency: 1
+  - name: driver
+    image: docker.io/shyamjesal/chained-functions-serving-driver:latest
+    ports:
+      - name: h2c
+        containerPort: 80
+    scale:
+      minScale: "1"
+      maxScale: "1"
+    containerConcurrency: 1
+commonEnv:
+  - name: TRANSFER_TYPE
+    value: "XDT"
+  - name: ENABLE_TRACING
+    value: "false"
+  - name: TRACING_ENABLED
+    value: "false"
+  - name: TRANSFER_SIZE_KB
+    value: 100
+  - name: FANIN
+    value: "0"
+  - name: FANOUT
+    value: "0"
+
+tunable:
+  name: BROADCAST
+  values:
+    - 1
+    - 2
+    - 4
+    - 8
+    - 16
+    - 32
