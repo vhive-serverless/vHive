@@ -28,7 +28,7 @@ services:
     ports:
       - 9411:9411
   consumer:
-    image: vhiveease/chained-functions-serving-consumer
+    image: shyamjesal/chained-functions-serving-consumer
     ports:
       - 3030:3030
     volumes:
@@ -43,6 +43,7 @@ services:
       - DST_SERVER_PORT=:3032
       - ROUTING=Store&Forward
       - FANIN=0
+      - BROADCAST=3
     depends_on:
       - zipkin
       - dQP
@@ -69,7 +70,7 @@ services:
       - "50006"
       - "50008"
   producer:
-    image: vhiveease/chained-functions-serving-producer
+    image: shyamjesal/chained-functions-serving-producer
     ports:
       - 3031:3031
     volumes:
@@ -90,7 +91,7 @@ services:
       - sQP
       - zipkin
   driver:
-    image: vhiveease/chained-functions-serving-driver
+    image: shyamjesal/chained-functions-serving-driver
     ports:
       - 3032:3032
     volumes:
@@ -105,7 +106,8 @@ services:
       - -zipkin=http://zipkin:9411/api/v2/spans
     environment:
       - FANIN=0
-      - FANOUT=3
+      - FANOUT=0
+      - BROADCAST=3
       - ENABLE_TRACING=false
     depends_on:
       - consumer

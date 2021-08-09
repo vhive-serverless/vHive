@@ -66,6 +66,7 @@ var (
 
 type consumerServer struct {
 	transferType string
+	XDTconfig utils.Config
 	pb.UnimplementedProducerConsumerServer
 }
 
@@ -142,6 +143,14 @@ func (s *consumerServer) ConsumeByte(ctx context.Context, str *pb.ConsumeByteReq
 		}
 	}else if s.transferType == INLINE{
 		log.Printf("[consumer] Consumed %d bytes\n", len(str.Value))
+	}else if s.transferType == XDT{
+		payload, err := sdk.BroadcastGet(ctx, string(str.Value),s.XDTconfig)
+		if err !=nil {
+			return &pb.ConsumeByteReply{Value: false}, err
+		}else {
+			log.Printf("[consumer] Consumed %d bytes from XDT\n", len(payload))
+			return &pb.ConsumeByteReply{Value: true}, err
+		}
 	}
 	return &pb.ConsumeByteReply{Value: true}, nil
 }
@@ -198,7 +207,14 @@ func main() {
 		}
 	}
 
-	if transferType == XDT && !fanIn {
+	var broadcast = false
+	if value, ok := os.LookupEnv("BROADCAST"); ok{
+		if intValue, err := strconv.Atoi(value); err==nil && intValue > 0{
+			broadcast = true
+		}
+	}
+
+	if transferType == XDT && !fanIn && !broadcast{
 		var handler = func(data []byte) ([]byte, bool){
 			log.Infof("gx: destination handler received data of size %d", len(data))
 			return nil, true
@@ -218,7 +234,7 @@ func main() {
 		} else {
 			grpcServer = grpc.NewServer()
 		}
-		cs := consumerServer{transferType: transferType}
+		cs := consumerServer{transferType: transferType, XDTconfig: utils.ReadConfig()}
 		pb.RegisterProducerConsumerServer(grpcServer, &cs)
 		us := ubenchServer{transferType: transferType,XDTconfig: utils.ReadConfig()}
 		pb_client.RegisterProdConDriverServer(grpcServer, &us)

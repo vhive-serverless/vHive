@@ -170,6 +170,7 @@ func SayHello(ctx context.Context, address string) {
 }
 
 func benchFanIn(ctx context.Context, prodAddr, consAddr string, fanInAmount int) {
+	log.Infof("using fanIn ubench")
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
@@ -237,6 +238,7 @@ func reduce(ctx context.Context, consEndpoint string, capabilities []string) {
 }
 
 func benchFanOut(ctx context.Context, prodAddr string, fanOutAmount int) {
+	log.Infof("using fanOut ubench")
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
@@ -259,6 +261,7 @@ func benchFanOut(ctx context.Context, prodAddr string, fanOutAmount int) {
 }
 
 func benchBroadcast(ctx context.Context, prodAddr string, broadcast int) {
+	log.Infof("using broadcast ubench")
 	dialOptions := []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
 	if *withTracing {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
