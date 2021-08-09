@@ -1,0 +1,13 @@
+grpcio==1.38.1
+grpcio-reflection==1.38.1
+opentelemetry-api==1.3.0
+opentelemetry-exporter-zipkin==1.3.0
+opentelemetry-exporter-zipkin-json==1.3.0
+opentelemetry-exporter-zipkin-proto-http==1.3.0
+opentelemetry-instrumentation==0.22b0
+opentelemetry-instrumentation-grpc==0.22b0
+opentelemetry-sdk==1.3.0
+opentelemetry-semantic-conventions==0.22b0
+boto3==1.18.1
+grpcio-tools==1.38.1
+joblib
