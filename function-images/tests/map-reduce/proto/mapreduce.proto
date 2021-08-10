@@ -48,10 +48,12 @@ message MapRequest {
 
 message Keys {
     string key = 1;
+    string xdtKey = 2;
 }
 
 message MapReply {
     string reply = 1;
+    repeated Keys keys = 2;
 }
 
 message ReduceRequest {

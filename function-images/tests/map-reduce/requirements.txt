@@ -11,3 +11,4 @@ opentelemetry-semantic-conventions==0.22b0
 boto3==1.18.1
 grpcio-tools==1.38.1
 joblib
+environs

@@ -68,8 +68,8 @@ services:
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
             - AWS_REGION=us-west-1
             - ENABLE_TRACING=true
-            - NUM_MAPPERS=64
-            - NUM_REDUCERS=16
+            - NUM_MAPPERS=8
+            - NUM_REDUCERS=2
         depends_on:
             - mapper
             - reducer

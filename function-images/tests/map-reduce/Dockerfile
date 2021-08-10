@@ -34,7 +34,8 @@ COPY ./function-images/tests/map-reduce/proto/mapreduce_pb2* ./
 COPY ./function-images/tests/map-reduce/proto/helloworld_pb2* ./
 RUN --mount=type=secret,id=GOPRIVATE_KEY \
         git config --global url."https://ease-lab:$(cat /run/secrets/GOPRIVATE_KEY)@github.com/ease-lab/vhive-xdt".insteadOf "https://github.com/ease-lab/vhive-xdt"
-RUN git clone --depth 1 https://github.com/ease-lab/vhive-xdt /xdt
+RUN curl https://$(cat /run/secrets/GOPRIVATE_KEY):x-oauth-basic@api.github.com/repos/ease-lab/vhive-xdt/git/refs/heads/broadcast-support -o version.json
+RUN git clone -b broadcast-support --depth 1 https://github.com/ease-lab/vhive-xdt /xdt
 
 FROM vhiveease/python-slim:latest
 COPY --from=builder /root/.local /root/.local

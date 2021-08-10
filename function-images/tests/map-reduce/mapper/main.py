@@ -22,6 +22,7 @@
 
 from __future__ import print_function
 
+import pickle
 import sys
 import grpc
 import argparse
@@ -41,9 +42,9 @@ sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
 import tracing
 import mapreduce_pb2_grpc
 import mapreduce_pb2
-# import destination as XDTdst
-# import source as XDTsrc
-# import utils as XDTutil
+import destination as XDTdst
+import source as XDTsrc
+import utils as XDTutil
 
 from concurrent import futures
 
@@ -63,7 +64,7 @@ if tracing.IsTracingEnabled():
 
 
 # constants
-INPUT_MAPPER_PREFIX = "artemiy/input/"
+INPUT_MAPPER_PREFIX = "artemiy/"
 OUTPUT_MAPPER_PREFIX = "artemiy/task/mapper/"
 INPUT_REDUCER_PREFIX = OUTPUT_MAPPER_PREFIX
 OUTPUT_REDUCER_PREFIX = "artemiy/task/reducer/"
@@ -75,55 +76,45 @@ AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
 AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
 
 
-# def get_self_ip():
-#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#     try:
-#         # doesn't even have to be reachable
-#         s.connect(('10.255.255.255', 1))
-#         IP = s.getsockname()[0]
-#     except Exception:
-#         IP = '127.0.0.1'
-#     finally:
-#         s.close()
-#     return IP
-
 def write_to_s3(bucket_obj, key, data, metadata):
     bucket_obj.put_object(Key=key, Body=data, Metadata=metadata)
+
 
 def read_from_s3(s3_client, src_bucket, key):
     response = s3_client.get_object(Bucket=src_bucket, Key=key)
     return response
 
+
 class MapperServicer(mapreduce_pb2_grpc.MapperServicer):
     def __init__(self, transferType, XDTconfig=None):
         self.transferType = transferType
         self.mapperId = ""
-        if transferType == S3:
-            self.s3_client = boto3.resource(
-                service_name='s3',
-                region_name=os.getenv("AWS_REGION", 'us-west-1'),
-                aws_access_key_id=AWS_ID,
-                aws_secret_access_key=AWS_SECRET
-            )
-        elif transferType == XDT:
-            log.fatal("XDT not yet supported")
-            # if XDTconfig is None:
-            #     log.fatal("Empty XDT config")
-            # self.XDTconfig = XDTconfig
+        self.s3_client = boto3.resource(
+            service_name='s3',
+            region_name=os.getenv("AWS_REGION", 'us-west-1'),
+            aws_access_key_id=AWS_ID,
+            aws_secret_access_key=AWS_SECRET
+        )
+        if transferType == XDT:
+            if XDTconfig is None:
+                log.fatal("Empty XDT config")
+            self.XDTclient = XDTsrc.XDTclient(XDTconfig)
+            self.XDTconfig = XDTconfig
 
     def put(self, bucket, key, obj, metadata=None):
         msg = "Mapper uploading object with key '" + key + "' to " + self.transferType
         log.info(msg)
+        log.info("object is of type %s", type(obj))
+
         with tracing.Span(msg):
-            # pickled = pickle.dumps(obj)
             if self.transferType == S3:
                 s3object = self.s3_client.Object(bucket_name=bucket, key=key)
-                if metadata == None:
+                if metadata is None:
                     s3object.put(Body=obj)
                 else:
                     s3object.put(Body=obj, Metadata=metadata)
             elif self.transferType == XDT:
-                log.fatal("XDT is not supported")
+                key = self.XDTclient.BroadcastPut(payload=obj)
 
         return key
 
@@ -136,13 +127,13 @@ class MapperServicer(mapreduce_pb2_grpc.MapperServicer):
                 obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
                 response = obj.get()
             elif self.transferType == XDT:
-                log.fatal("XDT is not yet supported")
+                return XDTdst.BroadcastGet(key, self.XDTconfig)
 
         # return pickle.loads(response['Body'].read())
         return response['Body'].read()
 
     def Map(self, request, context):
-        mapper_id   = request.mapperId
+        mapper_id = request.mapperId
         log.info(f"Mapper {mapper_id} is invoked")
 
         dest_bucket = request.destBucket  # s3 bucket where the mapper will write the result
@@ -176,7 +167,6 @@ class MapperServicer(mapreduce_pb2_grpc.MapperServicer):
                 contents = response['Body'].read().decode("utf-8") 
                 # TODO self.get??
 
-            
                 for line in contents.split('\n')[:-1]:
                     line_count +=1
                     try:
@@ -186,7 +176,7 @@ class MapperServicer(mapreduce_pb2_grpc.MapperServicer):
                             output[srcIp] = 0
                         output[srcIp] += float(data[3])
                     except getopt.GetoptError as e:
-        #                print (e)
+                        # print (e)
                         err += '%s' % e
 
         with tracing.Span("Shuffle output"):
@@ -200,6 +190,8 @@ class MapperServicer(mapreduce_pb2_grpc.MapperServicer):
 
         time_in_secs = (time.time() - start_time)
 
+        response = mapreduce_pb2.MapReply()
+
         with tracing.Span("Save result"):
             write_tasks = []
             for to_reducer_id in range(n_reducers):
@@ -210,35 +202,39 @@ class MapperServicer(mapreduce_pb2_grpc.MapperServicer):
                                 "processingtime": '%s' % time_in_secs,
                                 "memoryUsage": '%s' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
                         }
-                write_tasks.append( (dest_bucket, mapper_fname, json.dumps(shuffle_output[to_reducer_id]), metadata) )
+                write_tasks.append((dest_bucket, mapper_fname, pickle.dumps(shuffle_output[to_reducer_id]), metadata))
 
-            Parallel(backend="threading", n_jobs=n_reducers)(delayed(self.put)(*i) for i in write_tasks)
+            keys = Parallel(backend="threading", n_jobs=n_reducers)(delayed(self.put)(*i) for i in write_tasks)
+            for key in keys:
+                grpc_keys = mapreduce_pb2.Keys()
+                grpc_keys.key = key
+                response.keys.append(grpc_keys)
 
             pret = [len(src_keys), line_count, time_in_secs, err]
         print("mapper" + str(mapper_id), pret)
 
         # return pret
-        return mapreduce_pb2.MapReply(
-            reply="success"
-        )
+        response.reply = "success"
+        return response
 
 
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
-    if transferType == S3:
-        log.info("Using inline or s3 transfers")
-        max_workers = int(os.getenv("MAX_SERVER_THREADS", 16))
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
-        mapreduce_pb2_grpc.add_MapperServicer_to_server(
-            MapperServicer(transferType=transferType), server)
-        server.add_insecure_port('[::]:' + args.sp)
-        server.start()
-        server.wait_for_termination()
-    elif transferType == XDT:
-        log.fatal("XDT not yet supported")
-        # XDTconfig = XDTutil.loadConfig()
-    else:
-        log.fatal("Invalid Transfer type")
+
+    XDTconfig = dict()
+    if transferType == XDT:
+        XDTconfig = XDTutil.loadConfig()
+        log.info("XDT config:")
+        log.info(XDTconfig)
+
+    log.info("Using inline or s3 transfers")
+    max_workers = int(os.getenv("MAX_SERVER_THREADS", 16))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
+    mapreduce_pb2_grpc.add_MapperServicer_to_server(
+        MapperServicer(transferType=transferType, XDTconfig=XDTconfig), server)
+    server.add_insecure_port('[::]:' + args.sp)
+    server.start()
+    server.wait_for_termination()
 
 
 if __name__ == '__main__':

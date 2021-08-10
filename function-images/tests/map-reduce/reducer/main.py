@@ -43,9 +43,9 @@ sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
 import tracing
 import mapreduce_pb2_grpc
 import mapreduce_pb2
-# import destination as XDTdst
-# import source as XDTsrc
-# import utils as XDTutil
+import destination as XDTdst
+import source as XDTsrc
+import utils as XDTutil
 
 
 
@@ -64,7 +64,7 @@ if tracing.IsTracingEnabled():
     tracing.grpcInstrumentServer()
 
 # constants
-INPUT_MAPPER_PREFIX = "artemiy/input/"
+INPUT_MAPPER_PREFIX = "artemiy/"
 OUTPUT_MAPPER_PREFIX = "artemiy/task/mapper/"
 INPUT_REDUCER_PREFIX = OUTPUT_MAPPER_PREFIX
 OUTPUT_REDUCER_PREFIX = "artemiy/task/reducer/"
@@ -74,19 +74,6 @@ XDT = "XDT"
 # set aws credentials:
 AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
 AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
-
-
-# def get_self_ip():
-#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#     try:
-#         # doesn't even have to be reachable
-#         s.connect(('10.255.255.255', 1))
-#         IP = s.getsockname()[0]
-#     except Exception:
-#         IP = '127.0.0.1'
-#     finally:
-#         s.close()
-#     return IP
 
 
 class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
@@ -100,10 +87,10 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
                 aws_secret_access_key=AWS_SECRET
             )
         elif transferType == XDT:
-            log.fatal("XDT not yet supported")
-            # if XDTconfig is None:
-            #     log.fatal("Empty XDT config")
-            # self.XDTconfig = XDTconfig
+            if XDTconfig is None:
+                log.fatal("Empty XDT config")
+            self.XDTclient = XDTsrc.XDTclient(XDTconfig)
+            self.XDTconfig = XDTconfig
 
     def put(self, bucket, key, obj, metadata=None):
         msg = "Reducer uploading object with key '" + key + "' to " + self.transferType
@@ -112,12 +99,12 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
             # pickled = pickle.dumps(obj)
             if self.transferType == S3:
                 s3object = self.s3_client.Object(bucket_name=bucket, key=key)
-                if metadata == None:
+                if metadata is None:
                     s3object.put(Body=obj)
                 else:
                     s3object.put(Body=obj, Metadata=metadata)
             elif self.transferType == XDT:
-                log.fatal("XDT is not supported")
+                key = self.XDTclient.BroadcastPut(payload=obj)
 
         return key
 
@@ -125,15 +112,12 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
         msg = "Reducer gets key '" + key + "' from " + self.transferType
         log.info(msg)
         with tracing.Span(msg):
-            response = None
             if self.transferType == S3:
                 obj = self.s3_client.Object(bucket_name=bucket, key=key)
                 response = obj.get()
+                return response['Body'].read()
             elif self.transferType == XDT:
-                log.fatal("XDT is not yet supported")
-
-        # return pickle.loads(response['Body'].read())
-        return response['Body'].read()
+                return XDTdst.BroadcastGet(key, self.XDTconfig)
 
     def Reduce(self, request, context):
         start_time = time.time()
@@ -141,11 +125,11 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
         log.info(f"Reducer {r_id} is invoked")
 
         dest_bucket = request.destBucket  # s3 bucket where the mapper will write the result
-        src_bucket  = request.srcBucket   # s3 bucket where the mapper will search for input files
+        src_bucket = request.srcBucket   # s3 bucket where the mapper will search for input files
         reducer_keys = request.keys       # reducer_keys is a list of input file names for this mapper
         job_id = request.jobId
         n_reducers = request.nReducers
-        
+
         # aggr 
         results = {}
         line_count = 0
@@ -153,11 +137,12 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
         # INPUT JSON => OUTPUT JSON
 
         # Download and process all keys
+        responses = []
         with tracing.Span("Fetch and process keys"):
             read_tasks = []
             for grpc_key in reducer_keys:
                 key = grpc_key.key
-                key = INPUT_REDUCER_PREFIX + "job_" + job_id + "/shuffle_" + str(r_id) + "/" + key
+                # key = INPUT_REDUCER_PREFIX + "job_" + job_id + "/shuffle_" + str(r_id) + "/" + key
                 read_tasks.append((src_bucket, key))
             responses = Parallel(backend="threading", n_jobs=len(read_tasks))(delayed(self.get)(*i) for i in read_tasks)
 
@@ -166,22 +151,21 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
 
         with tracing.Span("Compute reducer result"):
             for response in responses:
-                contents = response.decode("utf-8")
                 try:
-                    for srcIp, val in json.loads(contents).items():
+                    for srcIp, val in pickle.loads(response).items():
                         line_count +=1
                         if srcIp not in results:
                             results[srcIp] = 0
                         results[srcIp] += float(val)
                 except:
                     e = sys.exc_info()[0]
-                    print (e)
+                    print(e)
 
             time_in_secs += (time.time() - start_time)
 
-            #timeTaken = time_in_secs * 1000000000 # in 10^9 
-            #s3DownloadTime = 0
-            #totalProcessingTime = 0 
+            # timeTaken = time_in_secs * 1000000000 # in 10^9
+            # s3DownloadTime = 0
+            # totalProcessingTime = 0
             pret = [len(reducer_keys), line_count, time_in_secs]
             print ("Reducer" + str(r_id), pret)
 
@@ -191,37 +175,38 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
                 fname = "%sjob_%s/result" % (OUTPUT_REDUCER_PREFIX, job_id)
             else:
                 fname = "%sjob_%s/reducer_%s" % (OUTPUT_REDUCER_PREFIX, job_id, r_id)
-            
+
             metadata = {
                             "linecount":  '%s' % line_count,
                             "processingtime": '%s' % time_in_secs,
                             "memoryUsage": '%s' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
                     }
 
-            self.put(dest_bucket, fname, json.dumps(results), metadata=metadata)
+            self.put(dest_bucket, fname, pickle.dumps(results), metadata=metadata)
 
         # return pret
         return mapreduce_pb2.ReduceReply(
             reply="success"
-        )   
+        )
 
 
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
-    if transferType == S3:
-        log.info("Using inline or s3 transfers")
-        max_workers = int(os.getenv("MAX_SERVER_THREADS", 16))
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
-        mapreduce_pb2_grpc.add_ReducerServicer_to_server(
-            ReducerServicer(transferType=transferType), server)
-        server.add_insecure_port('[::]:' + args.sp)
-        server.start()
-        server.wait_for_termination()
-    elif transferType == XDT:
-        log.fatal("XDT not yet supported")
-        # XDTconfig = XDTutil.loadConfig()
-    else:
-        log.fatal("Invalid Transfer type")
+
+    XDTconfig = dict()
+    if transferType == XDT:
+        XDTconfig = XDTutil.loadConfig()
+        log.info("XDT config:")
+        log.info(XDTconfig)
+
+    log.info("Using inline or s3 transfers")
+    max_workers = int(os.getenv("MAX_SERVER_THREADS", 16))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
+    mapreduce_pb2_grpc.add_ReducerServicer_to_server(
+        ReducerServicer(transferType=transferType, XDTconfig=XDTconfig), server)
+    server.add_insecure_port('[::]:' + args.sp)
+    server.start()
+    server.wait_for_termination()
 
 
 if __name__ == '__main__':

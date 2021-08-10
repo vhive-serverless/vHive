@@ -33,9 +33,9 @@ import helloworld_pb2_grpc
 import helloworld_pb2
 import mapreduce_pb2_grpc
 import mapreduce_pb2
-# import destination as XDTdst
-# import source as XDTsrc
-# import utils as XDTutil
+import destination as XDTdst
+import source as XDTsrc
+import utils as XDTutil
 
 import grpc
 from grpc_reflection.v1alpha import reflection
@@ -72,7 +72,7 @@ if tracing.IsTracingEnabled():
     tracing.grpcInstrumentServer()
 
 # constants
-INPUT_MAPPER_PREFIX = "artemiy/input/"
+INPUT_MAPPER_PREFIX = "artemiy/"
 OUTPUT_MAPPER_PREFIX = "artemiy/task/mapper/"
 INPUT_REDUCER_PREFIX = OUTPUT_MAPPER_PREFIX
 OUTPUT_REDUCER_PREFIX = "artemiy/task/reducer/"
@@ -85,17 +85,6 @@ NUM_REDUCERS = int(os.getenv('NUM_REDUCERS', "2")) # must be power of 2 and smal
 AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
 AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
 
-# def get_self_ip():
-#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#     try:
-#         # doesn't even have to be reachable
-#         s.connect(('10.255.255.255', 1))
-#         IP = s.getsockname()[0]
-#     except Exception:
-#         IP = '127.0.0.1'
-#     finally:
-#         s.close()
-#     return IP
 
 class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
     def __init__(self, transferType, XDTconfig=None):
@@ -108,24 +97,24 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 aws_secret_access_key=AWS_SECRET
             )
         elif transferType == XDT:
-            log.fatal("XDT not yet supported")
-            # if XDTconfig is None:
-            #     log.fatal("Empty XDT config")
-            # self.XDTconfig = XDTconfig
+            if XDTconfig is None:
+                log.fatal("Empty XDT config")
+            self.XDTclient = XDTsrc.XDTclient(XDTconfig)
+            self.XDTconfig = XDTconfig
 
     def put(self, bucket, key, obj, metadata=None):
-        msg = "Mapper uploading object with key '" + key + "' to " + self.transferType
+        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
         log.info(msg)
         with tracing.Span(msg):
             # pickled = pickle.dumps(obj)
             if self.transferType == S3:
                 s3object = self.s3_client.Object(bucket_name=bucket, key=key)
-                if metadata == None:
+                if metadata is None:
                     s3object.put(Body=obj)
                 else:
                     s3object.put(Body=obj, Metadata=metadata)
             elif self.transferType == XDT:
-                log.fatal("XDT is not supported")
+                key = self.XDTclient.BroadcastPut(payload=obj)
 
         return key
 
@@ -138,11 +127,9 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
                 response = obj.get()
             elif self.transferType == XDT:
-                log.fatal("XDT is not yet supported")
+                return XDTdst.BroadcastGet(key, self.XDTconfig)
 
-        # return pickle.loads(response['Body'].read())
         return response['Body'].read()
-
 
     def call_mapper(self, arg: dict):
         #   "srcBucket": "storage-module-test", 
@@ -171,6 +158,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
 
         resp = stub.Map(req)
         log.info(f"mapper reply: {resp}")
+        return resp.keys
 
     def call_reducer(self, arg: dict):
         # "srcBucket": "storage-module-test", 
@@ -205,7 +193,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
 
         map_ev = {
         "srcBucket": "storage-module-test", 
-        "destBucket": "vhive-mapreduce", 
+        "destBucket": "storage-module-test",
         "keys": ["part-00000"],
         "jobId": "0",
         "mapperId": 0,
@@ -222,24 +210,33 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
         mapper_responses=[]
         ex = futures.ThreadPoolExecutor(max_workers=NUM_MAPPERS)
         all_result_futures = ex.map(self.call_mapper, map_tasks)
-        for result in all_result_futures: #this is just to wait for all futures to complete
-            mapper_responses.append(result)
-        log.info("calling mappers done")
-        #print(mapper_responses)
 
-        reduce_input_keys = ["map_" + str(x) for x in range(NUM_MAPPERS)] # this list is the same for 
+        reduce_input_keys = {}
+        for i in range(NUM_REDUCERS):
+            reduce_input_keys[i] = []
+
+        for result_keys in all_result_futures: #this is just to wait for all futures to complete
+            for i in range(NUM_REDUCERS):
+                reduce_input_keys[i].append(result_keys[i].key)
+
+        log.info("calling mappers done")
+        # print(mapper_responses)
+
+        # reduce_input_keys = ["map_" + str(x) for x in range(NUM_MAPPERS)] # this list is the same for
                                                                         # all reducers as each of them has to read 
                                                                         # a shuffle result from each mapper
         reduce_ev = {
             "srcBucket": "storage-module-test", 
-            "destBucket": "vhive-mapreduce",
-            "keys": reduce_input_keys,
+            "destBucket": "storage-module-test",
             "nReducers": NUM_REDUCERS,
             "jobId": "0",
             "reducerId": 0, 
             }
         reducer_tasks = [] 
         for i in range(NUM_REDUCERS):
+            log.info("assigning keys to reducer %d", i)
+            log.info(reduce_input_keys[i])
+            reduce_ev["keys"] = reduce_input_keys[i]
             reducer_tasks.append(reduce_ev.copy())
             reducer_tasks[i]['reducerId'] = i
 
@@ -258,25 +255,26 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
 
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
-    if transferType == S3:
-        log.info("Using inline or s3 transfers")
-        max_workers = int(os.getenv("MAX_SERVER_THREADS", 16))
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
-        helloworld_pb2_grpc.add_GreeterServicer_to_server(
-            GreeterServicer(transferType=transferType), server)
-        SERVICE_NAMES = (
-            helloworld_pb2.DESCRIPTOR.services_by_name['Greeter'].full_name,
-            reflection.SERVICE_NAME,
-        )
-        reflection.enable_server_reflection(SERVICE_NAMES, server)
-        server.add_insecure_port('[::]:' + args.sp)
-        server.start()
-        server.wait_for_termination()
-    elif transferType == XDT:
-        log.fatal("XDT not yet supported")
-        # XDTconfig = XDTutil.loadConfig()
-    else:
-        log.fatal("Invalid Transfer type")
+
+    XDTconfig = dict()
+    if transferType == XDT:
+        XDTconfig = XDTutil.loadConfig()
+        log.info("XDT config:")
+        log.info(XDTconfig)
+
+    log.info("Using inline or s3 transfers")
+    max_workers = int(os.getenv("MAX_SERVER_THREADS", 16))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
+    helloworld_pb2_grpc.add_GreeterServicer_to_server(
+        GreeterServicer(transferType=transferType, XDTconfig=XDTconfig), server)
+    SERVICE_NAMES = (
+        helloworld_pb2.DESCRIPTOR.services_by_name['Greeter'].full_name,
+        reflection.SERVICE_NAME,
+    )
+    reflection.enable_server_reflection(SERVICE_NAMES, server)
+    server.add_insecure_port('[::]:' + args.sp)
+    server.start()
+    server.wait_for_termination()
 
 
 if __name__ == '__main__':
