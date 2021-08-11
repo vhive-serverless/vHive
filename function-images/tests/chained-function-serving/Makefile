@@ -52,6 +52,26 @@ consumer-image: Dockerfile consumer/consumer.go proto/prodcon.pb.go proto/prodco
 consumer-image-push: consumer-image
 	docker push vhiveease/chained-functions-serving-consumer:latest
 
+python-producer-image: Dockerfile proto/helloworld_pb2.py proto/helloworld_pb2_grpc.py producer/main.py
+	docker buildx build $(PLATFORM) \
+	-t vhiveease/chained-functions-serving-python-producer:latest \
+	--build-arg target_arg=producer \
+	--secret id=GOPRIVATE_KEY \
+	-f Python.Dockerfile ../../..
+
+python-producer-image-push: python-producer-image
+	docker push vhiveease/chained-functions-serving-python-producer:latest
+
+python-consumer-image: Dockerfile proto/helloworld_pb2.py proto/helloworld_pb2_grpc.py consumer/main.py
+	docker buildx build $(PLATFORM) \
+	-t vhiveease/chained-functions-serving-python-consumer:latest \
+	--build-arg target_arg=consumer \
+	--secret id=GOPRIVATE_KEY \
+	-f Python.Dockerfile ../../..
+
+python-consumer-image-push: python-consumer-image
+	docker push vhiveease/chained-functions-serving-python-consumer:latest
+
 
 cmd/server/tempReader_grpc.pb.go cmd/server/tempReader.pb.go: cmd/server/tempReader.proto
 	protoc \

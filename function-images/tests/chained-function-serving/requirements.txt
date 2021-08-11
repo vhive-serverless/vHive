@@ -1,0 +1,4 @@
+grpcio==1.38.1
+grpcio-reflection==1.38.1
+grpcio-tools==1.38.1
+environs==9.3.2
