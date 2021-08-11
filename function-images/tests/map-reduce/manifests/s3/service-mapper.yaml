@@ -27,6 +27,11 @@ metadata:
   namespace: default
 spec:
   template:
+    metadata:
+      annotations:
+        # prevent cold boots
+        autoscaling.knative.dev/minScale: "8"
+        autoscaling.knative.dev/maxScale: "8"
     spec:
       containerConcurrency: 1
       containers:

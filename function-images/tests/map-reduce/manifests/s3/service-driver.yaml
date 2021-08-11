@@ -51,9 +51,9 @@ spec:
             - name: ENABLE_TRACING
               value: "true"
             - name: NUM_MAPPERS
-              value: "64"
+              value: "8"
             - name: NUM_REDUCERS
-              value: "16"
+              value: "2"
           ports:
             # For `h2c`, see https://knative.tips/networking/http2/
             - name: h2c
