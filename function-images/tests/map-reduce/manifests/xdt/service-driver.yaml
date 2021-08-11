@@ -39,17 +39,25 @@ spec:
           imagePullPolicy: Always
           env:
             - name: TRANSFER_TYPE
-              value: "S3"
+              value: "XDT"
             - name: ROUTING
               value: "Store&Forward"
+            - name: AWS_ACCESS_KEY
+              value: ${AWS_ACCESS_KEY}
+            - name: AWS_SECRET_KEY
+              value: ${AWS_SECRET_KEY}
+            - name: AWS_REGION
+              value: "us-west-1"
             - name: MAX_SERVER_THREADS
               value: "10"
             - name: ENABLE_TRACING
               value: "true"
             - name: NUM_MAPPERS
-              value: "64"
+              value: "8"
             - name: NUM_REDUCERS
-              value: "16"
+              value: "2"
+            - name: TRACING_ENABLED
+              value: "true"
           ports:
             # For `h2c`, see https://knative.tips/networking/http2/
             - name: h2c
