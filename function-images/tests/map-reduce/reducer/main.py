@@ -79,25 +79,24 @@ AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
 class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
     def __init__(self, transferType, XDTconfig=None):
         self.transferType = transferType
-        if transferType == S3:
-            self.s3_client = boto3.resource(
-                service_name='s3',
-                region_name=os.getenv("AWS_REGION", 'us-west-1'),
-                aws_access_key_id=AWS_ID,
-                aws_secret_access_key=AWS_SECRET
-            )
-        elif transferType == XDT:
+        self.s3_client = boto3.resource(
+            service_name='s3',
+            region_name=os.getenv("AWS_REGION", 'us-west-1'),
+            aws_access_key_id=AWS_ID,
+            aws_secret_access_key=AWS_SECRET
+        )
+        if transferType == XDT:
             if XDTconfig is None:
                 log.fatal("Empty XDT config")
             self.XDTclient = XDTsrc.XDTclient(XDTconfig)
             self.XDTconfig = XDTconfig
 
-    def put(self, bucket, key, obj, metadata=None):
+    def put(self, bucket, key, obj, metadata=None, forceS3=False):
         msg = "Reducer uploading object with key '" + key + "' to " + self.transferType
         log.info(msg)
         with tracing.Span(msg):
             # pickled = pickle.dumps(obj)
-            if self.transferType == S3:
+            if self.transferType == S3 or forceS3:
                 s3object = self.s3_client.Object(bucket_name=bucket, key=key)
                 if metadata is None:
                     s3object.put(Body=obj)
@@ -138,7 +137,7 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
 
         # Download and process all keys
         responses = []
-        with tracing.Span("Fetch and process keys"):
+        with tracing.Span("Fetch keys"):
             read_tasks = []
             for grpc_key in reducer_keys:
                 key = grpc_key.key
@@ -182,7 +181,7 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
                             "memoryUsage": '%s' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
                     }
 
-            self.put(dest_bucket, fname, pickle.dumps(results), metadata=metadata)
+            self.put(dest_bucket, fname, pickle.dumps(results), metadata=metadata, forceS3=True)
 
         # return pret
         return mapreduce_pb2.ReduceReply(

@@ -156,17 +156,21 @@ class MapperServicer(mapreduce_pb2_grpc.MapperServicer):
 
         # INPUT CSV => OUTPUT JSON
 
-        with tracing.Span("Fetch and process keys"):
+        start_time = time.time()
+        with tracing.Span("Fetch keys"):
             start_time = 0
+            content_list = []
             for grpc_key in src_keys:
                 key = grpc_key.key
                 key = INPUT_MAPPER_PREFIX + key
                 obj = self.s3_client.Object(bucket_name=src_bucket, key=key)
                 response = obj.get()
-                start_time = time.time()
-                contents = response['Body'].read().decode("utf-8") 
+                contents = response['Body'].read().decode("utf-8")
+                content_list.append(contents)
                 # TODO self.get??
 
+        with tracing.Span("process keys and shuffle"):
+            for contents in content_list:
                 for line in contents.split('\n')[:-1]:
                     line_count +=1
                     try:
@@ -179,7 +183,6 @@ class MapperServicer(mapreduce_pb2_grpc.MapperServicer):
                         # print (e)
                         err += '%s' % e
 
-        with tracing.Span("Shuffle output"):
             shuffle_output = []
             for i in range(n_reducers):
                 reducer_output = {}
