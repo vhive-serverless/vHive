@@ -104,7 +104,7 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
                 else:
                     s3object.put(Body=obj, Metadata=metadata)
             elif self.transferType == XDT:
-                key = self.XDTclient.BroadcastPut(payload=obj)
+                key = self.XDTclient.Put(payload=obj)
 
         return key
 
@@ -117,7 +117,7 @@ class ReducerServicer(mapreduce_pb2_grpc.ReducerServicer):
                 response = obj.get()
                 return response['Body'].read()
             elif self.transferType == XDT:
-                return XDTdst.BroadcastGet(key, self.XDTconfig)
+                return XDTdst.Get(key, self.XDTconfig)
 
     def Reduce(self, request, context):
         start_time = time.time()

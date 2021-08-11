@@ -114,7 +114,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 else:
                     s3object.put(Body=obj, Metadata=metadata)
             elif self.transferType == XDT:
-                key = self.XDTclient.BroadcastPut(payload=obj)
+                key = self.XDTclient.Put(payload=obj)
 
         return key
 
@@ -127,7 +127,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
                 response = obj.get()
             elif self.transferType == XDT:
-                return XDTdst.BroadcastGet(key, self.XDTconfig)
+                return XDTdst.Get(key, self.XDTconfig)
 
         return response['Body'].read()
 
