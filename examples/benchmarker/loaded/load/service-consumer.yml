@@ -1,0 +1,26 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: consumer-load
+  namespace: default
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/minScale: "10"
+    spec:
+      containerConcurrency: 1
+      containers:
+      - env:
+        - name: TRANSFER_TYPE
+          value: INLINE
+        - name: ENABLE_TRACING
+          value: "false"
+        - name: TRANSFER_SIZE_KB
+          value: "1024"
+        image: docker.io/vhiveease/chained-functions-serving-consumer-load:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: h2c

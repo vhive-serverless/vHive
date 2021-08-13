@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -25,6 +26,7 @@ var (
 	completed   int64
 	latSlice    LatencySlice
 	portFlag    *int
+	parallel    *int
 	grpcTimeout time.Duration
 	withTracing *bool
 )
@@ -32,12 +34,14 @@ var (
 func main() {
 	endpoint := flag.String("endpoint", "", "Endpoint to ping")
 	sampleSize := flag.Int64("sampleSize", 10, "Number of samples")
+	parallel = flag.Int("parallel", 1, "Number of samples")
 	latencyOutputFile := flag.String("latf", "lat.csv", "CSV file for the latency measurements in microseconds")
 	portFlag = flag.Int("port", 80, "The port that functions listen to")
 	withTracing = flag.Bool("trace", false, "Enable tracing in the client")
 	zipkin := flag.String("zipkin", "http://localhost:9411/api/v2/spans", "zipkin url")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 	grpcTimeout = time.Duration(*flag.Int("grpcTimeout", 30, "Timeout in seconds for gRPC requests")) * time.Second
+
 
 	flag.Parse()
 
@@ -71,8 +75,52 @@ func runExperiment(endpoint string, sampleSize int64) {
 	for i = 0; i < sampleSize; i++ {
 		invokeServingFunction(endpoint)
 	}
+	address := fmt.Sprintf("%s:%d", endpoint, *portFlag)
+	if sampleSize == -1 {
+		for i:=0; i<*parallel;i++{
+			go func(){
+				for ; ; {
+					SayHello(address)
+					time.Sleep(time.Microsecond)
+				}
+			}()
+		}
+		c := make(chan os.Signal)
+    	signal.Notify(c, os.Interrupt)
+		select {
+        case sig := <-c:
+            fmt.Printf("Got %s signal. Aborting...\n", sig)
+            os.Exit(0)
+        }
+	}
+	if sampleSize == 0 {
+		loadTest(address)
+	}
 	log.Println("Experiment finished!")
 
+}
+
+func loadTest(address string){
+	total_requests := 1000
+	var avgLatency []int64
+	for fanout := 1;fanout<9;fanout=fanout*2{
+		requestsPerThread := int(total_requests/fanout)
+		var wg sync.WaitGroup
+		start := time.Now()
+		for threadNo:=0;threadNo<fanout;threadNo++{
+			wg.Add(1)
+			go func(requestsPerThread int) {
+				defer wg.Done()
+				for count:=0;count<requestsPerThread;count++{
+					SayHello(address)
+				}
+			}(requestsPerThread)
+		}
+		wg.Wait()
+		duration := time.Since(start)
+		avgLatency = append(avgLatency, duration.Microseconds()/1000)
+	}
+	fmt.Println(avgLatency)
 }
 
 func SayHello(address string) {
