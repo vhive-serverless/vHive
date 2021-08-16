@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 EXTRAGOARGS:=-v -race -cover
-test:
+test-cri-firecracker:
 
 	./../scripts/cloudlab/start_onenode_vhive_cluster.sh
 
@@ -37,8 +37,27 @@ test:
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
 	sleep 1m
+	go clean -testcache
+	go test ./... $(EXTRAGOARGS)
 
-	go test ./ $(EXTRAGOARGS)
+test-cri-gvisor:
+
+	./../scripts/cloudlab/start_onenode_vhive_cluster.sh gvisor
+
+	sleep 2m
+	KUBECONFIG=/etc/kubernetes/admin.conf ./../scripts/setup_zipkin.sh
+	sleep 5s
+
+	go run ./../examples/registry/populate_registry.go -imageFile ./../examples/registry/images.txt
+	sleep 1s
+
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldlocal -f ./../configs/knative_workloads/helloworld_local.yaml
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
+	sleep 1m
+	go clean -testcache
+	go test . $(EXTRAGOARGS)
 
 test-man:
 	echo "Nothing to test manually"

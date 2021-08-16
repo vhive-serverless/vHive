@@ -134,7 +134,10 @@ $(SUBDIRS):
 test-subdirs: $(SUBDIRS)
 
 test-cri:
-	$(MAKE) -C cri test
+	$(MAKE) -C cri test-cri-firecracker
+
+test-cri-gvisor:	
+	$(MAKE) -C cri test-cri-gvisor
 
 test-cri-travis: # Testing in travis is deprecated
 	$(MAKE) -C cri test-travis

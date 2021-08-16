@@ -40,14 +40,11 @@ import (
 )
 
 var (
-	coord         *coordinator
 	gatewayURL    = flag.String("gatewayURL", "192.168.1.240.sslip.io", "URL of the gateway")
 	namespaceName = flag.String("namespace", "default", "name of namespace in which services exists")
 )
 
 func TestMain(m *testing.M) {
-	coord = newCoordinator(nil, withoutOrchestrator())
-
 	flag.Parse()
 
 	ret := m.Run()
