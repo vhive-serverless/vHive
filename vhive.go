@@ -47,7 +47,7 @@ const (
 	port    = ":3333"
 	fwdPort = ":3334"
 
-	testImageName = "vhiveease/helloworld:var_workload"
+	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
 )
 
 var (
@@ -83,7 +83,7 @@ func main() {
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 	criSock = flag.String("criSock", "/etc/firecracker-containerd/fccd-cri.sock", "Socket address for CRI service")
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
-	sandbox := flag.String("sandbox", "firecracker", "Determine the sandboxing-technique to use")
+	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
 	flag.Parse()
 
 	if *sandbox != "firecracker" && *sandbox != "gvisor" {
