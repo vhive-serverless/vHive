@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2020 Plamen Petrov, Nathaniel Tornow and EASE lab
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 package firecracker
 
 import (
@@ -17,7 +39,6 @@ const (
 	guestIPEnv        = "GUEST_ADDR"
 	guestPortEnv      = "GUEST_PORT"
 	guestImageEnv     = "GUEST_IMAGE"
-	guestPortValue    = "50051"
 )
 
 type FirecrackerService struct {
@@ -27,8 +48,7 @@ type FirecrackerService struct {
 
 	coordinator *coordinator
 
-	// to store mapping from pod to guest image and port temporarily
-	podVMConfigs map[string]*VMConfig
+	vmConfigs map[string]*VMConfig
 }
 
 // VMConfig wraps the IP and port of the guest VM
@@ -46,6 +66,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 	}
 	fs.stockRuntimeClient = stockRuntimeClient
 	fs.coordinator = newFirecrackerCoordinator(orch)
+	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
 }
 
@@ -83,7 +104,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	}()
 
 	config := r.GetConfig()
-	guestImage, err := getGuestImage(config)
+	guestImage, err := getEnvVal(guestImageEnv, config)
 	if err != nil {
 		log.WithError(err).Error()
 		return nil, err
@@ -95,8 +116,14 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPortValue}
-	fs.insertPodVMConfig(r.GetPodSandboxId(), vmConfig)
+	guestPort, err := getEnvVal(guestPortEnv, config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPort}
+	fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
 
 	// Wait for placeholder UC to be created
 	<-stockDone
@@ -112,13 +139,13 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 }
 
 func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	vmConfig, err := fs.getPodVMConfig(r.GetPodSandboxId())
+	vmConfig, err := fs.getVMConfig(r.GetPodSandboxId())
 	if err != nil {
 		log.WithError(err).Error()
 		return nil, err
 	}
 
-	fs.removePodVMConfig(r.GetPodSandboxId())
+	fs.removeVMConfig(r.GetPodSandboxId())
 
 	guestIPKeyVal := &criapi.KeyValue{Key: guestIPEnv, Value: vmConfig.guestIP}
 	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: vmConfig.guestPort}
@@ -146,25 +173,25 @@ func (fs *FirecrackerService) RemoveContainer(ctx context.Context, r *criapi.Rem
 	return fs.stockRuntimeClient.RemoveContainer(ctx, r)
 }
 
-func (fs *FirecrackerService) insertPodVMConfig(podID string, vmConfig *VMConfig) {
+func (fs *FirecrackerService) insertVMConfig(podID string, vmConfig *VMConfig) {
 	fs.Lock()
 	defer fs.Unlock()
 
-	fs.podVMConfigs[podID] = vmConfig
+	fs.vmConfigs[podID] = vmConfig
 }
 
-func (fs *FirecrackerService) removePodVMConfig(podID string) {
+func (fs *FirecrackerService) removeVMConfig(podID string) {
 	fs.Lock()
 	defer fs.Unlock()
 
-	delete(fs.podVMConfigs, podID)
+	delete(fs.vmConfigs, podID)
 }
 
-func (fs *FirecrackerService) getPodVMConfig(podID string) (*VMConfig, error) {
+func (fs *FirecrackerService) getVMConfig(podID string) (*VMConfig, error) {
 	fs.Lock()
 	defer fs.Unlock()
 
-	vmConfig, isPresent := fs.podVMConfigs[podID]
+	vmConfig, isPresent := fs.vmConfigs[podID]
 	if !isPresent {
 		log.Errorf("VM config for pod %s does not exist", podID)
 		return nil, errors.New("VM config for pod does not exist")
@@ -173,10 +200,10 @@ func (fs *FirecrackerService) getPodVMConfig(podID string) (*VMConfig, error) {
 	return vmConfig, nil
 }
 
-func getGuestImage(config *criapi.ContainerConfig) (string, error) {
+func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 	envs := config.GetEnvs()
 	for _, kv := range envs {
-		if kv.GetKey() == guestImageEnv {
+		if kv.GetKey() == key {
 			return kv.GetValue(), nil
 		}
 

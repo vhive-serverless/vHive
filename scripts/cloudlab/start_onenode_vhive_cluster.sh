@@ -26,7 +26,16 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 SCRIPTS=$ROOT/scripts
 
-GVISOR=$1
+SANDBOX=$1
+
+if [ -z "$SANDBOX" ]; then
+    SANDBOX="firecracker"
+fi
+
+if [ "$SANDBOX" != "gvisor" ] && [ "$SANDBOX" != "firecracker" ]; then
+    echo Specified sanboxing technique is not supported. Possible are \"firecracker\" and \"gvisor\"
+    exit 1
+fi
 
 echo Clean up host resources if left after previous runs
 $SCRIPTS/github_runner/clean_cri_runner.sh
@@ -38,10 +47,10 @@ echo Run the stock containerd daemon
 sudo containerd 1>$CTRDLOGDIR/ctrd.out 2>$CTRDLOGDIR/ctrd.err &
 sleep 1s
 
-if [ "$GVISOR" == "gvisor" ]; then
+if [ "$SANDBOX" == "gvisor" ]; then
     echo Run the gvisor-containerd daemon
     sudo /usr/local/bin/gvisor-containerd --address /run/gvisor-containerd/gvisor-containerd.sock --config /etc/gvisor-containerd/config.toml 1>$CTRDLOGDIR/gvisor.out 2>$CTRDLOGDIR/gvisor.err &
-else
+elif [ "$SANDBOX" == "firecracker" ]; then
     echo Run the firecracker-containerd daemon
     sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$CTRDLOGDIR/fccd.out 2>$CTRDLOGDIR/fccd.err &
 fi
@@ -53,7 +62,7 @@ cd $ROOT
 source /etc/profile && go build
 
 echo Running vHive with \"${GITHUB_VHIVE_ARGS}\" arguments
-sudo ./vhive ${GITHUB_VHIVE_ARGS} 1>$CTRDLOGDIR/orch.out 2>$CTRDLOGDIR/orch.err &
+sudo ./vhive -sandbox ${SANDBOX} ${GITHUB_VHIVE_ARGS} 1>$CTRDLOGDIR/orch.out 2>$CTRDLOGDIR/orch.err &
 sleep 1s
 
 $SCRIPTS/cluster/create_one_node_cluster.sh
