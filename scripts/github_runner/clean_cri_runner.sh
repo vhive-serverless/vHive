@@ -35,7 +35,8 @@ fi
 sudo pkill -INT vhive
 sudo pkill -9 firecracker-containerd
 sudo pkill -9 firecracker
-sudo pkill -9 containerd
+sudo pkill -9 -f containerd
+sudo pkill -9 -f runsc
 
 ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
@@ -67,6 +68,12 @@ echo Cleaning /run/firecracker-containerd/*
 sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
     /run/firecracker-containerd/io.containerd.runtime.v1.linux \
     /run/firecracker-containerd/io.containerd.runtime.v2.task
+
+echo Cleaning /run/gvisor-containerd/*
+sudo rm -rf /run/gvisor-containerd/*
+
+echo Cleaning /var/lib/gvisor-containerd/*
+sudo rm -rf /var/lib/gvisor-containerd/*
 
 echo Creating a fresh devmapper
 $PWD/../create_devmapper.sh
