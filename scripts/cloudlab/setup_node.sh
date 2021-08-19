@@ -42,6 +42,8 @@ $SCRIPTS/utils/disable_auto_updates.sh
 source $SCRIPTS/install_go.sh
 $SCRIPTS/setup_system.sh
 
+sudo mkdir -p /etc/vhive-cri
+
 if [ "$SANDBOX" == "firecracker" ]; then
     $SCRIPTS/setup_firecracker_containerd.sh 
 fi

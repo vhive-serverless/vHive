@@ -27,7 +27,7 @@ STOCK_CONTAINERD=$1
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     CRI_SOCK="/run/containerd/containerd.sock"
 else
-    CRI_SOCK="/etc/firecracker-containerd/fccd-cri.sock"
+    CRI_SOCK="/etc/vhive-cri/vhive-cri.sock"
 fi
 # Create kubelet service
 sudo sh -c 'cat <<EOF > /etc/systemd/system/kubelet.service.d/0-containerd.conf

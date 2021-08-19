@@ -33,7 +33,7 @@ $DIR/setup_worker_kubelet.sh $STOCK_CONTAINERD
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     CRI_SOCK="/run/containerd/containerd.sock"
 else
-    CRI_SOCK="/etc/firecracker-containerd/fccd-cri.sock"
+    CRI_SOCK="/etc/vhive-cri/vhive-cri.sock"
 fi
 
 sudo kubeadm init --ignore-preflight-errors=all --cri-socket $CRI_SOCK --pod-network-cidr=192.168.0.0/16

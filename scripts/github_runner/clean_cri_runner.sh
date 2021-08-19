@@ -39,7 +39,7 @@ KUBECONFIG=/etc/kubernetes/admin.conf kn service delete --all
 if [ "$SANDBOX" == "stock-only" ]; then
     sudo kubeadm reset --cri-socket /run/containerd/containerd.sock -f
 else
-    sudo kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
+    sudo kubeadm reset --cri-socket /etc/vhive-cri/vhive-cri.sock -f
 fi
 
 if [ "$SANDBOX" == "firecracker" ]; then
@@ -75,7 +75,7 @@ elif [ "$SANDBOX" == "firecracker" ]; then
     sudo dmsetup remove fc-dev-thinpool
 fi
 
-sudo rm /etc/firecracker-containerd/fccd-cri.sock
+sudo rm /etc/vhive-cri/vhive-cri.sock
 rm ${HOME}/.kube/config
 sudo rm -rf ${HOME}/tmp
 
