@@ -138,8 +138,8 @@ class MetatrainerServicer(stacking_pb2_grpc.TrainerServicer):
         model_full_key = 'model_full_key'
         meta_predictions_key = 'meta_predictions_key'
 
-        storage.put(meta_predictions_key, meta_predictions)
-        storage.put(model_full_key, model_full)
+        meta_predictions_key = storage.put(meta_predictions_key, meta_predictions)
+        model_full_key = storage.put(model_full_key, model_full)
 
         return meta_predictions_key, model_full_key
 

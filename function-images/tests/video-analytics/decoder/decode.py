@@ -110,7 +110,7 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         if self.transferType == S3:
             log.info("Using s3, getting bucket")
             with tracing.Span("Video fetch"):
-                videoBytes = storage.get(request.s3key, dontPickle=True)
+                videoBytes = storage.get(request.s3key, doPickle=False)
             log.info("decoding frames of the s3 object")
         elif self.transferType == INLINE:
             log.info("Inline video decode. Decoding frames.")
