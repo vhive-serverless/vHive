@@ -47,6 +47,9 @@ jobs:
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+    
+    - name: Create directory for vHive-CRI
+      run: sudo mkdir -p /etc/vhive-cri
 
     - name: Setup firecracker-containerd
       run: ./scripts/setup_firecracker_containerd.sh
@@ -93,6 +96,9 @@ jobs:
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+
+    - name: Create directory for vHive-CRI
+      run: sudo mkdir -p /etc/vhive-cri
 
     - name: Setup gvisor-containerd
       run: ./scripts/setup_gvisor_containerd.sh
