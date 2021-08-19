@@ -61,11 +61,11 @@ def init(service, bucket):
         elasticache_client = redis.Redis.from_url(bucket)
 
 # `put` uploads the payload to the storage service using the provided key
-def put(key, obj, dontPickle = False):
+def put(key, obj, doPickle = True):
     msg = "Driver uploading object with key '" + key + "' to " + transferType
     log.info(msg)
     pickled = obj
-    if not dontPickle: 
+    if doPickle: 
         pickled = pickle.dumps(obj)
     if transferType == S3:
         s3object = s3_client.Object(bucket_name=benchName, key=key)
@@ -81,14 +81,14 @@ def put(key, obj, dontPickle = False):
 
 # `get` retrieves a payload corresponding to the provided key from the storage service.
 # An error will occur if the key is not prescent on the service.
-def get(key, dontPickle = False):
+def get(key, doPickle = True):
     msg = "Driver gets key '" + key + "' from " + transferType
     log.info(msg)
     response = None
     if transferType == S3:
         obj = s3_client.Object(bucket_name=benchName, key=key)
         response = obj.get()
-        if dontPickle:
+        if doPickle:
             return response['Body'].read()
         else:
             return pickle.loads(response['Body'].read())
@@ -96,7 +96,7 @@ def get(key, dontPickle = False):
         log.fatal("XDT is not yet supported")
     elif transferType == ELASTICACHE:
         response = elasticache_client.get(key)
-        if dontPickle:
+        if doPickle:
             return response['Body'].read()
         else:
             return pickle.loads(response['Body'].read())

@@ -142,7 +142,7 @@ func PutFile(key string, file *os.File) string {
 		return key
 
 	} else if transferType == ELASTICACHE {
-		log.Fatalf("File transfer via ElastiCahce currently unsupported, please use []bytes: `Put(key string, payloadData []byte) string`")
+		log.Fatalf("File transfer via ElastiCache is currently not supported, please use []bytes: `Put(key string, payloadData []byte) string`")
 	} else {
 		log.Fatalf("Unsupported transfer type: %s", transferType)
 	}
