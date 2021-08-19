@@ -24,19 +24,37 @@
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-STOCK_CONTAINERD=$1
+SANDBOX=$1
+
+if [ -z "$SANDBOX" ]; then
+    SANDBOX="firecracker"
+fi
+
+if [ "$SANDBOX" != "gvisor" ] && [ "$SANDBOX" != "firecracker" ] && [ "$SANDBOX" != "stock-only" ]; then
+    echo Specified cleaning choice is not supported. Possible are \"firecracker\", \"gvisor\" or \"stock-only\"
+    exit 1
+fi
 
 KUBECONFIG=/etc/kubernetes/admin.conf kn service delete --all
-if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
+if [ "$SANDBOX" == "stock-only" ]; then
     sudo kubeadm reset --cri-socket /run/containerd/containerd.sock -f
 else
     sudo kubeadm reset --cri-socket /etc/firecracker-containerd/fccd-cri.sock -f
 fi
-sudo pkill -INT vhive
-sudo pkill -9 firecracker-containerd
-sudo pkill -9 firecracker
-sudo pkill -9 -f containerd
-sudo pkill -9 -f runsc
+
+if [ "$SANDBOX" == "firecracker" ]; then
+    sudo pkill -INT vhive
+    sudo pkill -9 firecracker-containerd
+    sudo pkill -9 firecracker
+    sudo pkill -9 containerd
+fi
+
+if [ "$SANDBOX" == "gvisor" ]; then
+    sudo pkill -INT vhive
+    sudo pkill -9 containerd
+    sudo pkill -9 -f gvisor-containerd
+    sudo pkill -9 -f runsc
+fi
 
 ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
@@ -47,11 +65,11 @@ bridge -j vlan |jq -r '.[].ifname'| while read line ; do sudo ip link delete "$l
 CONTAINERID=$(basename $(cat /proc/1/cpuset))
 
 # Docker container ID is 64 characters long.
-if [ 64 -eq ${#CONTAINERID} ]; then
+if [ 64 -eq ${#CONTAINERID} ] && [ "$SANDBOX" == "firecracker" ]; then
     echo Removing devmapper devices for the current container
     for de in `sudo dmsetup ls| cut -f1|grep $CONTAINERID |grep snap`; do sudo dmsetup remove $de && echo Removed $de; done
     sudo dmsetup remove "${CONTAINERID}_thinpool"
-else
+elif [ "$SANDBOX" == "firecracker" ]; then
     echo Removing devmapper devices
     for de in `sudo dmsetup ls| cut -f1|grep thinpool`; do sudo dmsetup remove $de && echo Removed $de; done
     sudo dmsetup remove fc-dev-thinpool
@@ -61,19 +79,26 @@ sudo rm /etc/firecracker-containerd/fccd-cri.sock
 rm ${HOME}/.kube/config
 sudo rm -rf ${HOME}/tmp
 
-echo Cleaning /var/lib/firecracker-containerd/*
-for d in containerd shim-base snapshotter; do sudo rm -rf /var/lib/firecracker-containerd/$d; done
+if [ "$SANDBOX" == "firecracker" ]; then
+    echo Cleaning /var/lib/firecracker-containerd/*
+    for d in containerd shim-base snapshotter; do sudo rm -rf /var/lib/firecracker-containerd/$d; done
 
-echo Cleaning /run/firecracker-containerd/*
-sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
-    /run/firecracker-containerd/io.containerd.runtime.v1.linux \
-    /run/firecracker-containerd/io.containerd.runtime.v2.task
+    echo Cleaning /run/firecracker-containerd/*
+    sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
+        /run/firecracker-containerd/io.containerd.runtime.v1.linux \
+        /run/firecracker-containerd/io.containerd.runtime.v2.task
+fi
 
-echo Cleaning /run/gvisor-containerd/*
-sudo rm -rf /run/gvisor-containerd/*
+if [ "$SANDBOX" == "gvisor" ]; then
+    echo Cleaning /run/gvisor-containerd/*
+    sudo rm -rf /run/gvisor-containerd/*
 
-echo Cleaning /var/lib/gvisor-containerd/*
-sudo rm -rf /var/lib/gvisor-containerd/*
+    echo Cleaning /var/lib/gvisor-containerd/*
+    sudo rm -rf /var/lib/gvisor-containerd/*
 
-echo Creating a fresh devmapper
-$PWD/../create_devmapper.sh
+fi
+
+if [ "$SANDBOX" == "firecracker" ]; then
+    echo Creating a fresh devmapper
+    $PWD/../create_devmapper.sh
+fi
