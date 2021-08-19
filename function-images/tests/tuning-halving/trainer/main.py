@@ -178,13 +178,13 @@ class TrainerServicer(tuning_pb2_grpc.TrainerServicer):
         # Write to S3
         model_key = f"model_{count}"
         pred_key = f"pred_model_{count}"
-        self.put(model, model_key)
-        self.put(y_pred, pred_key)
+        model_key2 = self.put(model, model_key)
+        pred_key2 = self.put(y_pred, pred_key)
 
         return tuning_pb2.TrainReply(
             model=b'',
-            model_key=model_key,
-            pred_key=pred_key,
+            model_key=model_key2,
+            pred_key=pred_key2,
             score=score,
             params=pickle.dumps(model_config),
         )

@@ -171,9 +171,9 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 } for hyperparam in generate_hyperparam_sets(hyperparam_config['params'])
             ]
         }
-        self.put(dataset, 'dataset_key')
+        key = self.put(dataset, 'dataset_key')
         return {
-            'dataset_key': 'dataset_key',
+            'dataset_key': key,
             'models_config': models_config
         }
 
