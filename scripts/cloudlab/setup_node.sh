@@ -26,21 +26,33 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 SCRIPTS=$ROOT/scripts
 
-STOCK_CONTAINERD=$1
+SANDBOX=$1
+
+if [ -z "$SANDBOX" ]; then
+    SANDBOX="firecracker"
+fi
+
+if [ "$SANDBOX" != "gvisor" ] && [ "$SANDBOX" != "firecracker" ]; then
+    echo Specified sanboxing technique is not supported. Possible are \"firecracker\" and \"gvisor\"
+    exit 1
+fi
 
 $SCRIPTS/utils/disable_auto_updates.sh
 
 source $SCRIPTS/install_go.sh
 $SCRIPTS/setup_system.sh
 
-if [ "$STOCK_CONTAINERD" != "stock-only" ]; then
-    $SCRIPTS/setup_firecracker_containerd.sh
+if [ "$SANDBOX" == "firecracker" ]; then
+    $SCRIPTS/setup_firecracker_containerd.sh 
+fi
+
+if [ "$SANDBOX" == "gvisor" ]; then
     $SCRIPTS/setup_gvisor_containerd.sh
 fi
 
 $SCRIPTS/install_stock.sh
 
-if [ "$STOCK_CONTAINERD" != "stock-only" ]; then
+if [ "$SANDBOX" == "firecracker" ]; then
     $SCRIPTS/create_devmapper.sh
 fi
 

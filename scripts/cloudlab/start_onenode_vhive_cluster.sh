@@ -38,7 +38,7 @@ if [ "$SANDBOX" != "gvisor" ] && [ "$SANDBOX" != "firecracker" ]; then
 fi
 
 echo Clean up host resources if left after previous runs
-$SCRIPTS/github_runner/clean_cri_runner.sh
+$SCRIPTS/github_runner/clean_cri_runner.sh $SANDBOX
 
 CTRDLOGDIR=/tmp/ctrd-logs/$GITHUB_RUN_ID
 sudo mkdir -p -m777 -p $CTRDLOGDIR
