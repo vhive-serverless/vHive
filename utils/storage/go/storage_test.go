@@ -26,6 +26,7 @@
 package storage
 
 import (
+	"os"
 	"testing"
 )
 
@@ -39,6 +40,20 @@ func TestS3(t *testing.T) {
 	Put("testkey", msg)
 	ret := Get("testkey")
 	if string(ret) != "test message" {
+		t.Errorf("Get() recieved wrong string: \"%s\"", string(ret))
+	}
+}
+
+func TestS3File(t *testing.T) {
+	InitStorage("S3", "go-storage-test")
+	file, err := os.Open("testFile.txt")
+	if err != nil {
+		t.Errorf("Test file could not be read")
+	}
+	fileContent, _ := os.ReadFile("testFile.txt")
+	PutFile("testkey", file)
+	ret := Get("testkey")
+	if string(ret) != string(fileContent) {
 		t.Errorf("Get() recieved wrong string: \"%s\"", string(ret))
 	}
 }

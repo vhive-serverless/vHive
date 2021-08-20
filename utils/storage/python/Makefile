@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 test:
-	python3 -m unittest storage_test.py
+	python3 -m unittest storage_test.MyTest.test_s3
 
 test-man:
 	echo "Nothing to test manually"

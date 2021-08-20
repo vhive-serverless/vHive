@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [taps, misc, profile, utils/tracing/go, utils/tracing/python]
+        module: [taps, misc, profile, utils/tracing/go, utils/tracing/python, utils/storage/go ,utils/storage/python]
     steps:
     - name: Set up Go 1.16
       uses: actions/setup-go@v2
@@ -48,7 +48,7 @@ jobs:
       run: ./scripts/install_pmutools.sh
 
     - name: Get extra python packages
-      run: pip install -r ./function-images/tests/tracing/python/integ-tests/client-server/requirements.txt
+      run: pip install -r ./function-images/tests/tracing/python/integ-tests/client-server/requirements.txt && pip install -r ./utils/storage/python/requirements.txt
 
     - name: Build
       run: go build -race -v -a ./...
@@ -56,6 +56,8 @@ jobs:
     - name: Run tests in submodules
       env:
           MODULE: ${{ matrix.module }}
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: |
         make -C $MODULE test
         make -C $MODULE test-man

@@ -25,7 +25,7 @@ EXTRAGOARGS:=-v -race -cover
 test:
 	# Need to pass GOROOT because GitHub-hosted runners may have several
 	# go versions installed so that calling go from root may fail
-	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS)
+	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" "AWS_ACCESS_KEY=$(AWS_ACCESS_KEY)" "AWS_SECRET_KEY=$(AWS_SECRET_KEY)" go test '-run=^TestS3' $(EXTRAGOARGS)
 
 test-man:
 	echo "Nothing to test manually"

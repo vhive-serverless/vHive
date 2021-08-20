@@ -88,7 +88,7 @@ def get(key, doPickle = True):
     if transferType == S3:
         obj = s3_client.Object(bucket_name=benchName, key=key)
         response = obj.get()
-        if doPickle:
+        if not doPickle:
             return response['Body'].read()
         else:
             return pickle.loads(response['Body'].read())
@@ -96,7 +96,7 @@ def get(key, doPickle = True):
         log.fatal("XDT is not yet supported")
     elif transferType == ELASTICACHE:
         response = elasticache_client.get(key)
-        if doPickle:
+        if not doPickle:
             return response['Body'].read()
         else:
             return pickle.loads(response['Body'].read())
