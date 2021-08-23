@@ -42,7 +42,9 @@ from sklearn.model_selection import StratifiedShuffleSplit
 # adding python tracing sources to the system path
 sys.path.insert(0, os.getcwd() + '/../proto/')
 sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
+sys.path.insert(0, os.getcwd() + '/../../../../utils/storage/python')
 import tracing
+import storage
 import tuning_pb2_grpc
 import tuning_pb2
 import destination as XDTdst
@@ -122,35 +124,9 @@ class TrainerServicer(tuning_pb2_grpc.TrainerServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put(self, obj, key):
-        msg = "Trainer uploading object with key '" + key + "' to " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            pickled = pickle.dumps(obj)
-            if self.transferType == S3:
-                s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                s3object.put(Body=pickled)
-            elif self.transferType == XDT:
-                log.fatal("XDT is not supported")
-
-        return key
-
-    def get(self, key):
-        msg = "Trainer gets key '" + key + "' from " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            response = None
-            if self.transferType == S3:
-                obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                response = obj.get()
-            elif self.transferType == XDT:
-                log.fatal("XDT is not yet supported")
-
-        return pickle.loads(response['Body'].read())
-
     def Train(self, request, context):
         # Read from S3
-        dataset = self.get(request.dataset_key)
+        dataset = storage.get(request.dataset_key)
 
         with tracing.Span("Training a model"):
             model_config = pickle.loads(request.model_config)
@@ -178,13 +154,13 @@ class TrainerServicer(tuning_pb2_grpc.TrainerServicer):
         # Write to S3
         model_key = f"model_{count}"
         pred_key = f"pred_model_{count}"
-        model_key2 = self.put(model, model_key)
-        pred_key2 = self.put(y_pred, pred_key)
+        model_key = storage.put(model_key, model)
+        pred_key = storage.put(pred_key, y_pred)
 
         return tuning_pb2.TrainReply(
             model=b'',
-            model_key=model_key2,
-            pred_key=pred_key2,
+            model_key=model_key,
+            pred_key=pred_key,
             score=score,
             params=pickle.dumps(model_config),
         )
@@ -193,6 +169,7 @@ class TrainerServicer(tuning_pb2_grpc.TrainerServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
     if transferType == S3:
+        storage.init("S3", 'vhive-tuning')
         log.info("Using inline or s3 transfers")
         max_workers = int(os.getenv("MAX_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

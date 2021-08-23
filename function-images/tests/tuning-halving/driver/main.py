@@ -28,7 +28,9 @@ import os
 # adding python tracing sources to the system path
 sys.path.insert(0, os.getcwd() + '/../proto/')
 sys.path.insert(0, os.getcwd() + '/../../../../utils/tracing/python')
+sys.path.insert(0, os.getcwd() + '/../../../../utils/storage/python')
 import tracing
+import storage
 import helloworld_pb2_grpc
 import helloworld_pb2
 import tuning_pb2_grpc
@@ -127,32 +129,6 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
-    def put(self, obj, key):
-        msg = "Driver uploading object with key '" + key + "' to " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            pickled = pickle.dumps(obj)
-            if self.transferType == S3:
-                s3object = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                s3object.put(Body=pickled)
-            elif self.transferType == XDT:
-                log.fatal("XDT is not supported")
-
-        return key
-
-    def get(self, key):
-        msg = "Driver gets key '" + key + "' from " + self.transferType
-        log.info(msg)
-        with tracing.Span(msg):
-            response = None
-            if self.transferType == S3:
-                obj = self.s3_client.Object(bucket_name=self.benchName, key=key)
-                response = obj.get()
-            elif self.transferType == XDT:
-                log.fatal("XDT is not yet supported")
-
-        return pickle.loads(response['Body'].read())
-
     def handler_broker(self, event, context):
         dataset = generate_dataset()
         hyperparam_config = {
@@ -171,7 +147,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
                 } for hyperparam in generate_hyperparam_sets(hyperparam_config['params'])
             ]
         }
-        key = self.put(dataset, 'dataset_key')
+        key = storage.put('dataset_key', dataset)
         return {
             'dataset_key': key,
             'models_config': models_config
@@ -239,6 +215,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
     if transferType == S3:
+        storage.init("S3", 'vhive-tuning')
         log.info("Using inline or s3 transfers")
         max_workers = int(os.getenv("MAX_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

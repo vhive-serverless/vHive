@@ -29,6 +29,7 @@ RUN apt update && \
     apt install git curl -y && \
     pip3 install --no-cache-dir --user -r requirements.txt
 COPY ./utils/tracing/python/tracing.py ./
+COPY ./utils/storage/python/storage.py ./
 COPY ./function-images/tests/tuning-halving/${target}/* ./
 COPY ./function-images/tests/tuning-halving/proto/tuning_pb2* ./
 COPY ./function-images/tests/tuning-halving/proto/helloworld_pb2* ./
