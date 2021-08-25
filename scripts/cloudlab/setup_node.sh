@@ -32,8 +32,8 @@ if [ -z "$SANDBOX" ]; then
     SANDBOX="firecracker"
 fi
 
-if [ "$SANDBOX" != "gvisor" ] && [ "$SANDBOX" != "firecracker" ]; then
-    echo Specified sanboxing technique is not supported. Possible are \"firecracker\" and \"gvisor\"
+if [ "$SANDBOX" != "gvisor" ] && [ "$SANDBOX" != "firecracker" ] && [ "$SANDBOX" != "stock-only" ]; then
+    echo Specified sanboxing technique is not supported. Possible are \"stock-only\", \"firecracker\" and \"gvisor\"
     exit 1
 fi
 
