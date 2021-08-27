@@ -110,7 +110,8 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
         if self.transferType == S3:
             log.info("Using s3, getting bucket")
             with tracing.Span("Video fetch"):
-                videoBytes = storage.get(request.s3key, doPickle=False)
+                global s
+                videoBytes = s.get(request.s3key, doPickle=False)
             log.info("decoding frames of the s3 object")
         elif self.transferType == INLINE:
             log.info("Inline video decode. Decoding frames.")
@@ -147,7 +148,8 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
             name = "decoder-frame-" + str(self.frameCount) + ".jpg"
             with tracing.Span("Upload frame"):
                 self.frameCount += 1
-                storage.put(name, frame)
+                global s
+                s.put(name, frame)
             log.info("calling recog with s3 key")
             response = stub.Recognise(videoservice_pb2.RecogniseRequest(s3key=name))
             result = response.classification
@@ -169,7 +171,8 @@ class VideoDecoderServicer(videoservice_pb2_grpc.VideoDecoderServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', INLINE)
     if transferType == S3:
-        storage.init("S3", 'vhive-video-bench')
+        global s
+        s = storage.Storage("S3", 'vhive-video-bench')
     if transferType == S3 or transferType == INLINE:
         max_workers = int(os.getenv("MAX_DECODER_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

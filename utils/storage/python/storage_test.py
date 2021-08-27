@@ -27,14 +27,14 @@ import random
 
 class MyTest(unittest.TestCase):
     def test_s3(self):
-        storage.init("S3","storage-module-test")
+        s = storage.Storage("S3","storage-module-test")
         msg = bytes(random.randint(1,10000))
-        storage.put("aws-test-key", msg)
-        self.assertEqual(storage.get("aws-test-key"), msg)
+        s.put("aws-test-key", msg)
+        self.assertEqual(s.get("aws-test-key"), msg)
 
     def test_elasticache(self):
-        storage.init("ELASTICACHE","redis://test2.0vgvbw.ng.0001.usw1.cache.amazonaws.com:6379")
-        self.assertEqual(storage.elasticache_client.ping(), True)
+        s = storage.Storage("ELASTICACHE","redis://test2.0vgvbw.ng.0001.usw1.cache.amazonaws.com:6379")
+        self.assertEqual(s.elasticache_client.ping(), True)
         msg = b"test msg"
-        storage.put("elasticache-test-key", msg)
-        self.assertEqual(storage.get("elasticache-test-key"), msg)
+        s.put("elasticache-test-key", msg)
+        self.assertEqual(s.get("elasticache-test-key"), msg)

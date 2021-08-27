@@ -84,10 +84,6 @@ INLINE = "INLINE"
 S3 = "S3"
 XDT = "XDT"
 
-# set aws credentials:
-AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
-AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
-
 model_config = {
     'models': [
         {
@@ -185,15 +181,7 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
         self.benchName = 'vhive-stacking'
         self.dataset = generate_dataset()
         self.modelConfig = model_config
-        self.transferType = transferType
-        if transferType == S3:
-            self.s3_client = boto3.resource(
-                service_name='s3',
-                region_name=os.getenv("AWS_REGION", 'us-west-1'),
-                aws_access_key_id=AWS_ID,
-                aws_secret_access_key=AWS_SECRET
-            )
-        elif transferType == XDT:
+        if transferType == XDT:
             if XDTconfig is None:
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
@@ -273,15 +261,15 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
 
     def get_final(self, outputs: dict):
         log.info("Get the final outputs")
-
-        _ = storage.get(outputs['model_full_key'])
-        _ = storage.get(outputs['meta_predictions_key'])
+        global s
+        _ = s.get(outputs['model_full_key'])
+        _ = s.get(outputs['meta_predictions_key'])
 
     # Driver code below
     def SayHello(self, request, context):
         log.info("Driver received a request")
-        
-        dataset_key = storage.put("dataset", self.dataset)
+        global s
+        dataset_key = s.put("dataset", self.dataset)
 
         training_responses = self.train_all(dataset_key)
 
@@ -297,7 +285,8 @@ class GreeterServicer(helloworld_pb2_grpc.GreeterServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
     if transferType == S3:
-        storage.init("S3", 'vhive-stacking')
+        global s
+        s = storage.Storage("S3", 'vhive-stacking')
         log.info("Using inline or s3 transfers")
         max_workers = int(os.getenv("MAX_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

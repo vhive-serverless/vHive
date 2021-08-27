@@ -125,7 +125,8 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
         if self.transferType == S3:
             log.info("retrieving target frame '%s' from s3" % request.s3key)
             with tracing.Span("Frame fetch"):
-                frame = storage.get(request.s3key)
+                global s
+                frame = s.get(request.s3key)
         elif self.transferType == INLINE:
             frame = request.frame
 
@@ -138,7 +139,8 @@ class ObjectRecognitionServicer(videoservice_pb2_grpc.ObjectRecognitionServicer)
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', INLINE)
     if transferType == S3:
-        storage.init("S3", 'vhive-video-bench')
+        global s
+        s = storage.Storage("S3", 'vhive-video-bench')
     if transferType == S3 or transferType == INLINE:
         max_workers = int(os.getenv("MAX_RECOG_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

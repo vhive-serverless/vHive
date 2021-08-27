@@ -75,11 +75,6 @@ INLINE = "INLINE"
 S3 = "S3"
 XDT = "XDT"
 
-# set aws credentials:
-AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
-AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
-
-
 def get_self_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -112,18 +107,7 @@ def model_dispatcher(model_name):
 
 class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
     def __init__(self, transferType, XDTconfig=None):
-
-        self.benchName = 'vhive-stacking'
-        self.transferType = transferType
-        self.trainer_id = ""
-        if transferType == S3:
-            self.s3_client = boto3.resource(
-                service_name='s3',
-                region_name=os.getenv("AWS_REGION", 'us-west-1'),
-                aws_access_key_id=AWS_ID,
-                aws_secret_access_key=AWS_SECRET
-            )
-        elif transferType == XDT:
+        if transferType == XDT:
             if XDTconfig is None:
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
@@ -131,8 +115,8 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
     def Train(self, request, context):
         self.trainer_id = request.trainer_id
         log.info(f"Trainer {self.trainer_id} is invoked")
-
-        dataset = storage.get(request.dataset_key)
+        global s
+        dataset = s.get(request.dataset_key)
 
         with tracing.Span("Training a model"):
             model_config = pickle.loads(request.model_config)
@@ -150,8 +134,8 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
         model_key = f"model_{self.trainer_id}"
         pred_key = f"pred_model_{self.trainer_id}"
 
-        model_key = storage.put(model_key, model)
-        pred_key = storage.put(pred_key, y_pred)
+        model_key = s.put(model_key, model)
+        pred_key = s.put(pred_key, y_pred)
 
         return stacking_pb2.TrainReply(
             model=b'',
@@ -163,7 +147,8 @@ class TrainerServicer(stacking_pb2_grpc.TrainerServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
     if transferType == S3:
-        storage.init("S3", 'vhive-stacking')
+        global s
+        s = storage.Storage("S3", 'vhive-stacking')
         log.info("Using inline or s3 transfers")
         max_workers = int(os.getenv("MAX_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))

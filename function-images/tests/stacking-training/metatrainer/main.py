@@ -75,11 +75,6 @@ INLINE = "INLINE"
 S3 = "S3"
 XDT = "XDT"
 
-# set aws credentials:
-AWS_ID = os.getenv('AWS_ACCESS_KEY', "")
-AWS_SECRET = os.getenv('AWS_SECRET_KEY', "")
-
-
 def get_self_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -112,34 +107,25 @@ def model_dispatcher(model_name):
 
 class MetatrainerServicer(stacking_pb2_grpc.TrainerServicer):
     def __init__(self, transferType, XDTconfig=None):
-
-        self.benchName = 'vhive-stacking'
-        self.transferType = transferType
-        if transferType == S3:
-            self.s3_client = boto3.resource(
-                service_name='s3',
-                region_name=os.getenv("AWS_REGION", 'us-west-1'),
-                aws_access_key_id=AWS_ID,
-                aws_secret_access_key=AWS_SECRET
-            )
-        elif transferType == XDT:
+        if transferType == XDT:
             if XDTconfig is None:
                 log.fatal("Empty XDT config")
             self.XDTconfig = XDTconfig
 
     def get_inputs(self, request) -> dict:
         inputs: dict = {}
-        inputs['dataset'] = storage.get(request.dataset_key)
-        inputs['meta_features'] = storage.get(request.meta_features_key)
-        inputs['models'] = storage.get(request.models_key)
+        global s
+        inputs['dataset'] = s.get(request.dataset_key)
+        inputs['meta_features'] = s.get(request.meta_features_key)
+        inputs['models'] = s.get(request.models_key)
         return inputs
 
     def put_outputs(self, meta_predictions, model_full):
         model_full_key = 'model_full_key'
         meta_predictions_key = 'meta_predictions_key'
-
-        meta_predictions_key = storage.put(meta_predictions_key, meta_predictions)
-        model_full_key = storage.put(model_full_key, model_full)
+        global s
+        meta_predictions_key = s.put(meta_predictions_key, meta_predictions)
+        model_full_key = s.put(model_full_key, model_full)
 
         return meta_predictions_key, model_full_key
 
@@ -183,7 +169,8 @@ class MetatrainerServicer(stacking_pb2_grpc.TrainerServicer):
 def serve():
     transferType = os.getenv('TRANSFER_TYPE', S3)
     if transferType == S3:
-        storage.init("S3", 'vhive-stacking')
+        global s
+        s = storage.Storage("S3", 'vhive-stacking')
         log.info("Using inline or s3 transfers")
         max_workers = int(os.getenv("MAX_SERVER_THREADS", 10))
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
