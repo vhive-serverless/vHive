@@ -2,7 +2,7 @@
 
 # MIT License
 #
-# Copyright (c) 2020 Dmitrii Ustiugov, Shyam Jesalpura and EASE lab
+# Copyright (c) 2020 Nathaniel Tornow and EASE lab
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,49 +22,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# download and install docker
+if [ -z $REPO_NAME ] || [ -z $RUNNER_TOKEN ] || [ -z $RUNNER_LABEL ] || [ -z $RUNNER_NAME ] || [ -z $SANDBOX ]; then
+    echo "Parameters missing"
+    exit -1
+fi
+
+URL="https://github.com/${REPO_NAME}"
 
 sudo apt-get update
 
-sudo apt-get install -y \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg-agent \
-    jq \
-    software-properties-common \
-    snapd >> /dev/null
+cd
+git clone "https://github.com/${REPO_NAME}"
+cd vhive
+./scripts/cloudlab/setup_node.sh ${SANDBOX}
 
-sleep 10s
+cd
+mkdir actions-runner && cd actions-runner
 
-sudo snap install multipass
+curl -o actions-runner-linux-x64.tar.gz -L -C - $(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep 'browser_' | cut -d\" -f4 | grep linux-x64)
+tar xzf "./actions-runner-linux-x64.tar.gz"
+rm actions-runner-linux-x64.tar.gz
 
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+./config.sh --url "https://github.com/${REPO_NAME}" --token ${RUNNER_TOKEN} --name ${RUNNER_NAME} --runnergroup default --labels ${RUNNER_LABEL} --work _work --replace
 
-sudo add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-   $(lsb_release -cs) \
-   stable"
-
-sudo apt-get update
-sudo apt-get install --yes docker-ce docker-ce-cli containerd.io >> /dev/null
-
-PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-$PWD/../install_go.sh
-
-# install kind from ease-lab/kind
-rm -rf /tmp/kind/
-git clone -b custom_docker_params_for_vHive https://github.com/ease-lab/kind /tmp/kind/
-cd /tmp/kind
-source /etc/profile && go build
-sudo mv kind /usr/local/bin/
-
-# Disable swap
-sudo swapoff -a
-
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Allow profiling using Perf / PMU tools
-sudo sysctl -w kernel.perf_event_paranoid=-1
+sudo ./svc.sh install root
+sudo ./svc.sh start
 
