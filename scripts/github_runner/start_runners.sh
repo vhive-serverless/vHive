@@ -22,6 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ]; then
     echo "Parameters missing"
     echo "USAGE: start_runners.sh <num of runners> https://github.com/<OWNER>/<REPO> <Github Access key> <runner label(comma separated)> [restart]" 
@@ -48,14 +50,11 @@ RUNNER_TOKEN="$(curl -XPOST -fsSL \
   "${_FULL_URL}" \
 | jq -r '.token')"
 
-# pull latest images
-docker pull vhiveease/integ_test_runner:ubuntu18base
-docker pull vhiveease/cri_test_runner
-
-
-
 case "$RUNNER_LABEL" in
 "integ")
+    # pull latest images
+    docker pull vhiveease/integ_test_runner:ubuntu18base
+    docker pull vhiveease/cri_test_runner 
 
     if [ "$RESTART_FLAG" == "restart" ]; then
         docker container stop $(docker ps --format "{{.Names}}" | grep integration_test-github_runner)
@@ -79,6 +78,9 @@ case "$RUNNER_LABEL" in
     done
     ;;
 "cri")
+    # pull latest images
+    docker pull vhiveease/integ_test_runner:ubuntu18base
+    docker pull vhiveease/cri_test_runner
 
     if [ "$RESTART_FLAG" == "restart" ]; then
         kind get clusters | while read line ; do kind delete cluster --name "$line" ; done
@@ -106,6 +108,31 @@ case "$RUNNER_LABEL" in
         docker exec -it \
             "cri-test-github-runner-${HOSTNAME}-${number}-control-plane" \
             systemctl enable connect_github_runner --now
+    done
+    ;;
+"gvisor-cri")
+    if [ "$RESTART_FLAG" == "restart" ]; then
+    	sudo multipass delete --all
+	sudo multipass purge
+	sleep 2s
+    fi
+
+    for number in $(seq 1 $NUM_OF_RUNNERS)
+    do
+	vm_name="gv-vm-${number}"
+        
+	sudo multipass launch \
+            --name "${vm_name}" \
+	    --cpus 4 \
+	    --mem 4G \
+	    --disk 16G 18.04 <<< "no"
+	sleep 2s
+
+	RUNNER_NAME=${vm_name}
+	SANDBOX="gvisor"
+
+	export REPO_NAME=$REPO_NAME SANDBOX=$SANDBOX RUNNER_NAME=$RUNNER_NAME RUNNER_TOKEN=$RUNNER_TOKEN RUNNER_LABEL=$RUNNER_LABEL
+	sudo multipass exec "${vm_name}" -- bash -s <<< `envsubst < ${PWD}/start_bare-metal_runner.sh`
     done
     ;;
 *)
