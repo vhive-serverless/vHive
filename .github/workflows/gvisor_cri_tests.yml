@@ -1,26 +1,26 @@
 name: vHive gVisor CRI tests
 
 on:
-        #push:
-        #branches: [ main ]
-        #paths-ignore:
-        #- 'docs/**'
-        #- '**.md'
-        #- 'function-images/**'
-        #pull_request:
-        #branches: [ main ]
-        #paths-ignore:
-        #- 'docs/**'
-        #- '**.md'
-        #- 'function-images/**'
+  push:
+    branches: [ main ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
   workflow_dispatch:
 
 env:
   GOOS: linux
   GO111MODULE: on
-  TMPDIR: /root/tmp/
-  GOCACHE: /root/tmp/gocache
-  GOPATH: /root/tmp/gopath
+  TMPDIR: /tmp/
+  GOCACHE: /tmp/gocache
+  GOPATH: /tmp/gopath
 
 jobs:
   gvisor-cri-tests:
@@ -49,9 +49,6 @@ jobs:
 
     - name: Create directory for vHive-CRI
       run: sudo mkdir -p /etc/vhive-cri
-
-    - name: Setup gvisor-containerd
-      run: ./scripts/setup_gvisor_containerd.sh
 
     - name: Build
       run: go build
