@@ -13,6 +13,8 @@ on:
     - 'docs/**'
     - '**.md'
     - 'function-images/**'
+  schedule:
+    - cron:  '0 12 * * *'
   workflow_dispatch:
 
 env:
