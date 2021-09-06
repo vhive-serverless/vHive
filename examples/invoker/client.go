@@ -170,14 +170,16 @@ func SayHello(address, workflowID string) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
-	
-	mapD := map[string]int{"executiontime":500, "objectsize":10000}
-        mapB,_ := json.Marshal(mapD)
-        inputstr := string(mapB)
-	resp, errh = c.SayHello(ctx, &HelloRequest{Name: inputstr})
-	log.Infof("response:%s", resp.Message)
-	
-	if errh != nil {
+
+	_, err = c.SayHello(ctx, &HelloRequest{
+		Name: "faas",
+		VHiveMetadata: vhivemetadata.MakeVHiveMetadata(
+			workflowID,
+			uuid.New().String(),
+			time.Now().UTC(),
+		),
+	})
+	if err != nil {
 		log.Warnf("Failed to invoke %v, err=%v", address, err)
 	}
 }
