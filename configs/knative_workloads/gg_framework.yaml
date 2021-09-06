@@ -1,0 +1,13 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: gg-framework
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+        - image: docker.io/faromero/gg_framework:var_workload
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 50051

@@ -1,13 +1,15 @@
-FROM vhiveease/py_grpc_ubuntu_slim:builder_grpc as builder_workload
-COPY --from=vhiveease/py_grpc:builder_grpc /root/.local /root/.local
+FROM python:3.9-slim-bullseye as var_workload
+ENV GRPC_PYTHON_VERSION 1.26.0
+RUN apt update && \
+    apt install -y gcc g++ && \
+    pip3 install --user protobuf==3.11.3 grpcio==${GRPC_PYTHON_VERSION}
+
 COPY requirements.txt .
 RUN pip3 install --user -r requirements.txt
 
-FROM vhiveease/py_grpc_ubuntu_slim:base as var_workload
 COPY *.py /
 COPY common /common
 COPY gg-execute-static /gg-execute-static
-COPY --from=builder_workload /root/.local /root/.local
 ENV APP_HOME /app
 WORKDIR $APP_HOME
 EXPOSE 50051
