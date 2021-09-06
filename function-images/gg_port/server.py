@@ -90,18 +90,18 @@ def hello():
                     'size': os.path.getsize(GGPaths.blob_path(output_hash)),
                     'executable': is_executable(GGPaths.blob_path(output_hash)),
                     'data': data
-                }]
+            }]
 
-            executed_thunks += [{
-                    'thunkHash': thunk['hash'],
-                    'outputs': outputs
-                }]
+        executed_thunks += [{
+                'thunkHash': thunk['hash'],
+                'outputs': outputs
+        }]
 
     msg = {
             'returnCode': 0,
             'stdout': '',
             'executedThunks': executed_thunks
-        }
+    }
 
     return msg
 
