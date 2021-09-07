@@ -6,11 +6,19 @@
 2. Follow the instructions in `gg`'s [README](https://github.com/StanfordSNR/gg#readme) to build `gg` and set up your environment.
 Stop when you complete the [Environment Variables](https://github.com/StanfordSNR/gg#environment-variables) setup.
 
-**Important note**: To avoid protobuf-related compilation issues, `gg` must currently be built BEFORE you build and set up vHive. Therefore, please finish this step before building and setting up vHive (Step 3).
-3. Build and set up vHive using the [quickstart guide](https://github.com/ease-lab/vhive/blob/main/docs/quickstart_guide.md).
-4. From the root directory of vHive, deploy the `gg` function to vHive using `kubectl apply --filename configs/knative_workloads/gg_framework.yaml` or `kn service apply gg-framework -f configs/knative_workloads/gg_framework.yaml`
+    **Important note**: To avoid protobuf-related compilation issues, `gg` must currently be built BEFORE you build and set up vHive. Therefore, please finish this step before building and setting up vHive (Step 3).
 
-You can check that it was deployed successfully by using `kubectl get pods -A` and checking to see that the `gg` pod is running with 2/2 containers.
+3. Build and set up vHive using the [quickstart guide](https://github.com/ease-lab/vhive/blob/main/docs/quickstart_guide.md).
+4. From the root directory of vHive, deploy the `gg` function to vHive using:
+    ```
+    kubectl apply --filename configs/knative_workloads/gg_framework.yaml
+    ```
+    or
+    ```
+    kn service apply gg-framework -f configs/knative_workloads/gg_framework.yaml
+    ```
+
+You can check that the `gg` function was deployed successfully by using `kubectl get pods -A` and checking to see that the `gg` pod is running with 2/2 containers.
 
 ## Running `gg` applications
 Since `gg` decouples the frontend and backend, no changes are needed to run `gg` applications with vHive!
@@ -18,7 +26,7 @@ To run with vHive, you first need to get the URL of the deployed function.
 You then pass this URL to the engine parameter when calling `gg force`.
 Here is how to do that assuming we are trying to force a file called *test* with two-way parallelism:
 ```
-kn service describe gg-framework -o url # Will output something of the form http://gg-framework.default.123.456.7.890.sslip.io
+kn service describe gg-framework -o url # Output of the form: http://gg-framework.default.123.456.7.890.sslip.io
 gg force --jobs 2 --engine vhive=http://gg-framework.default.123.456.7.890.sslip.io test
 ```
 
