@@ -1,3 +1,2 @@
-google
-google-api-python-client
-flask
+google-api-python-client==2.19.1
+flask==2.0.1
