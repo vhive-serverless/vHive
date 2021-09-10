@@ -28,9 +28,10 @@ from flask import Flask, request
 import helloworld_pb2
 import helloworld_pb2_grpc
 
-import json
 import os
 import sys
+import json
+import argparse
 from base64 import b64decode, b64encode
 
 curdir = os.path.dirname(__file__)
@@ -48,6 +49,16 @@ from ggpaths import GGPaths, GGCache
 from common import is_executable, make_executable, run_command
 
 app = Flask(__name__)
+
+def get_args():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--host', '-H', type=str, required=False,
+                      dest='host', default='0.0.0.0',
+                      help='App host IP')
+  parser.add_argument('--port', '-p', type=int, required=False,
+                      dest='port', default=50051,
+                      help='App port')
+  return parser.parse_args()
 
 def is_hash_for_thunk(hash):
     return len(hash) > 0 and hash[0] == 'T'
@@ -130,4 +141,6 @@ def hello():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=50051, debug=True)
+  args = get_args()
+  app.run(host=args.host, port=args.port, debug=True)
+
