@@ -51,18 +51,15 @@ advice for potential extensions of vHive and always open for collaboration.
 
 Please cite our paper that has been recently accepted to ASPLOS 2021:
 ```
-@inproceedings{ustiugov:benchmarking,
+@inproceedings{ustiugov:analyzing,
   author    = {Dmitrii Ustiugov and
-               Plamen Petrov and
-               Marios Kogias and
-               Edouard Bugnion and
+               Theodor Amariucai and
                Boris Grot},
-  title     = {Benchmarking, Analysis, and Optimization of Serverless Function Snapshots},
-  booktitle = {Proceedings of the 26th ACM International Conference on
-               Architectural Support for Programming Languages and Operating Systems (ASPLOS'21)},
-  publisher = {{ACM}},
+  title     = {Analyzing Tail Latency in Serverless Clouds with STeLLAR},
+  booktitle = {International Symposium on Workload Characterization  (IISWC'21)},
+  publisher = {{IEEE}},
   year      = {2021},
-  doi       = {10.1145/3445814.3446714},
+  doi       = {},
 }
 ```
 
