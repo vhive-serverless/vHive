@@ -241,7 +241,7 @@ This section is only for synchronous (i.e., Knative Serving) functions. Please r
 1. Optionally, configure the types and the number of functions to deploy in `examples/deployer/functions.json`.
 2. Run the deployer client:
     ```bash
-    source /etc/profile && go run examples/deployer/client.go
+    source /etc/profile && pushd ./examples/deployer && go build && popd && ./examples/deployer/deployer
     ```
     > **BEWARE:**
     >
@@ -258,7 +258,7 @@ This section is only for synchronous (i.e., Knative Serving) functions. Please r
 
 1. Run the invoker client:
     ```bash
-    go run examples/invoker/client.go
+    pushd ./examples/invoker && go build && popd && ./examples/invoker/invoker
     ```
 
     > **Note:**
