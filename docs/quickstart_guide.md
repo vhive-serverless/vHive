@@ -263,6 +263,8 @@ This section is only for synchronous (i.e., Knative Serving) functions. Please r
 
     > **Note:**
     >
+    > In order to run the invoker client on another node, copy the `endpoints.json` file to the vHive directory on that particular node.
+    >
     > There are runtime arguments (e.g., RPS or requests-per-second target, experiment duration) that you can specify if necessary.
     >
     > After invoking the functions from the input file (`endpoints.json` by default), the script writes the measured latencies to an output file (`rps<RPS>_lat.csv` by default, where `<RPS>` is the observed requests-per-sec value) for further analysis.
