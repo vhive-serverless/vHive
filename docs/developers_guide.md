@@ -4,14 +4,15 @@
 
 ## Testing stock Knative setup or images
 
-If you need to test your Knative images in stock Knative environment, use the following commands to setup environment.
+If you need to test Knative functions in stock Knative environment (i.e., containers)
+or in gVisor MicroVMs instead of Firecracker MicroVMs, use the following commands to set up the environment.
 
 ```bash
 git clone https://github.com/ease-lab/vhive
 cd vhive
-./scripts/cloudlab/setup_node.sh stock-only
+./scripts/cloudlab/setup_node.sh [stock-only|gvisor]
 sudo containerd
-./scripts/cluster/create_one_node_cluster.sh stock-only
+./scripts/cloudlab/start_onenode_vhive_cluster.sh [stock-only|gvisor]
 # wait for the containers to boot up using
 watch kubectl get pods -A
 # once all the containers are ready/complete, you may start Knative functions
@@ -22,44 +23,6 @@ kn service apply
 ```bash
 ./scripts/github_runner/clean_cri_runner.sh stock-only
 ```
-
-## Testing using stock-Knative on self-hosted KinD clusters
-We also offer self-hosted stock-Knative environments powered by KinD. To be able to use them, follow the instructions below:
-
-- [ ] Set [`jobs.<job_id>.runs-on`](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on) to `stock-knative`.
-- [ ] For your GitHub workflow, define `TMPDIR` environment variable in your manifest:
-    ```yaml
-    env:
-      TMPDIR: /root/tmp
-    ```
-    - [ ] As the first step of **all** jobs, "create `TMPDIR` if not exists":
-        ```yaml
-        jobs:
-          my-job:
-            name: My Job
-            runs-on: [stock-knative]
-
-            steps:
-              - name: Setup TMPDIR
-                run: mkdir -p $TMPDIR
-        ```
-- [ ] Make sure to **clean-up and wait** for it to end! This varies for each workload, but below are some examples:
-    ```yaml
-    jobs:
-      my-job:
-      name: My Job
-      runs-on: [stock-knative]
-
-      steps:
-        # ...
-
-        name: Cleaning
-        if: ${{ always() }}
-        run: |
-          # ...
-    ```
-    - If you have used `kubectl apply -f ...` then use `kubectl delete -f ...`
-    - If you have used `kn service apply` then use `kn service delete -f ... --wait`
 
 ## Deploying single node container environment
 
@@ -102,6 +65,44 @@ kind get clusters
 # delete a cluster
 kind delete cluster --name <name>
 ```
+
+## Testing using stock-Knative on self-hosted KinD runners (used for the vHive CI)
+We also offer self-hosted stock-Knative environments powered by KinD. To be able to use them, follow the instructions below:
+
+- [ ] Set [`jobs.<job_id>.runs-on`](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on) to `stock-knative`.
+- [ ] For your GitHub workflow, define `TMPDIR` environment variable in your manifest:
+    ```yaml
+    env:
+      TMPDIR: /root/tmp
+    ```
+    - [ ] As the first step of **all** jobs, "create `TMPDIR` if not exists":
+        ```yaml
+        jobs:
+          my-job:
+            name: My Job
+            runs-on: [stock-knative]
+
+            steps:
+              - name: Setup TMPDIR
+                run: mkdir -p $TMPDIR
+        ```
+- [ ] Make sure to **clean-up and wait** for it to end! This varies for each workload, but below are some examples:
+    ```yaml
+    jobs:
+      my-job:
+      name: My Job
+      runs-on: [stock-knative]
+
+      steps:
+        # ...
+
+        name: Cleaning
+        if: ${{ always() }}
+        run: |
+          # ...
+    ```
+    - If you have used `kubectl apply -f ...` then use `kubectl delete -f ...`
+    - If you have used `kn service apply` then use `kn service delete -f ... --wait`
 
 ## High-level features
 
@@ -165,12 +166,16 @@ A test that is integrated with vHive-CRI orchestrator via a programmatic interfa
 allows to analyze latency breakdown of boot-based and snapshot cold starts,
 using detailed latency and memory footprint metrics.
 
+
 ## Knative request tracing
-Knative function call requests can now be traced & visualized using [zipkin](https://zipkin.io/). Zipkin is a distributed tracing system featuring easy collection and lookup of tracing data. Checkout [this](https://www.scalyr.com/blog/zipkin-tutorial-distributed-tracing/) for a quickstart guide.
+Knative function call requests can now be traced & visualized using [zipkin](https://zipkin.io/).
+Zipkin is a distributed tracing system featuring easy collection and lookup of tracing data.
+Checkout [this](https://www.scalyr.com/blog/zipkin-tutorial-distributed-tracing/) for a quickstart guide.
 
 * Once the zipkin container is running, start the dashboard using `istioctl dashboard zipkin`.
 * To access requests remotely, run `ssh -L 9411:127.0.0.1:9411 <Host_IP>` for port forwarding.
 * Go to your browser and enter [localhost:9411](http://localhost:9411) for the dashboard.
+
 
 ## Dependencies and binaries
 
@@ -178,7 +183,8 @@ Knative function call requests can now be traced & visualized using [zipkin](htt
 of our [fork](https://github.com/ease-lab/firecracker-containerd) of the upstream repository.
 Currently, we are in the process of upstreaming VM snapshots support to the upstream repository.
 
-* Current Firecracker version is 0.21.0. We plan to keep our code loosely up to date with
-the upstream Firecracker repository.
+* Current Firecracker version is 0.24.0, Knative 0.23.0, Kubernetes 1.20.6, gVisor 20210622.0.
+We plan to keep our code loosely up to date with the upstream Firecracker repository.
 
-* vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind) to speed up testing environment setup requiring Kubernetes.
+* vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind)
+to speed up testing environment setup requiring Kubernetes.

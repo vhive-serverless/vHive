@@ -4,16 +4,30 @@
 
 ### Added
 
-- Added Python tracing module and an [example](./function-images/tests/tracing/python/integ-tests/client-server/) showing its usage.
-- Added self-hosted stock-Knative runners on KinD, see [`scripts/self-hosted-kind`](./scripts/self-hosted-kind/).
-- Added Golang and Python storage modules.
+### Changed
+
+### Fixed
+
+
+## v1.4
+
+### Added
+
+- Added support for [gVisor](https://gvisor.dev) MicroVMs, as an alternative to Firecracker.
+- Added [vSwarm](https://github.com/ease-lab/vSwarm), a suite of representative serverless workloads.
+Currently, in a beta testing mode.
+- Added Python and Go tracing modules and an example showing its usage.
+Moved to [vSwarm](https://github.com/ease-lab/vSwarm/tree/main/utils/tracing).
+- Added Golang and Python storage modules, supporting AWS S3 and AWS ElastiCache.
+Moved to [vSwarm](https://github.com/ease-lab/vSwarm/tree/main/utils/storage).
+- Added self-hosted stock-Knative runners on KinD,
+see [`scripts/self-hosted-kind`](./scripts/self-hosted-kind/).
 
 ### Changed
 
-- Workload stdout/stderr is not directly redirected to vhive stdout/stderr anymore but is printed by vhive via `logrus.WithFields(logrus.Fields{"vmID": vmID})`.
+- Workload stdout/stderr is not directly redirected to vhive stdout/stderr anymore
+but is printed by vhive via `logrus.WithFields(logrus.Fields{"vmID": vmID})`.
 - Moved the CRI non-Firecracker tests to self-hosted stock-Knative runners.
-
-### Fixed
 
 
 ## v1.3
@@ -22,9 +36,9 @@
 
 - Added 2 chained-functions microbenchmarks, synchronous and asynchronous, that use Knative Serving and Eventing, correspondingly.
 Tracing is fully supported for Serving function composition, partially supported for Eventing function composition.
-- Added [documentation](./docs/benchmarking/methodology.md) on vHive benchmarking methodology
+- Added documentation on vHive benchmarking methodology
 for arbitrary serverless deployments.
-- Added [documentation](./docs/benchmarking/adding_benchmarks.md) for adding benchmarks to vHive.
+- Added documentation for adding benchmarks to vHive.
 - Added Knative Eventing Tutorial: [documentation](./docs/knative/eventing.md) and [example](./examples/knative-eventing-tutorial).
 - Added a Go module for tracing using zipkin.
 - Improved CI troubleshooting: CRI test logs are now stored as GitHub artifacts.
