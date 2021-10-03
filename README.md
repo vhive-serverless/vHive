@@ -35,6 +35,11 @@ The details of the vHive architecture can be found in our ASPLOS'21 paper
 ([extended abstract](https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf),
 [full paper](docs/papers/REAP_ASPLOS21.pdf)).
 
+Currently, vHive supports 3 types of sandboxes for functions, namely
+[Firecracker MicroVMs](https://firecracker-microvm.github.io/) (default),
+[gVisor MicroVMs](https://gvisor.dev/),
+and Containerd containers (as in vanilla Knative).
+
 
 ### Technical talks
 
@@ -100,7 +105,9 @@ The statistics of this repository's views, clones, forks is available by the fol
 We would be happy to answer any questions in GitHub Issues and encourage the open-source community
 to submit new Issues, assist in addressing existing issues and limitations, and contribute their code with Pull Requests. 
 Please check our guide on [Contributing to vHive](docs/contributing_to_vhive.md) if you would like contribute.
-You can also talk to us on the official [Firecracker Slack](https://join.slack.com/t/firecracker-microvm/shared_invite/zt-oxbm7tqt-GLlze9zZ7sdRSDY6OnXXHg) in the **#firecracker-vHive-research** channel.
+You can also talk to us on the official
+[Firecracker Slack](https://join.slack.com/t/firecracker-microvm/shared_invite/zt-oxbm7tqt-GLlze9zZ7sdRSDY6OnXXHg)
+in the **#firecracker-vHive-research** channel.
 
 
 ## License and copyright
@@ -113,7 +120,8 @@ The software is maintained at the [EASE lab](https://easelab.inf.ed.ac.uk/) in t
 
 ### Maintainers
 
-* Dmitrii Ustiugov: [GitHub](https://github.com/ustiugov),
-[twitter](https://twitter.com/DmitriiUstiugov), [web page](http://homepages.inf.ed.ac.uk/s1373190/)
-* [Plamen Petrov](https://github.com/plamenmpetrov)
-
+* High-level architecture, issues and discussions on GitHub, roadmap: Dmitrii Ustiugov ([GitHub](https://github.com/ustiugov),
+[twitter](https://twitter.com/DmitriiUstiugov), [web page](http://homepages.inf.ed.ac.uk/s1373190/));
+* Integration with firecracker-containerd [Plamen Petrov](https://github.com/plamenmpetrov);
+* Integration with gVisor: [Nathaniel Tornow](https://github.com/nathanieltornow), [Alexandrina Panfil](https://github.com/alexandrinapanfil);
+* Integration with Knative: [Shyam Jesalpura](https://github.com/shyamjesal)

@@ -1,5 +1,6 @@
 # vHive Quickstart
-This guide describes how to set up an _N_-node vHive serverless cluster. See [here](https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/) to learn where to find table of contents.
+This guide describes how to set up an _N_-node vHive serverless cluster with Firecracker MicroVMs.
+See [here](https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/) to learn where to find table of contents.
 
 ## Table of Contents
 1. [Host platform requirements](#I-host-platform-requirements)
@@ -233,7 +234,9 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
 ```
 
 ## IV. Deploying and Invoking Functions in vHive
-This section is only for synchronous (i.e., Knative Serving) functions. Please refer to [Adding Benchmarks to vHive/Knative and Stock Knative](benchmarking/adding_benchmarks.md) for benchmarking asynchronous (i.e., Knative Eventing) case and more details about both.
+This section is only for synchronous (i.e., Knative Serving) functions. Please refer to
+[Adding Benchmarks to vHive/Knative and Stock Knative](https://github.com/ease-lab/vSwarm/blob/main/docs/adding_benchmarks.md)
+for benchmarking asynchronous (i.e., Knative Eventing) case and more details about both.
 
 ### 1. Deploy Functions
 **On the master node**, execute the following instructions below using **bash**:
