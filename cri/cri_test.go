@@ -57,6 +57,7 @@ func TestSingleInvoke(t *testing.T) {
 }
 
 func TestSingleInvokeLocal(t *testing.T) {
+	t.Skip("skipping the local helloworld test")
 	functionURL := getFuncURL("helloworldlocal")
 	invoke(t, functionURL)
 }
@@ -67,6 +68,7 @@ func TestParallelInvoke(t *testing.T) {
 }
 
 func TestParallelInvokeLocal(t *testing.T) {
+	t.Skip("skipping the local helloworld test")
 	functionURL := getFuncURL("helloworldlocal")
 	parallelInvoke(t, functionURL)
 }
