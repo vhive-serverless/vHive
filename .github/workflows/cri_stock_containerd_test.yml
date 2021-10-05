@@ -41,6 +41,4 @@ jobs:
 
     - name: Cleaning
       if: ${{ always() }}
-      run: |
-        kn service delete helloworld-go --wait
-        ./scripts/github_runner/clean_cri_runner.sh stock-only
+      run: ./scripts/github_runner/clean_cri_runner.sh stock-only
