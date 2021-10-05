@@ -117,7 +117,7 @@ func TestMultipleFuncInvoke(t *testing.T) {
 	var wg sync.WaitGroup
 	funcs := []string{
 		"helloworld",
-		"helloworldlocal",
+		// "helloworldlocal",
 		"pyaes",
 		// "rnnserving",
 		// This function deployment fails on cri test container
