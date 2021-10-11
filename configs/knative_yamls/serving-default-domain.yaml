@@ -20,6 +20,9 @@ metadata:
   labels:
     app: "default-domain"
     serving.knative.dev/release: devel
+    app.kubernetes.io/name: default-domain
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: knative-serving
 spec:
   template:
     metadata:
@@ -27,13 +30,16 @@ spec:
         sidecar.istio.io/inject: "false"
       labels:
         app: "default-domain"
+        app.kubernetes.io/name: default-domain
+        app.kubernetes.io/version: devel
+        app.kubernetes.io/part-of: knative-serving
     spec:
       serviceAccountName: controller
       containers:
         - name: default-domain
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/default-domain-dd6f55160290a90018ba318b624be12e@sha256:52fa2d4ba4344ce76e33c6199550c2aad33fad4be1de54f904f25dc625c0793a
+          image: docker.io/cvetkovic/default-domain-dd6f55160290a90018ba318b624be12e@sha256:797bcd7e86d6dd14913b90aed40bf3596984b8babc0a865b8a7146d61eef10b7
           args: ["-magic-dns=sslip.io"]
           ports:
             - name: http
@@ -45,6 +51,17 @@ spec:
             httpGet:
               port: 8080
             failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 1000m
+              memory: 1000Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
           env:
             - name: POD_NAME
               valueFrom:
@@ -65,6 +82,9 @@ metadata:
   labels:
     app: default-domain
     serving.knative.dev/release: devel
+    app.kubernetes.io/name: default-domain
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: knative-serving
 spec:
   selector:
     app: default-domain

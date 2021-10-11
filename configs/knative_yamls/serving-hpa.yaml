@@ -20,6 +20,9 @@ metadata:
   labels:
     serving.knative.dev/release: devel
     autoscaling.knative.dev/autoscaler-provider: hpa
+    app.kubernetes.io/name: autoscaler-hpa
+    app.kubernetes.io/part-of: knative-serving
+    app.kubernetes.io/version: devel
 spec:
   selector:
     matchLabels:
@@ -47,7 +50,7 @@ spec:
         - name: autoscaler-hpa
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:003dc99ec64acdba1750fbc508183eccc11c76a611ce4d064c4afbd098a8ff20
+          image: docker.io/cvetkovic/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:032b616e27186a4f34c516e948b9358fc85a7cdc7a08f91dcf3229a60a71c95c
           resources:
             requests:
               cpu: 30m
@@ -85,8 +88,11 @@ kind: Service
 metadata:
   labels:
     app: autoscaler-hpa
-    serving.knative.dev/release: devel
+    app.kubernetes.io/name: autoscaler-hpa
+    app.kubernetes.io/part-of: knative-serving
+    app.kubernetes.io/version: devel
     autoscaling.knative.dev/autoscaler-provider: hpa
+    serving.knative.dev/release: devel
   name: autoscaler-hpa
   namespace: knative-serving
 spec:
