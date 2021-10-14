@@ -20,10 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM ubuntu:bionic
+FROM ubuntu:focal
 
 RUN apt-get update && \
-    apt-get install --yes \
+    DEBIAN_FRONTEND="noninteractive" apt-get install --yes \
     git \
     sudo \
     apt-utils \
