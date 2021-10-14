@@ -10,9 +10,9 @@ or in gVisor MicroVMs instead of Firecracker MicroVMs, use the following command
 ```bash
 git clone https://github.com/ease-lab/vhive
 cd vhive
-./scripts/cloudlab/setup_node.sh [stock-only|gvisor]
+./scripts/cloudlab/setup_node.sh [stock-only|gvisor|firecracker]
 sudo containerd
-./scripts/cloudlab/start_onenode_vhive_cluster.sh [stock-only|gvisor]
+./scripts/cluster/create_one_node_cluster.sh [stock-only|gvisor|firecracker]
 # wait for the containers to boot up using
 watch kubectl get pods -A
 # once all the containers are ready/complete, you may start Knative functions
