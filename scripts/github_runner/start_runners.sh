@@ -53,7 +53,7 @@ RUNNER_TOKEN="$(curl -XPOST -fsSL \
 case "$RUNNER_LABEL" in
 "integ")
     # pull latest images
-    docker pull vhiveease/integ_test_runner:ubuntu18base
+    docker pull vhiveease/integ_test_runner:ubuntu20base
     docker pull vhiveease/cri_test_runner 
 
     if [ "$RESTART_FLAG" == "restart" ]; then
@@ -74,12 +74,12 @@ case "$RUNNER_LABEL" in
             -v /var/run/docker.sock:/var/run/docker.sock \
             --volume /dev:/dev \
             --volume /run/udev/control:/run/udev/control \
-            vhiveease/integ_test_runner:ubuntu18base
+            vhiveease/integ_test_runner:ubuntu20base
     done
     ;;
 "cri")
     # pull latest images
-    docker pull vhiveease/integ_test_runner:ubuntu18base
+    docker pull vhiveease/integ_test_runner:ubuntu20base
     docker pull vhiveease/cri_test_runner
 
     if [ "$RESTART_FLAG" == "restart" ]; then
