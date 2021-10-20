@@ -181,6 +181,8 @@ func SayHello(address, workflowID string) {
 	})
 	if err != nil {
 		log.Warnf("Failed to invoke %v, err=%v", address, err)
+	} else {
+		atomic.AddInt64(&completed, 1)
 	}
 }
 
@@ -189,8 +191,6 @@ func invokeEventingFunction(endpoint *endpoint.Endpoint) {
 	log.Debug("Invoking asynchronously: ", address)
 
 	SayHello(address, workflowIDs[endpoint])
-
-	atomic.AddInt64(&completed, 1)
 }
 
 func invokeServingFunction(endpoint *endpoint.Endpoint) {
@@ -200,8 +200,6 @@ func invokeServingFunction(endpoint *endpoint.Endpoint) {
 	log.Debug("Invoking: ", address)
 
 	SayHello(address, workflowIDs[endpoint])
-
-	atomic.AddInt64(&completed, 1)
 }
 
 // LatencySlice is a thread-safe slice to hold a slice of latency measurements.
