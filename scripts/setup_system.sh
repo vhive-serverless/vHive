@@ -23,10 +23,9 @@
 # SOFTWARE.
 
 # Add skopeo sources
-# The code here should be uncommented when https://github.com/ease-lab/vhive/issues/402 is resolved
-# . /etc/os-release
-# echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list > /dev/null
-# curl --silent --show-error -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+ . /etc/os-release
+ echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list > /dev/null
+ curl --silent --show-error -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
 
 sudo apt-get update >> /dev/null
 
@@ -46,10 +45,8 @@ sudo apt-get -y install \
     dmsetup \
     gnupg-agent \
     software-properties-common \
-    iproute2 >> /dev/null
-# The code here should be uncommented when https://github.com/ease-lab/vhive/issues/402 is resolved
-#    iproute2 \
-#    skopeo >> /dev/null
+    iproute2 \
+    skopeo >> /dev/null
 
 # stack size, # of open files, # of pids
 sudo sh -c "echo \"* soft nofile 1000000\" >> /etc/security/limits.conf"

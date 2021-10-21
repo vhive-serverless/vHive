@@ -57,7 +57,6 @@ func TestSingleInvoke(t *testing.T) {
 }
 
 func TestSingleInvokeLocal(t *testing.T) {
-	t.Skip("skipping the local helloworld test")
 	functionURL := getFuncURL("helloworldlocal")
 	invoke(t, functionURL)
 }
@@ -68,7 +67,6 @@ func TestParallelInvoke(t *testing.T) {
 }
 
 func TestParallelInvokeLocal(t *testing.T) {
-	t.Skip("skipping the local helloworld test")
 	functionURL := getFuncURL("helloworldlocal")
 	parallelInvoke(t, functionURL)
 }
@@ -117,7 +115,7 @@ func TestMultipleFuncInvoke(t *testing.T) {
 	var wg sync.WaitGroup
 	funcs := []string{
 		"helloworld",
-		// "helloworldlocal",
+		"helloworldlocal",
 		"pyaes",
 		// "rnnserving",
 		// This function deployment fails on cri test container
