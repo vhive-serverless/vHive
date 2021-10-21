@@ -29,12 +29,11 @@ test-cri-firecracker:
 	KUBECONFIG=/etc/kubernetes/admin.conf ./../scripts/setup_zipkin.sh
 	sleep 5s
 
-# 	The code here should be uncommented when https://github.com/ease-lab/vhive/issues/402 is resolved
-#	go run ./../examples/registry/populate_registry.go -imageFile ./../examples/registry/images.txt
-#	sleep 1s
+	go run ./../examples/registry/populate_registry.go -imageFile ./../examples/registry/images.txt
+	sleep 1s
 
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
-#	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldlocal -f ./../configs/knative_workloads/helloworld_local.yaml
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldlocal -f ./../configs/knative_workloads/helloworld_local.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
 	sleep 1m
@@ -49,12 +48,11 @@ test-cri-gvisor:
 	KUBECONFIG=/etc/kubernetes/admin.conf ./../scripts/setup_zipkin.sh
 	sleep 5s
 
-# 	The code here should be uncommented when https://github.com/ease-lab/vhive/issues/402 is resolved
-#	go run ./../examples/registry/populate_registry.go -imageFile ./../examples/registry/images.txt
-#	sleep 1s
+	go run ./../examples/registry/populate_registry.go -imageFile ./../examples/registry/images.txt
+	sleep 1s
 
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f ./../configs/knative_workloads/helloworld.yaml
-#	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldlocal -f ./../configs/knative_workloads/helloworld_local.yaml
+	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldlocal -f ./../configs/knative_workloads/helloworld_local.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
 	sleep 1m
