@@ -125,7 +125,7 @@ case "$RUNNER_LABEL" in
             --name "${vm_name}" \
 	    --cpus 4 \
 	    --mem 4G \
-	    --disk 16G 18.04 <<< "no"
+	    --disk 16G 20.04 <<< "no"
 	sleep 2s
 
 	RUNNER_NAME=${vm_name}
