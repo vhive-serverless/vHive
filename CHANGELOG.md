@@ -5,6 +5,7 @@
 ### Added
 
 ### Changed
+- Support Ubuntu 20 as the host OS, Ubuntu 18 support dropped.
 
 ### Fixed
 
