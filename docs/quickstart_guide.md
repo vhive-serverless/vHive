@@ -34,7 +34,7 @@ See [here](https://github.blog/changelog/2021-04-13-table-of-contents-support-in
     - We expect vHive to work on machines that use HDDs but there could be timeout-related issues with large Docker images (>1GB).
 
 ### 2. Software
-1. Ubuntu/Debian with sudo access and `apt` package manager on the host (tested on Ubuntu 18.04, v4.15).
+1. Ubuntu/Debian with sudo access and `apt` package manager on the host (tested on Ubuntu 20.04).
     - Other OS-es require changes in our setup scripts, but should work in principle.
 2. Passwordless SSH. Copy the SSH keys that you use to authenticate on GitHub to all the nodes and
 type `eval "$(ssh-agent -s)" && ssh-add` to allow ssh authentication in the background.
@@ -45,7 +45,7 @@ We suggest renting nodes on [CloudLab](https://www.cloudlab.us) as their service
 #### A. CloudLab Profile
 You can use our CloudLab profile [RPerf/vHive-cluster-env](https://www.cloudlab.us/p/RPerf/vHive-cluster-env).
 
-It is recommended to use a base Ubuntu 18.04 image for each node and connect the nodes in a LAN.
+It is recommended to use a base Ubuntu 20.04 image for each node and connect the nodes in a LAN.
 
 #### B. Nodes to Rent
 We tested the following instructions by setting up a **2-node** cluster on Cloudlab, using all of the following SSD-equipped machines: `xl170` on Utah, `rs440` on Mass, `m400` on OneLab. `xl170` are normally less occupied than the other two, and users can consider other SSD-based machines too.
