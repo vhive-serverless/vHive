@@ -183,7 +183,7 @@ Checkout [this](https://www.scalyr.com/blog/zipkin-tutorial-distributed-tracing/
 of our [fork](https://github.com/ease-lab/firecracker-containerd) of the upstream repository.
 Currently, we are in the process of upstreaming VM snapshots support to the upstream repository.
 
-* Current Firecracker version is 0.24.0, Knative 0.23.0, Kubernetes 1.20.6, gVisor 20210622.0.
+* Current Firecracker version is 0.24.0, Knative 0.26.0, Kubernetes 1.20.6, gVisor 20210622.0, and Istio 1.9.5.
 We plan to keep our code loosely up to date with the upstream Firecracker repository.
 
 * vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind)
