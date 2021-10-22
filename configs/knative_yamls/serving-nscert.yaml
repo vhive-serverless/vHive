@@ -84,7 +84,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/cvetkovic/nscert-e3625dd01dcb901439f4630ab9789e75@sha256:2455f17b033db0e0c9cf59db619c061c7b933fc6d6feed2bb7a88a213fab65fa
+          image: docker.io/vhiveease/nscert-e3625dd01dcb901439f4630ab9789e75@sha256:8f5c9bd2845ca72f5d857dad064e8b7b7a419ee3e5ac1da704d062a83e38081f
           resources:
             requests:
               cpu: 30m

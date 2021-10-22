@@ -3514,7 +3514,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/cvetkovic/queue-39be6f1d08a095bd076a71d288d295b6@sha256:639aff487a7622dba8f98c06fc93ba2f8f4364aad42b21c8277a09a2a29a1f40
+  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:2792802ac51ee222f01035c450b6718e3b40e810dec6b1d7f3ce7beefb5db2e0
 
 ---
 # Copyright 2018 The Knative Authors
@@ -3885,11 +3885,12 @@ metadata:
     app.kubernetes.io/version: devel
     app.kubernetes.io/part-of: knative-serving
   annotations:
-    knative.dev/example-checksum: "9448bd0c"
+    knative.dev/example-checksum: "f4cfb8ed"
 data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  queueSidecarImage: docker.io/cvetkovic/queue-39be6f1d08a095bd076a71d288d295b6@sha256:639aff487a7622dba8f98c06fc93ba2f8f4364aad42b21c8277a09a2a29a1f40
+  # TODO: switch to 'queue-sidecar-image' after 0.27
+  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:2792802ac51ee222f01035c450b6718e3b40e810dec6b1d7f3ce7beefb5db2e0
   _example: |-
     ################################
     #                              #
@@ -3907,52 +3908,53 @@ data:
     # to actually change the configuration.
 
     # List of repositories for which tag to digest resolving should be skipped
-    registriesSkippingTagResolving: "kind.local,ko.local,dev.local"
+    registries-skipping-tag-resolving: "kind.local,ko.local,dev.local"
 
-    # digestResolutionTimeout is the maximum time allowed for an image's
-    # digests to be resolved.
-    digestResolutionTimeout: "10s"
+    # Maximum time allowed for an image's digests to be resolved.
+    digest-resolution-timeout: "10s"
 
-    # ProgressDeadline is the duration we wait for the deployment to
-    # be ready before considering it failed.
-    progressDeadline: "600s"
+    # Duration we wait for the deployment to be ready before considering it failed.
+    progress-deadline: "600s"
 
-    # queueSidecarCPURequest is the requests.cpu to set for the queue proxy sidecar container.
+    # Sets the queue proxy's CPU request.
     # If omitted, a default value (currently "25m"), is used.
-    queueSidecarCPURequest: "25m"
+    queue-sidecar-cpu-request: "25m"
 
-    # queueSidecarCPULimit is the limits.cpu to set for the queue proxy sidecar container.
+    # Sets the queue proxy's CPU limit.
     # If omitted, no value is specified and the system default is used.
-    queueSidecarCPULimit: "1000m"
+    queue-sidecar-cpu-limit: "1000m"
 
-    # queueSidecarMemoryRequest is the requests.memory to set for the queue proxy container.
+    # Sets the queue proxy's memory request.
     # If omitted, no value is specified and the system default is used.
-    queueSidecarMemoryRequest: "400Mi"
+    queue-sidecar-memory-request: "400Mi"
 
-    # queueSidecarMemoryLimit is the limits.memory to set for the queue proxy container.
+    # Sets the queue proxy's memory limit.
     # If omitted, no value is specified and the system default is used.
-    queueSidecarMemoryLimit: "800Mi"
+    queue-sidecar-memory-limit: "800Mi"
 
-    # queueSidecarEphemeralStorageRequest is the requests.ephemeral-storage to
-    # set for the queue proxy sidecar container.
+    # Sets the queue proxy's ephemeral storage request.
     # If omitted, no value is specified and the system default is used.
-    queueSidecarEphemeralStorageRequest: "512Mi"
+    queue-sidecar-ephemeral-storage-request: "512Mi"
 
-    # queueSidecarEphemeralStorageLimit is the limits.ephemeral-storage to set
-    # for the queue proxy sidecar container.
+    # Sets the queue proxy's ephemeral storage limit.
     # If omitted, no value is specified and the system default is used.
-    queueSidecarEphemeralStorageLimit: "1024Mi"
+    queue-sidecar-ephemeral-storage-limit: "1024Mi"
 
-    # concurrencyStateEndpoint is the endpoint that queue-proxy calls when its traffic
-    # drops to zero or scales up from zero.
+    # The endpoint that queue-proxy calls when its traffic drops to zero or
+    # scales up from zero.
+    #
+    # The value will need to include both the url including the port that will be accessed.
+    # For example: http://pod-freezer.knative-serving.svc.cluster.local:9696
+    #
     # If omitted, queue proxy takes no action (this is the default behavior).
-    # When enabled, a serviceAccountToken will be mounted to queue-proxy using a
-    # projected volume. This requires the Service Account Token Volume Projection feature
+    #
+    # When enabled, a serviceAccountToken will be mounted to queue-proxy using
+    # a projected volume. This requires the Service Account Token Volume Projection feature
     # to be enabled. For details, see this link:
     # https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection
     #
     # NOTE THAT THIS IS AN EXPERIMENTAL / ALPHA FEATURE
-    concurrencyStateEndpoint: ""
+    concurrency-state-endpoint: ""
 
 ---
 # Copyright 2018 The Knative Authors
@@ -4044,7 +4046,7 @@ metadata:
     app.kubernetes.io/version: devel
     app.kubernetes.io/part-of: knative-serving
   annotations:
-    knative.dev/example-checksum: "5b8c26fe"
+    knative.dev/example-checksum: "2897f625"
 data:
   _example: |-
     ################################
@@ -4128,6 +4130,12 @@ data:
     # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-priority-class-name
     kubernetes.podspec-priorityclassname: "disabled"
 
+    # Indicates whether Kubernetes SchedulerName support is enabled
+    #
+    # WARNING: Cannot safely be disabled once enabled.
+    # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-scheduler-name
+    kubernetes.podspec-schedulername: "disabled"
+
     # This feature flag allows end-users to add a subset of capabilities on the Pod's SecurityContext.
     #
     # When set to "enabled" or "allowed" it allows capabilities to be added to the container.
@@ -4159,6 +4167,11 @@ data:
     # 1. Enabled: enabling EmptyDir volume support
     # 2. Disabled: disabling EmptyDir volume support
     kubernetes.podspec-volumes-emptydir: "disabled"
+
+    # Controls whether init containers support is enabled or not.
+    # 1. Enabled: enabling init containers support
+    # 2. Disabled: disabling init containers support
+    kubernetes.podspec-init-containers: "disabled"
 
 ---
 # Copyright 2018 The Knative Authors
@@ -4285,7 +4298,7 @@ metadata:
     app.kubernetes.io/version: devel
     app.kubernetes.io/part-of: knative-serving
   annotations:
-    knative.dev/example-checksum: "96896b00"
+    knative.dev/example-checksum: "f7948630"
 data:
   _example: |
     ################################
@@ -4303,17 +4316,17 @@ data:
     # this example block and unindented to be in the data block
     # to actually change the configuration.
 
-    # leaseDuration is how long non-leaders will wait to try to acquire the
+    # lease-duration is how long non-leaders will wait to try to acquire the
     # lock; 15 seconds is the value used by core kubernetes controllers.
-    leaseDuration: "15s"
+    lease-duration: "15s"
 
-    # renewDeadline is how long a leader will try to renew the lease before
+    # renew-deadline is how long a leader will try to renew the lease before
     # giving up; 10 seconds is the value used by core kubernetes controllers.
-    renewDeadline: "10s"
+    renew-deadline: "10s"
 
-    # retryPeriod is how long the leader election client waits between tries of
+    # retry-period is how long the leader election client waits between tries of
     # actions; 2 seconds is the value used by core kubernetes controllers.
-    retryPeriod: "2s"
+    retry-period: "2s"
 
     # buckets is the number of buckets used to partition key space of each
     # Reconciler. If this number is M and the replica number of the controller
@@ -4425,7 +4438,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "325e5f98"
+    knative.dev/example-checksum: "ea755eea"
 data:
   _example: |
     ################################
@@ -4443,7 +4456,7 @@ data:
     # this example block and unindented to be in the data block
     # to actually change the configuration.
 
-    # ingress.class specifies the default ingress class
+    # ingress-class specifies the default ingress class
     # to use when not dictated by Route annotation.
     #
     # If not specified, will use the Istio ingress.
@@ -4452,9 +4465,9 @@ data:
     # will result in undefined behavior.  Therefore it is best to only
     # update this value during the setup of Knative, to avoid getting
     # undefined behavior.
-    ingress.class: "istio.ingress.networking.knative.dev"
+    ingress-class: "istio.ingress.networking.knative.dev"
 
-    # certificate.class specifies the default Certificate class
+    # certificate-class specifies the default Certificate class
     # to use when not dictated by Route annotation.
     #
     # If not specified, will use the Cert-Manager Certificate.
@@ -4463,9 +4476,9 @@ data:
     # will result in undefined behavior.  Therefore it is best to only
     # update this value during the setup of Knative, to avoid getting
     # undefined behavior.
-    certificate.class: "cert-manager.certificate.networking.knative.dev"
+    certificate-class: "cert-manager.certificate.networking.knative.dev"
 
-    # domainTemplate specifies the golang text template string to use
+    # domain-template specifies the golang text template string to use
     # when constructing the Knative service's DNS name. The default
     # value is "{{.Name}}.{{.Namespace}}.{{.Domain}}".
     #
@@ -4488,33 +4501,34 @@ data:
     # eg. '{{.Name}}-{{.Namespace}}.{{ index .Annotations "sub"}}.{{.Domain}}'
     # and you have an annotation {"sub":"foo"}, then the generated template
     # would be {Name}-{Namespace}.foo.{Domain}
-    domainTemplate: "{{.Name}}.{{.Namespace}}.{{.Domain}}"
+    domain-template: "{{.Name}}.{{.Namespace}}.{{.Domain}}"
 
     # tagTemplate specifies the golang text template string to use
     # when constructing the DNS name for "tags" within the traffic blocks
     # of Routes and Configuration.  This is used in conjunction with the
     # domainTemplate above to determine the full URL for the tag.
-    tagTemplate: "{{.Tag}}-{{.Name}}"
+    tag-template: "{{.Tag}}-{{.Name}}"
 
     # Controls whether TLS certificates are automatically provisioned and
     # installed in the Knative ingress to terminate external TLS connection.
     # 1. Enabled: enabling auto-TLS feature.
     # 2. Disabled: disabling auto-TLS feature.
-    autoTLS: "Disabled"
+    auto-tls: "Disabled"
 
     # Controls the behavior of the HTTP endpoint for the Knative ingress.
     # It requires autoTLS to be enabled.
     # 1. Enabled: The Knative ingress will be able to serve HTTP connection.
-    # 2. Disabled: The Knative ingress will reject HTTP traffic.
-    # 3. Redirected: The Knative ingress will send a 301 redirect for all
+    # 2. Redirected: The Knative ingress will send a 301 redirect for all
     # http connections, asking the clients to use HTTPS.
-    httpProtocol: "Enabled"
+    #
+    # "Disabled" option is deprecated.
+    http-protocol: "Enabled"
 
-    # rolloutDuration contains the minimal duration in seconds over which the
+    # rollout-duration contains the minimal duration in seconds over which the
     # Configuration traffic targets are rolled out to the newest revision.
-    rolloutDuration: "0"
+    rollout-duration: "0"
 
-    # autocreateClusterDomainClaims controls whether ClusterDomainClaims should
+    # autocreate-cluster-domain-claims controls whether ClusterDomainClaims should
     # be automatically created (and deleted) as needed when DomainMappings are
     # reconciled.
     #
@@ -4526,7 +4540,7 @@ data:
     #
     # If this is "true", users are able to associate arbitrary names with their
     # services via the DomainMapping feature.
-    autocreateClusterDomainClaims: "false"
+    autocreate-cluster-domain-claims: "false"
 
     # If true, networking plugins can add additional information to deployed
     # applications to make their pods directly accessible via their IPs even if mesh is
@@ -4552,7 +4566,7 @@ data:
     # This can be used for making Knative report all URLs as "HTTPS" for example, if you're
     # fronting Knative with an external loadbalancer that deals with TLS termination and
     # Knative doesn't know about that otherwise.
-    defaultExternalScheme: "http"
+    default-external-scheme: "http"
 
 ---
 # Copyright 2018 The Knative Authors
@@ -4827,7 +4841,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/cvetkovic/activator-ecd51ca5034883acbe737fde417a3d86@sha256:96b716bd4f3a02fad110ce3012c5544a6a155478f6549a1120e12ba61f8b7dc7
+          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:55a7e84ac16e3a25fa0fb8571a5eb70c3bf37bf6f4dd3ab66fc2ba5dfb2dc8c0
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -4986,7 +5000,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/cvetkovic/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:a76456e9ae5b1d9d24b3e5d2118b575465838de220ac1c54e8ce291c8fcbff97
+          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:a5889991a5f5927e32488f72c18622e99f429160f3fea68e66f874ca3bd857c2
           resources:
             requests:
               cpu: 100m
@@ -5123,7 +5137,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/cvetkovic/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:5e368a51c3dad9a2f9ba49f3787943fdfb68b8e5554cd4c62ea6f20d184a0774
+          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:ae38721b011d5705eb1bf828900c5b8b1380da302eb652f5b3c24a4f2adf6ba3
           resources:
             requests:
               cpu: 100m
@@ -5238,7 +5252,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/cvetkovic/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:f71bf78feb8847e30e4cce51a30b515a2efab7cb1db6bf2bc1f0efe3973149dc
+          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:9484afda79668e3d2f0c071e9228df564f864c6222bef58f6525bf68f8bac305
           resources:
             requests:
               cpu: 30m
@@ -5328,7 +5342,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/cvetkovic/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:f61f9d41e93ce4cb23b4ba12b2a5cb53a7ea994e30aaf254036d399e8e391bab
+          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:06959657896db273b3cca32efb282c6843b7815492184fefb3d94d325de377af
           resources:
             requests:
               cpu: 100m
@@ -5531,7 +5545,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/cvetkovic/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:ea81fdfb44dae5e0a9271b4b740d5b67bb3f4fd6b5e1a3385d4cc98247beb7b1
+          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:87b9bc8f0d79aefbf908ab98fa8d166991fe178685ba0d7c423c8399477f8057
           resources:
             requests:
               cpu: 100m
