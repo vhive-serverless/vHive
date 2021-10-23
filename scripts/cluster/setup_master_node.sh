@@ -46,7 +46,7 @@ cd $ROOT
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.9.5 TARGET_ARCH=x86_64 sh -
 export PATH=$PATH:$ROOT/istio-1.9.5/bin
 sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-1.9.5/bin' >> /etc/profile"
-istioctl install -f $ROOT/configs/istio/istio-minimal-operator.yaml
+istioctl install -y -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
 KNATIVE_VERSION=v0.26.0
 # Install KNative in the cluster

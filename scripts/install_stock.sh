@@ -26,13 +26,13 @@ sudo apt-get update >> /dev/null
 
 sudo apt-get -y install btrfs-progs pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
 
-wget --continue --quiet https://github.com/google/protobuf/releases/download/v3.11.4/protoc-3.11.4-linux-x86_64.zip
-sudo unzip -o -q protoc-3.11.4-linux-x86_64.zip -d /usr/local
+wget --continue --quiet https://github.com/protocolbuffers/protobuf/releases/download/v3.19.0/protoc-3.19.0-linux-x86_64.zip
+sudo unzip -o -q protoc-3.19.0-linux-x86_64.zip -d /usr/local
 
-wget --continue --quiet https://github.com/containerd/containerd/releases/download/v1.4.1/containerd-1.4.1-linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf containerd-1.4.1-linux-amd64.tar.gz
+wget --continue --quiet https://github.com/containerd/containerd/releases/download/v1.5.7/containerd-1.5.7-linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf containerd-1.5.7-linux-amd64.tar.gz
 
-wget --continue --quiet https://github.com/opencontainers/runc/releases/download/v1.0.0-rc92/runc.amd64
+wget --continue --quiet https://github.com/opencontainers/runc/releases/download/v1.0.2/runc.amd64
 mv runc.amd64 runc
 sudo install -D -m0755 runc /usr/local/sbin/runc
 
