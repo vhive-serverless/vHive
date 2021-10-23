@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM kindest/node:v1.20.2
+FROM kindest/node:v1.20.7
 
 RUN apt-get update && \
     apt-get install -y gnupg2 && \
@@ -30,7 +30,7 @@ RUN apt-get update && \
     apt-get upgrade --yes && \
     apt-get install --yes \
     apt-utils && \
-    apt-get install --yes \
+    DEBIAN_FRONTEND="noninteractive" apt-get install --yes \
     sudo \
     wget curl\
     gcc g++\
