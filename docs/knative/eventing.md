@@ -21,7 +21,7 @@ A diagram of our design looks as follows, ignoring the extra interactions such a
 ![The diagram of our design.](./assets/broker.png)
 
 ### CloudEvents
-The core concepts of CloudEvents are [summarized](https://github.com/cloudevents/spec/blob/master/primer.md#cloudevents-concepts) in the following paragraph:
+The core concepts of CloudEvents are [summarized](https://github.com/cloudevents/spec/blob/v1.0.1/primer.md#cloudevents-concepts) in the following paragraph:
 
 > An **event** includes context and data about an **occurrence**. Each occurrence is uniquely identified by the data of the event.
 >
