@@ -131,6 +131,7 @@ func (m *MemoryManager) Activate(vmID string) error {
 
 	state, ok = m.instances[vmID]
 	if !ok {
+		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
@@ -178,6 +179,7 @@ func (m *MemoryManager) FetchState(vmID string) error {
 
 	state, ok = m.instances[vmID]
 	if !ok {
+		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
@@ -212,6 +214,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	state, ok = m.instances[vmID]
 	if !ok {
+		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
@@ -261,6 +264,7 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 
 	state, ok := m.instances[vmID]
 	if !ok {
+		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
@@ -296,6 +300,7 @@ func (m *MemoryManager) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePa
 
 	state, ok := m.instances[vmID]
 	if !ok {
+		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
@@ -326,6 +331,7 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 
 	state, ok := m.instances[vmID]
 	if !ok {
+		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
 		return nil, errors.New("VM not registered with the memory manager")
 	}
