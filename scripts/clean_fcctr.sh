@@ -28,9 +28,10 @@ echo Killing firecracker agents and VMs
 sudo pkill -9 firec
 sudo pkill -9 containerd
 
-echo Resetting iptables
-sudo iptables -F
-sudo iptables -t nat -F
+echo Resetting nftables
+nft flush table ip filter
+nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }"
+nft "add rule ip filter FORWARD ct state related,established counter accept"
 
 echo Deleting veth* devices created by CNI
 cat /proc/net/dev | grep veth | cut -d" " -f1| cut -d":" -f1 | while read in; do sudo ip link delete "$in"; done

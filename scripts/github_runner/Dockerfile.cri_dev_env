@@ -34,7 +34,7 @@ RUN apt-get update && \
     sudo \
     wget curl\
     gcc g++\
-    iproute2 iptables net-tools \
+    iproute2 iptables net-tools nftables \
     apt-transport-https \
     ca-certificates \
     make jq \

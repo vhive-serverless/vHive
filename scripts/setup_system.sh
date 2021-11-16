@@ -46,6 +46,7 @@ sudo apt-get -y install \
     gnupg-agent \
     software-properties-common \
     iproute2 \
+    nftables \
     skopeo >> /dev/null
 
 # stack size, # of open files, # of pids
@@ -73,3 +74,12 @@ sudo sysctl --quiet -w kernel.threads-max=999999999
 sudo swapoff -a >> /dev/null
 sudo sysctl --quiet net.ipv4.ip_forward=1
 sudo sysctl --quiet --system
+
+# NAT setup
+hostiface=$(sudo route | grep default | tr -s ' ' | cut -d ' ' -f 8)
+sudo nft "add table ip filter"
+sudo nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }"
+sudo nft "add rule ip filter FORWARD ct state related,established counter accept"
+sudo nft "add table ip nat"
+sudo nft "add chain ip nat POSTROUTING { type nat hook postrouting priority 0; policy accept; }"
+sudo nft "add rule ip nat POSTROUTING oifname ${hostiface} counter masquerade"

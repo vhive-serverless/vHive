@@ -33,6 +33,7 @@ RUN apt-get update && \
     gcc \
     iproute2 \
     iptables \
+    nftables \
     apt-transport-https \
     ca-certificates \
     curl \
