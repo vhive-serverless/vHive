@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov and EASE lab
+// Copyright (c) 2021 Plamen Petrov, Amory Hoste and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/google/nftables"
+	"github.com/google/nftables/expr"
 	"os/exec"
 	"strings"
 	"sync/atomic"
@@ -104,9 +106,9 @@ func createBridge(bridgeName, gatewayAddr string) {
 	}
 }
 
-//ConfigIPtables Configures IP tables for internet access inside VM
-func ConfigIPtables(tapName, hostIface string) error {
-
+// setupForwardRules sets up forwarding rules to enable internet access inside the vm
+func setupForwardRules(tapName, hostIface string) error {
+	// Fetch host default interface if not specified
 	if hostIface == "" {
 		out, err := exec.Command(
 			"route",
@@ -123,36 +125,89 @@ func ConfigIPtables(tapName, hostIface string) error {
 			}
 		}
 	}
-	cmd := exec.Command(
-		"sudo", "iptables", "--wait", "-t", "nat", "-A", "POSTROUTING", "-o", hostIface, "-j", "MASQUERADE",
-	)
-	stdoutStderr, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Warnf("Failed to configure NAT %v\n%s\n", err, stdoutStderr)
-		return err
+
+
+	conn := nftables.Conn{}
+
+	// 1. nft add table ip filter
+	filterTable := &nftables.Table{
+		Name:   "filter",
+		Family: nftables.TableFamilyIPv4,
 	}
-	cmd = exec.Command(
-		"sudo", "iptables", "--wait", "-A", "FORWARD", "-i", tapName, "-o", hostIface, "-j", "ACCEPT",
-	)
-	stdoutStderr, err = cmd.CombinedOutput()
-	if err != nil {
-		log.Warnf("Failed to setup forwarding into tap %v\n%s\n", err, stdoutStderr)
-		return err
+
+	// 2. nft add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }
+	polAccept := nftables.ChainPolicyAccept
+	fwdCh := &nftables.Chain{
+		Name:     fmt.Sprintf("FORWARD%s", tapName),
+		Table:    filterTable,
+		Type:     nftables.ChainTypeFilter,
+		Priority: 0,
+		Hooknum:  nftables.ChainHookForward,
+		Policy:   &polAccept,
 	}
-	cmd = exec.Command(
-		"sudo", "iptables", "--wait", "-A", "FORWARD", "-o", tapName, "-i", hostIface, "-j", "ACCEPT",
-	)
-	stdoutStderr, err = cmd.CombinedOutput()
-	if err != nil {
-		log.Warnf("Failed to setup forwarding out from tap %v\n%s\n", err, stdoutStderr)
-		return err
+
+	// 3. iptables -A FORWARD -i tapName -o hostIface -j ACCEPT
+	// 3.1 nft add rule ip filter FORWARD iifname tapName oifname hostIface counter accept
+	outRule := &nftables.Rule{
+		Table: filterTable,
+		Chain: fwdCh,
+		Exprs: []expr.Any{
+			// Load iffname in register 1
+			&expr.Meta{Key: expr.MetaKeyIIFNAME, Register: 1},
+			// Check iifname == tapName
+			&expr.Cmp{
+				Op:       expr.CmpOpEq,
+				Register: 1,
+				Data:     []byte(fmt.Sprintf("%s\x00", tapName)),
+			},
+			// Load oifname in register 1
+			&expr.Meta{Key: expr.MetaKeyOIFNAME, Register: 1},
+			// Check oifname == hostIface
+			&expr.Cmp{
+				Op:       expr.CmpOpEq,
+				Register: 1,
+				Data:     []byte(fmt.Sprintf("%s\x00", hostIface)),
+			},
+			&expr.Verdict{
+				Kind: expr.VerdictAccept,
+			},
+		},
 	}
-	cmd = exec.Command(
-		"sudo", "iptables", "--wait", "-A", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT",
-	)
-	stdoutStderr, err = cmd.CombinedOutput()
-	if err != nil {
-		log.Warnf("Failed to configure conntrack %v\n%s\n", err, stdoutStderr)
+
+	// 4. iptables -A FORWARD -o tapName -i hostIface -j ACCEPT
+	// 4.1 nft add rule ip filter FORWARD iifname hostIface oifname tapName counter accept
+	inRule := &nftables.Rule{
+		Table: filterTable,
+		Chain: fwdCh,
+		Exprs: []expr.Any{
+			// Load oifname in register 1
+			&expr.Meta{Key: expr.MetaKeyOIFNAME, Register: 1},
+			// Check oifname == tapName
+			&expr.Cmp{
+				Op:       expr.CmpOpEq,
+				Register: 1,
+				Data:     []byte(fmt.Sprintf("%s\x00", tapName)),
+			},
+			// Load iifname in register 1
+			&expr.Meta{Key: expr.MetaKeyIIFNAME, Register: 1},
+			// Check iifname == hostIface
+			&expr.Cmp{
+				Op:       expr.CmpOpEq,
+				Register: 1,
+				Data:     []byte(fmt.Sprintf("%s\x00", hostIface)),
+			},
+			&expr.Verdict{
+				Kind: expr.VerdictAccept,
+			},
+		},
+	}
+	conn.AddTable(filterTable)
+	conn.AddChain(fwdCh)
+	conn.AddRule(outRule)
+	conn.AddRule(inRule)
+
+	if err := conn.Flush(); err != nil {
+		log.Warnf("Failed to setup forwarding out from tap %v\n%s\n", tapName, err)
 		return err
 	}
 	return nil
@@ -178,7 +233,7 @@ func (tm *TapManager) AddTap(tapName, hostIface string) (*NetworkInterface, erro
 				tm.Lock()
 				tm.createdTaps[tapName] = ni
 				tm.Unlock()
-				err := ConfigIPtables(tapName, hostIface)
+				err := setupForwardRules(tapName, hostIface)
 				if err != nil {
 					return nil, err
 				}
