@@ -23,6 +23,7 @@
 package misc
 
 import (
+	"github.com/ease-lab/vhive/networking"
 	"sync"
 
 	"github.com/containerd/containerd"
@@ -38,12 +39,13 @@ type VM struct {
 	Task      *containerd.Task
 	TaskCh    <-chan containerd.ExitStatus
 	Ni        *taps.NetworkInterface
+	NetConfig *networking.NetworkConfig
 }
 
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
 	vmMap      sync.Map
-	tapManager *taps.TapManager
+	networkManager *networking.NetworkManager
 }
 
 // NewVM Initialize a VM

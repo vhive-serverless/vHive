@@ -48,12 +48,12 @@ func TestMain(m *testing.M) {
 }
 
 func TestAllocateFreeVMs(t *testing.T) {
-	vmPool := NewVMPool()
+	vmPool := NewVMPool("", 10)
 
 	vmIDs := [2]string{"test1", "test2"}
 
 	for _, vmID := range vmIDs {
-		_, err := vmPool.Allocate(vmID, "")
+		_, err := vmPool.Allocate(vmID)
 		require.NoError(t, err, "Failed to allocate VM")
 	}
 
@@ -62,13 +62,13 @@ func TestAllocateFreeVMs(t *testing.T) {
 		require.NoError(t, err, "Failed to free a VM")
 	}
 
-	vmPool.RemoveBridges()
+	vmPool.CleanupNetwork()
 }
 
 func TestAllocateFreeVMsParallel(t *testing.T) {
 	vmNum := 100
 
-	vmPool := NewVMPool()
+	vmPool := NewVMPool("", 10)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -76,7 +76,7 @@ func TestAllocateFreeVMsParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			_, err := vmPool.Allocate(vmID, "")
+			_, err := vmPool.Allocate(vmID)
 			require.NoError(t, err, "Failed to allocate VM")
 		}(i)
 	}
@@ -94,13 +94,13 @@ func TestAllocateFreeVMsParallel(t *testing.T) {
 	}
 	vmGroupFree.Wait()
 
-	vmPool.RemoveBridges()
+	vmPool.CleanupNetwork()
 }
 
-func TestRecreateParallel(t *testing.T) {
+func TestReuseTaps(t *testing.T) {
 	vmNum := 100
 
-	vmPool := NewVMPool()
+	vmPool := NewVMPool("", 10)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -108,11 +108,23 @@ func TestRecreateParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			_, err := vmPool.Allocate(vmID, "")
+			_, err := vmPool.Allocate(vmID)
 			require.NoError(t, err, "Failed to allocate VM")
 		}(i)
 	}
 	vmGroup.Wait()
+
+	var vmGroupFree sync.WaitGroup
+	for i := 0; i < vmNum; i++ {
+		vmGroupFree.Add(1)
+		go func(i int) {
+			defer vmGroupFree.Done()
+			vmID := fmt.Sprintf("test_%d", i)
+			err := vmPool.Free(vmID)
+			require.NoError(t, err, "Failed to free a VM")
+		}(i)
+	}
+	vmGroupFree.Wait()
 
 	var vmGroupRecreate sync.WaitGroup
 
@@ -123,7 +135,7 @@ func TestRecreateParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroupRecreate.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			err := vmPool.RecreateTap(vmID, "")
+			err := vmPool.Free(vmID)
 			require.NoError(t, err, "Failed to recreate tap")
 		}(i)
 	}
@@ -132,17 +144,17 @@ func TestRecreateParallel(t *testing.T) {
 	tElapsed := time.Since(tStart)
 	log.Infof("Recreated %d taps in %d ms", vmNum, tElapsed.Milliseconds())
 
-	var vmGroupFree sync.WaitGroup
+	var vmGroupCleanup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
-		vmGroupFree.Add(1)
+		vmGroupCleanup.Add(1)
 		go func(i int) {
-			defer vmGroupFree.Done()
+			defer vmGroupCleanup.Done()
 			vmID := fmt.Sprintf("test_%d", i)
 			err := vmPool.Free(vmID)
 			require.NoError(t, err, "Failed to free a VM")
 		}(i)
 	}
-	vmGroupFree.Wait()
+	vmGroupCleanup.Wait()
 
-	vmPool.RemoveBridges()
+	vmPool.CleanupNetwork()
 }

@@ -87,21 +87,19 @@ type Orchestrator struct {
 	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
-	hostIface        string
 
 	memoryManager *manager.MemoryManager
 }
 
 // NewOrchestrator Initializes a new orchestrator
-func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) *Orchestrator {
+func NewOrchestrator(snapshotter, hostIface string, netPoolSize int, opts ...OrchestratorOption) *Orchestrator {
 	var err error
 
 	o := new(Orchestrator)
-	o.vmPool = misc.NewVMPool()
+	o.vmPool = misc.NewVMPool(hostIface, netPoolSize)
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
-	o.hostIface = hostIface
 
 	for _, opt := range opts {
 		opt(o)

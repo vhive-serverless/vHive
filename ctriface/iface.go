@@ -73,7 +73,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
 
-	vm, err := o.vmPool.Allocate(vmID, o.hostIface)
+	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
 		return nil, nil, err
@@ -215,7 +215,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 
 	logger.Debug("Successfully started a VM")
 
-	return &StartVMResponse{GuestIP: vm.Ni.PrimaryAddress}, startVMMetric, nil
+	return &StartVMResponse{GuestIP: vm.NetConfig.GetCloneIP()}, startVMMetric, nil
 }
 
 // StopSingleVM Shuts down a VM
@@ -305,15 +305,16 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
 			StaticConfig: &proto.StaticNetworkConfiguration{
-				MacAddress:  vm.Ni.MacAddress,
-				HostDevName: vm.Ni.HostDevName,
+				MacAddress:  vm.NetConfig.GetMacAddress(),
+				HostDevName: vm.NetConfig.GetHostDevName(),
 				IPConfig: &proto.IPConfiguration{
-					PrimaryAddr: vm.Ni.PrimaryAddress + vm.Ni.Subnet,
-					GatewayAddr: vm.Ni.GatewayAddress,
+					PrimaryAddr: vm.NetConfig.GetContainerCIDR(),
+					GatewayAddr: vm.NetConfig.GetGatewayIP(),
 					Nameservers: getK8sDNS(),
 				},
 			},
 		}},
+		// NetworkNamespace: vm.NetConfig.GetNamespacePath(), // TODO
 	}
 }
 
@@ -485,8 +486,8 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) error {
 		return err
 	}
 
-	if err := o.vmPool.RecreateTap(vmID, o.hostIface); err != nil {
-		logger.Error("Failed to recreate tap upon offloading")
+	if err := o.vmPool.Free(vmID); err != nil {
+		logger.Error("failed to free VM from VM pool")
 		return err
 	}
 

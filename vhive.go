@@ -84,6 +84,7 @@ func main() {
 	criSock = flag.String("criSock", "/etc/vhive-cri/vhive-cri.sock", "Socket address for CRI service")
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
+	netPoolSize := flag.Int("netpoolsize", 50, "Amount of network configs to preallocate in a pool")
 	flag.Parse()
 
 	if *sandbox != "firecracker" && *sandbox != "gvisor" {
@@ -137,6 +138,7 @@ func main() {
 	orch = ctriface.NewOrchestrator(
 		*snapshotter,
 		*hostIface,
+		*netPoolSize,
 		ctriface.WithTestModeOn(testModeOn),
 		ctriface.WithSnapshots(*isSnapshotsEnabled),
 		ctriface.WithUPF(*isUPFEnabled),
