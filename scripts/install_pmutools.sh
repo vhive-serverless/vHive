@@ -32,4 +32,4 @@ sudo git clone https://github.com/andikleen/pmu-tools /usr/local/pmu-tools
 sudo sysctl -w kernel.perf_event_paranoid=-1
 
 # first run, download essential files
-/usr/local/pmu-tools/toplev --print > /dev/null
+#/usr/local/pmu-tools/toplev --print > /dev/null
