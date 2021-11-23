@@ -69,7 +69,7 @@ func TestBenchmarkStart(t *testing.T) {
 		startMetrics := make([]*metrics.Metric, benchCount)
 
 		// Pull image
-		_, err := orch.getImage(ctx, imageName)
+		_, err := orch.imageManager.GetImage(ctx, imageName)
 		require.NoError(t, err, "Failed to pull image "+imageName)
 
 		for i := 0; i < benchCount; i++ {

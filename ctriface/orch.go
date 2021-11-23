@@ -23,13 +23,14 @@
 package ctriface
 
 import (
+	"github.com/ease-lab/vhive/ctrimages"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -79,6 +80,7 @@ type Orchestrator struct {
 	snapshotter  string
 	client       *containerd.Client
 	fcClient     *fcclient.Client
+	imageManager *ctrimages.ImageManager
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
@@ -135,6 +137,9 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		log.Fatal("Failed to start firecracker client", err)
 	}
 	log.Info("Created firecracker client")
+
+	o.imageManager = ctrimages.NewImageManager(o.client, o.snapshotter)
+
 	return o
 }
 

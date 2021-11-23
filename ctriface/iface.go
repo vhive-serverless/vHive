@@ -24,10 +24,6 @@ package ctriface
 
 import (
 	"context"
-	"fmt"
-	"net"
-	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -41,8 +37,6 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/remotes/docker"
-
 	"github.com/firecracker-microvm/firecracker-containerd/proto" // note: from the original repo
 	"github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
 	"github.com/pkg/errors"
@@ -96,7 +90,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 	tStart = time.Now()
-	if vm.Image, err = o.getImage(ctx, imageName); err != nil {
+	if vm.Image, err = o.imageManager.GetImage(ctx, imageName); err != nil {
 		return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
 	}
 	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
@@ -278,76 +272,6 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	logger.Debug("Stopped VM successfully")
 
 	return nil
-}
-
-// Checks whether a URL has a .local domain
-func isLocalDomain(s string) (bool, error) {
-	if !strings.Contains(s, "://") {
-		s = "dummy://" + s
-	}
-
-	u, err := url.Parse(s)
-	if err != nil {
-		return false, err
-	}
-
-	host, _, err := net.SplitHostPort(u.Host)
-	if err != nil {
-		host = u.Host
-	}
-
-	i := strings.LastIndex(host, ".")
-	tld := host[i+1:]
-
-	return tld == "local", nil
-}
-
-// Converts an image name to a url if it is not a URL
-func getImageURL(image string) string {
-	// Pull from dockerhub by default if not specified (default k8s behavior)
-	if strings.Contains(image, ".") {
-		return image
-	}
-	return "docker.io/" + image
-
-}
-
-func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*containerd.Image, error) {
-	image, found := o.cachedImages[imageName]
-	if !found {
-		var err error
-		log.Debug(fmt.Sprintf("Pulling image %s", imageName))
-
-		imageURL := getImageURL(imageName)
-		local, _ := isLocalDomain(imageURL)
-		if local {
-			// Pull local image using HTTP
-			resolver := docker.NewResolver(docker.ResolverOptions{
-				Client: http.DefaultClient,
-				Hosts: docker.ConfigureDefaultRegistries(
-					docker.WithPlainHTTP(docker.MatchAllHosts),
-				),
-			})
-			image, err = o.client.Pull(ctx, imageURL,
-				containerd.WithPullUnpack,
-				containerd.WithPullSnapshotter(o.snapshotter),
-				containerd.WithResolver(resolver),
-			)
-		} else {
-			// Pull remote image
-			image, err = o.client.Pull(ctx, imageURL,
-				containerd.WithPullUnpack,
-				containerd.WithPullSnapshotter(o.snapshotter),
-			)
-		}
-
-		if err != nil {
-			return &image, err
-		}
-		o.cachedImages[imageName] = image
-	}
-
-	return &image, nil
 }
 
 func getK8sDNS() []string {
