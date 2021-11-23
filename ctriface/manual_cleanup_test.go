@@ -174,7 +174,7 @@ func TestParallelSnapLoad(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
+	_, err := orch.imageManager.GetImage(ctx, testImageName)
 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	var vmGroup sync.WaitGroup
@@ -236,7 +236,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
+	_, err := orch.imageManager.GetImage(ctx, testImageName)
 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{

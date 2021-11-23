@@ -186,7 +186,7 @@ func TestStartStopParallel(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
+	_, err := orch.imageManager.GetImage(ctx, testImageName)
 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{
@@ -245,7 +245,7 @@ func TestPauseResumeParallel(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
+	_, err := orch.imageManager.GetImage(ctx, testImageName)
 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{
