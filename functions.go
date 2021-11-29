@@ -371,7 +371,7 @@ func (f *Function) AddInstance() *metrics.Metric {
 		metr.MetricMap[metrics.ConnectFuncClient] = metrics.ToUS(time.Since(tStart))
 	}
 	if err != nil {
-		logger.Panic("Failed to acquire func client")
+		logger.Panic("Failed to acquire func client", err)
 	}
 	f.funcClient = &funcClient
 
