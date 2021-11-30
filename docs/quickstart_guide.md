@@ -1,6 +1,6 @@
 # vHive Quickstart
 This guide describes how to set up an _N_-node vHive serverless cluster with Firecracker MicroVMs.
-See [here](https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/) to learn where to find table of contents.
+See [here][github-toc] to learn where to find table of contents.
 
 ## Table of Contents
 1. [Host platform requirements](#I-host-platform-requirements)
@@ -40,17 +40,17 @@ See [here](https://github.blog/changelog/2021-04-13-table-of-contents-support-in
 type `eval "$(ssh-agent -s)" && ssh-add` to allow ssh authentication in the background.
 
 ### 3. CloudLab Deployment Notes
-We suggest renting nodes on [CloudLab](https://www.cloudlab.us) as their service is available to researchers world-wide.
+We suggest renting nodes on [CloudLab][cloudlab] as their service is available to researchers world-wide.
 
 #### A. CloudLab Profile
-You can use our CloudLab profile [RPerf/vHive-cluster-env](https://www.cloudlab.us/p/RPerf/vHive-cluster-env).
+You can use our CloudLab profile [faas-sched/vhive-ubuntu20][cloudlab-pf].
 
 It is recommended to use a base Ubuntu 20.04 image for each node and connect the nodes in a LAN.
 
 #### B. Nodes to Rent
 We tested the following instructions by setting up a **2-node** cluster on Cloudlab, using all of the following SSD-equipped machines: `xl170` on Utah, `rs440` on Mass, `m400` on OneLab. `xl170` are normally less occupied than the other two, and users can consider other SSD-based machines too.
 
-SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be found [here](https://docs.cloudlab.us/hardware.html).
+SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be found [here][cloudlab-hw].
 
 ## II. Setup a Serverless (Knative) Cluster
 ### 1. Setup All Nodes
@@ -107,7 +107,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     >   ```bash
     >   sudo screen -ls
     >   ```
-3. Start `firecracker-containerd` in a background named `firecracker`:
+3. Start `firecracker-containerd` in a background terminal named `firecracker`:
     ```bash
     sudo PATH=$PATH screen -dmS firecracker bash -c "/usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml > >(tee -a /tmp/vhive-logs/firecracker.stdout) 2> >(tee -a /tmp/vhive-logs/firecracker.stderr >&2)"
     ```
@@ -129,7 +129,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     >
     > By default, the microVMs are booted, `-snapshots` enables snapshots after the 2nd invocation of each function.
     >
-    > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP) technique that we described in our ASPLOS'21 paper ([extended abstract](https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf), [full paper](papers/REAP_ASPLOS21.pdf)).
+    > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP) technique that we described in our ASPLOS'21 paper ([extended abstract][ext-abstract], [full paper](papers/REAP_ASPLOS21.pdf)).
 
 ### 3. Configure Master Node
 **On the master node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
@@ -235,7 +235,7 @@ scripts/cloudlab/start_onenode_vhive_cluster.sh
 
 ## IV. Deploying and Invoking Functions in vHive
 This section is only for synchronous (i.e., Knative Serving) functions. Please refer to
-[Adding Benchmarks to vHive/Knative and Stock Knative](https://github.com/ease-lab/vSwarm/blob/main/docs/adding_benchmarks.md)
+[Adding Benchmarks to vHive/Knative and Stock Knative][kn-benchmark]
 for benchmarking asynchronous (i.e., Knative Eventing) case and more details about both.
 
 ### 1. Deploy Functions
@@ -280,3 +280,9 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
     kn service delete --all
     ```
 
+[github-toc]: https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/
+[cloudlab]: https://www.cloudlab.us
+[cloudlab-pf]: https://www.cloudlab.us/p/faas-sched/vhive-ubuntu20
+[cloudlab-hw]: https://docs.cloudlab.us/hardware.html
+[ext-abstract]: https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf
+[kn-benchmark]: https://github.com/ease-lab/vSwarm/blob/main/docs/adding_benchmarks.md
