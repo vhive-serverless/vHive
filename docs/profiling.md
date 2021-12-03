@@ -88,6 +88,13 @@ scripts/install_pmutool.sh
 
 ## Quick-start guide
 ### TestProfileSingleConfiguration function
+
+Before running the test, start the firecracker-containerd daemon:
+```bash
+sudo PATH=$PATH /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml
+```
+
+
 `TestProfileSingleConfiguration` is for collecting the TopDown metrics from a fixed number of VMs and RPS 
 setting during the profiling period.
 
