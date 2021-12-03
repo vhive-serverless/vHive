@@ -27,7 +27,7 @@ set -e
 sudo apt-get install numactl \
     linux-tools-`uname -r`  -y
 
-sudo git clone https://github.com/andikleen/pmu-tools /usr/local/pmu-tools
+sudo git clone https://github.com/ease-lab/pmu-tools -b master /usr/local/pmu-tools
 
 sudo sysctl -w kernel.perf_event_paranoid=-1
 
