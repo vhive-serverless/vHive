@@ -127,6 +127,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	// Wait for placeholder UC to be created
 	<-stockDone
+	
+	// Check for error from container creation
+ 	if stockErr != nil {
+ 		log.WithError(stockErr).Error("failed to create container")
+ 		return nil, stockErr
+ 	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)
