@@ -17,6 +17,8 @@ kind: CustomResourceDefinition
 metadata:
   name: certificates.networking.internal.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
@@ -75,6 +77,8 @@ kind: CustomResourceDefinition
 metadata:
   name: configurations.serving.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
     duck.knative.dev/podspecable: "true"
@@ -777,6 +781,8 @@ kind: CustomResourceDefinition
 metadata:
   name: clusterdomainclaims.networking.internal.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
@@ -826,6 +832,8 @@ kind: CustomResourceDefinition
 metadata:
   name: domainmappings.serving.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
@@ -1095,6 +1103,8 @@ kind: CustomResourceDefinition
 metadata:
   name: ingresses.networking.internal.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
@@ -1154,6 +1164,8 @@ kind: CustomResourceDefinition
 metadata:
   name: metrics.autoscaling.internal.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
@@ -1276,6 +1288,8 @@ kind: CustomResourceDefinition
 metadata:
   name: podautoscalers.autoscaling.internal.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
@@ -1435,6 +1449,8 @@ kind: CustomResourceDefinition
 metadata:
   name: revisions.serving.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
@@ -2104,6 +2120,17 @@ spec:
                   description: DesiredReplicas reflects the desired amount of pods running this revision.
                   type: integer
                   format: int32
+                initContainerStatuses:
+                  description: 'InitContainerStatuses is a slice of images present in .Spec.InitContainer[*].Image to their respective digests and their container name. The digests are resolved during the creation of Revision. ContainerStatuses holds the container name and image digests for both serving and non serving containers. ref: http://bit.ly/image-digests'
+                  type: array
+                  items:
+                    description: ContainerStatus holds the information of container name and image digest value
+                    type: object
+                    properties:
+                      imageDigest:
+                        type: string
+                      name:
+                        type: string
                 logUrl:
                   description: LogURL specifies the generated logging url for this particular revision based on the revision url template specified in the controller's config.
                   type: string
@@ -2134,6 +2161,8 @@ kind: CustomResourceDefinition
 metadata:
   name: routes.serving.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
     duck.knative.dev/addressable: "true"
@@ -2307,6 +2336,8 @@ kind: CustomResourceDefinition
 metadata:
   name: serverlessservices.networking.internal.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
@@ -2377,6 +2408,8 @@ kind: CustomResourceDefinition
 metadata:
   name: services.serving.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
     duck.knative.dev/addressable: "true"
@@ -3144,6 +3177,8 @@ kind: CustomResourceDefinition
 metadata:
   name: images.caching.internal.knative.dev
   labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
     knative.dev/crd-install: "true"
 spec:
   group: caching.internal.knative.dev
