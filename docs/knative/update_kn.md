@@ -13,6 +13,7 @@ This guide describes how to make changes to Knative Serving and use the changed 
    ```sh
    ko login index.docker.io -u <DOCKERHUB USERNAME> -p <DOCKERHUB PASSWORD>
    ```
+   :warning: Note that you shouldn't use root permission in this step, otherwise, error will be thrown at step 5. If you find yourself using `sudo`, something may have gone wrong and you'd better reset your environment.
 5. [Set up your environment](https://github.com/knative/serving/blob/main/DEVELOPMENT.md#set-up-your-environment) for building:
    ```sh
    cat << EOF >> ~/.bashrc
@@ -25,7 +26,7 @@ This guide describes how to make changes to Knative Serving and use the changed 
    - `<DOCKER HUB USERNAME>` must be the same username that you used to login in the previous step.
 6. Git clone your fork:
    ```sh
-   git clone --branch=<FEATURE BRANCH> https://github.com/ease-lab/serving
+   git clone --branch=<YOUR PR BRANCH> https://github.com/ease-lab/serving
    cd serving
    ```
 7. Generate new Knative YAMLs (by building the relevant Docker images and uploading them to Docker Hub too):
