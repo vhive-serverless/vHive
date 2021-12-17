@@ -51,7 +51,7 @@ sudo apt-get update >> /dev/null
 sudo apt-get -y install cri-tools ebtables ethtool kubeadm=$K8S_VERSION kubectl=$K8S_VERSION kubelet=$K8S_VERSION kubernetes-cni >> /dev/null
 
 # Install knative CLI
-KNATIVE_VERSION=v0.26.0
+KNATIVE_VERSION="release-1.1"
 git clone --quiet --depth=1 --branch=$KNATIVE_VERSION -c advice.detachedHead=false https://github.com/knative/client.git $HOME/client
 cd $HOME/client
 hack/build.sh -f
