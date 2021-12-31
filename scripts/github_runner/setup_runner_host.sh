@@ -68,3 +68,5 @@ newgrp docker
 # Allow profiling using Perf / PMU tools
 sudo sysctl -w kernel.perf_event_paranoid=-1
 
+# Kube-proxy
+sudo sysctl -w net.netfilter.nf_conntrack_max=655360
