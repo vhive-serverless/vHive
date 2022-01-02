@@ -33,7 +33,7 @@ fi
 cd $HOME
 if [ ! -d "$HOME/actions-runner" ]; then
     mkdir actions-runner && cd actions-runner
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep 'browser_' | cut -d\" -f4 | grep linux-x64)
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep 'browser_' | cut -d\" -f4 | grep 'linux-x64-[0-9\.]*.tar.gz')
     curl -o actions-runner-linux-x64.tar.gz -L -C - $LATEST_VERSION
     tar xzf "./actions-runner-linux-x64.tar.gz"
     rm actions-runner-linux-x64.tar.gz
