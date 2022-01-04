@@ -55,7 +55,7 @@ func TestStartSnapStop(t *testing.T) {
 
 	vmID := "2"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)

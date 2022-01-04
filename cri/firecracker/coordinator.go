@@ -98,13 +98,13 @@ func (c *coordinator) setIdleInstance(fi *funcInstance) {
 	c.idleInstances[fi.Image] = append(c.idleInstances[fi.Image], fi)
 }
 
-func (c *coordinator) startVM(ctx context.Context, image string) (*funcInstance, error) {
+func (c *coordinator) startVM(ctx context.Context, image string, memSizeMib, vCPUCount uint32) (*funcInstance, error) {
 	if fi := c.getIdleInstance(image); c.orch != nil && c.orch.GetSnapshotsEnabled() && fi != nil {
 		err := c.orchLoadInstance(ctx, fi)
 		return fi, err
 	}
 
-	return c.orchStartVM(ctx, image)
+	return c.orchStartVM(ctx, image, memSizeMib, vCPUCount)
 }
 
 func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
@@ -150,7 +150,7 @@ func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
 	return nil
 }
 
-func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInstance, error) {
+func (c *coordinator) orchStartVM(ctx context.Context, image string, memSizeMib, vCPUCount uint32) (*funcInstance, error) {
 	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
 	logger := log.WithFields(
 		log.Fields{
@@ -170,7 +170,7 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInsta
 	defer cancel()
 
 	if !c.withoutOrchestrator {
-		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image)
+		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image, memSizeMib, vCPUCount)
 		if err != nil {
 			logger.WithError(err).Error("coordinator failed to start VM")
 		}

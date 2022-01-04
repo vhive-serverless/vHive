@@ -63,7 +63,7 @@ func TestSnapLoad(t *testing.T) {
 
 	vmID := "1"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -113,7 +113,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	vmID := "3"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -184,7 +184,7 @@ func TestParallelSnapLoad(t *testing.T) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("%d", i+vmIDBase)
 
-			_, _, err := orch.StartVM(ctx, vmID, testImageName)
+			_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 			require.NoError(t, err, "Failed to start VM, "+vmID)
 
 			err = orch.PauseVM(ctx, vmID)
@@ -246,7 +246,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName)
+				_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 				require.NoError(t, err, "Failed to start VM, "+vmID)
 			}(i)
 		}

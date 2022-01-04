@@ -356,7 +356,7 @@ func (f *Function) AddInstance() *metrics.Metric {
 	if f.isSnapshotReady {
 		metr = f.LoadInstance()
 	} else {
-		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
+		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName, 0, 0)
 		if err != nil {
 			log.Panic(err)
 		}

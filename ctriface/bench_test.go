@@ -75,7 +75,7 @@ func TestBenchmarkStart(t *testing.T) {
 		for i := 0; i < benchCount; i++ {
 			dropPageCache()
 
-			_, metric, err := orch.StartVM(ctx, vmIDString, imageName)
+			_, metric, err := orch.StartVM(ctx, vmIDString, imageName, 0, 0)
 			require.NoError(t, err, "Failed to start VM")
 			startMetrics[i] = metric
 

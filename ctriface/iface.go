@@ -61,10 +61,12 @@ type StartVMResponse struct {
 
 const (
 	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
+	defaultVcpuCount = 1
+	defaultMemsizeMib = 256
 )
 
 // StartVM Boots a VM if it does not exist
-func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memSizeMib ,vCPUCount uint32) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		startVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart        time.Time
@@ -77,6 +79,18 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
 		return nil, nil, err
+	}
+
+	// Set VM vCPU and Memory
+	if memSizeMib != 0 {
+		vm.MemSizeMib = memSizeMib
+	} else {
+		vm.MemSizeMib = defaultMemsizeMib
+	}
+	if vCPUCount != 0 {
+		vm.VCPUCount = vCPUCount
+	} else {
+		vm.VCPUCount = defaultVcpuCount
 	}
 
 	defer func() {
@@ -300,8 +314,8 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 		TimeoutSeconds: 100,
 		KernelArgs:     kernelArgs,
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
-			VcpuCount:  1,
-			MemSizeMib: 256,
+			VcpuCount:  vm.VCPUCount,
+			MemSizeMib: vm.MemSizeMib,
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
 			StaticConfig: &proto.StaticNetworkConfiguration{

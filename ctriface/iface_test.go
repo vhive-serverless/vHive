@@ -69,7 +69,7 @@ func TestPauseSnapResume(t *testing.T) {
 
 	vmID := "4"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -112,7 +112,7 @@ func TestStartStopSerial(t *testing.T) {
 
 	vmID := "5"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.StopSingleVM(ctx, vmID)
@@ -146,7 +146,7 @@ func TestPauseResumeSerial(t *testing.T) {
 
 	vmID := "6"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -196,7 +196,7 @@ func TestStartStopParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName)
+				_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 				require.NoError(t, err, "Failed to start VM "+vmID)
 			}(i)
 		}
@@ -255,7 +255,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName)
+				_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
 				require.NoError(t, err, "Failed to start VM")
 			}(i)
 		}

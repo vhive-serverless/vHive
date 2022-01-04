@@ -40,6 +40,8 @@ type VM struct {
 	TaskCh    <-chan containerd.ExitStatus
 	Ni        *taps.NetworkInterface
 	NetConfig *networking.NetworkConfig
+	VCPUCount  uint32
+	MemSizeMib uint32
 }
 
 // VMPool Pool of active VMs (can be in several states though)

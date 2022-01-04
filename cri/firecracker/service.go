@@ -25,6 +25,7 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync"
 
 	"github.com/ease-lab/vhive/cri"
@@ -34,11 +35,13 @@ import (
 )
 
 const (
-	userContainerName = "user-container"
-	queueProxyName    = "queue-proxy"
-	guestIPEnv        = "GUEST_ADDR"
-	guestPortEnv      = "GUEST_PORT"
-	guestImageEnv     = "GUEST_IMAGE"
+	userContainerName     = "user-container"
+	queueProxyName        = "queue-proxy"
+	guestIPEnv            = "GUEST_ADDR"
+	guestPortEnv          = "GUEST_PORT"
+	guestImageEnv         = "GUEST_IMAGE"
+	guestMemorySizeMibEnv = "MEM_SIZE_MB"
+	guestvCPUCount        = "VCPU_COUNT"
 )
 
 type FirecrackerService struct {
@@ -110,7 +113,19 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
+	memSizeMib, err := getMemorySize(config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	vCPUCount, err := getvCPUCount(config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage, memSizeMib, vCPUCount)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
@@ -215,6 +230,39 @@ func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 
 	}
 
-	return "", errors.New("failed to provide non empty guest image in user container config")
+	return "", errors.New("failed to retrieve environment variable from user container config")
+}
 
+func getMemorySize(config *criapi.ContainerConfig) (uint32, error) {
+	envs := config.GetEnvs()
+	for _, kv := range envs {
+		if kv.GetKey() == guestMemorySizeMibEnv {
+			memSize, err := strconv.Atoi(kv.GetValue())
+			if err == nil {
+				return uint32(memSize), nil
+			} else {
+				return 0, err
+			}
+		}
+
+	}
+
+	return uint32(256), nil
+}
+
+func getvCPUCount(config *criapi.ContainerConfig) (uint32, error) {
+	envs := config.GetEnvs()
+	for _, kv := range envs {
+		if kv.GetKey() == guestvCPUCount {
+			vCPUCount, err := strconv.Atoi(kv.GetValue())
+			if err == nil {
+				return uint32(vCPUCount), nil
+			} else {
+				return 0, err
+			}
+		}
+
+	}
+
+	return uint32(1), nil
 }
