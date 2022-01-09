@@ -156,7 +156,7 @@ func (o *Orchestrator) setupCloseHandler() {
 // Cleanup Removes the bridges created by the VM pool's tap manager
 // Cleans up snapshots directory
 func (o *Orchestrator) Cleanup() {
-	o.vmPool.RemoveBridges()
+	o.vmPool.CleanupNetwork()
 	if err := os.RemoveAll(o.snapshotsDir); err != nil {
 		log.Panic("failed to delete snapshots dir", err)
 	}

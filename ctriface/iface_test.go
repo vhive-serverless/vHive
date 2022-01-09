@@ -62,6 +62,7 @@ func TestPauseSnapResume(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
+		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
@@ -105,6 +106,7 @@ func TestStartStopSerial(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
+		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
@@ -139,6 +141,7 @@ func TestPauseResumeSerial(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
+		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
@@ -180,6 +183,7 @@ func TestStartStopParallel(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
+		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
@@ -239,6 +243,7 @@ func TestPauseResumeParallel(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
+		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
