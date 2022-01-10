@@ -66,7 +66,7 @@ require (
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20210324051608-47abb6519492
-	gonum.org/v1/gonum v0.9.0
+	gonum.org/v1/gonum v0.9.3
 	gonum.org/v1/plot v0.9.0
 	google.golang.org/grpc v1.34.0
 	k8s.io/cri-api v0.20.6
