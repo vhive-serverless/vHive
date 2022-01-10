@@ -48,7 +48,7 @@ replace (
 require (
 	github.com/blend/go-sdk v1.20211025.3 // indirect
 	github.com/containerd/containerd v1.5.2
-	github.com/containerd/go-cni v1.0.2
+	github.com/containerd/go-cni v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
