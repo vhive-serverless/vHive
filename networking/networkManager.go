@@ -51,7 +51,8 @@ type NetworkManager struct {
 func NewNetworkManager(hostIfaceName string, poolSize int) (*NetworkManager, error) {
 	manager := new(NetworkManager)
 
-	if hostIfaceName == "" {
+	manager.hostIfaceName = hostIfaceName
+	if manager.hostIfaceName == "" {
 		hostIface, err := getHostIfaceName()
 		if err != nil {
 			return nil, err

@@ -25,6 +25,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/ease-lab/vhive/snapshotting"
 	"os"
 	"sync"
 	"testing"
@@ -62,6 +63,8 @@ func TestPauseSnapResume(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
+		"fc-dev-thinpool",
+		"",
 		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
@@ -69,14 +72,16 @@ func TestPauseSnapResume(t *testing.T) {
 	)
 
 	vmID := "4"
+	revisionID := "myrev-4"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 256, 1, false)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	err = orch.CreateSnapshot(ctx, vmID)
+	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", testImageName, 0, 0, 0, 256, 1, false)
+	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -105,6 +110,8 @@ func TestStartStopSerial(t *testing.T) {
 
 	orch := NewOrchestrator(
 		"devmapper",
+		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),
@@ -114,7 +121,7 @@ func TestStartStopSerial(t *testing.T) {
 
 	vmID := "5"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 256, 1, false)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.StopSingleVM(ctx, vmID)
@@ -140,6 +147,8 @@ func TestPauseResumeSerial(t *testing.T) {
 
 	orch := NewOrchestrator(
 		"devmapper",
+		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),
@@ -149,7 +158,7 @@ func TestPauseResumeSerial(t *testing.T) {
 
 	vmID := "6"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, 256, 1, false)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -183,6 +192,8 @@ func TestStartStopParallel(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
+		"fc-dev-thinpool",
+		"",
 		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
@@ -200,7 +211,7 @@ func TestStartStopParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
+				_, _, err := orch.StartVM(ctx, vmID, testImageName, 256, 1, false)
 				require.NoError(t, err, "Failed to start VM "+vmID)
 			}(i)
 		}
@@ -243,6 +254,8 @@ func TestPauseResumeParallel(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
+		"fc-dev-thinpool",
+		"",
 		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
@@ -260,7 +273,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName, 0, 0)
+				_, _, err := orch.StartVM(ctx, vmID, testImageName, 256, 1, false)
 				require.NoError(t, err, "Failed to start VM")
 			}(i)
 		}

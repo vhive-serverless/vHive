@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2021 Amory Hoste and EASE lab
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 package thindelta
 
 import (
@@ -5,9 +27,11 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	xmlparser "github.com/tamerh/xml-stream-parser"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -29,7 +53,29 @@ func NewThinDelta(poolName string, metaDataDev string) *ThinDelta {
 	thinDelta := new(ThinDelta)
 	thinDelta.poolName = poolName
 	thinDelta.metaDataDev = metaDataDev
+	if thinDelta.metaDataDev == "" {
+		metaDev, _ := getMetadataDev()
+		thinDelta.metaDataDev = metaDev
+	}
 	return thinDelta
+}
+
+// getMetadataDev returns the metadata device used by the device mapper
+func getMetadataDev() (string, error) {
+	out, err := exec.Command("sudo", "losetup").Output()
+	if err != nil {
+		log.Warnf("Failed to fetch devmapper metadata device, %v\n", err)
+		return "", err
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(out))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "devmapper/metadata") {
+			return line[:strings.Index(line, " ")], nil
+		}
+	}
+	return "", errors.New("Failed to fetch devmapper metadata device")
 }
 
 // getPoolPath returns the path of the devicemapper thinpool.

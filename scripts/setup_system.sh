@@ -29,6 +29,10 @@ sudo apt-get update >> /dev/null
 
 sudo apt-get -y install \
     apt-transport-https \
+    ca-certificates \
+    curl \
+    e2fsprogs \
+    util-linux \
     gcc \
     g++ \
     make \
@@ -43,7 +47,9 @@ sudo apt-get -y install \
     software-properties-common \
     iproute2 \
     nftables \
-    git-lfs >> /dev/null
+    git-lfs \
+    thin-provisioning-tools \
+    skopeo >> /dev/null
 
 # stack size, # of open files, # of pids
 sudo sh -c "echo \"* soft nofile 1000000\" >> /etc/security/limits.conf"

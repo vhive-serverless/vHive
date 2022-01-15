@@ -37,6 +37,7 @@ import (
 const (
 	userContainerName     = "user-container"
 	queueProxyName        = "queue-proxy"
+	revisionEnv           = "K_REVISION"
 	guestIPEnv            = "GUEST_ADDR"
 	guestPortEnv          = "GUEST_PORT"
 	guestImageEnv         = "GUEST_IMAGE"
@@ -60,7 +61,7 @@ type VMConfig struct {
 	guestPort string
 }
 
-func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, error) {
+func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps bool) (*FirecrackerService, error) {
 	fs := new(FirecrackerService)
 	stockRuntimeClient, err := cri.NewStockRuntimeServiceClient()
 	if err != nil {
@@ -68,7 +69,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 		return nil, err
 	}
 	fs.stockRuntimeClient = stockRuntimeClient
-	fs.coordinator = newFirecrackerCoordinator(orch)
+	fs.coordinator = newFirecrackerCoordinator(orch, snapsCapacityMiB, isSparseSnaps)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
 }
@@ -113,6 +114,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
+	revision, err := getEnvVal(revisionEnv, config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
 	memSizeMib, err := getMemorySize(config)
 	if err != nil {
 		log.WithError(err).Error()
@@ -125,7 +132,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage, memSizeMib, vCPUCount)
+	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage, revision, memSizeMib, vCPUCount)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
@@ -137,6 +144,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
+	// Temporarily store vm config so we can access this info when creating the queue-proxy container
 	vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPort}
 	fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
 
@@ -148,6 +156,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
  		log.WithError(stockErr).Error("failed to create container")
  		return nil, stockErr
  	}
+
+	// Check for error from container creation
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)

@@ -56,6 +56,8 @@ var (
 	funcPool *FuncPool
 
 	isSaveMemory       *bool
+	snapsCapacityMiB   *int64
+	isSparseSnaps      *bool
 	isSnapshotsEnabled *bool
 	isUPFEnabled       *bool
 	isLazyMode         *bool
@@ -71,20 +73,33 @@ func main() {
 	runtime.GOMAXPROCS(16)
 
 	rand.Seed(42)
-	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
-	debug := flag.Bool("dbg", false, "Enable debug logging")
 
-	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
-	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
-	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
+	debug := flag.Bool("dbg", false, "Enable debug logging")
 	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
+	criSock = flag.String("criSock", "/etc/vhive-cri/vhive-cri.sock", "Socket address for CRI service")
+	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
+
+	// Funcpool
+	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
+
+	// Snapshotting
+	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
+	isSparseSnaps = flag.Bool("sparsesnaps", false, "Makes memory files sparse after storing to reduce disk utilization")
+	snapsCapacityMiB = flag.Int64("snapcapacity", 102400, "Capacity set aside for storing snapshots (Mib)")
+	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
-	criSock = flag.String("criSock", "/etc/vhive-cri/vhive-cri.sock", "Socket address for CRI service")
-	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
-	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
+
+	// Networking
 	netPoolSize := flag.Int("netpoolsize", 50, "Amount of network configs to preallocate in a pool")
+	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
+
+	// Devicemapper
+	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
+	poolName := flag.String("poolname", "fc-dev-thinpool", "Device mapper thinpool name")
+	metadataDev := flag.String("metadev", "", "Device used by devicemapper for metadata storage")
+
 	flag.Parse()
 
 	if *sandbox != "firecracker" && *sandbox != "gvisor" {
@@ -138,6 +153,8 @@ func main() {
 	orch = ctriface.NewOrchestrator(
 		*snapshotter,
 		*hostIface,
+		*poolName,
+		*metadataDev,
 		*netPoolSize,
 		ctriface.WithTestModeOn(testModeOn),
 		ctriface.WithSnapshots(*isSnapshotsEnabled),
@@ -169,7 +186,7 @@ func setupFirecrackerCRI() {
 
 	s := grpc.NewServer()
 
-	fcService, err := fccri.NewFirecrackerService(orch)
+	fcService, err := fccri.NewFirecrackerService(orch, *snapsCapacityMiB, *isSparseSnaps)
 	if err != nil {
 		log.Fatalf("failed to create firecracker service %v", err)
 	}

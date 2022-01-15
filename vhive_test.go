@@ -75,6 +75,9 @@ func TestMain(m *testing.M) {
 	orch = ctriface.NewOrchestrator(
 		"devmapper",
 		"",
+		"fc-dev-thinpool",
+		"",
+		10,
 		ctriface.WithTestModeOn(true),
 		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
 		ctriface.WithUPF(*isUPFEnabledTest),

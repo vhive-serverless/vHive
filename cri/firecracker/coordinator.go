@@ -24,7 +24,10 @@ package firecracker
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"github.com/ease-lab/vhive/metrics"
+	"github.com/ease-lab/vhive/snapshotting"
+	"github.com/pkg/errors"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -34,13 +37,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const snapshotsDir = "/fccd/snapshots"
+
 type coordinator struct {
 	sync.Mutex
 	orch   *ctriface.Orchestrator
 	nextID uint64
+	isSparseSnaps bool
 
-	activeInstances     map[string]*funcInstance
-	idleInstances       map[string][]*funcInstance
+	activeInstances     map[string]*FuncInstance
+	snapshotManager     *snapshotting.SnapshotManager
 	withoutOrchestrator bool
 }
 
@@ -53,11 +59,12 @@ func withoutOrchestrator() coordinatorOption {
 	}
 }
 
-func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorOption) *coordinator {
+func newFirecrackerCoordinator(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps bool, opts ...coordinatorOption) *coordinator {
 	c := &coordinator{
-		activeInstances: make(map[string]*funcInstance),
-		idleInstances:   make(map[string][]*funcInstance),
+		activeInstances: make(map[string]*FuncInstance),
 		orch:            orch,
+		snapshotManager: snapshotting.NewSnapshotManager(snapshotsDir, snapsCapacityMiB),
+		isSparseSnaps: isSparseSnaps,
 	}
 
 	for _, opt := range opts {
@@ -67,60 +74,46 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorO
 	return c
 }
 
-func (c *coordinator) getIdleInstance(image string) *funcInstance {
-	c.Lock()
-	defer c.Unlock()
-
-	idles, ok := c.idleInstances[image]
-	if !ok {
-		c.idleInstances[image] = []*funcInstance{}
-		return nil
+func (c *coordinator) startVM(ctx context.Context, image string, revision string, memSizeMib, vCPUCount uint32) (*FuncInstance, error) {
+	if c.orch != nil && c.orch.GetSnapshotsEnabled()  {
+		// Check if snapshot is available
+		if snap, err := c.snapshotManager.AcquireSnapshot(revision); err == nil {
+			if snap.MemSizeMib != memSizeMib || snap.VCPUCount != vCPUCount {
+				return nil, errors.New("Please create a new revision when updating uVM memory size or vCPU count")
+			} else {
+				return c.orchStartVMSnapshot(ctx, snap, memSizeMib, vCPUCount)
+			}
+		} else {
+			return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
+		}
 	}
 
-	if len(idles) != 0 {
-		fi := idles[0]
-		c.idleInstances[image] = idles[1:]
-		return fi
-	}
-
-	return nil
-}
-
-func (c *coordinator) setIdleInstance(fi *funcInstance) {
-	c.Lock()
-	defer c.Unlock()
-
-	_, ok := c.idleInstances[fi.Image]
-	if !ok {
-		c.idleInstances[fi.Image] = []*funcInstance{}
-	}
-
-	c.idleInstances[fi.Image] = append(c.idleInstances[fi.Image], fi)
-}
-
-func (c *coordinator) startVM(ctx context.Context, image string, memSizeMib, vCPUCount uint32) (*funcInstance, error) {
-	if fi := c.getIdleInstance(image); c.orch != nil && c.orch.GetSnapshotsEnabled() && fi != nil {
-		err := c.orchLoadInstance(ctx, fi)
-		return fi, err
-	}
-
-	return c.orchStartVM(ctx, image, memSizeMib, vCPUCount)
+	return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
 }
 
 func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	c.Lock()
 
-	fi, ok := c.activeInstances[containerID]
-	delete(c.activeInstances, containerID)
+	fi, present := c.activeInstances[containerID]
+	if present {
+		delete(c.activeInstances, containerID)
+	}
 
 	c.Unlock()
 
-	if !ok {
+	// Not a request to remove vm container
+	if !present {
 		return nil
 	}
 
-	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
-		return c.orchOffloadInstance(ctx, fi)
+	if fi.snapBooted {
+		defer c.snapshotManager.ReleaseSnapshot(fi.revisionId)
+	} else if c.orch != nil && c.orch.GetSnapshotsEnabled() {
+		// Create snapshot
+		err := c.orchCreateSnapshot(ctx, fi)
+		if err != nil {
+			log.Printf("Err creating snapshot %s\n", err)
+		}
 	}
 
 	return c.orchStopVM(ctx, fi)
@@ -135,14 +128,14 @@ func (c *coordinator) isActive(containerID string) bool {
 	return ok
 }
 
-func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
+func (c *coordinator) insertActive(containerID string, fi *FuncInstance) error {
 	c.Lock()
 	defer c.Unlock()
 
-	logger := log.WithFields(log.Fields{"containerID": containerID, "vmID": fi.VmID})
+	logger := log.WithFields(log.Fields{"containerID": containerID, "vmID": fi.vmID})
 
 	if fi, present := c.activeInstances[containerID]; present {
-		logger.Errorf("entry for container already exists with vmID %s" + fi.VmID)
+		logger.Errorf("entry for container already exists with vmID %s" + fi.vmID)
 		return errors.New("entry for container already exists")
 	}
 
@@ -150,7 +143,8 @@ func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
 	return nil
 }
 
-func (c *coordinator) orchStartVM(ctx context.Context, image string, memSizeMib, vCPUCount uint32) (*funcInstance, error) {
+func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, memSizeMib, vCPUCount uint32) (*FuncInstance, error) {
+	tStartCold := time.Now()
 	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
 	logger := log.WithFields(
 		log.Fields{
@@ -170,90 +164,114 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string, memSizeMib,
 	defer cancel()
 
 	if !c.withoutOrchestrator {
-		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image, memSizeMib, vCPUCount)
+		trackDirtyPages := c.isSparseSnaps
+		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image, memSizeMib, vCPUCount, trackDirtyPages)
 		if err != nil {
 			logger.WithError(err).Error("coordinator failed to start VM")
 		}
 	}
 
-	fi := newFuncInstance(vmID, image, resp)
+	coldStartTimeMs := metrics.ToMs(time.Since(tStartCold))
+
+	fi := NewFuncInstance(vmID, image, revision, resp, false, memSizeMib, vCPUCount, coldStartTimeMs)
 	logger.Debug("successfully created fresh instance")
 	return fi, err
 }
 
-func (c *coordinator) orchLoadInstance(ctx context.Context, fi *funcInstance) error {
-	fi.Logger.Debug("found idle instance to load")
+func (c *coordinator) orchStartVMSnapshot(ctx context.Context, snap *snapshotting.Snapshot, memSizeMib, vCPUCount uint32) (*FuncInstance, error) {
+	tStartCold := time.Now()
+	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+	logger := log.WithFields(
+		log.Fields{
+			"vmID":  vmID,
+			"image": snap.GetImage(),
+		},
+	)
+
+	logger.Debug("loading instance from snapshot")
+
+	var (
+		resp *ctriface.StartVMResponse
+		err  error
+	)
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	if _, err := c.orch.LoadSnapshot(ctxTimeout, fi.VmID); err != nil {
-		fi.Logger.WithError(err).Error("failed to load VM")
-		return err
+	resp, _, err = c.orch.LoadSnapshot(ctxTimeout, vmID, snap)
+	if err != nil {
+		logger.WithError(err).Error("failed to load VM")
+		return nil, err
 	}
 
-	if _, err := c.orch.ResumeVM(ctxTimeout, fi.VmID); err != nil {
-		fi.Logger.WithError(err).Error("failed to load VM")
-		return err
+	if _, err := c.orch.ResumeVM(ctxTimeout, vmID); err != nil {
+		logger.WithError(err).Error("failed to load VM")
+		return nil, err
 	}
 
-	fi.Logger.Debug("successfully loaded idle instance")
-	return nil
+	coldStartTimeMs := metrics.ToMs(time.Since(tStartCold))
+	fi := NewFuncInstance(vmID, snap.GetImage(), snap.GetRevisionId(), resp, true, memSizeMib, vCPUCount, coldStartTimeMs)
+	logger.Debug("successfully loaded instance from snapshot")
+
+	return fi, err
 }
 
-func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) error {
-	var err error
-
-	fi.OnceCreateSnapInstance.Do(
-		func() {
-			ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
-			defer cancel()
-
-			fi.Logger.Debug("creating instance snapshot on first time offloading")
-
-			err = c.orch.PauseVM(ctxTimeout, fi.VmID)
-			if err != nil {
-				fi.Logger.WithError(err).Error("failed to pause VM")
-				return
-			}
-
-			err = c.orch.CreateSnapshot(ctxTimeout, fi.VmID)
-			if err != nil {
-				fi.Logger.WithError(err).Error("failed to create snapshot")
-				return
-			}
+func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) error {
+	logger := log.WithFields(
+		log.Fields{
+			"vmID":  fi.vmID,
+			"image": fi.image,
 		},
 	)
 
-	return err
-}
-
-func (c *coordinator) orchOffloadInstance(ctx context.Context, fi *funcInstance) error {
-	fi.Logger.Debug("offloading instance")
-
-	if err := c.orchCreateSnapshot(ctx, fi); err != nil {
-		return err
+	removeContainerSnaps, snap, err := c.snapshotManager.InitSnapshot(fi.revisionId, fi.image, fi.coldStartTimeMs, fi.memSizeMib, fi.vCPUCount, c.isSparseSnaps)
+	if err != nil {
+		if fmt.Sprint(err) == "There is not enough free space available" {
+			fi.logger.Info(fmt.Sprintf("There is not enough space available for snapshots of %s", fi.revisionId))
+		}
+		return nil
 	}
 
-	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	if removeContainerSnaps != nil {
+		for _, cleanupSnapId := range *removeContainerSnaps {
+			if err := c.orch.CleanupRevisionSnapshot(ctx, cleanupSnapId); err != nil {
+				return errors.Wrap(err, "removing devmapper revision snapshot")
+			}
+		}
+	}
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
 	defer cancel()
 
-	if err := c.orch.Offload(ctxTimeout, fi.VmID); err != nil {
-		fi.Logger.WithError(err).Error("failed to offload instance")
+	logger.Debug("creating instance snapshot before stopping")
+
+	err = c.orch.PauseVM(ctxTimeout, fi.vmID)
+	if err != nil {
+		logger.WithError(err).Error("failed to pause VM")
+		return nil
 	}
 
-	c.setIdleInstance(fi)
+	err = c.orch.CreateSnapshot(ctxTimeout, fi.vmID, snap)
+	if err != nil {
+		fi.logger.WithError(err).Error("failed to create snapshot")
+		return nil
+	}
+
+	if err := c.snapshotManager.CommitSnapshot(fi.revisionId); err != nil {
+		fi.logger.WithError(err).Error("failed to commit snapshot")
+		return err
+	}
 
 	return nil
 }
 
-func (c *coordinator) orchStopVM(ctx context.Context, fi *funcInstance) error {
+func (c *coordinator) orchStopVM(ctx context.Context, fi *FuncInstance) error {
 	if c.withoutOrchestrator {
 		return nil
 	}
 
-	if err := c.orch.StopSingleVM(ctx, fi.VmID); err != nil {
-		fi.Logger.WithError(err).Error("failed to stop VM for instance")
+	if err := c.orch.StopSingleVM(ctx, fi.vmID); err != nil {
+		fi.logger.WithError(err).Error("failed to stop VM for instance")
 		return err
 	}
 

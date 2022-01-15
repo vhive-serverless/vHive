@@ -56,7 +56,7 @@ func TestBenchmarkStart(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", "", 10, WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator("devmapper", "", "fc-dev-thinpool","",10, WithTestModeOn(true), WithUPF(*isUPFEnabled))
 
 	images := getAllImages()
 	benchCount := 10
@@ -75,7 +75,7 @@ func TestBenchmarkStart(t *testing.T) {
 		for i := 0; i < benchCount; i++ {
 			dropPageCache()
 
-			_, metric, err := orch.StartVM(ctx, vmIDString, imageName, 0, 0)
+			_, metric, err := orch.StartVM(ctx, vmIDString, imageName, 256, 1, false)
 			require.NoError(t, err, "Failed to start VM")
 			startMetrics[i] = metric
 

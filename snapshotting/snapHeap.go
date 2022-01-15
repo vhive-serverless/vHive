@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov and EASE lab
+// Copyright (c) 2021 Amory Hoste and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,49 +20,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package misc
+package snapshotting
 
-import (
-	"fmt"
-	"github.com/ease-lab/vhive/networking"
-	"sync"
+type SnapHeap []*Snapshot
 
-	"github.com/containerd/containerd"
-)
-
-const (
-	defaultVcpuCount = 1
-	defaultMemsizeMib = 256
-)
-
-// VM type
-type VM struct {
-	ID               string
-	ContainerSnapKey string
-	SnapBooted       bool
-	Image            *containerd.Image
-	Container        *containerd.Container
-	Task             *containerd.Task
-	TaskCh           <-chan containerd.ExitStatus
-	NetConfig        *networking.NetworkConfig
-	VCPUCount        uint32
-	MemSizeMib       uint32
+func (h SnapHeap) Len() int {
+	return len(h)
+}
+func (h SnapHeap) Less(i, j int) bool {
+	return h[i].score < h[j].score
+}
+func (h SnapHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
 }
 
-// VMPool Pool of active VMs (can be in several states though)
-type VMPool struct {
-	vmMap      sync.Map
-	networkManager *networking.NetworkManager
+func (h *SnapHeap) Push(x interface{}) {
+	*h = append(*h, x.(*Snapshot))
 }
 
-// NewVM Initialize a VM
-func NewVM(vmID string) *VM {
-	vm := new(VM)
-	vm.ID = vmID
-	vm.ContainerSnapKey = fmt.Sprintf("vm%s-containersnap", vmID)
-	vm.SnapBooted = false
-	vm.MemSizeMib = defaultMemsizeMib
-	vm.VCPUCount = defaultVcpuCount
+func (h *SnapHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
 
-	return vm
+func (h *SnapHeap) Peek() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	return x
 }

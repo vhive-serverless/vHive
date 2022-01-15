@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"github.com/ease-lab/vhive/ctrimages"
+	"github.com/ease-lab/vhive/devmapper"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -75,11 +76,11 @@ func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
 // Orchestrator Drives all VMs
 type Orchestrator struct {
 	vmPool       *misc.VMPool
-	cachedImages map[string]containerd.Image
 	workloadIo   sync.Map // vmID string -> WorkloadIoWriter
 	snapshotter  string
 	client       *containerd.Client
 	fcClient     *fcclient.Client
+	devMapper    *devmapper.DeviceMapper
 	imageManager *ctrimages.ImageManager
 	// store *skv.KVStore
 	snapshotsEnabled bool
@@ -87,19 +88,20 @@ type Orchestrator struct {
 	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
+	hostIface        string
 
 	memoryManager *manager.MemoryManager
 }
 
 // NewOrchestrator Initializes a new orchestrator
-func NewOrchestrator(snapshotter, hostIface string, netPoolSize int, opts ...OrchestratorOption) *Orchestrator {
+func NewOrchestrator(snapshotter, hostIface, poolName, metadataDev string, netPoolSize int, opts ...OrchestratorOption) *Orchestrator { // TODO: args
 	var err error
 
 	o := new(Orchestrator)
 	o.vmPool = misc.NewVMPool(hostIface, netPoolSize)
-	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
+	o.hostIface = hostIface
 
 	for _, opt := range opts {
 		opt(o)
@@ -135,6 +137,8 @@ func NewOrchestrator(snapshotter, hostIface string, netPoolSize int, opts ...Orc
 		log.Fatal("Failed to start firecracker client", err)
 	}
 	log.Info("Created firecracker client")
+
+	o.devMapper = devmapper.NewDeviceMapper(o.client, poolName, metadataDev)
 
 	o.imageManager = ctrimages.NewImageManager(o.client, o.snapshotter)
 
@@ -197,11 +201,11 @@ func (o *Orchestrator) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, error
 	return o.memoryManager.GetUPFLatencyStats(vmID)
 }
 
-func (o *Orchestrator) getSnapshotFile(vmID string) string {
+func (o *Orchestrator) getSnapshotFile(vmID string) string { // TODO: remove
 	return filepath.Join(o.getVMBaseDir(vmID), "snap_file")
 }
 
-func (o *Orchestrator) getMemoryFile(vmID string) string {
+func (o *Orchestrator) getMemoryFile(vmID string) string { // TODO: remove
 	return filepath.Join(o.getVMBaseDir(vmID), "mem_file")
 }
 
