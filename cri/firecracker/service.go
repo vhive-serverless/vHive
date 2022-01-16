@@ -25,11 +25,11 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/ease-lab/vhive/ctriface"
 	"strconv"
 	"sync"
 
 	"github.com/ease-lab/vhive/cri"
-	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -61,7 +61,7 @@ type VMConfig struct {
 	guestPort string
 }
 
-func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps bool) (*FirecrackerService, error) {
+func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps, isDeduplicatedSnaps bool) (*FirecrackerService, error) {
 	fs := new(FirecrackerService)
 	stockRuntimeClient, err := cri.NewStockRuntimeServiceClient()
 	if err != nil {
@@ -69,7 +69,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, 
 		return nil, err
 	}
 	fs.stockRuntimeClient = stockRuntimeClient
-	fs.coordinator = newFirecrackerCoordinator(orch, snapsCapacityMiB, isSparseSnaps)
+	fs.coordinator = newFirecrackerCoordinator(orch, snapsCapacityMiB, isSparseSnaps, isDeduplicatedSnaps)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
 }

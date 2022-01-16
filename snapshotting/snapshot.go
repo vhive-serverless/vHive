@@ -36,46 +36,31 @@ import (
 // Snapshot identified by revision
 // Only capitalized fields are serialised / deserialised
 type Snapshot struct {
-	revisionId             string
-	containerSnapName      string
-	snapDir                string
-	Image                  string
-	MemSizeMib             uint32
-	VCPUCount              uint32
-	usable                 bool
-	sparse                 bool
-
-	// Eviction
-	numUsing               uint32
-	TotalSizeMiB           int64
-	freq                   int64
-	coldStartTimeMs        int64
-	lastUsedClock          int64
-	score                  int64
+	id                string // id for deduplicated
+	ContainerSnapName string
+	snapDir           string
+	Image             string
+	MemSizeMib        uint32
+	VCPUCount         uint32
+	sparse            bool
 }
 
-func NewSnapshot(revisionId, baseFolder, image string, sizeMiB, coldStartTimeMs, lastUsed int64, memSizeMib, vCPUCount uint32, sparse bool) *Snapshot {
+func NewSnapshot(id, baseFolder, image string, memSizeMib, vCPUCount uint32, sparse bool) *Snapshot {
 	s := &Snapshot{
-		revisionId:             revisionId,
-		snapDir:                filepath.Join(baseFolder, revisionId),
-		containerSnapName:      fmt.Sprintf("%s%s", revisionId, time.Now().Format("20060102150405")),
-		Image:                  image,
-		MemSizeMib:             memSizeMib,
-		VCPUCount:              vCPUCount,
-		usable:                 false,
-		numUsing:               0,
-		TotalSizeMiB:           sizeMiB,
-		coldStartTimeMs:        coldStartTimeMs,
-		lastUsedClock:          lastUsed, // Initialize with used now to avoid immediately removing
-		sparse:                 sparse,
+		id:                id,
+		snapDir:           filepath.Join(baseFolder, id),
+		ContainerSnapName: fmt.Sprintf("%s%s", id, time.Now().Format("20060102150405")),
+		Image:             image,
+		MemSizeMib:        memSizeMib,
+		VCPUCount:         vCPUCount,
+		sparse:            sparse,
 	}
 
 	return s
 }
 
-// UpdateDiskSize Updates the estimated disk size to real disk size in use by snapshot
-func (snp *Snapshot) UpdateDiskSize() {
-	snp.TotalSizeMiB = getRealSizeMib(snp.GetMemFilePath()) + getRealSizeMib(snp.GetSnapFilePath()) + getRealSizeMib(snp.GetInfoFilePath()) + getRealSizeMib(snp.GetPatchFilePath())
+func (snp *Snapshot) CalculateDiskSize() int64 {
+	return getRealSizeMib(snp.GetMemFilePath()) + getRealSizeMib(snp.GetSnapFilePath()) + getRealSizeMib(snp.GetInfoFilePath()) + getRealSizeMib(snp.GetPatchFilePath())
 }
 
 // getRealSizeMib returns the disk space used by a certain file
@@ -87,21 +72,20 @@ func getRealSizeMib(filePath string) int64 {
 	return int64(math.Ceil((float64(st.Blocks) * 512) / (1024 * 1024)))
 }
 
-// UpdateScore updates the score of the snapshot used by the keepalive policy
-func (snp *Snapshot) UpdateScore() {
-	snp.score = snp.lastUsedClock + (snp.freq * snp.coldStartTimeMs) / snp.TotalSizeMiB
+func (snp *Snapshot) CreateSnapDir() error {
+	return os.Mkdir(snp.snapDir, 0755)
 }
 
 func (snp *Snapshot) GetImage() string {
 	return snp.Image
 }
 
-func (snp *Snapshot) GetRevisionId() string {
-	return snp.revisionId
+func (snp *Snapshot) GetId() string {
+	return snp.id
 }
 
 func (snp *Snapshot) GetContainerSnapName() string {
-	return snp.containerSnapName
+	return snp.ContainerSnapName
 }
 
 func (snp *Snapshot) GetSnapFilePath() string {
@@ -163,4 +147,8 @@ func (snp *Snapshot) LoadSnapInfo(infoPath string) error {
 	}
 
 	return  nil
+}
+
+func (snp *Snapshot) Cleanup() error {
+	return os.RemoveAll(snp.snapDir)
 }

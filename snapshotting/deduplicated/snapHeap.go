@@ -20,9 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package snapshotting
+package deduplicated
 
-type SnapHeap []*Snapshot
+type SnapHeap []*SnapshotStats
 
 func (h SnapHeap) Len() int {
 	return len(h)
@@ -35,7 +35,7 @@ func (h SnapHeap) Swap(i, j int) {
 }
 
 func (h *SnapHeap) Push(x interface{}) {
-	*h = append(*h, x.(*Snapshot))
+	*h = append(*h, x.(*SnapshotStats))
 }
 
 func (h *SnapHeap) Pop() interface{} {

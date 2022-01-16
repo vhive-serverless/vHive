@@ -26,6 +26,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/ease-lab/vhive/ctriface"
+	"github.com/ease-lab/vhive/ctriface/deduplicated"
+	"github.com/ease-lab/vhive/ctriface/regular"
 
 	"math/rand"
 	"net"
@@ -36,7 +39,6 @@ import (
 	"github.com/ease-lab/vhive/cri"
 	fccri "github.com/ease-lab/vhive/cri/firecracker"
 	gvcri "github.com/ease-lab/vhive/cri/gvisor"
-	ctriface "github.com/ease-lab/vhive/ctriface"
 	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
 	pb "github.com/ease-lab/vhive/proto"
 	log "github.com/sirupsen/logrus"
@@ -58,6 +60,7 @@ var (
 	isSaveMemory       *bool
 	snapsCapacityMiB   *int64
 	isSparseSnaps      *bool
+	isDeduplicatedSnaps *bool
 	isSnapshotsEnabled *bool
 	isUPFEnabled       *bool
 	isLazyMode         *bool
@@ -87,6 +90,7 @@ func main() {
 	// Snapshotting
 	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
 	isSparseSnaps = flag.Bool("sparsesnaps", false, "Makes memory files sparse after storing to reduce disk utilization")
+	isDeduplicatedSnaps = flag.Bool("deduplicatedsnaps", false, "Use improved deduplicated snapshotting")
 	snapsCapacityMiB = flag.Int64("snapcapacity", 102400, "Capacity set aside for storing snapshots (Mib)")
 	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
@@ -150,18 +154,36 @@ func main() {
 
 	testModeOn := false
 
-	orch = ctriface.NewOrchestrator(
-		*snapshotter,
-		*hostIface,
-		*poolName,
-		*metadataDev,
-		*netPoolSize,
-		ctriface.WithTestModeOn(testModeOn),
-		ctriface.WithSnapshots(*isSnapshotsEnabled),
-		ctriface.WithUPF(*isUPFEnabled),
-		ctriface.WithMetricsMode(*isMetricsMode),
-		ctriface.WithLazyMode(*isLazyMode),
-	)
+	if *isDeduplicatedSnaps {
+		orch = ctriface.NewOrchestrator(deduplicated.NewDedupOrchestrator(
+			*snapshotter,
+			*hostIface,
+			*poolName,
+			*metadataDev,
+			*netPoolSize,
+			deduplicated.WithTestModeOn(testModeOn),
+			deduplicated.WithSnapshots(*isSnapshotsEnabled),
+			deduplicated.WithUPF(*isUPFEnabled),
+			deduplicated.WithMetricsMode(*isMetricsMode),
+			deduplicated.WithLazyMode(*isLazyMode),
+		))
+	} else {
+		orch = ctriface.NewOrchestrator(regular.NewRegOrchestrator(
+			*snapshotter,
+			*hostIface,
+			*poolName,
+			*metadataDev,
+			*netPoolSize,
+			regular.WithTestModeOn(testModeOn),
+			regular.WithSnapshots(*isSnapshotsEnabled),
+			regular.WithUPF(*isUPFEnabled),
+			regular.WithMetricsMode(*isMetricsMode),
+			regular.WithLazyMode(*isLazyMode),
+		))
+	}
+
+
+
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
@@ -186,7 +208,7 @@ func setupFirecrackerCRI() {
 
 	s := grpc.NewServer()
 
-	fcService, err := fccri.NewFirecrackerService(orch, *snapsCapacityMiB, *isSparseSnaps)
+	fcService, err := fccri.NewFirecrackerService(orch, *snapsCapacityMiB, *isSparseSnaps, *isDeduplicatedSnaps)
 	if err != nil {
 		log.Fatalf("failed to create firecracker service %v", err)
 	}

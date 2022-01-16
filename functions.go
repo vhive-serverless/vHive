@@ -448,8 +448,8 @@ func (f *Function) CreateInstanceSnapshot() {
 		log.Panic(err)
 	}
 
-	revisionID := fmt.Sprintf("myrev-%d", f.vmID)
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", f.imageName, 0, 0, 0, 256, 1, false)
+	revisionID := fmt.Sprintf("myrev-%s", f.vmID)
+	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", f.imageName, 0, 0, false)
 	err = orch.CreateSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
@@ -471,8 +471,8 @@ func (f *Function) LoadInstance() *metrics.Metric {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
-	revisionID := fmt.Sprintf("myrev-%d", f.vmID)
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", f.imageName, 0, 0, 0, 256, 1, false)
+	revisionID := fmt.Sprintf("myrev-%s", f.vmID)
+	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", f.imageName, 0, 0, false)
 	_, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov and EASE lab
+// Copyright (c) 2021 Amory Hoste and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,207 +23,85 @@
 package ctriface
 
 import (
-	"github.com/ease-lab/vhive/ctrimages"
-	"github.com/ease-lab/vhive/devmapper"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strings"
-	"sync"
-	"syscall"
-	"time"
-
-	log "github.com/sirupsen/logrus"
-
+	"context"
 	"github.com/containerd/containerd"
-
-	fcclient "github.com/firecracker-microvm/firecracker-containerd/firecracker-control/client"
-	// note: from the original repo
-
-	_ "google.golang.org/grpc/codes"  //tmp
-	_ "google.golang.org/grpc/status" //tmp
-
-	"github.com/ease-lab/vhive/memory/manager"
 	"github.com/ease-lab/vhive/metrics"
-	"github.com/ease-lab/vhive/misc"
-
-	_ "github.com/davecgh/go-spew/spew" //tmp
+	"github.com/ease-lab/vhive/snapshotting"
 )
 
-const (
-	containerdAddress      = "/run/firecracker-containerd/containerd.sock"
-	containerdTTRPCAddress = containerdAddress + ".ttrpc"
-	namespaceName          = "firecracker-containerd"
-)
-
-type WorkloadIoWriter struct {
-	logger *log.Entry
-}
-
-func NewWorkloadIoWriter(vmID string) WorkloadIoWriter {
-	return WorkloadIoWriter {log.WithFields(log.Fields{"vmID": vmID})}
-}
-
-func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
-	s := string(p)
-	lines := strings.Split(s, "\n")
-	for i := range lines {
-		wio.logger.Info(string(lines[i]))
-	}
-	return len(p), nil
-}
-
-// Orchestrator Drives all VMs
 type Orchestrator struct {
-	vmPool       *misc.VMPool
-	workloadIo   sync.Map // vmID string -> WorkloadIoWriter
-	snapshotter  string
-	client       *containerd.Client
-	fcClient     *fcclient.Client
-	devMapper    *devmapper.DeviceMapper
-	imageManager *ctrimages.ImageManager
-	// store *skv.KVStore
-	snapshotsEnabled bool
-	isUPFEnabled     bool
-	isLazyMode       bool
-	snapshotsDir     string
-	isMetricsMode    bool
-	hostIface        string
-
-	memoryManager *manager.MemoryManager
+	// generic snapshot manager
+	orch OrchestratorInterface
 }
 
-// NewOrchestrator Initializes a new orchestrator
-func NewOrchestrator(snapshotter, hostIface, poolName, metadataDev string, netPoolSize int, opts ...OrchestratorOption) *Orchestrator { // TODO: args
-	var err error
-
-	o := new(Orchestrator)
-	o.vmPool = misc.NewVMPool(hostIface, netPoolSize)
-	o.snapshotter = snapshotter
-	o.snapshotsDir = "/fccd/snapshots"
-	o.hostIface = hostIface
-
-	for _, opt := range opts {
-		opt(o)
+func NewOrchestrator(orch OrchestratorInterface) *Orchestrator {
+	o := &Orchestrator{
+		orch: orch,
 	}
-
-	if _, err := os.Stat(o.snapshotsDir); err != nil {
-		if !os.IsNotExist(err) {
-			log.Panicf("Snapshot dir %s exists", o.snapshotsDir)
-		}
-	}
-
-	if err := os.MkdirAll(o.snapshotsDir, 0777); err != nil {
-		log.Panicf("Failed to create snapshots dir %s", o.snapshotsDir)
-	}
-
-	if o.GetUPFEnabled() {
-		managerCfg := manager.MemoryManagerCfg{
-			MetricsModeOn: o.isMetricsMode,
-		}
-		o.memoryManager = manager.NewMemoryManager(managerCfg)
-	}
-
-	log.Info("Creating containerd client")
-	o.client, err = containerd.New(containerdAddress)
-	if err != nil {
-		log.Fatal("Failed to start containerd client", err)
-	}
-	log.Info("Created containerd client")
-
-	log.Info("Creating firecracker client")
-	o.fcClient, err = fcclient.New(containerdTTRPCAddress)
-	if err != nil {
-		log.Fatal("Failed to start firecracker client", err)
-	}
-	log.Info("Created firecracker client")
-
-	o.devMapper = devmapper.NewDeviceMapper(o.client, poolName, metadataDev)
-
-	o.imageManager = ctrimages.NewImageManager(o.client, o.snapshotter)
 
 	return o
 }
 
-func (o *Orchestrator) setupCloseHandler() {
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		log.Info("\r- Ctrl+C pressed in Terminal")
-		_ = o.StopActiveVMs()
-		o.Cleanup()
-		os.Exit(0)
-	}()
+func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memSizeMib, vCPUCount uint32, trackDirtyPages bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+	return o.orch.StartVM(ctx, vmID, imageName, memSizeMib, vCPUCount, trackDirtyPages)
 }
 
-// Cleanup Removes the bridges created by the VM pool's tap manager
-// Cleans up snapshots directory
+func (o *Orchestrator) OffloadVM(ctx context.Context, vmID string) error {
+	return o.orch.OffloadVM(ctx, vmID)
+}
+
+func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
+	return o.orch.StopSingleVM(ctx, vmID)
+}
+
+func (o *Orchestrator) StopActiveVMs() error {
+	return o.orch.StopActiveVMs()
+}
+
+func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) error {
+	return o.orch.PauseVM(ctx, vmID)
+}
+
+func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metric, error) {
+	return o.orch.ResumeVM(ctx, vmID)
+}
+
+func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) error {
+	return o.orch.CreateSnapshot(ctx, vmID, snap)
+}
+
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+	return o.orch.LoadSnapshot(ctx, vmID, snap)
+}
+
+func (o *Orchestrator) CleanupSnapshot(ctx context.Context, id string) error {
+	return o.orch.CleanupSnapshot(ctx, id)
+}
+
+func (o *Orchestrator) GetImage(ctx context.Context, imageName string) (*containerd.Image, error) {
+	return o.orch.GetImage(ctx, imageName)
+}
+
 func (o *Orchestrator) Cleanup() {
-	o.vmPool.CleanupNetwork()
-	if err := os.RemoveAll(o.snapshotsDir); err != nil {
-		log.Panic("failed to delete snapshots dir", err)
-	}
+	o.orch.Cleanup()
 }
 
-// GetSnapshotsEnabled Returns the snapshots mode of the orchestrator
 func (o *Orchestrator) GetSnapshotsEnabled() bool {
-	return o.snapshotsEnabled
+	return o.orch.GetSnapshotsEnabled()
 }
 
-// GetUPFEnabled Returns the UPF mode of the orchestrator
 func (o *Orchestrator) GetUPFEnabled() bool {
-	return o.isUPFEnabled
+	return o.orch.GetUPFEnabled()
 }
 
-// DumpUPFPageStats Dumps the memory manager's stats about the number of
-// the unique pages and the number of the pages that are reused across invocations
 func (o *Orchestrator) DumpUPFPageStats(vmID, functionName, metricsOutFilePath string) error {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received DumpUPFPageStats")
-
-	return o.memoryManager.DumpUPFPageStats(vmID, functionName, metricsOutFilePath)
+	return o.orch.DumpUPFPageStats(vmID, functionName, metricsOutFilePath)
 }
 
-// DumpUPFLatencyStats Dumps the memory manager's latency stats
 func (o *Orchestrator) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath string) error {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received DumpUPFPageStats")
-
-	return o.memoryManager.DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath)
+	return o.orch.DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath)
 }
 
-// GetUPFLatencyStats Returns the memory manager's latency stats
 func (o *Orchestrator) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, error) {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received DumpUPFPageStats")
-
-	return o.memoryManager.GetUPFLatencyStats(vmID)
-}
-
-func (o *Orchestrator) getSnapshotFile(vmID string) string { // TODO: remove
-	return filepath.Join(o.getVMBaseDir(vmID), "snap_file")
-}
-
-func (o *Orchestrator) getMemoryFile(vmID string) string { // TODO: remove
-	return filepath.Join(o.getVMBaseDir(vmID), "mem_file")
-}
-
-func (o *Orchestrator) getWorkingSetFile(vmID string) string {
-	return filepath.Join(o.getVMBaseDir(vmID), "working_set_pages")
-}
-
-func (o *Orchestrator) getVMBaseDir(vmID string) string {
-	return filepath.Join(o.snapshotsDir, vmID)
-}
-
-func (o *Orchestrator) setupHeartbeat() {
-	heartbeat := time.NewTicker(60 * time.Second)
-
-	go func() {
-		for {
-			<-heartbeat.C
-			log.Info("HEARTBEAT: number of active VMs: ", len(o.vmPool.GetVMMap()))
-		} // for
-	}() // go func
+	return o.orch.GetUPFLatencyStats(vmID)
 }

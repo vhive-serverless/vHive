@@ -42,7 +42,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	coord = newFirecrackerCoordinator(nil, 10240, false, withoutOrchestrator())
+	coord = newFirecrackerCoordinator(nil, 10240, false, false, withoutOrchestrator())
 
 	ret := m.Run()
 	os.Exit(ret)

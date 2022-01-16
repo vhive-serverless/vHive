@@ -20,10 +20,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ctriface
+package deduplicated
 
 import (
 	"context"
+	"github.com/ease-lab/vhive/ctriface"
 	"github.com/ease-lab/vhive/snapshotting"
 	"os"
 	"os/exec"
@@ -45,7 +46,6 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
-	"github.com/ease-lab/vhive/memory/manager"
 	"github.com/ease-lab/vhive/metrics"
 	"github.com/ease-lab/vhive/misc"
 	"github.com/go-multierror/multierror"
@@ -53,18 +53,8 @@ import (
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
 
-// StartVMResponse is the response returned by StartVM
-type StartVMResponse struct {
-	// GuestIP is the IP of the guest MicroVM
-	GuestIP string
-}
-
-const (
-	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
-)
-
 // StartVM Boots a VM if it does not exist
-func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memSizeMib ,vCPUCount uint32, trackDirtyPages bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *DedupOrchestrator) StartVM(ctx context.Context, vmID, imageName string, memSizeMib ,vCPUCount uint32, trackDirtyPages bool) (_ *ctriface.StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		startVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart        time.Time
@@ -101,7 +91,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memS
 
 	// 2. Fetch VM image
 	tStart = time.Now()
-	if vm.Image, err = o.imageManager.GetImage(ctx, imageName); err != nil {
+	if vm.Image, err = o.GetImage(ctx, imageName); err != nil {
 		return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
 	}
 	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
@@ -109,7 +99,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memS
 	// 3. Create VM
 	tStart = time.Now()
 	conf := o.getVMConfig(vm, trackDirtyPages)
-	resp, err := o.fcClient.CreateVM(ctx, conf)
+	_, err = o.fcClient.CreateVM(ctx, conf)
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to create the microVM in firecracker-containerd")
@@ -206,39 +196,16 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memS
 		}
 	}()
 
-	if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
-		logger.Error("Failed to create VM base dir")
-		return nil, nil, err
-	}
-	if o.GetUPFEnabled() {
-		logger.Debug("Registering VM with the memory manager")
-
-		stateCfg := manager.SnapshotStateCfg{
-			VMID:             vmID,
-			GuestMemPath:     o.getMemoryFile(vmID),
-			BaseDir:          o.getVMBaseDir(vmID),
-			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsLazyMode:       o.isLazyMode,
-			VMMStatePath:     o.getSnapshotFile(vmID),
-			WorkingSetPath:   o.getWorkingSetFile(vmID),
-			InstanceSockAddr: resp.UPFSockPath,
-		}
-		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
-			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
-			// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
-		}
-	}
-
 	logger.Debug("Successfully started a VM")
 
-	return &StartVMResponse{GuestIP: vm.NetConfig.GetCloneIP()}, startVMMetric, nil
+	return &ctriface.StartVMResponse{GuestIP: vm.NetConfig.GetCloneIP()}, startVMMetric, nil
 }
 
 // StopSingleVM Shuts down a VM
 // Note: VMs are not quisced before being stopped
-func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
+func (o *DedupOrchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received StopVM")
+	logger.Debug("DedupOrchestrator received StopVM")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 	vm, err := o.vmPool.GetVM(vmID)
@@ -296,13 +263,6 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 			logger.Error("failed to deactivate container snapshot")
 			return err
 		}
-
-		if o.GetUPFEnabled() {
-			if err := o.memoryManager.Deactivate(vmID); err != nil {
-				logger.Error("Failed to deactivate VM in the memory manager")
-				return err
-			}
-		}
 	}
 
 	logger.Debug("Stopped VM successfully")
@@ -328,7 +288,7 @@ func getK8sDNS() []string {
 	return dnsIPs
 }
 
-func (o *Orchestrator) getVMConfig(vm *misc.VM, trackDirtyPages bool) *proto.CreateVMRequest {
+func (o *DedupOrchestrator) getVMConfig(vm *misc.VM, trackDirtyPages bool) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
 	return &proto.CreateVMRequest{
@@ -352,11 +312,17 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM, trackDirtyPages bool) *proto.Cre
 			},
 		}},
 		NetworkNamespace: vm.NetConfig.GetNamespacePath(),
+		OffloadEnabled: false,
 	}
 }
 
+// Offload Shuts down the VM but leaves shim and other resources running.
+func (o *DedupOrchestrator) OffloadVM(ctx context.Context, vmID string) error {
+	return errors.New("Deduplicated snapshots do not support offloading")
+}
+
 // StopActiveVMs Shuts down all active VMs
-func (o *Orchestrator) StopActiveVMs() error {
+func (o *DedupOrchestrator) StopActiveVMs() error {
 	var vmGroup sync.WaitGroup
 	for vmID, vm := range o.vmPool.GetVMMap() {
 		vmGroup.Add(1)
@@ -383,9 +349,9 @@ func (o *Orchestrator) StopActiveVMs() error {
 }
 
 // PauseVM Pauses a VM
-func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) error {
+func (o *DedupOrchestrator) PauseVM(ctx context.Context, vmID string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received PauseVM")
+	logger.Debug("DedupOrchestrator received PauseVM")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
@@ -398,14 +364,14 @@ func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) error {
 }
 
 // ResumeVM Resumes a VM
-func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metric, error) {
+func (o *DedupOrchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metric, error) {
 	var (
 		resumeVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart         time.Time
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received ResumeVM")
+	logger.Debug("DedupOrchestrator received ResumeVM")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
@@ -420,9 +386,9 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metr
 }
 
 // CreateSnapshot Creates a snapshot of a VM
-func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) error {
+func (o *DedupOrchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received CreateSnapshot")
+	logger.Debug("DedupOrchestrator received CreateSnapshot")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
@@ -468,16 +434,15 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *DedupOrchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *ctriface.StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
 		loadErr, activateErr error
-		loadDone             = make(chan int)
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received LoadSnapshot")
+	logger.Debug("DedupOrchestrator received LoadSnapshot")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
@@ -498,7 +463,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	}()
 
 	// 2. Fetch image for VM
-	if vm.Image, err = o.imageManager.GetImage(ctx, snap.GetImage()); err != nil {
+	if vm.Image, err = o.GetImage(ctx, snap.GetImage()); err != nil {
 		return nil, nil,  errors.Wrapf(err, "Failed to get/pull image")
 	}
 
@@ -523,34 +488,17 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		VMID:             vmID,
 		SnapshotFilePath: snap.GetSnapFilePath(),
 		MemFilePath:      snap.GetMemFilePath(),
-		EnableUserPF:     o.GetUPFEnabled(),
+		EnableUserPF:     false,
 		NetworkNamespace: vm.NetConfig.GetNamespacePath(),
 		NewSnapshotPath:  containerSnap.GetDevicePath(),
-	}
-
-	if o.GetUPFEnabled() {
-		if err := o.memoryManager.FetchState(vmID); err != nil {
-			return nil, nil, err
-		}
+		Offloaded: false,
 	}
 
 	tStart = time.Now()
 
-	go func() {
-		defer close(loadDone)
-
-		if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
-			logger.Error("Failed to load snapshot of the VM: ", loadErr)
-		}
-	}()
-
-	if o.GetUPFEnabled() {
-		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
-			logger.Warn("Failed to activate VM in the memory manager", activateErr)
-		}
+	if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
+		logger.Error("Failed to load snapshot of the VM: ", loadErr)
 	}
-
-	<-loadDone
 
 	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))
 
@@ -561,12 +509,16 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	vm.SnapBooted = true
 
-	return  &StartVMResponse{GuestIP: vm.NetConfig.GetCloneIP()}, nil, nil
+	return  &ctriface.StartVMResponse{GuestIP: vm.NetConfig.GetCloneIP()}, nil, nil
 }
 
-func (o *Orchestrator) CleanupRevisionSnapshot(ctx context.Context, revisionID string) error {
+func (o *DedupOrchestrator) CleanupSnapshot(ctx context.Context, revisionID string) error {
 	if err := o.devMapper.RemoveDeviceSnapshot(ctx, revisionID); err != nil {
 		return errors.Wrapf(err, "removing revision snapshot")
 	}
 	return nil
+}
+
+func (o *DedupOrchestrator) GetImage(ctx context.Context, imageName string) (*containerd.Image, error) {
+	return o.imageManager.GetImage(ctx, imageName)
 }

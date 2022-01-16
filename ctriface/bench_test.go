@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"github.com/ease-lab/vhive/ctriface/regular"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -43,6 +44,22 @@ const (
 )
 
 func TestBenchmarkStart(t *testing.T) {
+	orch := NewOrchestrator(regular.NewRegOrchestrator(
+		"devmapper",
+		"",
+		"fc-dev-thinpool",
+		"",
+		10,
+		regular.WithTestModeOn(true),
+		regular.WithUPF(*isUPFEnabled),
+	))
+
+	benchCount := 10
+	vmID := 0
+	benchmarkStart(t, orch, benchCount, vmID)
+}
+
+func benchmarkStart(t *testing.T, orch *Orchestrator, benchCount, vmID int) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
@@ -53,14 +70,10 @@ func TestBenchmarkStart(t *testing.T) {
 	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 2000 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), regular.NamespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", "", "fc-dev-thinpool","",10, WithTestModeOn(true), WithUPF(*isUPFEnabled))
-
 	images := getAllImages()
-	benchCount := 10
-	vmID := 0
 
 	createResultsDir()
 
@@ -69,7 +82,7 @@ func TestBenchmarkStart(t *testing.T) {
 		startMetrics := make([]*metrics.Metric, benchCount)
 
 		// Pull image
-		_, err := orch.imageManager.GetImage(ctx, imageName)
+		_, err := orch.GetImage(ctx, imageName)
 		require.NoError(t, err, "Failed to pull image "+imageName)
 
 		for i := 0; i < benchCount; i++ {

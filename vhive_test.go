@@ -25,13 +25,14 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/ease-lab/vhive/ctriface"
+	"github.com/ease-lab/vhive/ctriface/regular"
 	"os"
 	"strconv"
 	"sync"
 	"testing"
 
 	ctrdlog "github.com/containerd/containerd/log"
-	ctriface "github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -65,25 +66,25 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
-	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
-	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
-	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
-	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
+	log.Infof("DedupOrchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
+	log.Infof("DedupOrchestrator UPF enabled: %t", *isUPFEnabledTest)
+	log.Infof("DedupOrchestrator lazy serving mode enabled: %t", *isLazyModeTest)
+	log.Infof("DedupOrchestrator UPF metrics enabled: %t", *isMetricsModeTest)
 	log.Infof("Drop cache: %t", !*isWithCache)
 	log.Infof("Bench dir: %s", *benchDir)
 
-	orch = ctriface.NewOrchestrator(
+	orch = ctriface.NewOrchestrator(regular.NewRegOrchestrator(
 		"devmapper",
 		"",
 		"fc-dev-thinpool",
 		"",
 		10,
-		ctriface.WithTestModeOn(true),
-		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
-		ctriface.WithUPF(*isUPFEnabledTest),
-		ctriface.WithMetricsMode(*isMetricsModeTest),
-		ctriface.WithLazyMode(*isLazyModeTest),
-	)
+		regular.WithTestModeOn(true),
+		regular.WithSnapshots(*isSnapshotsEnabledTest),
+		regular.WithUPF(*isUPFEnabledTest),
+		regular.WithMetricsMode(*isMetricsModeTest),
+		regular.WithLazyMode(*isLazyModeTest),
+	))
 
 	ret := m.Run()
 

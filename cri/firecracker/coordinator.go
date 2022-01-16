@@ -25,25 +25,30 @@ package firecracker
 import (
 	"context"
 	"fmt"
+	"github.com/ease-lab/vhive/ctriface"
 	"github.com/ease-lab/vhive/metrics"
 	"github.com/ease-lab/vhive/snapshotting"
+	"github.com/ease-lab/vhive/snapshotting/deduplicated"
+	"github.com/ease-lab/vhive/snapshotting/regular"
 	"github.com/pkg/errors"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 )
 
 const snapshotsDir = "/fccd/snapshots"
+
+// TODO: interface for orchestrator
 
 type coordinator struct {
 	sync.Mutex
 	orch   *ctriface.Orchestrator
 	nextID uint64
 	isSparseSnaps bool
+	isDeduplicatedSnaps bool
 
 	activeInstances     map[string]*FuncInstance
 	snapshotManager     *snapshotting.SnapshotManager
@@ -59,12 +64,18 @@ func withoutOrchestrator() coordinatorOption {
 	}
 }
 
-func newFirecrackerCoordinator(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps bool, opts ...coordinatorOption) *coordinator {
+func newFirecrackerCoordinator(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps bool, isDeduplicatedSnaps bool, opts ...coordinatorOption) *coordinator {
 	c := &coordinator{
 		activeInstances: make(map[string]*FuncInstance),
 		orch:            orch,
-		snapshotManager: snapshotting.NewSnapshotManager(snapshotsDir, snapsCapacityMiB),
-		isSparseSnaps: isSparseSnaps,
+		isSparseSnaps:   isSparseSnaps,
+		isDeduplicatedSnaps: isDeduplicatedSnaps,
+	}
+
+	if isDeduplicatedSnaps {
+		c.snapshotManager = snapshotting.NewSnapshotManager(deduplicated.NewSnapshotManager(snapshotsDir, snapsCapacityMiB))
+	} else {
+		c.snapshotManager = snapshotting.NewSnapshotManager(regular.NewRegularSnapshotManager(snapshotsDir))
 	}
 
 	for _, opt := range opts {
@@ -76,12 +87,24 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, snapsCapacityMiB int
 
 func (c *coordinator) startVM(ctx context.Context, image string, revision string, memSizeMib, vCPUCount uint32) (*FuncInstance, error) {
 	if c.orch != nil && c.orch.GetSnapshotsEnabled()  {
+		id := image
+		if c.isDeduplicatedSnaps {
+			id = revision
+		}
+
 		// Check if snapshot is available
-		if snap, err := c.snapshotManager.AcquireSnapshot(revision); err == nil {
+		if snap, err := c.snapshotManager.AcquireSnapshot(id); err == nil {
 			if snap.MemSizeMib != memSizeMib || snap.VCPUCount != vCPUCount {
 				return nil, errors.New("Please create a new revision when updating uVM memory size or vCPU count")
 			} else {
-				return c.orchStartVMSnapshot(ctx, snap, memSizeMib, vCPUCount)
+				vmID := ""
+				if c.isDeduplicatedSnaps {
+					vmID = strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+				} else {
+					vmID = snap.GetId()
+				}
+
+				return c.orchStartVMSnapshot(ctx, snap, memSizeMib, vCPUCount, vmID)
 			}
 		} else {
 			return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
@@ -106,9 +129,18 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		return nil
 	}
 
+	if c.orch == nil || ! c.orch.GetSnapshotsEnabled() {
+		return c.orchStopVM(ctx, fi)
+	}
+
+	id := fi.vmID
+	if c.isDeduplicatedSnaps {
+		id = fi.revisionId
+	}
+
 	if fi.snapBooted {
-		defer c.snapshotManager.ReleaseSnapshot(fi.revisionId)
-	} else if c.orch != nil && c.orch.GetSnapshotsEnabled() {
+		defer c.snapshotManager.ReleaseSnapshot(id)
+	} else {
 		// Create snapshot
 		err := c.orchCreateSnapshot(ctx, fi)
 		if err != nil {
@@ -116,7 +148,11 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		}
 	}
 
-	return c.orchStopVM(ctx, fi)
+	if c.isDeduplicatedSnaps {
+		return c.orchStopVM(ctx, fi)
+	} else {
+		return c.orchOffloadVM(ctx, fi)
+	}
 }
 
 // for testing
@@ -178,9 +214,8 @@ func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, m
 	return fi, err
 }
 
-func (c *coordinator) orchStartVMSnapshot(ctx context.Context, snap *snapshotting.Snapshot, memSizeMib, vCPUCount uint32) (*FuncInstance, error) {
+func (c *coordinator) orchStartVMSnapshot(ctx context.Context, snap *snapshotting.Snapshot, memSizeMib, vCPUCount uint32, vmID string) (*FuncInstance, error) {
 	tStartCold := time.Now()
-	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
 	logger := log.WithFields(
 		log.Fields{
 			"vmID":  vmID,
@@ -210,7 +245,7 @@ func (c *coordinator) orchStartVMSnapshot(ctx context.Context, snap *snapshottin
 	}
 
 	coldStartTimeMs := metrics.ToMs(time.Since(tStartCold))
-	fi := NewFuncInstance(vmID, snap.GetImage(), snap.GetRevisionId(), resp, true, memSizeMib, vCPUCount, coldStartTimeMs)
+	fi := NewFuncInstance(vmID, snap.GetImage(), snap.GetId(), resp, true, memSizeMib, vCPUCount, coldStartTimeMs)
 	logger.Debug("successfully loaded instance from snapshot")
 
 	return fi, err
@@ -224,7 +259,13 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) 
 		},
 	)
 
-	removeContainerSnaps, snap, err := c.snapshotManager.InitSnapshot(fi.revisionId, fi.image, fi.coldStartTimeMs, fi.memSizeMib, fi.vCPUCount, c.isSparseSnaps)
+	id := fi.vmID
+	if c.isDeduplicatedSnaps {
+		id = fi.revisionId
+	}
+
+	removeContainerSnaps, snap, err := c.snapshotManager.InitSnapshot(id, fi.image, fi.coldStartTimeMs, fi.memSizeMib, fi.vCPUCount, c.isSparseSnaps)
+
 	if err != nil {
 		if fmt.Sprint(err) == "There is not enough free space available" {
 			fi.logger.Info(fmt.Sprintf("There is not enough space available for snapshots of %s", fi.revisionId))
@@ -232,9 +273,9 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) 
 		return nil
 	}
 
-	if removeContainerSnaps != nil {
+	if c.isDeduplicatedSnaps && removeContainerSnaps != nil {
 		for _, cleanupSnapId := range *removeContainerSnaps {
-			if err := c.orch.CleanupRevisionSnapshot(ctx, cleanupSnapId); err != nil {
+			if err := c.orch.CleanupSnapshot(ctx, cleanupSnapId); err != nil {
 				return errors.Wrap(err, "removing devmapper revision snapshot")
 			}
 		}
@@ -257,7 +298,7 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) 
 		return nil
 	}
 
-	if err := c.snapshotManager.CommitSnapshot(fi.revisionId); err != nil {
+	if err := c.snapshotManager.CommitSnapshot(id); err != nil {
 		fi.logger.WithError(err).Error("failed to commit snapshot")
 		return err
 	}
@@ -272,6 +313,19 @@ func (c *coordinator) orchStopVM(ctx context.Context, fi *FuncInstance) error {
 
 	if err := c.orch.StopSingleVM(ctx, fi.vmID); err != nil {
 		fi.logger.WithError(err).Error("failed to stop VM for instance")
+		return err
+	}
+
+	return nil
+}
+
+func (c *coordinator) orchOffloadVM(ctx context.Context, fi *FuncInstance) error {
+	if c.withoutOrchestrator {
+		return nil
+	}
+
+	if err := c.orch.OffloadVM(ctx, fi.vmID); err != nil {
+		fi.logger.WithError(err).Error("failed to offload VM")
 		return err
 	}
 

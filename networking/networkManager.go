@@ -188,12 +188,12 @@ func (mgr *NetworkManager) Cleanup() error {
 	wg.Add(len(mgr.networkPool))
 
 	for _, config := range mgr.networkPool {
-		go func() {
+		go func(config *NetworkConfig) {
 			if err := config.RemoveNetwork(); err != nil {
 				log.Errorf("failed to remove network %s:", err)
 			}
 			wg.Done()
-		}()
+		}(config)
 	}
 	wg.Wait()
 	mgr.networkPool = make([]*NetworkConfig, 0)
