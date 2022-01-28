@@ -252,6 +252,7 @@ KVM
 lan
 latencies
 latSamples
+Lausanne
 ldquo
 Letraset
 lfs
@@ -521,6 +522,7 @@ vSwarm
 warmUpTime
 wc
 WDDD
+webpage
 wget
 WIDX
 WIOSCA

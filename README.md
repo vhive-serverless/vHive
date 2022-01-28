@@ -9,6 +9,10 @@
 
 ![vHive Header](docs/figures/vhive_hdr.jpg)
 
+## News
+
+A full-day tutorial, co-located with the ASPLOS'22 conference, is going to take place in Lausanne, Switzerland on March 1. The tutorial will be in a hybrid format (both in-person and virtual) and will cover both the serverless cloud foundations and the vHive ecosystem and include several hands-on sessions. In this tutorial, the participants will learn how to analyze performance of commercial and open-source clouds as well as how to experiment and innovate across serverless stack using vHive. For more information, please visit the [tutorial webpage](https://ease-lab.github.io/vhive-asplos22).
+
 ## Mission
 
 vHive aims to enable serverless systems researchers to innovate across the deep and distributed software stacks
