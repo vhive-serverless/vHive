@@ -22,17 +22,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Add skopeo sources
  . /etc/os-release
+sudo apt-get -y install curl ca-certificates >> /dev/null
+sudo add-apt-repository universe >> /dev/null
+sudo apt-get update >> /dev/null
  echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list > /dev/null
+# Add skopeo sources
  curl --silent --show-error -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
 
 sudo apt-get update >> /dev/null
 
 sudo apt-get -y install \
     apt-transport-https \
-    ca-certificates \
-    curl \
     gcc \
     g++ \
     make \
