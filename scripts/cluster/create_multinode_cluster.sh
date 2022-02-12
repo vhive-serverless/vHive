@@ -22,6 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+STOCK_CONTAINERD=$1
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 
@@ -48,4 +50,4 @@ while true; do
     esac
 done
 
-$DIR/setup_master_node.sh
+$DIR/setup_master_node.sh $STOCK_CONTAINERD
