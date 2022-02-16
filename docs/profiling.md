@@ -100,8 +100,7 @@ setting during the profiling period.
 
 Profile a single VM with `helloworld` image and 20 RPS at TopDown level 1 :
 ```
-sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileSingleConfiguration \
--args -funcNames helloworld -vm 1 -rps 20 -l 1
+sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileSingleConfiguration -args -funcNames helloworld -vm 1 -rps 20 -l 1
 ```
 Bottleneck counters are printed out with their values at each step during 
 execution, such as:
@@ -117,8 +116,7 @@ configuration at the lower level.
 For example, if the bottleneck is in the backend at level 1, one should profile level 2
 of the backend category:
 ```
-sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileSingleConfiguration \ 
--args -funcNames helloworld -vm 1 -rps 20 -nodes '!+Backend_Bound*/2,+MUX'
+sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileSingleConfiguration -args -funcNames helloworld -vm 1 -rps 20 -nodes '!+Backend_Bound*/2,+MUX'
 ```
 
 ### TestProfileIncrementConfiguration function
@@ -136,8 +134,7 @@ value, and repeats this procedure.
 
 Profile from 1 VMs to 32 VMs (increment step is 1) with `helloworld` image at TopDown level 1:
 ```
-sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileIncrementConfiguration \ 
--args -funcNames helloworld -vmIncrStep 1 -maxVMNum 32 -l 1
+sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileIncrementConfiguration -args -funcNames helloworld -vmIncrStep 1 -maxVMNum 32 -l 1
 ```
 Once the profiling iteration finishes, all results are saved in the `profile.csv`, and
 the tool plots the TopDown metrics in a set of charts. Here is a sample image of
@@ -149,7 +146,6 @@ Because we profiled the entire TopDown level 1 metrics, a stack plot is saved fo
 
 Similar plots are saved if any metric at sub-level is profiled along with its siblings. For example, profiling from 4 VMs to 32 VMs (increment step is 4) with `helloworld` image at TopDown level 3 of Memory_Bound:
 ```
-sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileIncrementConfiguration \
- -args -funcNames helloworld -vmIncrStep 4 -maxVMNum 32 -nodes '!+Memory_Bound*/3,+MUX'
+sudo env "PATH=$PATH" go test -v -timeout 99999s -run TestProfileIncrementConfiguration -args -funcNames helloworld -vmIncrStep 4 -maxVMNum 32 -nodes '!+Memory_Bound*/3,+MUX'
 ```
 ![Memory Bound stack chart](figures/Memory_Bound.png) 
