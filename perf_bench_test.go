@@ -86,7 +86,7 @@ var (
 // counters which are also saved under *benchDir folder
 func TestProfileIncrementConfiguration(t *testing.T) {
 
-	t.Skip("Skipping TestProfileIncrementConfiguration")
+	//t.Skip("Skipping TestProfileIncrementConfiguration")
 
 	var (
 		idx, rps      int
@@ -134,7 +134,7 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 // to violate tail latency threshold and then saves the results in bench.csv under *benchDir folder
 func TestProfileSingleConfiguration(t *testing.T) {
 
-	t.Skip("Skipping TestProfileSingleConfiguration")
+	//t.Skip("Skipping TestProfileSingleConfiguration")
 
 	var (
 		servedTh      uint64
