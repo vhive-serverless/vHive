@@ -83,6 +83,20 @@ Profiler:
 At the root of this repository, please run the following script to install the essential tools
 for profiling and binding.
 ```bash
+# Setup system
+scripts/clean_fcctr.sh
+scripts/setup_system.sh
+
+# Install Go
+wget -O go1.17.7.linux-amd64.tar.gz https://go.dev/dl/go1.17.7.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.17.7.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+
+# Setup Firecracker
+source scripts/setup_firecracker_containerd.sh
+go build -race -v -a ./...
+
+# Install profiling tools
 scripts/install_pmutools.sh
 ```
 
@@ -91,7 +105,7 @@ scripts/install_pmutools.sh
 
 Before running the test, start the firecracker-containerd daemon:
 ```bash
-sudo PATH=$PATH /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml
+screen -d -m -S firecracker bash -c 'sudo PATH=$PATH /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml'
 ```
 
 
