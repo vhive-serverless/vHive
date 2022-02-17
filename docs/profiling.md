@@ -93,7 +93,7 @@ sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.17.7.linux-amd64.ta
 export PATH=$PATH:/usr/local/go/bin
 
 # Setup Firecracker
-source scripts/setup_firecracker_containerd.sh
+scripts/setup_firecracker_containerd.sh
 go build -race -v -a ./...
 
 # Install profiling tools
