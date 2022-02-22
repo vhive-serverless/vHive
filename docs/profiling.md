@@ -92,6 +92,9 @@ wget -O go1.17.7.linux-amd64.tar.gz https://go.dev/dl/go1.17.7.linux-amd64.tar.g
 sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.17.7.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
 
+# Install dependencies
+sudo apt-get update && sudo apt-get install -y git-lfs python 
+
 # Setup Firecracker
 scripts/setup_firecracker_containerd.sh
 go build -race -v -a ./...
