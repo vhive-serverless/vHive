@@ -26,7 +26,6 @@ import (
 	"context"
 	"flag"
 	"github.com/ease-lab/vhive/ctriface"
-	"github.com/ease-lab/vhive/ctriface/regular"
 	"os"
 	"strconv"
 	"sync"
@@ -47,6 +46,7 @@ var (
 	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
 	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
 	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
+	isFullLocalTest        = flag.Bool("fullLocalTest", false, "Enable full local snapshots")
 	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
 )
@@ -66,29 +66,30 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
-	log.Infof("DedupOrchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
-	log.Infof("DedupOrchestrator UPF enabled: %t", *isUPFEnabledTest)
-	log.Infof("DedupOrchestrator lazy serving mode enabled: %t", *isLazyModeTest)
-	log.Infof("DedupOrchestrator UPF metrics enabled: %t", *isMetricsModeTest)
+	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
+	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
+	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
+	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
 	log.Infof("Drop cache: %t", !*isWithCache)
 	log.Infof("Bench dir: %s", *benchDir)
 
-	orch = ctriface.NewOrchestrator(regular.NewRegOrchestrator(
+	// TODO: set correct params if full local test
+	orch = ctriface.NewOrchestrator(
 		"devmapper",
 		"",
 		"fc-dev-thinpool",
 		"",
 		10,
-		regular.WithTestModeOn(true),
-		regular.WithSnapshots(*isSnapshotsEnabledTest),
-		regular.WithUPF(*isUPFEnabledTest),
-		regular.WithMetricsMode(*isMetricsModeTest),
-		regular.WithLazyMode(*isLazyModeTest),
-	))
+		ctriface.WithTestModeOn(true),
+		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
+		ctriface.WithUPF(*isUPFEnabledTest),
+		ctriface.WithMetricsMode(*isMetricsModeTest),
+		ctriface.WithLazyMode(*isLazyModeTest),
+	)
 
 	ret := m.Run()
 
-	err := orch.StopActiveVMs()
+	err := orch.StopActiveVMs(*isFullLocalTest)
 	if err != nil {
 		log.Printf("Failed to stop VMs, err: %v\n", err)
 	}

@@ -27,8 +27,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ease-lab/vhive/ctriface"
-	"github.com/ease-lab/vhive/ctriface/deduplicated"
-	"github.com/ease-lab/vhive/ctriface/regular"
 
 	"math/rand"
 	"net"
@@ -60,7 +58,7 @@ var (
 	isSaveMemory       *bool
 	snapsCapacityMiB   *int64
 	isSparseSnaps      *bool
-	isDeduplicatedSnaps *bool
+	isFullLocal        *bool
 	isSnapshotsEnabled *bool
 	isUPFEnabled       *bool
 	isLazyMode         *bool
@@ -90,7 +88,7 @@ func main() {
 	// Snapshotting
 	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
 	isSparseSnaps = flag.Bool("sparsesnaps", false, "Makes memory files sparse after storing to reduce disk utilization")
-	isDeduplicatedSnaps = flag.Bool("deduplicatedsnaps", false, "Use improved deduplicated snapshotting")
+	isFullLocal = flag.Bool("fulllocal", false, "Use improved full local snapshotting")
 	snapsCapacityMiB = flag.Int64("snapcapacity", 102400, "Capacity set aside for storing snapshots (Mib)")
 	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
@@ -128,6 +126,11 @@ func main() {
 		return
 	}
 
+	if *isUPFEnabled && *isFullLocal {
+		log.Error("UPF is not supported for full local snapshots")
+		return
+	}
+
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
 	}
@@ -154,36 +157,18 @@ func main() {
 
 	testModeOn := false
 
-	if *isDeduplicatedSnaps {
-		orch = ctriface.NewOrchestrator(deduplicated.NewDedupOrchestrator(
-			*snapshotter,
-			*hostIface,
-			*poolName,
-			*metadataDev,
-			*netPoolSize,
-			deduplicated.WithTestModeOn(testModeOn),
-			deduplicated.WithSnapshots(*isSnapshotsEnabled),
-			deduplicated.WithUPF(*isUPFEnabled),
-			deduplicated.WithMetricsMode(*isMetricsMode),
-			deduplicated.WithLazyMode(*isLazyMode),
-		))
-	} else {
-		orch = ctriface.NewOrchestrator(regular.NewRegOrchestrator(
-			*snapshotter,
-			*hostIface,
-			*poolName,
-			*metadataDev,
-			*netPoolSize,
-			regular.WithTestModeOn(testModeOn),
-			regular.WithSnapshots(*isSnapshotsEnabled),
-			regular.WithUPF(*isUPFEnabled),
-			regular.WithMetricsMode(*isMetricsMode),
-			regular.WithLazyMode(*isLazyMode),
-		))
-	}
-
-
-
+	orch = ctriface.NewOrchestrator(
+		*snapshotter,
+		*hostIface,
+		*poolName,
+		*metadataDev,
+		*netPoolSize,
+		ctriface.WithTestModeOn(testModeOn),
+		ctriface.WithSnapshots(*isSnapshotsEnabled),
+		ctriface.WithUPF(*isUPFEnabled),
+		ctriface.WithMetricsMode(*isMetricsMode),
+		ctriface.WithLazyMode(*isLazyMode),
+	)
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 
@@ -208,7 +193,7 @@ func setupFirecrackerCRI() {
 
 	s := grpc.NewServer()
 
-	fcService, err := fccri.NewFirecrackerService(orch, *snapsCapacityMiB, *isSparseSnaps, *isDeduplicatedSnaps)
+	fcService, err := fccri.NewFirecrackerService(orch, *snapsCapacityMiB, *isSparseSnaps, *isFullLocal)
 	if err != nil {
 		log.Fatalf("failed to create firecracker service %v", err)
 	}
@@ -285,7 +270,7 @@ func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.
 // Note: this function is to be used only before tearing down the whole orchestrator
 func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
 	log.Info("Received StopVMs")
-	err := orch.StopActiveVMs()
+	err := orch.StopActiveVMs(*isFullLocal)
 	if err != nil {
 		log.Printf("Failed to stop VMs, err: %v\n", err)
 		return &pb.Status{Message: "Failed to stop VMs"}, err

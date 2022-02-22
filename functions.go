@@ -357,7 +357,7 @@ func (f *Function) AddInstance() *metrics.Metric {
 	if f.isSnapshotReady {
 		metr = f.LoadInstance()
 	} else {
-		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName, 256, 1, false)
+		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName, 256, 1, false, false)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -388,7 +388,7 @@ func (f *Function) RemoveInstanceAsync() {
 	logger.Debug("Removing instance (async)")
 
 	go func() {
-		err := orch.StopSingleVM(context.Background(), f.vmID)
+		err := orch.StopSingleVM(context.Background(), f.vmID, false)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -411,9 +411,12 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 
 	f.OnceAddInstance = new(sync.Once)
 
-	if ! orch.GetSnapshotsEnabled() {
+	if orch.GetSnapshotsEnabled() {
+		f.OffloadInstance()
+		r = "Successfully offloaded instance " + f.vmID
+	} else {
 		if isSync {
-			err = orch.StopSingleVM(context.Background(), f.vmID)
+			err = orch.StopSingleVM(context.Background(), f.vmID, false)
 		} else {
 			f.RemoveInstanceAsync()
 			r = "Successfully removed (async) instance " + f.vmID
@@ -450,7 +453,7 @@ func (f *Function) CreateInstanceSnapshot() {
 
 	revisionID := fmt.Sprintf("myrev-%s", f.vmID)
 	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", f.imageName, 0, 0, false)
-	err = orch.CreateSnapshot(ctx, f.vmID, snap)
+	err = orch.CreateSnapshot(ctx, f.vmID, snap, false)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -459,6 +462,22 @@ func (f *Function) CreateInstanceSnapshot() {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+// OffloadInstance Offloads the instance
+func (f *Function) OffloadInstance() {
+	logger := log.WithFields(log.Fields{"fID": f.fID})
+
+	logger.Debug("Offloading instance")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	err := orch.OffloadVM(ctx, f.vmID, false)
+	if err != nil {
+		log.Panic(err)
+	}
+	f.conn.Close()
 }
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
@@ -473,7 +492,7 @@ func (f *Function) LoadInstance() *metrics.Metric {
 
 	revisionID := fmt.Sprintf("myrev-%s", f.vmID)
 	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", f.imageName, 0, 0, false)
-	_, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap)
+	_, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap, false)
 	if err != nil {
 		log.Panic(err)
 	}

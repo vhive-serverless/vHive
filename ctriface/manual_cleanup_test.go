@@ -25,7 +25,6 @@ package ctriface
 import (
 	"context"
 	"fmt"
-	"github.com/ease-lab/vhive/ctriface/regular"
 	"github.com/ease-lab/vhive/snapshotting"
 	"os"
 	"sync"
@@ -39,24 +38,6 @@ import (
 )
 
 func TestSnapLoad(t *testing.T) {
-	orch := NewOrchestrator(regular.NewRegOrchestrator(
-		"devmapper",
-		"",
-		"fc-dev-thinpool",
-		"",
-		10,
-		regular.WithTestModeOn(true),
-		regular.WithUPF(*isUPFEnabled),
-		regular.WithLazyMode(*isLazyMode),
-	))
-
-	vmID := "1"
-	revisionID := "myrev-1"
-
-	snapLoad(t, orch, vmID, revisionID)
-}
-
-func snapLoad(t *testing.T, orch *Orchestrator, vmID string, revisionID string) {
 	// Need to clean up manually after this test because StopVM does not
 	// work for stopping machines which are loaded from snapshots yet
 	log.SetFormatter(&log.TextFormatter{
@@ -70,23 +51,37 @@ func snapLoad(t *testing.T, orch *Orchestrator, vmID string, revisionID string) 
 	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), regular.NamespaceName), testTimeout)
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
 	defer cancel()
 
-	_, _, err := orch.StartVM(ctx, vmID, regular.TestImageName, 256, 1, false)
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		"fc-dev-thinpool",
+		"",
+		10,
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
+
+	vmID := "1"
+	revisionID := "myrev-1"
+
+	_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", regular.TestImageName, 0, 0, false)
-	err = orch.CreateSnapshot(ctx, vmID, snap)
+	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0, false)
+	err = orch.CreateSnapshot(ctx, vmID, snap, false)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -96,24 +91,6 @@ func snapLoad(t *testing.T, orch *Orchestrator, vmID string, revisionID string) 
 }
 
 func TestSnapLoadMultiple(t *testing.T) {
-	orch := NewOrchestrator(regular.NewRegOrchestrator(
-		"devmapper",
-		"",
-		"fc-dev-thinpool",
-		"",
-		10,
-		regular.WithTestModeOn(true),
-		regular.WithUPF(*isUPFEnabled),
-		regular.WithLazyMode(*isLazyMode),
-	))
-
-	vmID := "3"
-	revisionID := "myrev-3"
-
-	snapLoadMultiple(t, orch, vmID, revisionID)
-}
-
-func snapLoadMultiple(t *testing.T, orch *Orchestrator, vmID string, revisionID string) {
 	// Needs to be cleaned up manually.
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
@@ -126,26 +103,40 @@ func snapLoadMultiple(t *testing.T, orch *Orchestrator, vmID string, revisionID 
 	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), regular.NamespaceName), testTimeout)
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
 	defer cancel()
 
-	_, _, err := orch.StartVM(ctx, vmID, regular.TestImageName, 256, 1, false)
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		"fc-dev-thinpool",
+		"",
+		10,
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
+
+	vmID := "3"
+	revisionID := "myrev-3"
+
+	_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", regular.TestImageName, 0, 0,false)
-	err = orch.CreateSnapshot(ctx, vmID, snap)
+	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0,false)
+	err = orch.CreateSnapshot(ctx, vmID, snap, false)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -155,24 +146,6 @@ func snapLoadMultiple(t *testing.T, orch *Orchestrator, vmID string, revisionID 
 }
 
 func TestParallelSnapLoad(t *testing.T) {
-	vmNum := 5
-	vmIDBase := 6
-
-	orch := NewOrchestrator(regular.NewRegOrchestrator(
-		"devmapper",
-		"",
-		"fc-dev-thinpool",
-		"",
-		10,
-		regular.WithTestModeOn(true),
-		regular.WithUPF(*isUPFEnabled),
-		regular.WithLazyMode(*isLazyMode),
-	))
-
-	parallelSnapLoad(t, orch, vmNum, vmIDBase)
-}
-
-func parallelSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBase int) {
 	// Needs to be cleaned up manually.
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
@@ -185,12 +158,26 @@ func parallelSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBase int)
 	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), regular.NamespaceName), testTimeout)
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
 	defer cancel()
 
+	vmNum := 5
+	vmIDBase := 6
+
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		"fc-dev-thinpool",
+		"",
+		10,
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
+
 	// Pull image
-	_, err := orch.GetImage(ctx, regular.TestImageName)
-	require.NoError(t, err, "Failed to pull image "+regular.TestImageName)
+	_, err := orch.GetImage(ctx, TestImageName)
+	require.NoError(t, err, "Failed to pull image "+TestImageName)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -200,17 +187,17 @@ func parallelSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBase int)
 			vmID := fmt.Sprintf("%d", i+vmIDBase)
 			revisionID := fmt.Sprintf("myrev-%d", i+vmIDBase)
 
-			_, _, err := orch.StartVM(ctx, vmID, regular.TestImageName, 256, 1, false)
+			_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
 			require.NoError(t, err, "Failed to start VM, "+vmID)
 
 			err = orch.PauseVM(ctx, vmID)
 			require.NoError(t, err, "Failed to pause VM, "+vmID)
 
-			snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", regular.TestImageName, 0, 0, false)
-			err = orch.CreateSnapshot(ctx, vmID, snap)
+			snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0, false)
+			err = orch.CreateSnapshot(ctx, vmID, snap, false)
 			require.NoError(t, err, "Failed to create snapshot of VM, "+vmID)
 
-			_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
+			_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 
 			_, err = orch.ResumeVM(ctx, vmID)
@@ -223,24 +210,6 @@ func parallelSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBase int)
 }
 
 func TestParallelPhasedSnapLoad(t *testing.T) {
-	vmNum := 10
-	vmIDBase := 11
-
-	orch := NewOrchestrator(regular.NewRegOrchestrator(
-		"devmapper",
-		"",
-		"fc-dev-thinpool",
-		"",
-		10,
-		regular.WithTestModeOn(true),
-		regular.WithUPF(*isUPFEnabled),
-		regular.WithLazyMode(*isLazyMode),
-	))
-
-	parallelPhasedSnapLoad(t, orch, vmNum, vmIDBase)
-}
-
-func parallelPhasedSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBase int) {
 	// Needs to be cleaned up manually.
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
@@ -253,12 +222,26 @@ func parallelPhasedSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBas
 	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), regular.NamespaceName), testTimeout)
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
 	defer cancel()
 
+	vmNum := 10
+	vmIDBase := 11
+
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		"fc-dev-thinpool",
+		"",
+		10,
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
+
 	// Pull image
-	_, err := orch.GetImage(ctx, regular.TestImageName)
-	require.NoError(t, err, "Failed to pull image "+regular.TestImageName)
+	_, err := orch.GetImage(ctx, TestImageName)
+	require.NoError(t, err, "Failed to pull image "+TestImageName)
 
 	{
 		var vmGroup sync.WaitGroup
@@ -267,7 +250,7 @@ func parallelPhasedSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBas
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				_, _, err := orch.StartVM(ctx, vmID, regular.TestImageName, 256, 1, false)
+				_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
 				require.NoError(t, err, "Failed to start VM, "+vmID)
 			}(i)
 		}
@@ -296,8 +279,8 @@ func parallelPhasedSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBas
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				revisionID := fmt.Sprintf("myrev-%d", i+vmIDBase)
-				snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", regular.TestImageName, 0, 0, false)
-				err = orch.CreateSnapshot(ctx, vmID, snap)
+				snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0, false)
+				err = orch.CreateSnapshot(ctx, vmID, snap, false)
 				require.NoError(t, err, "Failed to create snapshot of VM, "+vmID)
 			}(i)
 		}
@@ -312,8 +295,8 @@ func parallelPhasedSnapLoad(t *testing.T, orch *Orchestrator, vmNum int, vmIDBas
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				revisionID := fmt.Sprintf("myrev-%d", i+vmIDBase)
-				snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", regular.TestImageName, 0, 0, false)
-				_, _, err := orch.LoadSnapshot(ctx, vmID, snap)
+				snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0, false)
+				_, _, err := orch.LoadSnapshot(ctx, vmID, snap, false)
 				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 			}(i)
 		}

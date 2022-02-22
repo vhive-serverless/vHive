@@ -24,7 +24,6 @@ package ctriface
 
 import (
 	"context"
-	"github.com/ease-lab/vhive/ctriface/regular"
 	"github.com/ease-lab/vhive/snapshotting"
 	"os"
 	"testing"
@@ -37,22 +36,6 @@ import (
 )
 
 func TestStartSnapStop(t *testing.T) {
-	orch := NewOrchestrator(regular.NewRegOrchestrator(
-		"devmapper",
-		"",
-		"fc-dev-thinpool",
-		"",
-		10,
-		regular.WithTestModeOn(true)),
-	)
-
-	vmID := "2"
-	revisionID := "myrev-2"
-
-	startSnapStop(t, orch, vmID, revisionID)
-}
-
-func startSnapStop(t *testing.T, orch *Orchestrator, vmID, revisionID string) {
 	// BROKEN BECAUSE StopVM does not work yet.
 	t.Skip("skipping failing test")
 	log.SetFormatter(&log.TextFormatter{
@@ -66,26 +49,38 @@ func startSnapStop(t *testing.T, orch *Orchestrator, vmID, revisionID string) {
 	log.SetLevel(log.DebugLevel)
 
 	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), regular.NamespaceName), testTimeout)
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
 	defer cancel()
 
-	_, _, err := orch.StartVM(ctx, vmID, regular.TestImageName, 256, 1, false)
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		"fc-dev-thinpool",
+		"",
+		10,
+		WithTestModeOn(true),
+	)
+
+	vmID := "2"
+	revisionID := "myrev-2"
+
+	_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", regular.TestImageName, 0, 0,  false)
-	err = orch.CreateSnapshot(ctx, vmID, snap)
+	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0,  false)
+	err = orch.CreateSnapshot(ctx, vmID, snap, false)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
-	err = orch.StopSingleVM(ctx, vmID)
+	err = orch.StopSingleVM(ctx, vmID, false)
 	require.NoError(t, err, "Failed to stop VM")
 
 	orch.Cleanup()

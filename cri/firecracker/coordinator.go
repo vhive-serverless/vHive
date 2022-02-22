@@ -41,14 +41,12 @@ import (
 
 const snapshotsDir = "/fccd/snapshots"
 
-// TODO: interface for orchestrator
-
 type coordinator struct {
 	sync.Mutex
 	orch   *ctriface.Orchestrator
 	nextID uint64
 	isSparseSnaps bool
-	isDeduplicatedSnaps bool
+	isFullLocal bool
 
 	activeInstances     map[string]*FuncInstance
 	snapshotManager     *snapshotting.SnapshotManager
@@ -64,15 +62,15 @@ func withoutOrchestrator() coordinatorOption {
 	}
 }
 
-func newFirecrackerCoordinator(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps bool, isDeduplicatedSnaps bool, opts ...coordinatorOption) *coordinator {
+func newFirecrackerCoordinator(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps bool, isFullLocal bool, opts ...coordinatorOption) *coordinator {
 	c := &coordinator{
 		activeInstances: make(map[string]*FuncInstance),
 		orch:            orch,
 		isSparseSnaps:   isSparseSnaps,
-		isDeduplicatedSnaps: isDeduplicatedSnaps,
+		isFullLocal: isFullLocal,
 	}
 
-	if isDeduplicatedSnaps {
+	if isFullLocal {
 		c.snapshotManager = snapshotting.NewSnapshotManager(deduplicated.NewSnapshotManager(snapshotsDir, snapsCapacityMiB))
 	} else {
 		c.snapshotManager = snapshotting.NewSnapshotManager(regular.NewRegularSnapshotManager(snapshotsDir))
@@ -88,26 +86,25 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, snapsCapacityMiB int
 func (c *coordinator) startVM(ctx context.Context, image string, revision string, memSizeMib, vCPUCount uint32) (*FuncInstance, error) {
 	if c.orch != nil && c.orch.GetSnapshotsEnabled()  {
 		id := image
-		if c.isDeduplicatedSnaps {
+		if c.isFullLocal {
 			id = revision
 		}
 
 		// Check if snapshot is available
 		if snap, err := c.snapshotManager.AcquireSnapshot(id); err == nil {
 			if snap.MemSizeMib != memSizeMib || snap.VCPUCount != vCPUCount {
-				return nil, errors.New("Please create a new revision when updating uVM memory size or vCPU count")
-			} else {
-				vmID := ""
-				if c.isDeduplicatedSnaps {
-					vmID = strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
-				} else {
-					vmID = snap.GetId()
-				}
-
-				return c.orchStartVMSnapshot(ctx, snap, memSizeMib, vCPUCount, vmID)
+				return nil, errors.New("uVM memory size or vCPU count in the snapshot do not match the requested ones.")
 			}
-		} else {
-			return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
+
+			vmID := ""
+			if c.isFullLocal {
+				vmID = strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+			} else {
+				vmID = snap.GetId()
+			}
+
+			return c.orchStartVMSnapshot(ctx, snap, memSizeMib, vCPUCount, vmID)
+
 		}
 	}
 
@@ -134,7 +131,7 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	}
 
 	id := fi.vmID
-	if c.isDeduplicatedSnaps {
+	if c.isFullLocal {
 		id = fi.revisionId
 	}
 
@@ -148,7 +145,7 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		}
 	}
 
-	if c.isDeduplicatedSnaps {
+	if c.isFullLocal {
 		return c.orchStopVM(ctx, fi)
 	} else {
 		return c.orchOffloadVM(ctx, fi)
@@ -201,7 +198,7 @@ func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, m
 
 	if !c.withoutOrchestrator {
 		trackDirtyPages := c.isSparseSnaps
-		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image, memSizeMib, vCPUCount, trackDirtyPages)
+		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image, memSizeMib, vCPUCount, trackDirtyPages, c.isFullLocal)
 		if err != nil {
 			logger.WithError(err).Error("coordinator failed to start VM")
 		}
@@ -233,7 +230,7 @@ func (c *coordinator) orchStartVMSnapshot(ctx context.Context, snap *snapshottin
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	resp, _, err = c.orch.LoadSnapshot(ctxTimeout, vmID, snap)
+	resp, _, err = c.orch.LoadSnapshot(ctxTimeout, vmID, snap, c.isFullLocal)
 	if err != nil {
 		logger.WithError(err).Error("failed to load VM")
 		return nil, err
@@ -260,20 +257,18 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) 
 	)
 
 	id := fi.vmID
-	if c.isDeduplicatedSnaps {
+	if c.isFullLocal {
 		id = fi.revisionId
 	}
 
 	removeContainerSnaps, snap, err := c.snapshotManager.InitSnapshot(id, fi.image, fi.coldStartTimeMs, fi.memSizeMib, fi.vCPUCount, c.isSparseSnaps)
 
 	if err != nil {
-		if fmt.Sprint(err) == "There is not enough free space available" {
-			fi.logger.Info(fmt.Sprintf("There is not enough space available for snapshots of %s", fi.revisionId))
-		}
+		fi.logger.Warn(fmt.Sprint(err))
 		return nil
 	}
 
-	if c.isDeduplicatedSnaps && removeContainerSnaps != nil {
+	if c.isFullLocal && removeContainerSnaps != nil {
 		for _, cleanupSnapId := range *removeContainerSnaps {
 			if err := c.orch.CleanupSnapshot(ctx, cleanupSnapId); err != nil {
 				return errors.Wrap(err, "removing devmapper revision snapshot")
@@ -292,7 +287,7 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) 
 		return nil
 	}
 
-	err = c.orch.CreateSnapshot(ctxTimeout, fi.vmID, snap)
+	err = c.orch.CreateSnapshot(ctxTimeout, fi.vmID, snap, c.isFullLocal)
 	if err != nil {
 		fi.logger.WithError(err).Error("failed to create snapshot")
 		return nil
@@ -306,26 +301,26 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) 
 	return nil
 }
 
-func (c *coordinator) orchStopVM(ctx context.Context, fi *FuncInstance) error {
+func (c *coordinator) orchOffloadVM(ctx context.Context, fi *FuncInstance) error {
 	if c.withoutOrchestrator {
 		return nil
 	}
 
-	if err := c.orch.StopSingleVM(ctx, fi.vmID); err != nil {
-		fi.logger.WithError(err).Error("failed to stop VM for instance")
+	if err := c.orch.OffloadVM(ctx, fi.vmID, c.isFullLocal); err != nil {
+		fi.logger.WithError(err).Error("failed to offload VM")
 		return err
 	}
 
 	return nil
 }
 
-func (c *coordinator) orchOffloadVM(ctx context.Context, fi *FuncInstance) error {
+func (c *coordinator) orchStopVM(ctx context.Context, fi *FuncInstance) error {
 	if c.withoutOrchestrator {
 		return nil
 	}
 
-	if err := c.orch.OffloadVM(ctx, fi.vmID); err != nil {
-		fi.logger.WithError(err).Error("failed to offload VM")
+	if err := c.orch.StopSingleVM(ctx, fi.vmID, c.isFullLocal); err != nil {
+		fi.logger.WithError(err).Error("failed to stop VM for instance")
 		return err
 	}
 

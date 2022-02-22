@@ -110,5 +110,5 @@ func (p *VMPool) GetVM(vmID string) (*VM, error) {
 
 // CleanupNetwork removes and deallocates all network configurations
 func (p *VMPool) CleanupNetwork() {
-	_ = p.networkManager.Cleanup()
+	p.networkManager.Cleanup()
 }

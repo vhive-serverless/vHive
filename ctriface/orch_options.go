@@ -20,14 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package deduplicated
+package ctriface
 
-// OrchestratorOption Options to pass to DedupOrchestrator
-type OrchestratorOption func(*DedupOrchestrator)
+// OrchestratorOption Options to pass to Orchestrator
+type OrchestratorOption func(*Orchestrator)
 
 // WithTestModeOn Sets the test mode
 func WithTestModeOn(testModeOn bool) OrchestratorOption {
-	return func(o *DedupOrchestrator) {
+	return func(o *Orchestrator) {
 		if !testModeOn {
 			o.setupCloseHandler()
 			o.setupHeartbeat()
@@ -37,14 +37,14 @@ func WithTestModeOn(testModeOn bool) OrchestratorOption {
 
 // WithSnapshots Sets the snapshot mode on or off
 func WithSnapshots(snapshotsEnabled bool) OrchestratorOption {
-	return func(o *DedupOrchestrator) {
+	return func(o *Orchestrator) {
 		o.snapshotsEnabled = snapshotsEnabled
 	}
 }
 
 // WithUPF Sets the user-page faults mode on or off
 func WithUPF(isUPFEnabled bool) OrchestratorOption {
-	return func(o *DedupOrchestrator) {
+	return func(o *Orchestrator) {
 		o.isUPFEnabled = isUPFEnabled
 	}
 }
@@ -52,7 +52,7 @@ func WithUPF(isUPFEnabled bool) OrchestratorOption {
 // WithSnapshotsDir Sets the directory where
 // snapshots should be stored
 func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
-	return func(o *DedupOrchestrator) {
+	return func(o *Orchestrator) {
 		o.snapshotsDir = snapshotsDir
 	}
 }
@@ -61,14 +61,22 @@ func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
 // where all guest memory pages are brought on demand.
 // Only works if snapshots are enabled
 func WithLazyMode(isLazyMode bool) OrchestratorOption {
-	return func(o *DedupOrchestrator) {
+	return func(o *Orchestrator) {
 		o.isLazyMode = isLazyMode
 	}
 }
 
 // WithMetricsMode Sets the metrics mode
 func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
-	return func(o *DedupOrchestrator) {
+	return func(o *Orchestrator) {
 		o.isMetricsMode = isMetricsMode
+	}
+}
+
+// WithCustomHostIface Sets the custom host net interface
+// for the VMs to link to
+func WithCustomHostIface(hostIface string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.hostIface = hostIface
 	}
 }

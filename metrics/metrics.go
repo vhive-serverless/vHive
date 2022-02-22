@@ -190,7 +190,7 @@ func ToUS(dur time.Duration) float64 {
 	return float64(dur.Microseconds())
 }
 
-// ToUS Converts Duration to milliseconds
+// ToMs Converts Duration to milliseconds
 func ToMs(dur time.Duration) int64 {
 	return int64(dur.Milliseconds())
 }

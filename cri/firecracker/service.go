@@ -42,7 +42,7 @@ const (
 	guestPortEnv          = "GUEST_PORT"
 	guestImageEnv         = "GUEST_IMAGE"
 	guestMemorySizeMibEnv = "MEM_SIZE_MB"
-	guestvCPUCount        = "VCPU_COUNT"
+	guestvCPUCountEnv     = "VCPU_COUNT"
 )
 
 type FirecrackerService struct {
@@ -61,7 +61,7 @@ type VMConfig struct {
 	guestPort string
 }
 
-func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps, isDeduplicatedSnaps bool) (*FirecrackerService, error) {
+func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps, isFullLocal bool) (*FirecrackerService, error) {
 	fs := new(FirecrackerService)
 	stockRuntimeClient, err := cri.NewStockRuntimeServiceClient()
 	if err != nil {
@@ -69,7 +69,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, 
 		return nil, err
 	}
 	fs.stockRuntimeClient = stockRuntimeClient
-	fs.coordinator = newFirecrackerCoordinator(orch, snapsCapacityMiB, isSparseSnaps, isDeduplicatedSnaps)
+	fs.coordinator = newFirecrackerCoordinator(orch, snapsCapacityMiB, isSparseSnaps, isFullLocal)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
 }
@@ -251,14 +251,13 @@ func getMemorySize(config *criapi.ContainerConfig) (uint32, error) {
 	envs := config.GetEnvs()
 	for _, kv := range envs {
 		if kv.GetKey() == guestMemorySizeMibEnv {
-			memSize, err := strconv.Atoi(kv.GetValue())
+			memSize, err := strconv.ParseUint(kv.GetValue(), 10, 32)
 			if err == nil {
 				return uint32(memSize), nil
 			} else {
 				return 0, err
 			}
 		}
-
 	}
 
 	return uint32(256), nil
@@ -267,15 +266,14 @@ func getMemorySize(config *criapi.ContainerConfig) (uint32, error) {
 func getvCPUCount(config *criapi.ContainerConfig) (uint32, error) {
 	envs := config.GetEnvs()
 	for _, kv := range envs {
-		if kv.GetKey() == guestvCPUCount {
-			vCPUCount, err := strconv.Atoi(kv.GetValue())
+		if kv.GetKey() == guestvCPUCountEnv {
+			vCPUCount, err := strconv.ParseUint(kv.GetValue(), 10, 32)
 			if err == nil {
 				return uint32(vCPUCount), nil
 			} else {
 				return 0, err
 			}
 		}
-
 	}
 
 	return uint32(1), nil

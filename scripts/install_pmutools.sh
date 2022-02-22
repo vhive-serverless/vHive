@@ -32,4 +32,4 @@ sudo git clone https://github.com/ease-lab/pmu-tools -b master /usr/local/pmu-to
 sudo sysctl -w kernel.perf_event_paranoid=-1
 
 # first run, download essential files
-#/usr/local/pmu-tools/toplev --print > /dev/null
+/usr/local/pmu-tools/toplev --print > /dev/null
