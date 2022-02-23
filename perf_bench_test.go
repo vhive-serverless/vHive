@@ -465,7 +465,7 @@ func measureTailLatency(t *testing.T, vmNum int, images []string, latencyCh chan
 	)
 	if duraInMs*float64(vmNum) < 500 {
 		duraInMs = 500
-		log.Warnf("Too many latency samples for %d VM, measure %.0f samples instead.", vmNum, *profileTime*1000/duraInMs)
+		//log.Warnf("Too many latency samples for %d VM, measure %.0f samples instead.", vmNum, *profileTime*1000/duraInMs)
 		times = times[:int(*profileTime*1000/duraInMs)]
 	}
 	duration := time.Duration(duraInMs)
