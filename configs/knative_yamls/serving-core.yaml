@@ -3913,6 +3913,7 @@ data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
   # TODO: switch to 'queue-sidecar-image' after 0.27
+  registries-skipping-tag-resolving: "kind.local,ko.local,dev.local,index.docker.io,gcr.io"
   queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:7664e43ef34eccf3c311a0a7fa75da472303faf387e3f5f0a5fb863a9dbc3aff
   _example: |-
     ################################
