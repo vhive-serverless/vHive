@@ -20,10 +20,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ctriface
+package fulllocal
 
-// StartVMResponse is the response returned by StartVM
-type StartVMResponse struct {
-	// GuestIP is the IP of the guest MicroVM
-	GuestIP string
+type SnapHeap []*SnapshotStats
+
+func (h SnapHeap) Len() int {
+	return len(h)
+}
+func (h SnapHeap) Less(i, j int) bool {
+	return h[i].score < h[j].score
+}
+func (h SnapHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
+
+func (h *SnapHeap) Push(x interface{}) {
+	*h = append(*h, x.(*SnapshotStats))
+}
+
+func (h *SnapHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+func (h *SnapHeap) Peek() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	return x
 }

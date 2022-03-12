@@ -39,12 +39,12 @@ const (
 )
 
 // NetworkConfig represents the network devices, IPs, namespaces, routes and filter rules to connect a uVM
-// to the network. Note that due to the current allocation of IPs at most 2^14 VMs can be simultaneously be
-// available on a single host.
+// to the network. The network config ID is deterministically mapped to IP addresses to be used for the uVM.
+// Note that due to the current allocation of IPs at most 2^14 VMs can be simultaneously be available on a single host.
 type NetworkConfig struct {
 	id             int
 	containerCIDR  string // Container IP address (CIDR notation)
-	gatewayCIDR    string // Container gateway IP address
+	gatewayCIDR    string // Container gateway IP address (CIDR notation)
 	containerTap   string // Container tap name
 	containerMac   string // Container Mac address
 	hostIfaceName  string // Host network interface name
@@ -203,7 +203,7 @@ func (cfg *NetworkConfig) CreateNetwork() error {
 
 	// 3. Setup networking in instance namespace
 	if err := cfg.createVmNetwork(hostNsHandle); err != nil {
-		netns.Set(hostNsHandle)
+		_ = netns.Set(hostNsHandle)
 		runtime.UnlockOSThread()
 		return err
 	}

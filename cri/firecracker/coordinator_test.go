@@ -24,6 +24,7 @@ package firecracker
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -38,12 +39,17 @@ const (
 )
 
 var (
+	isFullLocal = flag.Bool("fulllocal", false, "Set full local snapshots")
+	isSparseSnaps = flag.Bool("sparsesnaps", false, "Use sparse snapshots")
+)
+
+var (
 	coord *coordinator
 )
 
 func TestMain(m *testing.M) {
-	coord = newFirecrackerCoordinator(nil, 10240, false, false, withoutOrchestrator())
-
+	coord = newFirecrackerCoordinator(nil, 10240, *isSparseSnaps, *isFullLocal, withoutOrchestrator())
+	flag.Parse()
 	ret := m.Run()
 	os.Exit(ret)
 }

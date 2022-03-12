@@ -91,7 +91,7 @@ func (bld *BlockDelta) DeserializeDiffBlocks(storePath string) error {
 // ReadBlocks directly reads the computed differing blocks from the specified data device.
 func (bld *BlockDelta) ReadBlocks(dataDevPath string) error {
 	file, err := os.Open(dataDevPath)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if err != nil {
 		return errors.Wrapf(err, "opening data device for reading")
@@ -121,7 +121,7 @@ func (bld *BlockDelta) ReadBlocks(dataDevPath string) error {
 // WriteBlocks directly writes the differing blocks to the specified destination data device.
 func (bld *BlockDelta) WriteBlocks(dataDevPath string) error {
 	file, err := os.OpenFile(dataDevPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	defer file.Close()
+	defer func() { file.Close() }()
 
 	if err != nil {
 		return errors.Wrapf(err, "opening data device for writing")

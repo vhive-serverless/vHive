@@ -64,7 +64,9 @@ func TestBenchmarkStart(t *testing.T) {
 		10,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
+		WithFullLocal(*isFullLocal),
 	)
+	defer orch.Cleanup()
 
 	images := getAllImages()
 	benchCount := 10
@@ -83,11 +85,11 @@ func TestBenchmarkStart(t *testing.T) {
 		for i := 0; i < benchCount; i++ {
 			dropPageCache()
 
-			_, metric, err := orch.StartVM(ctx, vmIDString, imageName, 256, 1, false, false)
+			_, metric, err := orch.StartVM(ctx, vmIDString, imageName, 256, 1, false)
 			require.NoError(t, err, "Failed to start VM")
 			startMetrics[i] = metric
 
-			err = orch.StopSingleVM(ctx, vmIDString, false)
+			err = orch.StopSingleVM(ctx, vmIDString)
 			require.NoError(t, err, "Failed to stop VM")
 		}
 
@@ -99,7 +101,6 @@ func TestBenchmarkStart(t *testing.T) {
 
 	}
 
-	orch.Cleanup()
 }
 
 func dropPageCache() {

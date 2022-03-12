@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package deduplicated
+package fulllocal
 
 import (
 	"container/heap"
@@ -32,15 +32,18 @@ import (
 	"sync"
 )
 
-// ImprovedSnapshotManager manages snapshots stored on the node.
-type ImprovedSnapshotManager struct {
+// FullLocalSnapshotManager manages snapshots stored on the node.
+type FullLocalSnapshotManager struct {
 	sync.Mutex
+	baseFolder string
+
+	// Stored snapshots
 	snapshots          map[string]*snapshotting.Snapshot
+	// Eviction metadata for stored snapshots
 	snapStats          map[string]*SnapshotStats
 
-	// Heap of snapshots not in use sorted on score
+	// Heap of snapshots not in use that can be freed to save space. Sorted by score
 	freeSnaps  SnapHeap
-	baseFolder string
 
 	// Eviction
 	clock       int64 	// When container last used. Increased to priority terminated container on termination
@@ -48,8 +51,8 @@ type ImprovedSnapshotManager struct {
 	usedMib     int64
 }
 
-func NewSnapshotManager(baseFolder string, capacityMib int64) *ImprovedSnapshotManager {
-	manager := new(ImprovedSnapshotManager)
+func NewSnapshotManager(baseFolder string, capacityMib int64) *FullLocalSnapshotManager {
+	manager := new(FullLocalSnapshotManager)
 	manager.snapshots = make(map[string]*snapshotting.Snapshot)
 	manager.snapStats = make(map[string]*SnapshotStats)
 	heap.Init(&manager.freeSnaps)
@@ -59,15 +62,15 @@ func NewSnapshotManager(baseFolder string, capacityMib int64) *ImprovedSnapshotM
 	manager.usedMib = 0
 
 	// Clean & init basefolder
-	os.RemoveAll(manager.baseFolder)
-	os.MkdirAll(manager.baseFolder, os.ModePerm)
+	_ = os.RemoveAll(manager.baseFolder)
+	_ = os.MkdirAll(manager.baseFolder, os.ModePerm)
 
 	return manager
 }
 
 // AcquireSnapshot returns a snapshot for the specified revision if it is available and increments the internal counter
 // such that the snapshot can't get removed. Similar to how a RW lock works
-func (mgr *ImprovedSnapshotManager) AcquireSnapshot(revision string) (*snapshotting.Snapshot, error) {
+func (mgr *FullLocalSnapshotManager) AcquireSnapshot(revision string) (*snapshotting.Snapshot, error) {
 	mgr.Lock()
 	defer mgr.Unlock()
 
@@ -105,13 +108,17 @@ func (mgr *ImprovedSnapshotManager) AcquireSnapshot(revision string) (*snapshott
 
 // ReleaseSnapshot releases the snapshot with the given revision so that it can possibly get deleted if it is not in use
 // by any other VMs.
-func (mgr *ImprovedSnapshotManager) ReleaseSnapshot(revision string) error {
+func (mgr *FullLocalSnapshotManager) ReleaseSnapshot(revision string) error {
 	mgr.Lock()
 	defer mgr.Unlock()
 
 	snapStat, present := mgr.snapStats[revision]
 	if !present {
 		return errors.New(fmt.Sprintf("Get: Snapshot for revision %s does not exist", revision))
+	}
+
+	if snapStat.numUsing == 0 {
+		return errors.New("Can't release a snapshot that is not in use")
 	}
 
 	snapStat.numUsing -= 1
@@ -125,9 +132,9 @@ func (mgr *ImprovedSnapshotManager) ReleaseSnapshot(revision string) error {
 	return nil
 }
 
-// InitSnapshot initializes a snapshot by adding its metadata to the ImprovedSnapshotManager. Once the snapshot has been created,
+// InitSnapshot initializes a snapshot by adding its metadata to the FullLocalSnapshotManager. Once the snapshot has been created,
 // CommitSnapshot must be run to finalize the snapshot creation and make the snapshot available fo ruse
-func (mgr *ImprovedSnapshotManager) InitSnapshot(revision, image string, coldStartTimeMs int64, memSizeMib, vCPUCount uint32, sparse bool) (*[]string, *snapshotting.Snapshot, error) {
+func (mgr *FullLocalSnapshotManager) InitSnapshot(revision, image string, coldStartTimeMs int64, memSizeMib, vCPUCount uint32, sparse bool) (*[]string, *snapshotting.Snapshot, error) {
 	mgr.Lock()
 
 	if _, present := mgr.snapshots[revision]; present {
@@ -172,18 +179,24 @@ func (mgr *ImprovedSnapshotManager) InitSnapshot(revision, image string, coldSta
 }
 
 // CommitSnapshot finalizes the snapshot creation and makes it available for use.
-func (mgr *ImprovedSnapshotManager) CommitSnapshot(revision string) error {
+func (mgr *FullLocalSnapshotManager) CommitSnapshot(revision string) error {
 	mgr.Lock()
 	snapStat, present := mgr.snapStats[revision]
 	if !present {
 		mgr.Unlock()
 		return errors.New(fmt.Sprintf("Snapshot for revision %s to commit does not exist", revision))
 	}
+
+	if snapStat.usable {
+		mgr.Unlock()
+		return errors.New(fmt.Sprintf("Snapshot for revision %s has already been committed", revision))
+	}
+
 	snap := mgr.snapshots[revision]
 	mgr.Unlock()
 
 	// Calculate actual disk size used
-	var sizeIncrement int64 = 0
+	var sizeIncrement int64
 	oldSize := snapStat.TotalSizeMiB
 
 	snapStat.UpdateSize(snap.CalculateDiskSize()) // Should always result in a decrease or equal!
@@ -201,7 +214,7 @@ func (mgr *ImprovedSnapshotManager) CommitSnapshot(revision string) error {
 
 // freeSpace makes sure neededMib of disk space is available by removing unused snapshots. Make sure to have a lock
 // when calling this function.
-func (mgr *ImprovedSnapshotManager) freeSpace(neededMib int64) (*[]string, error) {
+func (mgr *FullLocalSnapshotManager) freeSpace(neededMib int64) (*[]string, error) {
 	var toDelete []string
 	var freedMib int64 = 0
 	var removeContainerSnaps []string
@@ -213,7 +226,7 @@ func (mgr *ImprovedSnapshotManager) freeSpace(neededMib int64) (*[]string, error
 		toDelete = append(toDelete, snapStat.revisionId)
 
 		snap := mgr.snapshots[snapStat.revisionId]
-		removeContainerSnaps = append(removeContainerSnaps, snap.ContainerSnapName)
+		removeContainerSnaps = append(removeContainerSnaps, snap.GetContainerSnapName())
 		freedMib += snapStat.TotalSizeMiB
 	}
 

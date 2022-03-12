@@ -71,7 +71,6 @@ func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, 
 		return nil, err
 	}
 	fs.stockRuntimeClient = stockRuntimeClient
-
 	fs.coordinator = newFirecrackerCoordinator(orch, snapsCapacityMiB, isSparseSnaps, isFullLocal)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil

@@ -24,17 +24,25 @@ package misc
 
 import (
 	"github.com/ease-lab/vhive/networking"
+	"github.com/ease-lab/vhive/taps"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
 // NewVMPool Initializes a pool of VMs
-func NewVMPool(hostIface string, netPoolSize int) *VMPool {
+func NewVMPool(hostIface string, netPoolSize int, isFullLocal bool) *VMPool {
 	p := new(VMPool)
-	mgr, err := networking.NewNetworkManager(hostIface, netPoolSize)
+	p.isFullLocal = isFullLocal
+
+	var err error
+	if p.isFullLocal {
+		p.networkManager, err = networking.NewNetworkManager(hostIface, netPoolSize)
+	} else {
+		p.tapManager, err = taps.NewTapManager(hostIface)
+	}
 	if err != nil {
 		log.Println(err)
 	}
-	p.networkManager = mgr
 
 	return p
 }
@@ -53,7 +61,12 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	vm := NewVM(vmID)
 
 	var err error
-	vm.NetConfig, err = p.networkManager.CreateNetwork(vmID)
+	if p.isFullLocal {
+		vm.netConfig, err = p.networkManager.CreateNetwork(vmID)
+	} else {
+		vm.ni, err = p.tapManager.AddTap(vmID+"_tap")
+	}
+
 	if err != nil {
 		logger.Warn("VM network creation failed")
 		return nil, err
@@ -76,12 +89,49 @@ func (p *VMPool) Free(vmID string) error {
 		return nil
 	}
 
-	if err := p.networkManager.RemoveNetwork(vmID); err != nil {
-		logger.Error("Could not remove network config")
-		return err
+	if p.isFullLocal {
+		if err := p.networkManager.RemoveNetwork(vmID); err != nil {
+			logger.Error("Could not remove network config")
+			return err
+		}
+	} else {
+		if err := p.tapManager.RemoveTap(vmID + "_tap"); err != nil {
+			logger.Error("Could not delete tap")
+			return err
+		}
 	}
 
 	p.vmMap.Delete(vmID)
+
+	return nil
+}
+
+// RecreateTap Deletes and creates the tap for a VM
+func (p *VMPool) RecreateTap(vmID string) error {
+	if p.isFullLocal {
+		return errors.New("RecreateTap is not supported for full local snapshots")
+	}
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Recreating tap")
+
+	_, isPresent := p.vmMap.Load(vmID)
+	if !isPresent {
+		log.WithFields(log.Fields{"vmID": vmID}).Panic("RecreateTap: VM does not exist in the map")
+		return NonExistErr("RecreateTap: VM does not exist when recreating its tap")
+	}
+
+	if err := p.tapManager.RemoveTap(vmID + "_tap"); err != nil {
+		logger.Error("Failed to delete tap")
+		return err
+	}
+
+	_, err := p.tapManager.AddTap(vmID+"_tap")
+	if err != nil {
+		logger.Error("Failed to add tap")
+		return err
+	}
 
 	return nil
 }
@@ -110,5 +160,9 @@ func (p *VMPool) GetVM(vmID string) (*VM, error) {
 
 // CleanupNetwork removes and deallocates all network configurations
 func (p *VMPool) CleanupNetwork() {
-	p.networkManager.Cleanup()
+	if p.isFullLocal {
+		_ = p.networkManager.Cleanup()
+	} else {
+		p.tapManager.RemoveBridges()
+	}
 }

@@ -131,6 +131,11 @@ func main() {
 		return
 	}
 
+	if !*isFullLocal &&  *isSparseSnaps {
+		log.Error("Sparse snaps are only supported for full local snapshots")
+		return
+	}
+
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
 	}
@@ -168,6 +173,7 @@ func main() {
 		ctriface.WithUPF(*isUPFEnabled),
 		ctriface.WithMetricsMode(*isMetricsMode),
 		ctriface.WithLazyMode(*isLazyMode),
+		ctriface.WithFullLocal(*isFullLocal),
 	)
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
@@ -271,7 +277,7 @@ func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.
 // Note: this function is to be used only before tearing down the whole orchestrator
 func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, error) {
 	log.Info("Received StopVMs")
-	err := orch.StopActiveVMs(*isFullLocal)
+	err := orch.StopActiveVMs()
 	if err != nil {
 		log.Printf("Failed to stop VMs, err: %v\n", err)
 		return &pb.Status{Message: "Failed to stop VMs"}, err

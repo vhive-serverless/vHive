@@ -38,6 +38,12 @@ import (
 	"sync"
 )
 
+// Own managed snapshots in snapmanager and in containerd identified by snapkey. Has name deviceName.
+// snapshotId used internally by containerd, needed for thin_delta. Once committed, snapshots identified
+// by snapName within containerd?
+
+// Only remove snapshots created through createSnapshot. Use key used there to delete them.
+
 // DeviceMapper creates and manages device snapshots used to store container images.
 type DeviceMapper struct {
 	sync.Mutex
@@ -178,6 +184,7 @@ func (dmpr *DeviceMapper) GetDeviceSnapshot(ctx context.Context, snapKey string)
 	_, present := dmpr.snapDevices[snapKey]
 
 	if !present {
+		// Get snapshot from containerd if not yet stored by vHive devicemapper
 		info, err := dmpr.snapshotService.Stat(ctx, snapKey)
 		if err != nil {
 			return nil, err
@@ -210,7 +217,6 @@ func getDeviceName(poolName, snapshotId string) string {
 	return fmt.Sprintf("%s-snap-%s", poolName, snapshotId)
 }
 
-// CreatePatch creates a patch file storing the difference between an image and the container filesystem
 // CreatePatch creates a patch file storing the file differences between and image and the changes applied
 // by the container using rsync. Note that this is a different approach than using thin_delta which is able to
 // extract blocks directly by leveraging the metadata stored by the device mapper.
@@ -231,20 +237,20 @@ func (dmpr *DeviceMapper) CreatePatch(ctx context.Context, patchPath, containerS
 	if err != nil {
 		return errors.Wrapf(err, "failed to activate image snapshot")
 	}
-	defer imageSnap.Deactivate()
+	defer func() { _ = imageSnap.Deactivate() }()
 
 	// 2. Mount original and snapshot image
 	imageMountPath, err := imageSnap.Mount(true)
 	if err != nil {
 		return err
 	}
-	defer imageSnap.UnMount()
+	defer func() { _ = imageSnap.UnMount() }()
 
 	containerMountPath, err := containerSnap.Mount(true)
 	if err != nil {
 		return err
 	}
-	defer containerSnap.UnMount()
+	defer func() { _ = containerSnap.UnMount() }()
 
 	// 3. Save changes to file
 	result := extractPatch(imageMountPath, containerMountPath, patchPath)
@@ -281,7 +287,7 @@ func (dmpr *DeviceMapper) RestorePatch(ctx context.Context, containerSnapKey, pa
 	if err != nil {
 		return err
 	}
-	defer containerSnap.UnMount()
+	defer func() { _ = containerSnap.UnMount() }()
 
 	// 2. Apply changes to container mounted file system
 	return applyPatch(containerMountPath, patchPath)

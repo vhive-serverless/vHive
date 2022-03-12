@@ -42,6 +42,13 @@ func WithSnapshots(snapshotsEnabled bool) OrchestratorOption {
 	}
 }
 
+// WithSnapshots Sets the snapshot mode on or off
+func WithFullLocal(fullLocal bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.isFullLocal = fullLocal
+	}
+}
+
 // WithUPF Sets the user-page faults mode on or off
 func WithUPF(isUPFEnabled bool) OrchestratorOption {
 	return func(o *Orchestrator) {

@@ -23,7 +23,7 @@
 package ctriface
 
 import (
-	"github.com/ease-lab/vhive/ctrimages"
+	"github.com/ease-lab/vhive/ctriface/image"
 	"github.com/ease-lab/vhive/devmapper"
 	"github.com/ease-lab/vhive/memory/manager"
 	"os"
@@ -81,7 +81,7 @@ type Orchestrator struct {
 	client       *containerd.Client
 	fcClient     *fcclient.Client
 	devMapper    *devmapper.DeviceMapper
-	imageManager *ctrimages.ImageManager
+	imageManager *image.ImageManager
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
@@ -89,6 +89,7 @@ type Orchestrator struct {
 	snapshotsDir     string
 	isMetricsMode    bool
 	hostIface        string
+	isFullLocal      bool
 
 	memoryManager *manager.MemoryManager
 }
@@ -98,7 +99,6 @@ func NewOrchestrator(snapshotter, hostIface, poolName, metadataDev string, netPo
 	var err error
 
 	o := new(Orchestrator)
-	o.vmPool = misc.NewVMPool(hostIface, netPoolSize)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
 	o.hostIface = hostIface
@@ -140,7 +140,9 @@ func NewOrchestrator(snapshotter, hostIface, poolName, metadataDev string, netPo
 
 	o.devMapper = devmapper.NewDeviceMapper(o.client, poolName, metadataDev)
 
-	o.imageManager = ctrimages.NewImageManager(o.client, o.snapshotter)
+	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
+
+	o.vmPool = misc.NewVMPool(hostIface, netPoolSize, o.isFullLocal)
 
 	return o
 }
@@ -151,7 +153,7 @@ func (o *Orchestrator) setupCloseHandler() {
 	go func() {
 		<-c
 		log.Info("\r- Ctrl+C pressed in Terminal")
-		_ = o.StopActiveVMs(false)
+		_ = o.StopActiveVMs()
 		o.Cleanup()
 		os.Exit(0)
 	}()
@@ -214,7 +216,7 @@ func (o *Orchestrator) getWorkingSetFile(vmID string) string {
 }
 
 func (o *Orchestrator) getVMBaseDir(vmID string) string {
-	return filepath.Join(o.snapshotsDir, vmID)
+	return filepath.Join(o.snapshotsDir,  vmID)
 }
 
 func (o *Orchestrator) setupHeartbeat() {

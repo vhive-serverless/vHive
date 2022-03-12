@@ -67,9 +67,14 @@ func (snp *Snapshot) CalculateDiskSize() int64 {
 func getRealSizeMib(filePath string) int64 {
 	var st unix.Stat_t
 	if err := unix.Stat(filePath, &st); err != nil {
-		return 0
+		return 1
 	}
-	return int64(math.Ceil((float64(st.Blocks) * 512) / (1024 * 1024)))
+	realSize := int64(math.Ceil((float64(st.Blocks) * 512) / (1024 * 1024)))
+	// Mainly for unit tests where real disk size = 0
+	if realSize == 0 {
+		return 1
+	}
+	return realSize
 }
 
 func (snp *Snapshot) CreateSnapDir() error {

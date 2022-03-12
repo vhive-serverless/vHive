@@ -113,7 +113,7 @@ func (thd *ThinDelta) getBlocksRawDelta(snap1DeviceId, snap2DeviceId string) (*b
 		return nil, errors.Wrapf(err, "failed to reserve metadata snapshot")
 	}
 	defer func() {
-		thd.releaseMetadataSnap()
+		_ = thd.releaseMetadataSnap()
 	}()
 
 	cmd := exec.Command("sudo", "thin_delta", "-m", thd.metaDataDev, "--snap1", snap1DeviceId, "--snap2", snap2DeviceId)

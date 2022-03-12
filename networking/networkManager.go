@@ -42,6 +42,9 @@ type NetworkManager struct {
 
 	// Mapping of function instance IDs to their network config
 	netConfigs      map[string]*NetworkConfig
+
+	// Network configs that are being created
+	inCreation      sync.WaitGroup
 }
 
 // NewNetworkManager creates and returns a new network manager that connects function instances to the network
@@ -98,6 +101,7 @@ func (mgr *NetworkManager) addNetConfig() {
 	mgr.Lock()
 	id := mgr.nextID
 	mgr.nextID += 1
+	mgr.inCreation.Add(1)
 	mgr.Unlock()
 
 	netCfg := NewNetworkConfig(id, mgr.hostIfaceName)
@@ -110,6 +114,7 @@ func (mgr *NetworkManager) addNetConfig() {
 	// Signal in case someone is waiting for a new config to become available in the pool
 	mgr.poolCond.Signal()
 	mgr.poolCond.L.Unlock()
+	mgr.inCreation.Done()
 }
 
 // allocNetConfig allocates a new network config from the pool to a function instance identified by funcID
@@ -119,7 +124,7 @@ func (mgr *NetworkManager) allocNetConfig(funcID string) *NetworkConfig {
 
 	// Pop a network config from the pool and allocate it to the function instance
 	mgr.poolCond.L.Lock()
-	if len(mgr.networkPool) == 0 {
+	for len(mgr.networkPool) == 0 {
 		// Wait until a new network config has been created
 		mgr.poolCond.Wait()
 	}
@@ -171,16 +176,30 @@ func (mgr *NetworkManager) RemoveNetwork(funcID string) error {
 	return nil
 }
 
-// Cleanup removes and deallocates all network configurations that are in use or in the network pool.
+// Cleanup removes and deallocates all network configurations that are in use or in the network pool. Make sure to first
+// clean up all running functions before removing their network configs.
 func (mgr *NetworkManager) Cleanup() error {
 	log.Info("Cleaning up network manager")
 	mgr.Lock()
 	defer mgr.Unlock()
 
+	// Wait till all network configs still in creation are added
+	mgr.inCreation.Wait()
+
 	// Release network configs still in use
+	var wgu sync.WaitGroup
+	wgu.Add(len(mgr.netConfigs))
 	for funcID := range mgr.netConfigs {
-		mgr.releaseNetConfig(funcID)
+		config := mgr.netConfigs[funcID]
+		go func(config *NetworkConfig) {
+			if err := config.RemoveNetwork(); err != nil {
+				log.Errorf("failed to remove network %s:", err)
+			}
+			wgu.Done()
+		}(config)
 	}
+	wgu.Wait()
+	mgr.netConfigs = make(map[string]*NetworkConfig)
 
 	// Cleanup network pool
 	mgr.poolCond.L.Lock()

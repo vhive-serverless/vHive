@@ -25,6 +25,7 @@ package misc
 import (
 	"fmt"
 	"github.com/ease-lab/vhive/networking"
+	"github.com/ease-lab/vhive/taps"
 	"sync"
 
 	"github.com/containerd/containerd"
@@ -44,15 +45,72 @@ type VM struct {
 	Container        *containerd.Container
 	Task             *containerd.Task
 	TaskCh           <-chan containerd.ExitStatus
-	NetConfig        *networking.NetworkConfig
 	VCPUCount        uint32
 	MemSizeMib       uint32
+	netConfig        *networking.NetworkConfig
+	ni               *taps.NetworkInterface
+}
+
+// GetIP returns the IP at which the VM is reachable
+func (vm *VM) GetIP() string {
+	if vm.netConfig != nil {
+		return vm.netConfig.GetCloneIP()
+	} else {
+		return vm.ni.PrimaryAddress
+	}
+}
+
+// GetMacAddress returns the name of the VM MAC address
+func (vm *VM) GetMacAddress() string {
+	if vm.netConfig != nil {
+		return vm.netConfig.GetMacAddress()
+	} else {
+		return vm.ni.MacAddress
+	}
+}
+
+// GetHostDevName returns the name of the VM host device
+func (vm *VM) GetHostDevName() string {
+	if vm.netConfig != nil {
+		return vm.netConfig.GetHostDevName()
+	} else {
+		return vm.ni.HostDevName
+	}
+}
+
+// GetPrimaryAddr returns the primary IP address of the VM
+func (vm *VM) GetPrimaryAddr() string {
+	if vm.netConfig != nil {
+		return vm.netConfig.GetContainerCIDR()
+	} else {
+		return vm.ni.PrimaryAddress + vm.ni.Subnet
+	}
+}
+
+func (vm *VM) GetGatewayAddr() string {
+	if vm.netConfig != nil {
+		return vm.netConfig.GetGatewayIP()
+	} else {
+		return vm.ni.GatewayAddress
+	}
+}
+
+func (vm *VM) GetNetworkNamespace() string {
+	if vm.netConfig != nil {
+		return vm.netConfig.GetNamespacePath()
+	} else {
+		return ""
+	}
 }
 
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
 	vmMap      sync.Map
+	isFullLocal bool
+	// Used to create network for fullLocal snapshot VMs
 	networkManager *networking.NetworkManager
+	// Used to create snapshots for regular VMs
+	tapManager *taps.TapManager
 }
 
 // NewVM Initialize a VM

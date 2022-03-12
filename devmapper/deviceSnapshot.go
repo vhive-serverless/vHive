@@ -23,6 +23,7 @@
 package devmapper
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -76,12 +77,14 @@ func (dsnp *DeviceSnapshot) Activate() error {
 	if dsnp.numActivated == 0 {
 		tableEntry := fmt.Sprintf("0 20971520 thin %s %s", dsnp.getPoolPath(), dsnp.deviceId)
 
-		cmd := exec.Command("sudo", "dmsetup", "create", dsnp.deviceName, "--table", fmt.Sprintf("%s", tableEntry))
+		var errb bytes.Buffer
+		cmd := exec.Command("sudo", "dmsetup", "create", dsnp.deviceName, "--table", tableEntry)
+		cmd.Stderr = &errb
 		err := cmd.Run()
-		if err != nil {
-			return errors.Wrapf(err, "activating snapshot %s", dsnp.deviceName)
-		}
 
+		if err != nil {
+			return errors.Wrapf(err, "activating snapshot %s: %s", dsnp.deviceName, errb.String())
+		}
 	}
 
 	dsnp.numActivated += 1

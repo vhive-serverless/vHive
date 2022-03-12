@@ -46,7 +46,6 @@ var (
 	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
 	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
 	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
-	isFullLocalTest        = flag.Bool("fullLocalTest", false, "Enable full local snapshots")
 	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
 )
@@ -89,7 +88,7 @@ func TestMain(m *testing.M) {
 
 	ret := m.Run()
 
-	err := orch.StopActiveVMs(*isFullLocalTest)
+	err := orch.StopActiveVMs()
 	if err != nil {
 		log.Printf("Failed to stop VMs, err: %v\n", err)
 	}

@@ -42,7 +42,7 @@ replace (
 
 replace (
 	// github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20210618165033-6af02db30bc4
-	github.com/containerd/containerd => github.com/amohoste/containerd v1.5.5-ids // TODO: change to vhive
+	github.com/containerd/containerd => github.com/ease-lab/containerd v1.5.5-ids // TODO: change to vhive
 	github.com/ease-lab/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
 	github.com/firecracker-microvm/firecracker-containerd => github.com/amohoste/firecracker-containerd v1.0.0-enhanced-snap // TODO: change to vhive
 )

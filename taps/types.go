@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2021 Amory Hoste and EASE lab
+// Copyright (c) 2020 Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +20,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package deduplicated
+package taps
 
-type SnapHeap []*SnapshotStats
+import (
+	"sync"
+)
 
-func (h SnapHeap) Len() int {
-	return len(h)
-}
-func (h SnapHeap) Less(i, j int) bool {
-	return h[i].score < h[j].score
-}
-func (h SnapHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-}
+const (
+	// Subnet Number of bits in the subnet mask
+	Subnet = "/10"
+	// TapsPerBridge Number of taps per bridge
+	TapsPerBridge = 1000
+	// NumBridges is the number of bridges for the TapManager
+	NumBridges = 2
+)
 
-func (h *SnapHeap) Push(x interface{}) {
-	*h = append(*h, x.(*SnapshotStats))
-}
-
-func (h *SnapHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
+// TapManager A Tap Manager
+type TapManager struct {
+	sync.Mutex
+	hostIfaceName      string
+	numBridges         int
+	TapCountsPerBridge []int64
+	createdTaps        map[string]*NetworkInterface
 }
 
-func (h *SnapHeap) Peek() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	return x
+// NetworkInterface Network interface type, NI names are generated based on expected tap names
+type NetworkInterface struct {
+	BridgeName     string
+	MacAddress     string
+	HostDevName    string
+	PrimaryAddress string
+	Subnet         string
+	GatewayAddress string
 }

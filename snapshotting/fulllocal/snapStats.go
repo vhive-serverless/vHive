@@ -1,7 +1,6 @@
-package deduplicated
+package fulllocal
 
-// Snapshot identified by revision
-// Only capitalized fields are serialised / deserialised
+// SnapshotStats contains snapshot data used by the snapshot manager for its keepalive policy.
 type SnapshotStats struct {
 	revisionId             string
 

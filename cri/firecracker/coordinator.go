@@ -28,7 +28,7 @@ import (
 	"github.com/ease-lab/vhive/ctriface"
 	"github.com/ease-lab/vhive/metrics"
 	"github.com/ease-lab/vhive/snapshotting"
-	"github.com/ease-lab/vhive/snapshotting/deduplicated"
+	"github.com/ease-lab/vhive/snapshotting/fulllocal"
 	"github.com/ease-lab/vhive/snapshotting/regular"
 	"github.com/pkg/errors"
 	"strconv"
@@ -77,9 +77,9 @@ func newFirecrackerCoordinator(
 	}
 
 	if isFullLocal {
-		c.snapshotManager = snapshotting.NewSnapshotManager(deduplicated.NewSnapshotManager(snapshotsDir, snapsCapacityMiB))
+		c.snapshotManager = snapshotting.NewSnapshotManager(fulllocal.NewSnapshotManager(snapshotsDir, snapsCapacityMiB))
 	} else {
-		c.snapshotManager = snapshotting.NewSnapshotManager(regular.NewRegularSnapshotManager(snapshotsDir))
+		c.snapshotManager = snapshotting.NewSnapshotManager(regular.NewSnapshotManager(snapshotsDir))
 	}
 
 	for _, opt := range opts {
@@ -142,7 +142,8 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	}
 
 	if funcInst.snapBooted {
-		defer c.snapshotManager.ReleaseSnapshot(id)
+		// Release snapshot after the VM has been stopped / offloaded
+		defer func() { _ = c.snapshotManager.ReleaseSnapshot(id) }()
 	} else {
 		// Create snapshot
 		err := c.orchCreateSnapshot(ctx, funcInst)
@@ -204,7 +205,7 @@ func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, m
 
 	if !c.withoutOrchestrator {
 		trackDirtyPages := c.isSparseSnaps
-		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image, memSizeMib, vCPUCount, trackDirtyPages, c.isFullLocal)
+		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image, memSizeMib, vCPUCount, trackDirtyPages)
 		if err != nil {
 			logger.WithError(err).Error("coordinator failed to start VM")
 		}
@@ -242,7 +243,7 @@ func (c *coordinator) orchStartVMSnapshot(
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	resp, _, err = c.orch.LoadSnapshot(ctxTimeout, vmID, snap, c.isFullLocal)
+	resp, _, err = c.orch.LoadSnapshot(ctxTimeout, vmID, snap)
 	if err != nil {
 		logger.WithError(err).Error("failed to load VM")
 		return nil, err
@@ -273,7 +274,7 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, funcInst *FuncInst
 		id = funcInst.revisionId
 	}
 
-	removeContainerSnaps, snap, err := c.snapshotManager.InitSnapshot(
+	_, snap, err := c.snapshotManager.InitSnapshot(
 		id,
 		funcInst.image,
 		funcInst.coldStartTimeMs,
@@ -286,13 +287,14 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, funcInst *FuncInst
 		return nil
 	}
 
-	if c.isFullLocal && removeContainerSnaps != nil {
+	// This call is only necessary if the alternative approach in devicemapper with thin-delta is used.
+	/*if c.isFullLocal && removeContainerSnaps != nil {
 		for _, cleanupSnapId := range *removeContainerSnaps {
 			if err := c.orch.CleanupSnapshot(ctx, cleanupSnapId); err != nil {
 				return errors.Wrap(err, "removing devmapper revision snapshot")
 			}
 		}
-	}
+	}*/
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
 	defer cancel()
@@ -305,10 +307,16 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, funcInst *FuncInst
 		return nil
 	}
 
-	err = c.orch.CreateSnapshot(ctxTimeout, funcInst.vmID, snap, c.isFullLocal)
+	err = c.orch.CreateSnapshot(ctxTimeout, funcInst.vmID, snap)
 	if err != nil {
 		funcInst.logger.WithError(err).Error("failed to create snapshot")
 		return nil
+	}
+
+	// TODO: StopVM does not work for fullLocal snapshots without resuming. Might be the same for offloaded since
+	// those are never stopped
+	if c.isFullLocal {
+		_, err = c.orch.ResumeVM(ctx, funcInst.vmID)
 	}
 
 	if err := c.snapshotManager.CommitSnapshot(id); err != nil {
@@ -324,7 +332,7 @@ func (c *coordinator) orchOffloadVM(ctx context.Context, funcInst *FuncInstance)
 		return nil
 	}
 
-	if err := c.orch.OffloadVM(ctx, funcInst.vmID, c.isFullLocal); err != nil {
+	if err := c.orch.OffloadVM(ctx, funcInst.vmID); err != nil {
 		funcInst.logger.WithError(err).Error("failed to offload VM")
 		return err
 	}
@@ -337,7 +345,7 @@ func (c *coordinator) orchStopVM(ctx context.Context, funcInst *FuncInstance) er
 		return nil
 	}
 
-	if err := c.orch.StopSingleVM(ctx, funcInst.vmID, c.isFullLocal); err != nil {
+	if err := c.orch.StopSingleVM(ctx, funcInst.vmID); err != nil {
 		funcInst.logger.WithError(err).Error("failed to stop VM for instance")
 		return err
 	}

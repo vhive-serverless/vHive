@@ -357,7 +357,7 @@ func (f *Function) AddInstance() *metrics.Metric {
 	if f.isSnapshotReady {
 		metr = f.LoadInstance()
 	} else {
-		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName, 256, 1, false, false)
+		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName, 256, 1, false)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -388,7 +388,7 @@ func (f *Function) RemoveInstanceAsync() {
 	logger.Debug("Removing instance (async)")
 
 	go func() {
-		err := orch.StopSingleVM(context.Background(), f.vmID, false)
+		err := orch.StopSingleVM(context.Background(), f.vmID)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -416,7 +416,7 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 		r = "Successfully offloaded instance " + f.vmID
 	} else {
 		if isSync {
-			err = orch.StopSingleVM(context.Background(), f.vmID, false)
+			err = orch.StopSingleVM(context.Background(), f.vmID)
 		} else {
 			f.RemoveInstanceAsync()
 			r = "Successfully removed (async) instance " + f.vmID
@@ -451,9 +451,8 @@ func (f *Function) CreateInstanceSnapshot() {
 		log.Panic(err)
 	}
 
-	revisionID := fmt.Sprintf("myrev-%s", f.vmID)
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", f.imageName, 0, 0, false)
-	err = orch.CreateSnapshot(ctx, f.vmID, snap, false)
+	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName, 256, 1, false)
+	err = orch.CreateSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -473,7 +472,7 @@ func (f *Function) OffloadInstance() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
-	err := orch.OffloadVM(ctx, f.vmID, false)
+	err := orch.OffloadVM(ctx, f.vmID)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -490,9 +489,8 @@ func (f *Function) LoadInstance() *metrics.Metric {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
-	revisionID := fmt.Sprintf("myrev-%s", f.vmID)
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", f.imageName, 0, 0, false)
-	_, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap, false)
+	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName, 256, 1, false)
+	_, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}

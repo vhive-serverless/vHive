@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2020 Dmitrii Ustiugov and EASE lab
+# Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,13 +21,12 @@
 # SOFTWARE.
 
 EXTRAGOARGS:=-v -race -cover
-WITHFULLLOCAL:=-fulllocal
 
 test:
 	# Need to pass GOROOT because GitHub-hosted runners may have several
 	# go versions installed so that calling go from root may fail
 	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS)
-	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS) -args $(WITHFULLLOCAL)
+	./../scripts/clean_fcctr.sh
 test-man:
 	echo "Nothing to test manually"
 

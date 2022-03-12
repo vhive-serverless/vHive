@@ -59,35 +59,55 @@ func TestSnapLoad(t *testing.T) {
 		"",
 		"fc-dev-thinpool",
 		"",
-		10,
+		1,
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithFullLocal(*isFullLocal),
 	)
+	defer orch.Cleanup()
 
 	vmID := "1"
-	revisionID := "myrev-1"
+	snapId := vmID
+	if *isFullLocal {
+		snapId = "myrev-1"
+	}
 
-	_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
+	_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, *isSparseSnaps)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0, false)
-	err = orch.CreateSnapshot(ctx, vmID, snap, false)
+	snap := snapshotting.NewSnapshot(snapId, "/fccd/snapshots", TestImageName, 256, 1, *isSparseSnaps)
+	if *isFullLocal {
+		err = snap.CreateSnapDir()
+	}
+
+	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
+	if *isFullLocal {
+		err = orch.StopSingleVM(ctx, vmID)
+		require.NoError(t, err, "Failed to stop VM")
+	} else {
+		err = orch.OffloadVM(ctx, vmID)
+		require.NoError(t, err, "Failed to offload VM")
+	}
+
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
-	orch.Cleanup()
+	if *isFullLocal {
+		err = orch.StopSingleVM(ctx, vmID)
+		require.NoError(t, err, "Failed to stop VM")
+	}
 }
 
 func TestSnapLoadMultiple(t *testing.T) {
@@ -115,34 +135,67 @@ func TestSnapLoadMultiple(t *testing.T) {
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithFullLocal(*isFullLocal),
 	)
+	defer orch.Cleanup()
 
 	vmID := "3"
-	revisionID := "myrev-3"
+	snapId := vmID
+	if *isFullLocal {
+		snapId = "myrev-3"
+	}
 
-	_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
+	_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, *isSparseSnaps)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0,false)
-	err = orch.CreateSnapshot(ctx, vmID, snap, false)
+	snap := snapshotting.NewSnapshot(snapId, "/fccd/snapshots", TestImageName, 256, 1, *isSparseSnaps)
+	if *isFullLocal {
+		err = snap.CreateSnapDir()
+	}
+	require.NoError(t, err, "Failed to create directory for snapshot")
+
+	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
+	if *isFullLocal {
+		// TODO: stopVM does not work without resuming
+		_, err = orch.ResumeVM(ctx, vmID)
+		require.NoError(t, err, "Failed to resume VM")
+
+		err = orch.StopSingleVM(ctx, vmID)
+		require.NoError(t, err, "Failed to stop VM")
+	} else {
+		err = orch.OffloadVM(ctx, vmID)
+		require.NoError(t, err, "Failed to offload VM")
+	}
+
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
+	if *isFullLocal {
+		err = orch.StopSingleVM(ctx, vmID)
+		require.NoError(t, err, "Failed to stop VM")
+	} else {
+		err = orch.OffloadVM(ctx, vmID)
+		require.NoError(t, err, "Failed to offload VM")
+	}
+
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM, ")
 
-	orch.Cleanup()
+	if *isFullLocal {
+		err = orch.StopSingleVM(ctx, vmID)
+		require.NoError(t, err, "Failed to stop VM")
+	}
 }
 
 func TestParallelSnapLoad(t *testing.T) {
@@ -173,7 +226,9 @@ func TestParallelSnapLoad(t *testing.T) {
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithFullLocal(*isFullLocal),
 	)
+	defer orch.Cleanup()
 
 	// Pull image
 	_, err := orch.GetImage(ctx, TestImageName)
@@ -185,28 +240,51 @@ func TestParallelSnapLoad(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("%d", i+vmIDBase)
-			revisionID := fmt.Sprintf("myrev-%d", i+vmIDBase)
+			snapId := vmID
+			if *isFullLocal {
+				snapId = fmt.Sprintf("myrev-%d", i+vmIDBase)
+			}
 
-			_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
+			_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, *isSparseSnaps)
 			require.NoError(t, err, "Failed to start VM, "+vmID)
 
 			err = orch.PauseVM(ctx, vmID)
 			require.NoError(t, err, "Failed to pause VM, "+vmID)
 
-			snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0, false)
-			err = orch.CreateSnapshot(ctx, vmID, snap, false)
+			snap := snapshotting.NewSnapshot(snapId, "/fccd/snapshots", TestImageName, 256, 1, *isSparseSnaps)
+			if *isFullLocal {
+				err = snap.CreateSnapDir()
+			}
+			require.NoError(t, err, "Failed to create directory for snapshot")
+
+			err = orch.CreateSnapshot(ctx, vmID, snap)
 			require.NoError(t, err, "Failed to create snapshot of VM, "+vmID)
 
-			_, _, err = orch.LoadSnapshot(ctx, vmID, snap, false)
+			if *isFullLocal {
+				// TODO: stopVM does not work without resuming
+				_, err = orch.ResumeVM(ctx, vmID)
+				require.NoError(t, err, "Failed to resume VM")
+
+				err = orch.StopSingleVM(ctx, vmID)
+				require.NoError(t, err, "Failed to stop VM, "+vmID)
+			} else {
+				err = orch.OffloadVM(ctx, vmID)
+				require.NoError(t, err, "Failed to offload VM, "+vmID)
+			}
+
+			_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 
 			_, err = orch.ResumeVM(ctx, vmID)
 			require.NoError(t, err, "Failed to resume VM, "+vmID)
+
+			if *isFullLocal {
+				err = orch.StopSingleVM(ctx, vmID)
+				require.NoError(t, err, "Failed to stop VM, "+vmID)
+			}
 		}(i)
 	}
 	vmGroup.Wait()
-
-	orch.Cleanup()
 }
 
 func TestParallelPhasedSnapLoad(t *testing.T) {
@@ -237,7 +315,9 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithFullLocal(*isFullLocal),
 	)
+	defer orch.Cleanup()
 
 	// Pull image
 	_, err := orch.GetImage(ctx, TestImageName)
@@ -250,7 +330,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false, false)
+				_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, *isSparseSnaps)
 				require.NoError(t, err, "Failed to start VM, "+vmID)
 			}(i)
 		}
@@ -278,9 +358,17 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				revisionID := fmt.Sprintf("myrev-%d", i+vmIDBase)
-				snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0, false)
-				err = orch.CreateSnapshot(ctx, vmID, snap, false)
+				snapId := vmID
+				if *isFullLocal {
+					snapId = fmt.Sprintf("myrev-%d", i+vmIDBase)
+				}
+				snap := snapshotting.NewSnapshot(snapId, "/fccd/snapshots", TestImageName, 256, 1, *isSparseSnaps)
+				if *isFullLocal {
+					err = snap.CreateSnapDir()
+				}
+				require.NoError(t, err, "Failed to create directory for snapshot")
+
+				err = orch.CreateSnapshot(ctx, vmID, snap)
 				require.NoError(t, err, "Failed to create snapshot of VM, "+vmID)
 			}(i)
 		}
@@ -294,9 +382,35 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				revisionID := fmt.Sprintf("myrev-%d", i+vmIDBase)
-				snap := snapshotting.NewSnapshot(revisionID, "/fccd/snapshots", TestImageName, 0, 0, false)
-				_, _, err := orch.LoadSnapshot(ctx, vmID, snap, false)
+				if *isFullLocal {
+					// TODO: stopVM does not work without resuming
+					_, err = orch.ResumeVM(ctx, vmID)
+					require.NoError(t, err, "Failed to resume VM")
+
+					err = orch.StopSingleVM(ctx, vmID)
+					require.NoError(t, err, "Failed to stop VM, "+vmID)
+				} else {
+					err = orch.OffloadVM(ctx, vmID)
+					require.NoError(t, err, "Failed to offload VM, "+vmID)
+				}
+			}(i)
+		}
+		vmGroup.Wait()
+	}
+
+	{
+		var vmGroup sync.WaitGroup
+		for i := 0; i < vmNum; i++ {
+			vmGroup.Add(1)
+			go func(i int) {
+				defer vmGroup.Done()
+				vmID := fmt.Sprintf("%d", i+vmIDBase)
+				snapId := vmID
+				if *isFullLocal {
+					snapId = fmt.Sprintf("myrev-%d", i+vmIDBase)
+				}
+				snap := snapshotting.NewSnapshot(snapId, "/fccd/snapshots", TestImageName, 256, 1, *isSparseSnaps)
+				_, _, err := orch.LoadSnapshot(ctx, vmID, snap)
 				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 			}(i)
 		}
@@ -317,5 +431,19 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 		vmGroup.Wait()
 	}
 
-	orch.Cleanup()
+	if *isFullLocal {
+		{
+			var vmGroup sync.WaitGroup
+			for i := 0; i < vmNum; i++ {
+				vmGroup.Add(1)
+				go func(i int) {
+					defer vmGroup.Done()
+					vmID := fmt.Sprintf("%d", i+vmIDBase)
+					err := orch.StopSingleVM(ctx, vmID)
+					require.NoError(t, err, "Failed to stop VM, "+vmID)
+				}(i)
+			}
+			vmGroup.Wait()
+		}
+	}
 }

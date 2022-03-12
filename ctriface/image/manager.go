@@ -21,7 +21,7 @@
 // SOFTWARE.
 
 // Package ctrimages provides an image manager that manages and caches container images.
-package ctrimages
+package image
 
 import (
 	"context"
@@ -35,29 +35,29 @@ import (
 	"sync"
 )
 
-// ImageState is used to synchronize image pulling to avoid pulling the same image multiple times concurrently.
+// ImageState is used for synchronization to avoid pulling the same image multiple times concurrently.
 type ImageState struct {
 	sync.Mutex
-	pulled bool
+	isCached bool
 }
 
-// NewImageState creates a new ImageState object that can be used to synchronize image pulling.
+// NewImageState creates a new ImageState object that can be used to synchronize pulling a single image
 func NewImageState() *ImageState {
 	state := new(ImageState)
-	state.pulled = false
+	state.isCached = false
 	return state
 }
 
 // ImageManager manages the images that have been pulled to the node.
 type ImageManager struct {
 	sync.Mutex
-	snapshotter  string						 // image snapshotter
+	snapshotter  string // image snapshotter
 	cachedImages map[string]containerd.Image // Cached container images
 	imageStates  map[string]*ImageState
 	client       *containerd.Client
 }
 
-// NewImageManager creates a new imagemanager that can be used to fetch container images.
+// NewImageManager creates a new image manager that can be used to fetch container images.
 func NewImageManager(client *containerd.Client, snapshotter string) *ImageManager {
 	log.Info("Creating image manager")
 	manager := new(ImageManager)
@@ -104,8 +104,10 @@ func (mgr *ImageManager) pullImage(ctx context.Context, imageName string) error 
 	return nil
 }
 
-// GetImage fetches an image that can be used to create a container using containerd
+// GetImage fetches an image that can be used to create a container using containerd. Synchronization is implemented
+// on a per image level to keep waiting to a minimum.
 func (mgr *ImageManager) GetImage(ctx context.Context, imageName string) (*containerd.Image, error) {
+	// Get reference to synchronization object for image
 	mgr.Lock()
 	imgState, found := mgr.imageStates[imageName]
 	if !found {
@@ -114,14 +116,14 @@ func (mgr *ImageManager) GetImage(ctx context.Context, imageName string) (*conta
 	}
 	mgr.Unlock()
 
-	// Pull image if necessary
+	// Pull image if necessary. The image will only be pulled by the first thread to take the lock.
 	imgState.Lock()
-	if !imgState.pulled {
+	if !imgState.isCached {
 		if err := mgr.pullImage(ctx, imageName); err != nil {
 			imgState.Unlock()
 			return nil, err
 		}
-		imgState.pulled = true
+		imgState.isCached = true
 	}
 	imgState.Unlock()
 
