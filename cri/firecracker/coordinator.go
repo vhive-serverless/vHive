@@ -62,7 +62,13 @@ func withoutOrchestrator() coordinatorOption {
 	}
 }
 
-func newFirecrackerCoordinator(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps bool, isFullLocal bool, opts ...coordinatorOption) *coordinator {
+func newFirecrackerCoordinator(
+	orch *ctriface.Orchestrator,
+	snapsCapacityMiB int64,
+	isSparseSnaps bool,
+	isFullLocal bool,
+	opts ...coordinatorOption) *coordinator {
+
 	c := &coordinator{
 		activeInstances: make(map[string]*FuncInstance),
 		orch:            orch,
@@ -114,7 +120,7 @@ func (c *coordinator) startVM(ctx context.Context, image string, revision string
 func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	c.Lock()
 
-	fi, present := c.activeInstances[containerID]
+	funcInst, present := c.activeInstances[containerID]
 	if present {
 		delete(c.activeInstances, containerID)
 	}
@@ -127,28 +133,28 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	}
 
 	if c.orch == nil || ! c.orch.GetSnapshotsEnabled() {
-		return c.orchStopVM(ctx, fi)
+		return c.orchStopVM(ctx, funcInst)
 	}
 
-	id := fi.vmID
+	id := funcInst.vmID
 	if c.isFullLocal {
-		id = fi.revisionId
+		id = funcInst.revisionId
 	}
 
-	if fi.snapBooted {
+	if funcInst.snapBooted {
 		defer c.snapshotManager.ReleaseSnapshot(id)
 	} else {
 		// Create snapshot
-		err := c.orchCreateSnapshot(ctx, fi)
+		err := c.orchCreateSnapshot(ctx, funcInst)
 		if err != nil {
 			log.Printf("Err creating snapshot %s\n", err)
 		}
 	}
 
 	if c.isFullLocal {
-		return c.orchStopVM(ctx, fi)
+		return c.orchStopVM(ctx, funcInst)
 	} else {
-		return c.orchOffloadVM(ctx, fi)
+		return c.orchOffloadVM(ctx, funcInst)
 	}
 }
 
@@ -161,18 +167,18 @@ func (c *coordinator) isActive(containerID string) bool {
 	return ok
 }
 
-func (c *coordinator) insertActive(containerID string, fi *FuncInstance) error {
+func (c *coordinator) insertActive(containerID string, funcInst *FuncInstance) error {
 	c.Lock()
 	defer c.Unlock()
 
-	logger := log.WithFields(log.Fields{"containerID": containerID, "vmID": fi.vmID})
+	logger := log.WithFields(log.Fields{"containerID": containerID, "vmID": funcInst.vmID})
 
 	if fi, present := c.activeInstances[containerID]; present {
 		logger.Errorf("entry for container already exists with vmID %s" + fi.vmID)
 		return errors.New("entry for container already exists")
 	}
 
-	c.activeInstances[containerID] = fi
+	c.activeInstances[containerID] = funcInst
 	return nil
 }
 
@@ -206,12 +212,18 @@ func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, m
 
 	coldStartTimeMs := metrics.ToMs(time.Since(tStartCold))
 
-	fi := NewFuncInstance(vmID, image, revision, resp, false, memSizeMib, vCPUCount, coldStartTimeMs)
+	funcInst := NewFuncInstance(vmID, image, revision, resp, false, memSizeMib, vCPUCount, coldStartTimeMs)
 	logger.Debug("successfully created fresh instance")
-	return fi, err
+	return funcInst, err
 }
 
-func (c *coordinator) orchStartVMSnapshot(ctx context.Context, snap *snapshotting.Snapshot, memSizeMib, vCPUCount uint32, vmID string) (*FuncInstance, error) {
+func (c *coordinator) orchStartVMSnapshot(
+	ctx context.Context,
+	snap *snapshotting.Snapshot,
+	memSizeMib,
+	vCPUCount uint32,
+	vmID string) (*FuncInstance, error) {
+
 	tStartCold := time.Now()
 	logger := log.WithFields(
 		log.Fields{
@@ -242,29 +254,35 @@ func (c *coordinator) orchStartVMSnapshot(ctx context.Context, snap *snapshottin
 	}
 
 	coldStartTimeMs := metrics.ToMs(time.Since(tStartCold))
-	fi := NewFuncInstance(vmID, snap.GetImage(), snap.GetId(), resp, true, memSizeMib, vCPUCount, coldStartTimeMs)
+	funcInst := NewFuncInstance(vmID, snap.GetImage(), snap.GetId(), resp, true, memSizeMib, vCPUCount, coldStartTimeMs)
 	logger.Debug("successfully loaded instance from snapshot")
 
-	return fi, err
+	return funcInst, err
 }
 
-func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) error {
+func (c *coordinator) orchCreateSnapshot(ctx context.Context, funcInst *FuncInstance) error {
 	logger := log.WithFields(
 		log.Fields{
-			"vmID":  fi.vmID,
-			"image": fi.image,
+			"vmID":  funcInst.vmID,
+			"image": funcInst.image,
 		},
 	)
 
-	id := fi.vmID
+	id := funcInst.vmID
 	if c.isFullLocal {
-		id = fi.revisionId
+		id = funcInst.revisionId
 	}
 
-	removeContainerSnaps, snap, err := c.snapshotManager.InitSnapshot(id, fi.image, fi.coldStartTimeMs, fi.memSizeMib, fi.vCPUCount, c.isSparseSnaps)
+	removeContainerSnaps, snap, err := c.snapshotManager.InitSnapshot(
+		id,
+		funcInst.image,
+		funcInst.coldStartTimeMs,
+		funcInst.memSizeMib,
+		funcInst.vCPUCount,
+		c.isSparseSnaps)
 
 	if err != nil {
-		fi.logger.Warn(fmt.Sprint(err))
+		funcInst.logger.Warn(fmt.Sprint(err))
 		return nil
 	}
 
@@ -281,46 +299,46 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *FuncInstance) 
 
 	logger.Debug("creating instance snapshot before stopping")
 
-	err = c.orch.PauseVM(ctxTimeout, fi.vmID)
+	err = c.orch.PauseVM(ctxTimeout, funcInst.vmID)
 	if err != nil {
 		logger.WithError(err).Error("failed to pause VM")
 		return nil
 	}
 
-	err = c.orch.CreateSnapshot(ctxTimeout, fi.vmID, snap, c.isFullLocal)
+	err = c.orch.CreateSnapshot(ctxTimeout, funcInst.vmID, snap, c.isFullLocal)
 	if err != nil {
-		fi.logger.WithError(err).Error("failed to create snapshot")
+		funcInst.logger.WithError(err).Error("failed to create snapshot")
 		return nil
 	}
 
 	if err := c.snapshotManager.CommitSnapshot(id); err != nil {
-		fi.logger.WithError(err).Error("failed to commit snapshot")
+		funcInst.logger.WithError(err).Error("failed to commit snapshot")
 		return err
 	}
 
 	return nil
 }
 
-func (c *coordinator) orchOffloadVM(ctx context.Context, fi *FuncInstance) error {
+func (c *coordinator) orchOffloadVM(ctx context.Context, funcInst *FuncInstance) error {
 	if c.withoutOrchestrator {
 		return nil
 	}
 
-	if err := c.orch.OffloadVM(ctx, fi.vmID, c.isFullLocal); err != nil {
-		fi.logger.WithError(err).Error("failed to offload VM")
+	if err := c.orch.OffloadVM(ctx, funcInst.vmID, c.isFullLocal); err != nil {
+		funcInst.logger.WithError(err).Error("failed to offload VM")
 		return err
 	}
 
 	return nil
 }
 
-func (c *coordinator) orchStopVM(ctx context.Context, fi *FuncInstance) error {
+func (c *coordinator) orchStopVM(ctx context.Context, funcInst *FuncInstance) error {
 	if c.withoutOrchestrator {
 		return nil
 	}
 
-	if err := c.orch.StopSingleVM(ctx, fi.vmID, c.isFullLocal); err != nil {
-		fi.logger.WithError(err).Error("failed to stop VM for instance")
+	if err := c.orch.StopSingleVM(ctx, funcInst.vmID, c.isFullLocal); err != nil {
+		funcInst.logger.WithError(err).Error("failed to stop VM for instance")
 		return err
 	}
 

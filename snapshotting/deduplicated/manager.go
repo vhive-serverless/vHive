@@ -79,7 +79,7 @@ func (mgr *ImprovedSnapshotManager) AcquireSnapshot(revision string) (*snapshott
 
 	// Snapshot registered in manager but creation not finished yet
 	if ! snapStat.usable { // Could also wait until snapshot usable (trade-off)
-		return nil, errors.New(fmt.Sprintf("Snapshot is not yet usable"))
+		return nil, errors.New("Snapshot is not yet usable")
 	}
 
 	if snapStat.numUsing == 0 {

@@ -485,7 +485,12 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot, isFullLocal bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) LoadSnapshot(
+	ctx context.Context,
+	vmID string,
+	snap *snapshotting.Snapshot,
+	isFullLocal bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time

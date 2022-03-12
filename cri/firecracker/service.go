@@ -35,14 +35,16 @@ import (
 )
 
 const (
-	userContainerName     = "user-container"
-	queueProxyName        = "queue-proxy"
-	revisionEnv           = "K_REVISION"
-	guestIPEnv            = "GUEST_ADDR"
-	guestPortEnv          = "GUEST_PORT"
-	guestImageEnv         = "GUEST_IMAGE"
-	guestMemorySizeMibEnv = "MEM_SIZE_MB"
-	guestvCPUCountEnv     = "VCPU_COUNT"
+	userContainerName       = "user-container"
+	queueProxyName          = "queue-proxy"
+	revisionEnv             = "K_REVISION"
+	guestIPEnv              = "GUEST_ADDR"
+	guestPortEnv            = "GUEST_PORT"
+	guestImageEnv           = "GUEST_IMAGE"
+	guestMemorySizeMibEnv   = "MEM_SIZE_MB"
+	guestvCPUCountEnv       = "VCPU_COUNT"
+	defaultMemSize uint32   = 256
+	defaultvCPUCount uint32 = 1
 )
 
 type FirecrackerService struct {
@@ -69,6 +71,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, 
 		return nil, err
 	}
 	fs.stockRuntimeClient = stockRuntimeClient
+
 	fs.coordinator = newFirecrackerCoordinator(orch, snapsCapacityMiB, isSparseSnaps, isFullLocal)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
@@ -260,7 +263,7 @@ func getMemorySize(config *criapi.ContainerConfig) (uint32, error) {
 		}
 	}
 
-	return uint32(256), nil
+	return defaultMemSize, nil
 }
 
 func getvCPUCount(config *criapi.ContainerConfig) (uint32, error) {
@@ -276,5 +279,5 @@ func getvCPUCount(config *criapi.ContainerConfig) (uint32, error) {
 		}
 	}
 
-	return uint32(1), nil
+	return defaultvCPUCount, nil
 }

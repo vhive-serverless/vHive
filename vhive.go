@@ -56,7 +56,7 @@ var (
 	funcPool *FuncPool
 
 	isSaveMemory       *bool
-	snapsCapacityMiB   *int64
+	snapsStorageSize   *int64
 	isSparseSnaps      *bool
 	isFullLocal        *bool
 	isSnapshotsEnabled *bool
@@ -89,7 +89,7 @@ func main() {
 	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
 	isSparseSnaps = flag.Bool("sparsesnaps", false, "Makes memory files sparse after storing to reduce disk utilization")
 	isFullLocal = flag.Bool("fulllocal", false, "Use improved full local snapshotting")
-	snapsCapacityMiB = flag.Int64("snapcapacity", 102400, "Capacity set aside for storing snapshots (Mib)")
+	snapsStorageSize = flag.Int64("snapcapacity", 100, "Total storage reserved for storing snapshots (GiB)")
 	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 
@@ -193,7 +193,8 @@ func setupFirecrackerCRI() {
 
 	s := grpc.NewServer()
 
-	fcService, err := fccri.NewFirecrackerService(orch, *snapsCapacityMiB, *isSparseSnaps, *isFullLocal)
+	snapsCapacityMiB := *snapsStorageSize * 1024
+	fcService, err := fccri.NewFirecrackerService(orch, snapsCapacityMiB, *isSparseSnaps, *isFullLocal)
 	if err != nil {
 		log.Fatalf("failed to create firecracker service %v", err)
 	}
