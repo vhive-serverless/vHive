@@ -26,7 +26,7 @@ sudo apt-get update >> /dev/null
 
 sudo apt-get -y install btrfs-progs pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
 
-wget --continue --quiet https://github.com/protocolbuffers/protobuf/releases/download/v3.19.0/protoc-3.19.4-linux-x86_64.zip
+wget --continue --quiet https://github.com/protocolbuffers/protobuf/releases/download/v3.19.4/protoc-3.19.4-linux-x86_64.zip
 sudo unzip -o -q protoc-3.19.4-linux-x86_64.zip -d /usr/local
 
 wget --continue --quiet https://github.com/containerd/containerd/releases/download/v1.6.2/containerd-1.6.2-linux-amd64.tar.gz
@@ -36,7 +36,7 @@ wget --continue --quiet https://github.com/opencontainers/runc/releases/download
 mv runc.amd64 runc
 sudo install -D -m0755 runc /usr/local/sbin/runc
 
-wget --continue --quiet https://storage.googleapis.com/gvisor/releases/release/20210622/x86_64/runsc 
+wget --continue --quiet https://storage.googleapis.com/gvisor/releases/release/20220117/x86_64/runsc 
 sudo chmod a+rx runsc
 sudo mv runsc /usr/local/bin
 
