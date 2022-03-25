@@ -43,12 +43,12 @@ kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
 # istio
 cd $ROOT
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.9.5 TARGET_ARCH=x86_64 sh -
-export PATH=$PATH:$ROOT/istio-1.9.5/bin
-sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-1.9.5/bin' >> /etc/profile"
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.12.5 TARGET_ARCH=x86_64 sh -
+export PATH=$PATH:$ROOT/istio-1.12.5/bin
+sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-1.12.5/bin' >> /etc/profile"
 istioctl install -y -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
-KNATIVE_VERSION="knative-v1.1.0"
+KNATIVE_VERSION="knative-v1.3.0"
 # Install KNative in the cluster
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-crds.yaml
