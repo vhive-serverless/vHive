@@ -29,7 +29,7 @@ sudo apt-get -y install btrfs-progs pkg-config libseccomp-dev unzip tar libsecco
 wget --continue --quiet https://github.com/protocolbuffers/protobuf/releases/download/v3.19.0/protoc-3.19.4-linux-x86_64.zip
 sudo unzip -o -q protoc-3.19.4-linux-x86_64.zip -d /usr/local
 
-wget --continue --quiet https://github.com/containerd/containerd/releases/download/v1.5.7/containerd-1.6.2-linux-amd64.tar.gz
+wget --continue --quiet https://github.com/containerd/containerd/releases/download/v1.6.2/containerd-1.6.2-linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf containerd-1.6.2-linux-amd64.tar.gz
 
 wget --continue --quiet https://github.com/opencontainers/runc/releases/download/v1.1.0/runc.amd64
