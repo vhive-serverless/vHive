@@ -21,10 +21,10 @@ jobs:
     - name: Setup TMPDIR
       run: mkdir -p $TMPDIR
 
-    - name: Set up Go 1.16
+    - name: Set up Go 1.18
       uses: actions/setup-go@v3
       with:
-        go-version: 1.16
+        go-version: 1.18
 
     - name: Upgrade git
       run: |
@@ -73,10 +73,15 @@ jobs:
     - name: Setup TMPDIR
       run: mkdir -p $TMPDIR
 
+<<<<<<< HEAD
     - name: Set up Go 1.16
       uses: actions/setup-go@v3
+=======
+    - name: Set up Go 1.18
+      uses: actions/setup-go@v2
+>>>>>>> Workflow Go version; zipkin version; developer guide
       with:
-        go-version: 1.16
+        go-version: 1.18
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
