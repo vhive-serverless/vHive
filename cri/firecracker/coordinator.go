@@ -316,7 +316,10 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, funcInst *FuncInst
 	// TODO: StopVM does not work for fullLocal snapshots without resuming. Might be the same for offloaded since
 	// those are never stopped
 	if c.isFullLocal {
-		_, err = c.orch.ResumeVM(ctx, funcInst.vmID)
+		if _, err := c.orch.ResumeVM(ctx, funcInst.vmID); err != nil {
+			funcInst.logger.WithError(err).Error("failed to resume VM")
+			return err
+		}
 	}
 
 	if err := c.snapshotManager.CommitSnapshot(id); err != nil {

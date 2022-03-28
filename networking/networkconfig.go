@@ -134,7 +134,7 @@ func (cfg *NetworkConfig) createVmNetwork(hostNsHandle netns.NsHandle) error {
 		log.Println(err)
 		return err
 	}
-	defer vmNsHandle.Close()
+	defer func() { _ = vmNsHandle.Close() }()
 
 	// A.2. Create tap device for uVM
 	if err := createTap(cfg.containerTap, cfg.gatewayCIDR, cfg.getNamespaceName()); err != nil {
@@ -195,7 +195,7 @@ func (cfg *NetworkConfig) CreateNetwork() error {
 
 	// 2. Get host network namespace
 	hostNsHandle, err := netns.Get()
-	defer hostNsHandle.Close()
+	defer func() { _ = hostNsHandle.Close() }()
 	if err != nil {
 		log.Printf("Failed to get host ns, %s\n", err)
 		return err
@@ -240,7 +240,7 @@ func (cfg *NetworkConfig) RemoveNetwork() error {
 	runtime.LockOSThread()
 
 	hostNsHandle, err := netns.Get()
-	defer hostNsHandle.Close()
+	defer func() { _ = hostNsHandle.Close() }()
 	if err != nil {
 		log.Printf("Failed to get host ns, %s\n", err)
 		return err
@@ -248,7 +248,7 @@ func (cfg *NetworkConfig) RemoveNetwork() error {
 
 	// Get uVM namespace handle
 	vmNsHandle, err := netns.GetFromName(cfg.getNamespaceName())
-	defer vmNsHandle.Close()
+	defer func() { _ = vmNsHandle.Close() }()
 	if err != nil {
 		return err
 	}

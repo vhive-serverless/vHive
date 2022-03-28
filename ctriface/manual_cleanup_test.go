@@ -57,7 +57,7 @@ func TestSnapLoad(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
-		"fc-dev-thinpool",
+		"",
 		"",
 		1,
 		WithTestModeOn(true),
@@ -81,7 +81,7 @@ func TestSnapLoad(t *testing.T) {
 
 	snap := snapshotting.NewSnapshot(snapId, "/fccd/snapshots", TestImageName, 256, 1, *isSparseSnaps)
 	if *isFullLocal {
-		err = snap.CreateSnapDir()
+		_ = snap.CreateSnapDir()
 	}
 
 	err = orch.CreateSnapshot(ctx, vmID, snap)
@@ -129,7 +129,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
-		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),
@@ -220,7 +220,7 @@ func TestParallelSnapLoad(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
-		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),
@@ -309,7 +309,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
-		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),

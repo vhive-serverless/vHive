@@ -98,7 +98,7 @@ func deleteTap(tapName string) error {
 
 // createVethPair creates a virtual ethernet pair connecting the supplied namespaces
 func createVethPair(veth0Name, veth1Name string, veth0NsHandle, veth1NsHandle netns.NsHandle) error {
-	veth := &netlink.Veth{netlink.LinkAttrs{Name: veth0Name, Namespace: netlink.NsFd(veth0NsHandle), TxQLen: 1000}, veth1Name, nil, netlink.NsFd(veth1NsHandle)}
+	veth := &netlink.Veth{LinkAttrs: netlink.LinkAttrs{Name: veth0Name, Namespace: netlink.NsFd(veth0NsHandle), TxQLen: 1000}, PeerName: veth1Name, PeerNamespace: netlink.NsFd(veth1NsHandle)}
 	if err := netlink.LinkAdd(veth); err != nil {
 		return errors.Wrapf(err, "creating veth pair")
 	}

@@ -55,7 +55,7 @@ func TestStartSnapStop(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
-		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),

@@ -54,6 +54,11 @@ jobs:
     - name: Setup firecracker-containerd
       run: ./scripts/setup_firecracker_containerd.sh
 
+    - name: Add rsync # TODO: add dependencies to vHive
+      run: |
+        sudo apt update
+        sudo apt install rsync -y
+
     - name: Build
       run: go build
 

@@ -40,7 +40,6 @@ import (
 
 const (
 	containerdAddress = "/run/firecracker-containerd/containerd.sock"
-	poolName          = "fc-dev-thinpool"
 	NamespaceName     = "firecracker-containerd"
 	TestImageName     = "ghcr.io/ease-lab/helloworld:var_workload"
 )
@@ -98,14 +97,14 @@ func TestDevmapper(t *testing.T) {
 
 	// Create containerd client
 	client, err := containerd.New(containerdAddress)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	require.NoError(t, err, "Containerd client creation returned error")
 
 	// Create image manager
 	mgr := image.NewImageManager(client, "devmapper")
 
 	// Create devmapper
-	dmpr := devmapper.NewDeviceMapper(client, poolName, "")
+	dmpr := devmapper.NewDeviceMapper(client, "", "")
 
 	testDevmapper(t, mgr, dmpr, snapKey, TestImageName)
 }
@@ -113,14 +112,14 @@ func TestDevmapper(t *testing.T) {
 func TestDevmapperConcurrent(t *testing.T) {
 	// Create containerd client
 	client, err := containerd.New(containerdAddress)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	require.NoError(t, err, "Containerd client creation returned error")
 
 	// Create image manager
 	mgr := image.NewImageManager(client, "devmapper")
 
 	// Create devmapper
-	dmpr := devmapper.NewDeviceMapper(client, poolName, "")
+	dmpr := devmapper.NewDeviceMapper(client, "", "")
 
 	// Test concurrent devmapper
 	var wg sync.WaitGroup

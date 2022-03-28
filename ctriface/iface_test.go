@@ -67,7 +67,7 @@ func TestPauseSnapResume(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
-		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),
@@ -121,7 +121,7 @@ func TestStartStopSerial(t *testing.T) {
 
 	orch := NewOrchestrator(
 		"devmapper",
-		"fc-dev-thinpool",
+		"",
 		"",
 		"",
 		10,
@@ -158,7 +158,7 @@ func TestPauseResumeSerial(t *testing.T) {
 
 	orch := NewOrchestrator(
 		"devmapper",
-		"fc-dev-thinpool",
+		"",
 		"",
 		"",
 		10,
@@ -203,7 +203,7 @@ func TestStartStopParallel(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
-		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),
@@ -265,7 +265,7 @@ func TestPauseResumeParallel(t *testing.T) {
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
-		"fc-dev-thinpool",
+		"",
 		"",
 		10,
 		WithTestModeOn(true),

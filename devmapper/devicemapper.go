@@ -23,6 +23,7 @@
 package devmapper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/containerd/containerd"
@@ -31,6 +32,8 @@ import (
 	"github.com/ease-lab/vhive/devmapper/thindelta"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,11 +41,25 @@ import (
 	"sync"
 )
 
-// Own managed snapshots in snapmanager and in containerd identified by snapkey. Has name deviceName.
-// snapshotId used internally by containerd, needed for thin_delta. Once committed, snapshots identified
-// by snapName within containerd?
+const defaultPoolName = "fc-dev-thinpool"
 
-// Only remove snapshots created through createSnapshot. Use key used there to delete them.
+// getHostIfaceName returns the default host network interface name.
+func getThinPoolName() string {
+	b, err := ioutil.ReadFile("/proc/1/cpuset")
+	if err != nil {
+		log.Warnf("Failed to fetch thin-pool name. Falling back to default %v\n", err)
+		return defaultPoolName
+	}
+
+	containerId := filepath.Base(strings.TrimSuffix(string(b), "\n"))
+
+	//  Check if running inside container (containerID should be 64 characters)
+	if len(containerId) != 64 {
+		return defaultPoolName
+	}
+
+	return containerId + "_thinpool"
+}
 
 // DeviceMapper creates and manages device snapshots used to store container images.
 type DeviceMapper struct {
@@ -61,6 +78,9 @@ type DeviceMapper struct {
 func NewDeviceMapper(client *containerd.Client, poolName, metadataDev string) *DeviceMapper {
 	devMapper := new(DeviceMapper)
 	devMapper.poolName = poolName
+	if devMapper.poolName == "" {
+		devMapper.poolName = getThinPoolName()
+	}
 	devMapper.thinDelta = thindelta.NewThinDelta(poolName, metadataDev)
 	devMapper.snapDevices = make(map[string]*DeviceSnapshot)
 	devMapper.snapshotService = client.SnapshotService("devmapper")
@@ -262,10 +282,14 @@ func (dmpr *DeviceMapper) CreatePatch(ctx context.Context, patchPath, containerS
 // writes the differences to the supplied patchPath.
 func extractPatch(imageMountPath, containerMountPath, patchPath string) error {
 	patchArg := fmt.Sprintf("--only-write-batch=%s", patchPath)
+
+	var errb bytes.Buffer
 	cmd := exec.Command("sudo", "rsync", "-ar", patchArg, addTrailingSlash(imageMountPath), addTrailingSlash(containerMountPath))
+	cmd.Stderr = &errb
 	err := cmd.Run()
+
 	if err != nil {
-		return errors.Wrapf(err, "creating patch between %s and %s at %s", imageMountPath, containerMountPath, patchPath)
+		return errors.Wrapf(err, "creating patch between %s and %s at %s: %s", imageMountPath, containerMountPath, patchPath, errb.String())
 	}
 
 	err = os.Remove(patchPath + ".sh") // Remove unnecessary script output

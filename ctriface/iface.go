@@ -26,8 +26,10 @@ import (
 	"context"
 	"github.com/ease-lab/vhive/devmapper"
 	"github.com/ease-lab/vhive/snapshotting"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -377,9 +379,9 @@ func (o *Orchestrator) StopActiveVMs() error {
 	log.Info("waiting done")
 
 	log.Info("Closing fcClient")
-	o.fcClient.Close()
+	defer func() { _ = o.fcClient.Close() }()
 	log.Info("Closing containerd client")
-	o.client.Close()
+	defer func() { _ = o.client.Close() }()
 
 	return nil
 }
@@ -579,6 +581,29 @@ func (o *Orchestrator) LoadSnapshot(
 
 		if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
+			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snapFilePath, memFilePath, containerSnap.GetDevicePath())
+			files, err := ioutil.ReadDir(filepath.Dir(snapFilePath))
+			if err != nil {
+				logger.Error(err)
+			}
+
+			snapFiles := ""
+			for _, f := range files {
+				snapFiles += f.Name() + ", "
+			}
+
+			logger.Error(snapFiles)
+
+			files, _ = ioutil.ReadDir(filepath.Dir(containerSnap.GetDevicePath()))
+			if err != nil {
+				logger.Error(err)
+			}
+
+			snapFiles = ""
+			for _, f := range files {
+				snapFiles += f.Name() + ", "
+			}
+			logger.Error(snapFiles)
 		}
 	}()
 
