@@ -64,13 +64,9 @@ jobs:
     name: "Unit tests: Firecracker-containerd interface"
     runs-on: [self-hosted, integ]
     steps:
-<<<<<<< HEAD
-    - name: Set up Go 1.16
-      uses: actions/setup-go@v3
-=======
+    
     - name: Set up Go 1.18
-      uses: actions/setup-go@v2
->>>>>>> Workflow Go version; zipkin version; developer guide
+      uses: actions/setup-go@v3
       with:
         go-version: 1.18
 

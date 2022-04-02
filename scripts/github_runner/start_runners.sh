@@ -54,7 +54,7 @@ case "$RUNNER_LABEL" in
 "integ")
     # pull latest images
     docker pull vhiveease/integ_test_runner:ubuntu20base
-    docker pull vhiveease/cri_test_runner 
+    docker pull vhiveease/cri_test_runner:1.23.5
 
     if [ "$RESTART_FLAG" == "restart" ]; then
         docker container stop $(docker ps --format "{{.Names}}" | grep integration_test-github_runner)
@@ -80,14 +80,14 @@ case "$RUNNER_LABEL" in
 "cri")
     # pull latest images
     docker pull vhiveease/integ_test_runner:ubuntu20base
-    docker pull vhiveease/cri_test_runner
+    docker pull vhiveease/cri_test_runner:1.23.5
 
     if [ "$RESTART_FLAG" == "restart" ]; then
         kind get clusters | while read line ; do kind delete cluster --name "$line" ; done
     fi
     for number in $(seq 1 $NUM_OF_RUNNERS)
     do
-        kind create cluster --image vhiveease/cri_test_runner --name "cri-test-github-runner-${HOSTNAME}-${number}"
+        kind create cluster --image vhiveease/cri_test_runner:1.23.5 --name "cri-test-github-runner-${HOSTNAME}-${number}"
         sleep 2m
         docker exec -it \
             -e RUNNER_ALLOW_RUNASROOT=1 \
