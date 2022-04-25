@@ -26,14 +26,100 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [taps, misc, profile, devmapper, networking, snapshotting, ctriface/image]
+        module: [taps, misc, profile, networking, snapshotting ]
     steps:
 
     - name: Set up Go 1.18
       uses: actions/setup-go@v3
       with:
         go-version: 1.18
-        
+
+    - name: Set up Python 3.x
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.x'
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v3
+
+    - name: Setup System
+      run: ./scripts/setup_system.sh
+
+    - name: Install PMU tools
+      run: ./scripts/install_pmutools.sh
+
+    - name: Add rsync
+      run: |
+        sudo apt update
+        sudo apt install rsync -y
+
+    - name: Build
+      run: go build -race -v -a ./...
+
+    - name: Run tests in submodules
+      env:
+          MODULE: ${{ matrix.module }}
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      run: |
+        make -C $MODULE test
+        make -C $MODULE test-man
+
+  firecracker-containerd-interface-test:
+    name: "Unit tests: Firecracker-containerd interface"
+    runs-on: [self-hosted, integ]
+    steps:
+
+    - name: Set up Go 1.18
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Upgrade git
+      run: |
+        sudo add-apt-repository ppa:git-core/ppa -y
+        sudo apt update
+        sudo apt install git -y
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v3
+      with:
+        lfs: true
+
+    - name: Pull binaries
+      run: ./scripts/setup_firecracker_containerd.sh
+
+    - name: Add rsync
+      run: |
+        sudo apt update
+        sudo apt install rsync -y
+
+    - name: Build
+      run: go build -race -v -a ./...
+
+    - name: Run tests in submodules
+      run: |
+        make -C ctriface test
+        make -C ctriface test-man
+
+    - name: Cleaning
+      if: ${{ always() }}
+      run: ./scripts/clean_fcctr.sh
+
+  containerd-unit-test:
+    name: Containerd dependent unit test
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [ devmapper, ctriface/image ]
+    steps:
+
+    - name: Set up Go 1.18
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
     - name: Set up Python 3.x
       uses: actions/setup-python@v3
       with:
@@ -53,55 +139,31 @@ jobs:
         sudo apt update
         sudo apt install rsync -y
 
+    - name: Setup firecracker containerd
+      run: ./scripts/setup_firecracker_containerd.sh
+
+    - name: Setup containerd
+      run: |
+        wget --continue --quiet https://github.com/containerd/containerd/releases/download/v1.5.7/containerd-1.5.7-linux-amd64.tar.gz
+        sudo tar -C /usr/local -xzf containerd-1.5.7-linux-amd64.tar.gz
+
+    - name: Create devmapper
+      run: ./scripts/create_devmapper.sh
+
+    - name: Run containerd
+      run: sudo containerd &
+
+    - name: Run firecracker-containerd
+      run: sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml &
+
     - name: Build
       run: go build -race -v -a ./...
 
     - name: Run tests in submodules
       env:
-          MODULE: ${{ matrix.module }}
-          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
-          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        MODULE: ${{ matrix.module }}
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: |
         make -C $MODULE test
         make -C $MODULE test-man
-  
-  firecracker-containerd-interface-test:
-    name: "Unit tests: Firecracker-containerd interface"
-    runs-on: [self-hosted, integ]
-    steps:
-    
-    - name: Set up Go 1.18
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.18
-
-    - name: Upgrade git
-      run: |
-        sudo add-apt-repository ppa:git-core/ppa -y
-        sudo apt update
-        sudo apt install git -y
-        
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v3
-      with:
-        lfs: true
-    
-    - name: Pull binaries
-      run: ./scripts/setup_firecracker_containerd.sh
-
-    - name: Add rsync # TODO: add dependencies to vHive
-      run: |
-        sudo apt update
-        sudo apt install rsync -y
-
-    - name: Build
-      run: go build -race -v -a ./...
-
-    - name: Run tests in submodules
-      run: |
-        make -C ctriface test
-        make -C ctriface test-man
-
-    - name: Cleaning
-      if: ${{ always() }}
-      run: ./scripts/clean_fcctr.sh

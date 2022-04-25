@@ -40,7 +40,7 @@ import (
 
 const (
 	containerdAddress = "/run/firecracker-containerd/containerd.sock"
-	NamespaceName     = "firecracker-containerd"
+	NamespaceName     = "containerd"
 	TestImageName     = "ghcr.io/ease-lab/helloworld:var_workload"
 )
 

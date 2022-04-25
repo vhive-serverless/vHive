@@ -40,7 +40,7 @@ import (
 const (
 	TestImageName = "ghcr.io/ease-lab/helloworld:var_workload"
 	containerdAddress      = "/run/firecracker-containerd/containerd.sock"
-	NamespaceName          = "firecracker-containerd"
+	NamespaceName          = "containerd"
 )
 
 func getAllImages() map[string]string {
