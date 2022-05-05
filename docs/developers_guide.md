@@ -170,7 +170,7 @@ using detailed latency and memory footprint metrics.
 ## Knative request tracing
 Knative function call requests can now be traced & visualized using [zipkin](https://zipkin.io/).
 Zipkin is a distributed tracing system featuring easy collection and lookup of tracing data.
-Checkout [this](https://www.scalyr.com/blog/zipkin-tutorial-distributed-tracing/) for a quickstart guide.
+Here are some useful commands (there are plenty of Zipkin tutorials online):
 
 * Once the zipkin container is running, start the dashboard using `istioctl dashboard zipkin`.
 * To access requests remotely, run `ssh -L 9411:127.0.0.1:9411 <Host_IP>` for port forwarding.
