@@ -9,5 +9,13 @@
             "pattern": "^/",
             "replacement": "/github/workspace/"
         }
+    ],
+    "httpHeaders": [
+        {
+            "urls": ["https://docs.github.com/"],
+            "headers": {
+                "Accept-Encoding": "zstd, br, gzip, deflate"
+            }
+        }
     ]
 }
