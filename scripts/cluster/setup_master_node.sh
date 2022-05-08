@@ -52,6 +52,7 @@ KNATIVE_VERSION="knative-v1.3.0"
 # Install KNative in the cluster
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-crds.yaml
+    #* Knative components for loader.
     kubectl apply --filename $ROOT/configs/knative_yamls/loader_serving_core.yaml
 else
     kubectl apply --filename $ROOT/configs/knative_yamls/serving-crds.yaml
@@ -67,7 +68,8 @@ kubectl apply --filename $ROOT/configs/registry/repository-update-hosts.yaml
 # magic DNS
 kubectl apply --filename $ROOT/configs/knative_yamls/serving-default-domain.yaml
 
-kubectl apply --filename https://github.com/knative/net-istio/releases/download/$KNATIVE_VERSION/release.yaml
+#* Istio controller for loader.
+kubectl apply --filename $ROOT/configs/knative_yamls/loader_istio_controller.yaml
 
 # install knative eventing
 kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/eventing-crds.yaml
