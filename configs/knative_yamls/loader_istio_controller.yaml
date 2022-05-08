@@ -329,7 +329,7 @@ spec:
               memory: 40Mi
             limits:
               cpu: 2
-              memory: 3Gi
+              memory: 10Gi
           env:
             - name: SYSTEM_NAMESPACE
               valueFrom:

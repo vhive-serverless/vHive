@@ -4962,8 +4962,8 @@ spec:
               cpu: 300m
               memory: 60Mi
             limits:
-              cpu: 2
-              memory: 3Gi
+              cpu: 3
+              memory: 10Gi
           env:
             # Run Activator with GC collection when newly generated memory is 500%.
             - name: GOGC
@@ -5125,8 +5125,8 @@ spec:
               cpu: 100m
               memory: 100Mi
             limits:
-              cpu: 2
-              memory: 3Gi
+              cpu: 3
+              memory: 10Gi
           env:
             - name: POD_NAME
               valueFrom:
