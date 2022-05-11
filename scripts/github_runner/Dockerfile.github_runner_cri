@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM vhiveease/vhive_dev_env:1.23.5
+FROM vhiveease/vhive_dev_env:v1.23.5
 
 RUN sudo apt remove -y vim tmux
 COPY scripts/github_runner/setup_runner_cri.sh /scripts/

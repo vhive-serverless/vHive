@@ -36,7 +36,14 @@ else
     CRI_SOCK="/etc/vhive-cri/vhive-cri.sock"
 fi
 
-sudo kubeadm init --ignore-preflight-errors=all --cri-socket $CRI_SOCK --pod-network-cidr=192.168.0.0/16
+# Docker container ID is 64 characters long.
+if [ 64 -eq ${#CONTAINERID} ]; then
+  # create cluster using the config file
+  CRI_SOCK=$CRI_SOCK envsubst < "/scripts/kubeadm.conf" > "/scripts/kubeadm_patched.conf"
+  sudo kubeadm init --skip-phases="preflight" --config=<(envsubst < "/scripts/kubeadm_patched.conf")
+else
+    sudo kubeadm init --ignore-preflight-errors=all --cri-socket $CRI_SOCK --pod-network-cidr=192.168.0.0/16
+fi
 
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
