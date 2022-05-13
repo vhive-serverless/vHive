@@ -22,7 +22,6 @@ metadata:
     app.kubernetes.io/component: default-domain-job
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   template:
     metadata:
@@ -39,7 +38,7 @@ spec:
         - name: default-domain
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/default-domain-dd6f55160290a90018ba318b624be12e@sha256:dd9615e1688a2d50df81b4d232abc998b58b3f0ed841d0a6e84d23e84c6611b5
+          image: docker.io/vhiveease/default-domain-dd6f55160290a90018ba318b624be12e@sha256:75a1a31cc2aad47c97b458505d535758ec87159d55c3a9dc196c94eaaef323b6
           args: ["-magic-dns=sslip.io"]
           ports:
             - name: http
@@ -84,7 +83,6 @@ metadata:
     app.kubernetes.io/component: default-domain-job
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   selector:
     app: default-domain

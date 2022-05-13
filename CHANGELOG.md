@@ -5,6 +5,25 @@
 ### Added
 
 ### Changed
+
+### Fixed
+
+
+## v1.5
+
+### Added
+
+### Changed
+- Bumped Containerd to v1.6, Knative to v1.4, Go to v1.18, Kubernetes to v1.23, Istio to 1.12, protoc to 3.19, runc to 1.1.
+
+### Fixed
+
+
+## v1.4.1
+
+### Added
+
+### Changed
 - Support Ubuntu 20 as the host OS, Ubuntu 18 support dropped.
 
 ### Fixed
