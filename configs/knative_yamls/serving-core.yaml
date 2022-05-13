@@ -19,7 +19,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 
 ---
 # Copyright 2019 The Knative Authors
@@ -44,7 +43,6 @@ metadata:
   # (which should be identical, but isn't guaranteed to be installed alongside serving).
   name: knative-serving-aggregated-addressable-resolver
   labels:
-    serving.knative.dev/release: devel
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
 aggregationRule:
@@ -57,7 +55,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: knative-serving-addressable-resolver
   labels:
-    serving.knative.dev/release: devel
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
     # Labeled to facilitate aggregated cluster roles that act on Addressables.
@@ -97,7 +94,6 @@ metadata:
   name: knative-serving-namespaced-admin
   labels:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    serving.knative.dev/release: devel
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
 rules:
@@ -114,7 +110,6 @@ metadata:
   name: knative-serving-namespaced-edit
   labels:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
-    serving.knative.dev/release: devel
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
 rules:
@@ -131,7 +126,6 @@ metadata:
   name: knative-serving-namespaced-view
   labels:
     rbac.authorization.k8s.io/aggregate-to-view: "true"
-    serving.knative.dev/release: devel
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
 rules:
@@ -160,7 +154,6 @@ metadata:
   name: knative-serving-core
   labels:
     serving.knative.dev/controller: "true"
-    serving.knative.dev/release: devel
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
 rules:
@@ -215,7 +208,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: knative-serving-podspecable-binding
   labels:
-    serving.knative.dev/release: devel
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
     # Labeled to facilitate aggregated cluster roles that act on PodSpecables.
@@ -256,7 +248,6 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -265,7 +256,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
@@ -279,7 +269,6 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 subjects:
   - kind: ServiceAccount
     name: controller
@@ -297,7 +286,6 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 subjects:
   - kind: ServiceAccount
     name: controller
@@ -339,8 +327,6 @@ spec:
     categories:
       - knative-internal
       - caching
-    shortNames:
-      - img
   scope: Namespaced
   versions:
     - name: v1alpha1
@@ -382,8 +368,8 @@ metadata:
   name: certificates.networking.internal.knative.dev
   labels:
     app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
   group: networking.internal.knative.dev
@@ -443,7 +429,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
     duck.knative.dev/podspecable: "true"
 spec:
@@ -641,7 +626,7 @@ spec:
                                 type: object
                                 properties:
                                   exec:
-                                    description: One and only one of the following should be specified. Exec specifies the action to take.
+                                    description: Exec specifies the action to take.
                                     type: object
                                     properties:
                                       command:
@@ -696,7 +681,7 @@ spec:
                                     type: integer
                                     format: int32
                                   tcpSocket:
-                                    description: 'TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported TODO: implement a realistic TCP lifecycle hook'
+                                    description: TCPSocket specifies an action involving a TCP port.
                                     type: object
                                     properties:
                                       host:
@@ -740,7 +725,7 @@ spec:
                                 type: object
                                 properties:
                                   exec:
-                                    description: One and only one of the following should be specified. Exec specifies the action to take.
+                                    description: Exec specifies the action to take.
                                     type: object
                                     properties:
                                       command:
@@ -795,7 +780,7 @@ spec:
                                     type: integer
                                     format: int32
                                   tcpSocket:
-                                    description: 'TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported TODO: implement a realistic TCP lifecycle hook'
+                                    description: TCPSocket specifies an action involving a TCP port.
                                     type: object
                                     properties:
                                       host:
@@ -833,7 +818,7 @@ spec:
                                 type: object
                                 properties:
                                   capabilities:
-                                    description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime.
+                                    description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime. Note that this field cannot be set when spec.os.name is windows.
                                     type: object
                                     properties:
                                       drop:
@@ -844,10 +829,10 @@ spec:
                                           type: string
                                     x-kubernetes-preserve-unknown-fields: true
                                   readOnlyRootFilesystem:
-                                    description: Whether this container has a read-only root filesystem. Default is false.
+                                    description: Whether this container has a read-only root filesystem. Default is false. Note that this field cannot be set when spec.os.name is windows.
                                     type: boolean
                                   runAsUser:
-                                    description: The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                                    description: The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. Note that this field cannot be set when spec.os.name is windows.
                                     type: integer
                                     format: int64
                                 x-kubernetes-preserve-unknown-fields: true
@@ -1146,8 +1131,8 @@ metadata:
   name: clusterdomainclaims.networking.internal.knative.dev
   labels:
     app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
   group: networking.internal.knative.dev
@@ -1198,7 +1183,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
   group: serving.knative.dev
@@ -1468,8 +1452,8 @@ metadata:
   name: ingresses.networking.internal.knative.dev
   labels:
     app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
   group: networking.internal.knative.dev
@@ -1530,7 +1514,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
   group: autoscaling.internal.knative.dev
@@ -1654,7 +1637,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
   group: autoscaling.internal.knative.dev
@@ -1815,7 +1797,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
   group: serving.knative.dev
@@ -1992,7 +1973,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: One and only one of the following should be specified. Exec specifies the action to take.
+                            description: Exec specifies the action to take.
                             type: object
                             properties:
                               command:
@@ -2047,7 +2028,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: 'TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported TODO: implement a realistic TCP lifecycle hook'
+                            description: TCPSocket specifies an action involving a TCP port.
                             type: object
                             properties:
                               host:
@@ -2091,7 +2072,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: One and only one of the following should be specified. Exec specifies the action to take.
+                            description: Exec specifies the action to take.
                             type: object
                             properties:
                               command:
@@ -2146,7 +2127,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: 'TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported TODO: implement a realistic TCP lifecycle hook'
+                            description: TCPSocket specifies an action involving a TCP port.
                             type: object
                             properties:
                               host:
@@ -2184,7 +2165,7 @@ spec:
                         type: object
                         properties:
                           capabilities:
-                            description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime.
+                            description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime. Note that this field cannot be set when spec.os.name is windows.
                             type: object
                             properties:
                               drop:
@@ -2195,10 +2176,10 @@ spec:
                                   type: string
                             x-kubernetes-preserve-unknown-fields: true
                           readOnlyRootFilesystem:
-                            description: Whether this container has a read-only root filesystem. Default is false.
+                            description: Whether this container has a read-only root filesystem. Default is false. Note that this field cannot be set when spec.os.name is windows.
                             type: boolean
                           runAsUser:
-                            description: The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                            description: The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. Note that this field cannot be set when spec.os.name is windows.
                             type: integer
                             format: int64
                         x-kubernetes-preserve-unknown-fields: true
@@ -2527,7 +2508,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
     duck.knative.dev/addressable: "true"
 spec:
@@ -2701,8 +2681,8 @@ metadata:
   name: serverlessservices.networking.internal.knative.dev
   labels:
     app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:
   group: networking.internal.knative.dev
@@ -2774,7 +2754,6 @@ metadata:
   labels:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
     knative.dev/crd-install: "true"
     duck.knative.dev/addressable: "true"
     duck.knative.dev/podspecable: "true"
@@ -2976,7 +2955,7 @@ spec:
                                 type: object
                                 properties:
                                   exec:
-                                    description: One and only one of the following should be specified. Exec specifies the action to take.
+                                    description: Exec specifies the action to take.
                                     type: object
                                     properties:
                                       command:
@@ -3031,7 +3010,7 @@ spec:
                                     type: integer
                                     format: int32
                                   tcpSocket:
-                                    description: 'TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported TODO: implement a realistic TCP lifecycle hook'
+                                    description: TCPSocket specifies an action involving a TCP port.
                                     type: object
                                     properties:
                                       host:
@@ -3075,7 +3054,7 @@ spec:
                                 type: object
                                 properties:
                                   exec:
-                                    description: One and only one of the following should be specified. Exec specifies the action to take.
+                                    description: Exec specifies the action to take.
                                     type: object
                                     properties:
                                       command:
@@ -3130,7 +3109,7 @@ spec:
                                     type: integer
                                     format: int32
                                   tcpSocket:
-                                    description: 'TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported TODO: implement a realistic TCP lifecycle hook'
+                                    description: TCPSocket specifies an action involving a TCP port.
                                     type: object
                                     properties:
                                       host:
@@ -3168,7 +3147,7 @@ spec:
                                 type: object
                                 properties:
                                   capabilities:
-                                    description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime.
+                                    description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime. Note that this field cannot be set when spec.os.name is windows.
                                     type: object
                                     properties:
                                       drop:
@@ -3179,10 +3158,10 @@ spec:
                                           type: string
                                     x-kubernetes-preserve-unknown-fields: true
                                   readOnlyRootFilesystem:
-                                    description: Whether this container has a read-only root filesystem. Default is false.
+                                    description: Whether this container has a read-only root filesystem. Default is false. Note that this field cannot be set when spec.os.name is windows.
                                     type: boolean
                                   runAsUser:
-                                    description: The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                                    description: The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. Note that this field cannot be set when spec.os.name is windows.
                                     type: integer
                                     format: int64
                                 x-kubernetes-preserve-unknown-fields: true
@@ -3545,11 +3524,10 @@ metadata:
     app.kubernetes.io/component: queue-proxy
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:70ef1140c7b0e517da5d00f6435d5e62c347820b6a6f3f34c51320a5817e737f
+  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:7664e43ef34eccf3c311a0a7fa75da472303faf387e3f5f0a5fb863a9dbc3aff
 
 ---
 # Copyright 2018 The Knative Authors
@@ -3575,9 +3553,8 @@ metadata:
     app.kubernetes.io/component: autoscaler
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "16af78ce"
+    knative.dev/example-checksum: "47c2487f"
 data:
   _example: |
     ################################
@@ -3652,7 +3629,7 @@ data:
     # -1 denotes unlimited target-burst-capacity and activator will always
     # be in the request path.
     # Other negative values are invalid.
-    target-burst-capacity: "200"
+    target-burst-capacity: "211"
 
     # When operating in a stable mode, the autoscaler operates on the
     # average concurrency over the stable window.
@@ -3787,7 +3764,6 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: controller
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
     knative.dev/example-checksum: "a0feb4c6"
 data:
@@ -3931,14 +3907,13 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: controller
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
     knative.dev/example-checksum: "dd7ee769"
 data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
   # TODO: switch to 'queue-sidecar-image' after 0.27
-  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:70ef1140c7b0e517da5d00f6435d5e62c347820b6a6f3f34c51320a5817e737f
+  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:7664e43ef34eccf3c311a0a7fa75da472303faf387e3f5f0a5fb863a9dbc3aff
   _example: |-
     ################################
     #                              #
@@ -4035,7 +4010,6 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: controller
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
     knative.dev/example-checksum: "81552d0b"
 data:
@@ -4101,9 +4075,8 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: controller
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "d9e300ba"
+    knative.dev/example-checksum: "e1c6e542"
 data:
   _example: |-
     ################################
@@ -4132,6 +4105,12 @@ data:
     # WARNING: Cannot safely be disabled once enabled.
     # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-node-affinity
     kubernetes.podspec-affinity: "disabled"
+
+    # Indicates whether Kubernetes topologySpreadConstraints support is enabled
+    #
+    # WARNING: Cannot safely be disabled once enabled.
+    # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-topology-spread-constraints
+    kubernetes.podspec-topologyspreadconstraints: "disabled"
 
     # Indicates whether Kubernetes hostAliases support is enabled
     #
@@ -4264,7 +4243,6 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: controller
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
     knative.dev/example-checksum: "45463e45"
 data:
@@ -4366,7 +4344,6 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: controller
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
     knative.dev/example-checksum: "f4b71f57"
 data:
@@ -4426,7 +4403,6 @@ metadata:
   name: config-logging
   namespace: knative-serving
   labels:
-    serving.knative.dev/release: devel
     app.kubernetes.io/version: devel
     app.kubernetes.io/component: logging
     app.kubernetes.io/name: knative-serving
@@ -4510,9 +4486,8 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: networking
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "ddc3250f"
+    knative.dev/example-checksum: "d0b91f80"
 data:
   _example: |
     ################################
@@ -4672,12 +4647,44 @@ data:
     activator-ca: ""
 
     # The SAN (Subject Alt Name) used to validate the activator TLS certificate.
-    # It is available only when "activator-ca" is specified.
+    # It must be set when "activator-ca" is specified.
     # Use an empty value to disable the feature (default).
     #
     # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
     #       for now. Use with caution.
     activator-san: ""
+
+    # The server certificates to serve the TLS traffic from ingress to activator.
+    # It is specified by the secret name, which has the "tls.crt" and "tls.key" data field.
+    # Use an empty value to disable the feature (default).
+    #
+    # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
+    #       for now. Use with caution.
+    activator-cert-secret: ""
+
+    # The CA public certificate used to sign the queue-proxy TLS certificate.
+    # It is specified by the secret name, which has the "ca.crt" data field.
+    # Use an empty value to disable the feature (default).
+    #
+    # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
+    #       for now. Use with caution.
+    queue-proxy-ca: ""
+
+    # The SAN (Subject Alt Name) used to validate the activator TLS certificate.
+    # It must be set when "queue-proxy-ca" is specified.
+    # Use an empty value to disable the feature (default).
+    #
+    # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
+    #       for now. Use with caution.
+    queue-proxy-san: ""
+
+    # The server certificates to serve the TLS traffic from activator to queue-proxy.
+    # It is specified by the secret name, which has the "tls.crt" and "tls.key" data field.
+    # Use an empty value to disable the feature (default).
+    #
+    # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
+    #       for now. Use with caution.
+    queue-proxy-cert-secret: ""
 
 ---
 # Copyright 2018 The Knative Authors
@@ -4703,7 +4710,6 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: observability
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
     knative.dev/example-checksum: "fed4756e"
 data:
@@ -4813,7 +4819,6 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: tracing
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   annotations:
     knative.dev/example-checksum: "26614636"
 data:
@@ -4871,7 +4876,6 @@ metadata:
     app.kubernetes.io/component: activator
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   minReplicas: 1
   maxReplicas: 20
@@ -4900,7 +4904,6 @@ metadata:
     app.kubernetes.io/component: activator
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   minAvailable: 80%
   selector:
@@ -4931,7 +4934,6 @@ metadata:
     app.kubernetes.io/component: activator
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
-    serving.knative.dev/release: devel
 spec:
   selector:
     matchLabels:
@@ -4947,14 +4949,13 @@ spec:
         app.kubernetes.io/component: activator
         app.kubernetes.io/name: knative-serving
         app.kubernetes.io/version: devel
-        serving.knative.dev/release: devel
     spec:
       serviceAccountName: controller
       containers:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:dfea5318b9cf2c1628bded0cdea93dc1eceb64ebd9a325e1e0de7e8b0d5a78d5
+          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:8b32b2accc0f7bd73183818446aab9bfdce0f82690f3b3643d5bbee4d1521565
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -5039,7 +5040,6 @@ metadata:
     app.kubernetes.io/component: activator
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
-    serving.knative.dev/release: devel
 spec:
   selector:
     app: activator
@@ -5057,6 +5057,9 @@ spec:
     - name: http2
       port: 81
       targetPort: 8013
+    - name: https
+      port: 443
+      targetPort: 8112
   type: ClusterIP
 
 ---
@@ -5083,7 +5086,6 @@ metadata:
     app.kubernetes.io/component: autoscaler
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   replicas: 1
   selector:
@@ -5102,7 +5104,6 @@ spec:
         app.kubernetes.io/component: autoscaler
         app.kubernetes.io/name: knative-serving
         app.kubernetes.io/version: devel
-        serving.knative.dev/release: devel
     spec:
       # To avoid node becoming SPOF, spread our replicas to different nodes.
       affinity:
@@ -5119,7 +5120,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:b327d3152ae36087152477c05cad8ecd73eb6d2cb7d4657462daa16cc322b3e5
+          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:979e95f893616dd8c02e2d0c8590b4e02695d32d66e400741e6643eb178a4ee9
           resources:
             requests:
               cpu: 100m
@@ -5183,7 +5184,6 @@ metadata:
     app.kubernetes.io/component: autoscaler
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   name: autoscaler
   namespace: knative-serving
 spec:
@@ -5225,7 +5225,6 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   selector:
     matchLabels:
@@ -5239,7 +5238,6 @@ spec:
         app.kubernetes.io/component: controller
         app.kubernetes.io/name: knative-serving
         app.kubernetes.io/version: devel
-        serving.knative.dev/release: devel
     spec:
       # To avoid node becoming SPOF, spread our replicas to different nodes.
       affinity:
@@ -5256,7 +5254,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:2d8fdc26659f3bed5d772ef30caa615da230e98a800d674ed70db762fe3034fe
+          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:1a9a865482a00f96c2af7b58a49cc52ebc74ca647242ece752aa8a60439c0f65
           resources:
             requests:
               cpu: 100m
@@ -5301,7 +5299,6 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   name: controller
   namespace: knative-serving
 spec:
@@ -5340,7 +5337,6 @@ metadata:
     app.kubernetes.io/component: domain-mapping
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   selector:
     matchLabels:
@@ -5354,7 +5350,6 @@ spec:
         app.kubernetes.io/component: domain-mapping
         app.kubernetes.io/name: knative-serving
         app.kubernetes.io/version: devel
-        serving.knative.dev/release: devel
     spec:
       # To avoid node becoming SPOF, spread our replicas to different nodes.
       affinity:
@@ -5371,7 +5366,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:c633e82cc461ce4290f19e8c7bddb0168ae324333fc1c811d73c42d36ff36a02
+          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:133a55174224d6bf30497580ec527f1b683ea3564620f5647dda9b9450e6ab16
           resources:
             requests:
               cpu: 30m
@@ -5428,7 +5423,6 @@ metadata:
     app.kubernetes.io/component: domain-mapping
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   selector:
     matchLabels:
@@ -5444,7 +5438,6 @@ spec:
         app.kubernetes.io/component: domain-mapping
         app.kubernetes.io/name: knative-serving
         app.kubernetes.io/version: devel
-        serving.knative.dev/release: devel
     spec:
       # To avoid node becoming SPOF, spread our replicas to different nodes.
       affinity:
@@ -5461,7 +5454,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:e4e89edf0b0ee536b53f9987dd12888b4c034fc2da4be2810cd8d40cddb19bcb
+          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:166eecb471d6fcd14ecadd7f6bbf6e856505f3ed875fed7d1ac59b8fcb1b2997
           resources:
             requests:
               cpu: 100m
@@ -5531,7 +5524,6 @@ metadata:
     app.kubernetes.io/component: domain-mapping
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
   name: domainmapping-webhook
   namespace: knative-serving
 spec:
@@ -5573,7 +5565,6 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   minReplicas: 1
   maxReplicas: 5
@@ -5600,7 +5591,6 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   minAvailable: 80%
   selector:
@@ -5628,7 +5618,6 @@ metadata:
   name: webhook
   namespace: knative-serving
   labels:
-    serving.knative.dev/release: devel
     app.kubernetes.io/component: webhook
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
@@ -5644,8 +5633,6 @@ spec:
       labels:
         app: webhook
         role: webhook
-        serving.knative.dev/release: devel
-        app.kubernetes.io/component: webhook
         app.kubernetes.io/version: devel
         app.kubernetes.io/name: knative-serving
     spec:
@@ -5664,7 +5651,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:396c9777db3c4f1952cf0d3aeff3364925898ed33bf12271c4248e19aadce402
+          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:e06c7d4f2bb661f5ea8193ed0cfe4b87fc849142556003e2a135c0e2f241e83b
           resources:
             requests:
               cpu: 100m
@@ -5733,7 +5720,6 @@ kind: Service
 metadata:
   labels:
     role: webhook
-    serving.knative.dev/release: devel
     app.kubernetes.io/component: webhook
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
@@ -5777,7 +5763,6 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 webhooks:
   - admissionReviewVersions: ["v1", "v1beta1"]
     clientConfig:
@@ -5820,7 +5805,6 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 webhooks:
   - admissionReviewVersions: ["v1", "v1beta1"]
     clientConfig:
@@ -5876,7 +5860,6 @@ metadata:
     app.kubernetes.io/component: domain-mapping
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 webhooks:
   - admissionReviewVersions: ["v1", "v1beta1"]
     clientConfig:
@@ -5924,7 +5907,6 @@ metadata:
     app.kubernetes.io/component: domain-mapping
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 # The data is populated at install time.
 
 ---
@@ -5950,7 +5932,6 @@ metadata:
     app.kubernetes.io/component: domain-mapping
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 webhooks:
   - admissionReviewVersions: ["v1", "v1beta1"]
     clientConfig:
@@ -5998,7 +5979,6 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 webhooks:
   - admissionReviewVersions: ["v1", "v1beta1"]
     clientConfig:
@@ -6056,7 +6036,6 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 # The data is populated at install time.
 
 ---

@@ -43,7 +43,7 @@ sudo apt-get -y install \
     software-properties-common \
     iproute2 \
     nftables \
-    skopeo >> /dev/null
+    git-lfs >> /dev/null
 
 # stack size, # of open files, # of pids
 sudo sh -c "echo \"* soft nofile 1000000\" >> /etc/security/limits.conf"
