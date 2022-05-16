@@ -23,7 +23,6 @@ env:
   TMPDIR: /root/tmp/
   GOCACHE: /root/tmp/gocache
   GOPATH: /root/tmp/gopath
-  GOROOT: $HOME/go
   KUBECONFIG: /etc/kubernetes/admin.conf
 
 jobs:

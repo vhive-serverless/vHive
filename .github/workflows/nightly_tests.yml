@@ -11,7 +11,6 @@ env:
   TMPDIR: /root/tmp/
   GOCACHE: /root/tmp/gocache
   GOPATH: /root/tmp/gopath
-  GOROOT: $HOME/go
 
 jobs:
   integration-tests:
