@@ -31,7 +31,7 @@ spec:
           value: "2"
         - name: DST_SERVER_PORT
           value: :80
-        image: docker.io/shyamjesal/chained-functions-serving-consumer:latest
+        image: docker.io/vhiveease/chained-functions-serving-consumer:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80

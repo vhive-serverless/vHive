@@ -29,7 +29,7 @@ spec:
           value: "true"
         - name: BROADCAST
           value: "1"
-        image: docker.io/shyamjesal/chained-functions-serving-driver:latest
+        image: docker.io/vhiveease/chained-functions-serving-driver:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80
