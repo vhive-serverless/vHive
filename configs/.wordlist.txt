@@ -107,7 +107,9 @@ DCNs
 De
 debian
 deployer
+deterministically
 dev
+devicemapper
 devmapper
 df
 DialGRPCWithUnaryInterceptor
@@ -285,6 +287,7 @@ microarchitectural
 Microarchitecture
 microbenchmark
 microbenchmarks
+microVM
 microVMs
 minio
 MinIO
@@ -395,11 +398,13 @@ rebasing
 repo
 Repos
 roadmap
+rootfs
 RPC
 rperf
 RPerf
 RPERF
 rsquo
+rsync
 runc
 runtime
 runtimes
@@ -432,6 +437,7 @@ SinkBinding
 SinkBindings
 sms
 SMT
+snapshotted
 snapshotting
 SoC
 SOCACHE
@@ -461,6 +467,7 @@ TestProfileIncrementConfiguration
 TestProfileSingleConfiguration
 TextFormatter
 th
+thinpool
 Timeseries
 timeseriesdb
 TimeseriesDB

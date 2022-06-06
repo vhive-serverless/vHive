@@ -108,13 +108,15 @@ We also offer self-hosted stock-Knative environments powered by KinD. To be able
 
 * vHive supports both the baseline Firecracker snapshots and our advanced
 Record-and-Prefetch (REAP) snapshots.
-
+  
 * vHive integrates with Kubernetes and Knative via its built-in CRI support.
 Currently, only Knative Serving is supported.
 
 * vHive supports arbitrary distributed setup of a serverless cluster.
 
 * vHive supports arbitrary functions deployed with OCI (Docker images).
+
+* Remote snapshot restore functionality can be integrated through the [full local snapshot functionality](./fulllocal_snapshots.md).
 
 * vHive has robust Continuous-Integration and our team is committed to deliver
 high-quality code.

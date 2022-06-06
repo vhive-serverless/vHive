@@ -130,6 +130,8 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     > By default, the microVMs are booted, `-snapshots` enables snapshots after the 2nd invocation of each function.
     >
     > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP) technique that we described in our ASPLOS'21 paper ([extended abstract][ext-abstract], [full paper](papers/REAP_ASPLOS21.pdf)).
+    >
+    > If `-snapshots` and `-fulllocal` are specified, a single snapshot can be used to restore many microVMs ([full local snapshots](./fulllocal_snapshots.md)). Note that this mode is currently not compatible with the REAP technique.
 
 ### 3. Configure Master Node
 **On the master node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
