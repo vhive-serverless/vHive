@@ -23,32 +23,39 @@
 package firecracker
 
 import (
-	"sync"
-
 	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 )
 
-type funcInstance struct {
-	VmID                   string
-	Image                  string
-	Logger                 *log.Entry
-	OnceCreateSnapInstance *sync.Once
-	StartVMResponse        *ctriface.StartVMResponse
+type FuncInstance struct {
+	vmID            string
+	image           string
+	revisionId      string
+	snapBooted      bool
+	coldStartTimeMs int64
+	memSizeMib      uint32
+	vCPUCount       uint32
+	logger          *log.Entry
+	StartVMResponse *ctriface.StartVMResponse
 }
 
-func newFuncInstance(vmID, image string, startVMResponse *ctriface.StartVMResponse) *funcInstance {
-	f := &funcInstance{
-		VmID:                   vmID,
-		Image:                  image,
-		OnceCreateSnapInstance: new(sync.Once),
-		StartVMResponse:        startVMResponse,
+func NewFuncInstance(vmID, image, revisionId string, startVMResponse *ctriface.StartVMResponse, snapBooted bool, memSizeMib, vCPUCount uint32, coldstartTimeMs int64) *FuncInstance {
+	f := &FuncInstance{
+		vmID:            vmID,
+		image:           image,
+		revisionId:      revisionId,
+		StartVMResponse: startVMResponse,
+		snapBooted:      snapBooted,
+		memSizeMib:      memSizeMib,
+		vCPUCount:       vCPUCount,
+		coldStartTimeMs: coldstartTimeMs,
 	}
 
-	f.Logger = log.WithFields(
+	f.logger = log.WithFields(
 		log.Fields{
 			"vmID":  vmID,
 			"image": image,
+			"revision": revisionId,
 		},
 	)
 

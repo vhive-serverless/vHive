@@ -23,13 +23,16 @@
 package ctriface
 
 import (
+	"github.com/ease-lab/vhive/ctriface/image"
+	"github.com/ease-lab/vhive/devmapper"
+	"github.com/ease-lab/vhive/memory/manager"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -41,7 +44,6 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
-	"github.com/ease-lab/vhive/memory/manager"
 	"github.com/ease-lab/vhive/metrics"
 	"github.com/ease-lab/vhive/misc"
 
@@ -51,7 +53,7 @@ import (
 const (
 	containerdAddress      = "/run/firecracker-containerd/containerd.sock"
 	containerdTTRPCAddress = containerdAddress + ".ttrpc"
-	namespaceName          = "firecracker-containerd"
+	NamespaceName          = "firecracker-containerd"
 )
 
 type WorkloadIoWriter struct {
@@ -74,11 +76,12 @@ func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
 // Orchestrator Drives all VMs
 type Orchestrator struct {
 	vmPool       *misc.VMPool
-	cachedImages map[string]containerd.Image
 	workloadIo   sync.Map // vmID string -> WorkloadIoWriter
 	snapshotter  string
 	client       *containerd.Client
 	fcClient     *fcclient.Client
+	devMapper    *devmapper.DeviceMapper
+	imageManager *image.ImageManager
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
@@ -86,17 +89,16 @@ type Orchestrator struct {
 	snapshotsDir     string
 	isMetricsMode    bool
 	hostIface        string
+	isFullLocal      bool
 
 	memoryManager *manager.MemoryManager
 }
 
 // NewOrchestrator Initializes a new orchestrator
-func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) *Orchestrator {
+func NewOrchestrator(snapshotter, hostIface, poolName, metadataDev string, netPoolSize int, opts ...OrchestratorOption) *Orchestrator {
 	var err error
 
 	o := new(Orchestrator)
-	o.vmPool = misc.NewVMPool()
-	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
 	o.hostIface = hostIface
@@ -135,6 +137,13 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		log.Fatal("Failed to start firecracker client", err)
 	}
 	log.Info("Created firecracker client")
+
+	o.devMapper = devmapper.NewDeviceMapper(o.client, poolName, metadataDev)
+
+	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
+
+	o.vmPool = misc.NewVMPool(hostIface, netPoolSize, o.isFullLocal)
+
 	return o
 }
 
@@ -153,7 +162,7 @@ func (o *Orchestrator) setupCloseHandler() {
 // Cleanup Removes the bridges created by the VM pool's tap manager
 // Cleans up snapshots directory
 func (o *Orchestrator) Cleanup() {
-	o.vmPool.RemoveBridges()
+	o.vmPool.CleanupNetwork()
 	if err := os.RemoveAll(o.snapshotsDir); err != nil {
 		log.Panic("failed to delete snapshots dir", err)
 	}
@@ -207,7 +216,7 @@ func (o *Orchestrator) getWorkingSetFile(vmID string) string {
 }
 
 func (o *Orchestrator) getVMBaseDir(vmID string) string {
-	return filepath.Join(o.snapshotsDir, vmID)
+	return filepath.Join(o.snapshotsDir,  vmID)
 }
 
 func (o *Orchestrator) setupHeartbeat() {

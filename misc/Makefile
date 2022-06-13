@@ -21,12 +21,13 @@
 # SOFTWARE.
 
 EXTRAGOARGS:=-v -race -cover
+WITHFULLLOCAL:=-fulllocal
 
 test:
 	# Need to pass GOROOT because GitHub-hosted runners may have several
 	# go versions installed so that calling go from root may fail
 	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS)
-
+	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS) -args $(WITHFULLLOCAL)
 test-man:
 	echo "Nothing to test manually"
 

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add support for [fullLocal snapshots](docs/fulllocal_snapshots.md) mode
 
 ### Changed
 

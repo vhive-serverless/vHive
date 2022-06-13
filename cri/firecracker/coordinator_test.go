@@ -24,6 +24,8 @@ package firecracker
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -32,20 +34,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
+)
+
+var (
+	isFullLocal = flag.Bool("fulllocal", false, "Set full local snapshots")
+	isSparseSnaps = flag.Bool("sparsesnaps", false, "Use sparse snapshots")
+)
+
 var (
 	coord *coordinator
 )
 
 func TestMain(m *testing.M) {
-	coord = newFirecrackerCoordinator(nil, withoutOrchestrator())
-
+	coord = newFirecrackerCoordinator(nil, 10240, *isSparseSnaps, *isFullLocal, withoutOrchestrator())
+	flag.Parse()
 	ret := m.Run()
 	os.Exit(ret)
 }
 
 func TestStartStop(t *testing.T) {
 	containerID := "1"
-	fi, err := coord.startVM(context.Background(), containerID)
+	revisionID := "myrev-1"
+	fi, err := coord.startVM(context.Background(), testImageName, revisionID,0, 0)
 	require.NoError(t, err, "could not start VM")
 
 	err = coord.insertActive(containerID, fi)
@@ -72,7 +84,8 @@ func TestParallelStartStop(t *testing.T) {
 			defer wg.Done()
 
 			containerID := strconv.Itoa(i)
-			fi, err := coord.startVM(context.Background(), containerID)
+			revisionID := fmt.Sprintf("myrev-%d", i)
+			fi, err := coord.startVM(context.Background(), testImageName, revisionID, 0, 0)
 			require.NoError(t, err, "could not start VM")
 
 			err = coord.insertActive(containerID, fi)

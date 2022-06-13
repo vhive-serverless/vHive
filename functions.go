@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/ease-lab/vhive/snapshotting"
 	"math/rand"
 	"net"
 	"os"
@@ -356,7 +357,7 @@ func (f *Function) AddInstance() *metrics.Metric {
 	if f.isSnapshotReady {
 		metr = f.LoadInstance()
 	} else {
-		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
+		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName, 256, 1, false)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -450,7 +451,8 @@ func (f *Function) CreateInstanceSnapshot() {
 		log.Panic(err)
 	}
 
-	err = orch.CreateSnapshot(ctx, f.vmID)
+	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName, 256, 1, false)
+	err = orch.CreateSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -470,7 +472,7 @@ func (f *Function) OffloadInstance() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
-	err := orch.Offload(ctx, f.vmID)
+	err := orch.OffloadVM(ctx, f.vmID)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -487,7 +489,8 @@ func (f *Function) LoadInstance() *metrics.Metric {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
-	loadMetr, err := orch.LoadSnapshot(ctx, f.vmID)
+	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName, 256, 1, false)
+	_, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}

@@ -53,10 +53,20 @@ func TestBenchmarkStart(t *testing.T) {
 	log.SetLevel(log.InfoLevel)
 
 	testTimeout := 2000 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", "", WithTestModeOn(true), WithUPF(*isUPFEnabled))
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		"",
+		"",
+		10,
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithFullLocal(*isFullLocal),
+	)
+	defer orch.Cleanup()
 
 	images := getAllImages()
 	benchCount := 10
@@ -69,13 +79,13 @@ func TestBenchmarkStart(t *testing.T) {
 		startMetrics := make([]*metrics.Metric, benchCount)
 
 		// Pull image
-		_, err := orch.getImage(ctx, imageName)
+		_, err := orch.GetImage(ctx, imageName)
 		require.NoError(t, err, "Failed to pull image "+imageName)
 
 		for i := 0; i < benchCount; i++ {
 			dropPageCache()
 
-			_, metric, err := orch.StartVM(ctx, vmIDString, imageName)
+			_, metric, err := orch.StartVM(ctx, vmIDString, imageName, 256, 1, false)
 			require.NoError(t, err, "Failed to start VM")
 			startMetrics[i] = metric
 
@@ -91,7 +101,6 @@ func TestBenchmarkStart(t *testing.T) {
 
 	}
 
-	orch.Cleanup()
 }
 
 func dropPageCache() {

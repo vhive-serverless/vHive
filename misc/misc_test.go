@@ -23,6 +23,7 @@
 package misc
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"sync"
@@ -32,6 +33,10 @@ import (
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	isFullLocal = flag.Bool("fulllocal", false, "Set full local snapshots")
 )
 
 func TestMain(m *testing.M) {
@@ -44,16 +49,18 @@ func TestMain(m *testing.M) {
 
 	log.SetLevel(log.InfoLevel)
 
+	flag.Parse()
+
 	os.Exit(m.Run())
 }
 
 func TestAllocateFreeVMs(t *testing.T) {
-	vmPool := NewVMPool()
+	vmPool := NewVMPool("", 10, *isFullLocal)
 
 	vmIDs := [2]string{"test1", "test2"}
 
 	for _, vmID := range vmIDs {
-		_, err := vmPool.Allocate(vmID, "")
+		_, err := vmPool.Allocate(vmID)
 		require.NoError(t, err, "Failed to allocate VM")
 	}
 
@@ -62,13 +69,13 @@ func TestAllocateFreeVMs(t *testing.T) {
 		require.NoError(t, err, "Failed to free a VM")
 	}
 
-	vmPool.RemoveBridges()
+	vmPool.CleanupNetwork()
 }
 
 func TestAllocateFreeVMsParallel(t *testing.T) {
 	vmNum := 100
 
-	vmPool := NewVMPool()
+	vmPool := NewVMPool("", 10, *isFullLocal)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -76,7 +83,7 @@ func TestAllocateFreeVMsParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			_, err := vmPool.Allocate(vmID, "")
+			_, err := vmPool.Allocate(vmID)
 			require.NoError(t, err, "Failed to allocate VM")
 		}(i)
 	}
@@ -94,13 +101,17 @@ func TestAllocateFreeVMsParallel(t *testing.T) {
 	}
 	vmGroupFree.Wait()
 
-	vmPool.RemoveBridges()
+	vmPool.CleanupNetwork()
 }
 
-func TestRecreateParallel(t *testing.T) {
+func TestReuseTaps(t *testing.T) {
+	if *isFullLocal {
+		return
+	}
+
 	vmNum := 100
 
-	vmPool := NewVMPool()
+	vmPool := NewVMPool("", 10, false)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -108,7 +119,7 @@ func TestRecreateParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			_, err := vmPool.Allocate(vmID, "")
+			_, err := vmPool.Allocate(vmID)
 			require.NoError(t, err, "Failed to allocate VM")
 		}(i)
 	}
@@ -123,7 +134,7 @@ func TestRecreateParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroupRecreate.Done()
 			vmID := fmt.Sprintf("test_%d", i)
-			err := vmPool.RecreateTap(vmID, "")
+			err := vmPool.RecreateTap(vmID)
 			require.NoError(t, err, "Failed to recreate tap")
 		}(i)
 	}
@@ -144,5 +155,5 @@ func TestRecreateParallel(t *testing.T) {
 	}
 	vmGroupFree.Wait()
 
-	vmPool.RemoveBridges()
+	vmPool.CleanupNetwork()
 }

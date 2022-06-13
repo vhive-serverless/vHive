@@ -31,6 +31,11 @@ jobs:
         sudo apt update
         sudo apt install git -y
 
+    - name: Add rsync # TODO: add dependencies to vHive
+      run: |
+        sudo apt update
+        sudo apt install rsync -y
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
       with:
@@ -55,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vhive_args: ["-dbg", "-dbg -snapshots", "-dbg -snapshots -upf"]
+        vhive_args: ["-dbg", "-dbg -snapshots", "-dbg -snapshots -upf", "-dbg -snapshots -fulllocal"]
     env:
         GITHUB_RUN_ID: ${{ github.run_id }}
         GITHUB_JOB: ${{ github.job }}
@@ -82,6 +87,11 @@ jobs:
 
     - name: Setup firecracker-containerd
       run: ./scripts/setup_firecracker_containerd.sh
+
+    - name: Add rsync # TODO: add dependencies to vHive
+      run: |
+        sudo apt update
+        sudo apt install rsync -y
 
     - name: Build
       run: go build

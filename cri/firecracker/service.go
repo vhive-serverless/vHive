@@ -25,20 +25,26 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/ease-lab/vhive/ctriface"
+	"strconv"
 	"sync"
 
 	"github.com/ease-lab/vhive/cri"
-	"github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 const (
-	userContainerName = "user-container"
-	queueProxyName    = "queue-proxy"
-	guestIPEnv        = "GUEST_ADDR"
-	guestPortEnv      = "GUEST_PORT"
-	guestImageEnv     = "GUEST_IMAGE"
+	userContainerName       = "user-container"
+	queueProxyName          = "queue-proxy"
+	revisionEnv             = "K_REVISION"
+	guestIPEnv              = "GUEST_ADDR"
+	guestPortEnv            = "GUEST_PORT"
+	guestImageEnv           = "GUEST_IMAGE"
+	guestMemorySizeMibEnv   = "MEM_SIZE_MB"
+	guestvCPUCountEnv       = "VCPU_COUNT"
+	defaultMemSize uint32   = 256
+	defaultvCPUCount uint32 = 1
 )
 
 type FirecrackerService struct {
@@ -57,7 +63,7 @@ type VMConfig struct {
 	guestPort string
 }
 
-func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, error) {
+func NewFirecrackerService(orch *ctriface.Orchestrator, snapsCapacityMiB int64, isSparseSnaps, isFullLocal bool) (*FirecrackerService, error) {
 	fs := new(FirecrackerService)
 	stockRuntimeClient, err := cri.NewStockRuntimeServiceClient()
 	if err != nil {
@@ -65,7 +71,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 		return nil, err
 	}
 	fs.stockRuntimeClient = stockRuntimeClient
-	fs.coordinator = newFirecrackerCoordinator(orch)
+	fs.coordinator = newFirecrackerCoordinator(orch, snapsCapacityMiB, isSparseSnaps, isFullLocal)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
 }
@@ -110,7 +116,25 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
+	revision, err := getEnvVal(revisionEnv, config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	memSizeMib, err := getMemorySize(config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	vCPUCount, err := getvCPUCount(config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
+	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage, revision, memSizeMib, vCPUCount)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
@@ -122,6 +146,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
+	// Temporarily store vm config so we can access this info when creating the queue-proxy container
 	vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPort}
 	fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
 
@@ -133,6 +158,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
  		log.WithError(stockErr).Error("failed to create container")
  		return nil, stockErr
  	}
+
+	// Check for error from container creation
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)
@@ -215,6 +246,37 @@ func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 
 	}
 
-	return "", errors.New("failed to provide non empty guest image in user container config")
+	return "", errors.New("failed to retrieve environment variable from user container config")
+}
 
+func getMemorySize(config *criapi.ContainerConfig) (uint32, error) {
+	envs := config.GetEnvs()
+	for _, kv := range envs {
+		if kv.GetKey() == guestMemorySizeMibEnv {
+			memSize, err := strconv.ParseUint(kv.GetValue(), 10, 32)
+			if err == nil {
+				return uint32(memSize), nil
+			} else {
+				return 0, err
+			}
+		}
+	}
+
+	return defaultMemSize, nil
+}
+
+func getvCPUCount(config *criapi.ContainerConfig) (uint32, error) {
+	envs := config.GetEnvs()
+	for _, kv := range envs {
+		if kv.GetKey() == guestvCPUCountEnv {
+			vCPUCount, err := strconv.ParseUint(kv.GetValue(), 10, 32)
+			if err == nil {
+				return uint32(vCPUCount), nil
+			} else {
+				return 0, err
+			}
+		}
+	}
+
+	return defaultvCPUCount, nil
 }

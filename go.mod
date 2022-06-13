@@ -41,33 +41,40 @@ replace (
 )
 
 replace (
+	// github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20210618165033-6af02db30bc4
+	github.com/containerd/containerd => github.com/ease-lab/containerd v1.5.5-ids // TODO: change to vhive
 	github.com/ease-lab/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
-	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20210618165033-6af02db30bc4
+	github.com/firecracker-microvm/firecracker-containerd => github.com/amohoste/firecracker-containerd v1.0.0-enhanced-snap // TODO: change to vhive
 )
 
 require (
+	github.com/antchfx/xpath v1.2.0 // indirect
 	github.com/blend/go-sdk v1.20211025.3 // indirect
-	github.com/containerd/containerd v1.5.2
-	github.com/containerd/go-cni v1.1.4
+	github.com/containerd/containerd v1.5.8
+	github.com/containerd/go-cni v1.0.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
-	github.com/golang/protobuf v1.4.3
+	github.com/golang/protobuf v1.5.2
 	github.com/google/nftables v0.0.0-20210916140115-16a134723a96
 	github.com/montanaflynn/stats v0.6.5
+	github.com/opencontainers/image-spec v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.8.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
+	github.com/tamerh/xml-stream-parser v1.4.0
+	github.com/tamerh/xpath v1.0.0 // indirect
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
+	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210324051608-47abb6519492
+	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
-	google.golang.org/grpc v1.34.0
+	google.golang.org/grpc v1.41.0
 	k8s.io/cri-api v0.20.6
 )

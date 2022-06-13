@@ -99,6 +99,9 @@ if [ "$SANDBOX" == "gvisor" ]; then
 fi
 
 if [ "$SANDBOX" == "firecracker" ]; then
+  echo Cleaning snapshots
+  sudo rm -rf /fccd/snapshots/*
+
     echo Creating a fresh devmapper
     $PWD/../create_devmapper.sh
 fi

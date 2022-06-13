@@ -29,9 +29,9 @@ sudo pkill -9 firec
 sudo pkill -9 containerd
 
 echo Resetting nftables
-nft flush table ip filter
-nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }"
-nft "add rule ip filter FORWARD ct state related,established counter accept"
+sudo nft flush table ip filter
+sudo nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }"
+sudo nft "add rule ip filter FORWARD ct state related,established counter accept"
 
 echo Deleting veth* devices created by CNI
 cat /proc/net/dev | grep veth | cut -d" " -f1| cut -d":" -f1 | while read in; do sudo ip link delete "$in"; done
@@ -47,6 +47,7 @@ echo Cleaning in /var/lib/cni/ non-network
 for d in `find /var/lib/cni/ -mindepth 1 -maxdepth 1  -type d | grep -v networks`; do
     sudo rm -rf $d
 done
+
 
 # When executed inside a docker container, this command returns the container ID of the container.
 # on a non container environment, this returns "/".
@@ -71,11 +72,14 @@ echo Cleaning /run/firecracker-containerd/*
 sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
     /run/firecracker-containerd/io.containerd.runtime.v1.linux \
     /run/firecracker-containerd/io.containerd.runtime.v2.task \
-    /run/containerd/s
+    /run/containerd/*
 
 echo Cleaning CNI state, e.g., allocated addresses
 sudo rm /var/lib/cni/networks/fcnet*/last_reserved_ip.0 || echo clean already
 sudo rm /var/lib/cni/networks/fcnet*/19* || echo clean already
+
+echo Cleaning snapshots
+sudo rm -rf /fccd/snapshots/*
 
 echo Creating a fresh devmapper
 source $DIR/create_devmapper.sh

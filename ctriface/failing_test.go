@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"github.com/ease-lab/vhive/snapshotting"
 	"os"
 	"testing"
 	"time"
@@ -48,26 +49,36 @@ func TestStartSnapStop(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
 	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", "", WithTestModeOn(true))
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		"",
+		"",
+		10,
+		WithTestModeOn(true),
+		WithFullLocal(*isFullLocal),
+	)
+	defer orch.Cleanup()
 
 	vmID := "2"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, TestImageName, 256, 1, false)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	err = orch.CreateSnapshot(ctx, vmID)
+	snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", TestImageName, 256, 1,  false)
+	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	err = orch.Offload(ctx, vmID)
+	err = orch.OffloadVM(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM")
 
-	_, err = orch.LoadSnapshot(ctx, vmID)
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -75,6 +86,4 @@ func TestStartSnapStop(t *testing.T) {
 
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
-
-	orch.Cleanup()
 }

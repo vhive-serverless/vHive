@@ -25,13 +25,13 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/ease-lab/vhive/ctriface"
 	"os"
 	"strconv"
 	"sync"
 	"testing"
 
 	ctrdlog "github.com/containerd/containerd/log"
-	ctriface "github.com/ease-lab/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -72,9 +72,13 @@ func TestMain(m *testing.M) {
 	log.Infof("Drop cache: %t", !*isWithCache)
 	log.Infof("Bench dir: %s", *benchDir)
 
+	// TODO: set correct params if full local test
 	orch = ctriface.NewOrchestrator(
 		"devmapper",
 		"",
+		"",
+		"",
+		10,
 		ctriface.WithTestModeOn(true),
 		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
 		ctriface.WithUPF(*isUPFEnabledTest),
