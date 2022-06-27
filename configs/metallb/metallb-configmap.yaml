@@ -9,4 +9,4 @@ data:
     - name: default
       protocol: layer2
       addresses:
-      - 10.168.1.240-10.168.1.250
+      - 10.200.3.4-10.200.3.24  # Bare-metal LB can't overlap with the pod cidr (10.168.0.0/16).
