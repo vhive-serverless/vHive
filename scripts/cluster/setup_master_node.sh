@@ -28,8 +28,10 @@ ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 STOCK_CONTAINERD=$1
 REPO_VOL_SIZE=5Gi
 
-# Install Calico network add-on
-kubectl apply -f $ROOT/configs/calico/canal.yaml
+# Install Flannel-Calico network add-on with permitted IP range on cloudlab.
+export IFACE=$(netstat -ie | grep -B1 '10.0.1.1' | head -n1 | awk '{print $1}' | cut -d ':' -f 1)
+echo $IFACE
+cat $ROOT/configs/calico/canal.yaml | envsubst | kubectl apply -f -
 
 # Install and configure MetalLB
 kubectl get configmap kube-proxy -n kube-system -o yaml | \
