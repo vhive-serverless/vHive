@@ -3683,7 +3683,12 @@ spec:
         # for allocating subnets.
         - name: kube-flannel
           image: quay.io/coreos/flannel:v0.12.0
-          command: [ "/opt/bin/flanneld", "--ip-masq", "--kube-subnet-mgr" ]
+          command:
+            - /opt/bin/flanneld
+          args:
+            - --ip-masq
+            - --kube-subnet-mgr
+            - --iface=enp4s0f0
           securityContext:
             privileged: true
           env:
