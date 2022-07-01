@@ -34,7 +34,7 @@ Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-tim
 EOF'
 sudo systemctl daemon-reload
 
-sudo kubeadm init --v=7 --apiserver-advertise-address=10.200.5.5 --cri-socket /run/containerd/containerd.sock --pod-network-cidr=10.168.0.0/16
+sudo kubeadm init --v=7 --apiserver-advertise-address=10.0.1.1 --cri-socket /run/containerd/containerd.sock --pod-network-cidr=10.168.0.0/16
 # sudo kubeadm init --control-plane-endpoint=10.1.1.1 --cri-socket /run/containerd/containerd.sock --pod-network-cidr=10.168.0.0/16
 # sudo kubeadm init --ignore-preflight-errors=all --cri-socket /run/containerd/containerd.sock --config $DIR/kubeadm.yaml # --pod-network-cidr=10.168.0.0/16
 
