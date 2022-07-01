@@ -1,0 +1,55 @@
+apiVersion: kubeadm.k8s.io/v1beta2
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  token: abcdef.0123456789abcdef
+  ttl: 24h0m0s
+  usages:
+  - signing
+  - authentication
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 10.500.6.7
+  bindPort: 6443
+nodeRegistration:
+  criSocket: /var/run/dockershim.sock
+  name: hostname1
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+---
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+apiServer:
+  extraArgs:
+    authorization-mode: Node,RBAC
+  timeoutForControlPlane: 4m0s  # The timeout that we wait for the API server to appear
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+dns:
+  type: CoreDNS
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+imageRepository: k8s.gcr.io
+# kubernetesVersion: v1.20.6
+# kubernetesVersion: v1.20.15
+kubernetesVersion: v1.23.0
+networking:
+  dnsDomain: cluster.local
+  podSubnet: 10.168.0.0/16
+  serviceSubnet: 10.96.0.0/12
+controllerManager:
+  extraArgs:
+    bind-address: "0.0.0.0"  # This allows scheduler and controllers to be scraped on other ports and nodes.
+scheduler:
+  extraArgs:
+    bind-address: "0.0.0.0"
+
+---
+# Configure kubelet for large pod limits.
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+kubeAPIQPS: 50  # Default: 5
+kubeAPIBurst: 100  # Default: 10
+configMapAndSecretChangeDetectionStrategy: "Watch"
