@@ -37,3 +37,14 @@ spec:
             - port: 443
               targetPort: 8443
               name: https
+
+  meshConfig:
+    enableTracing: true
+    defaultConfig:
+      tracing:
+        sampling: 100.0
+        max_path_tag_length: 256
+        custom_tags:
+          clusterID:
+            environment:
+              name: ISTIO_META_CLUSTER_ID
