@@ -58,14 +58,14 @@ require (
 	github.com/google/nftables v0.0.0-20210916140115-16a134723a96
 	github.com/montanaflynn/stats v0.6.5
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.8.0
+	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210324051608-47abb6519492
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
 	google.golang.org/grpc v1.34.0
