@@ -43,6 +43,12 @@ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.9.4/manife
 kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
 kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
+# export needed for envsubst
+export MASTER_NODE_NAME=$(kubectl get nodes -l node-role.kubernetes.io/master | tail -n 1 | cut -d ' ' -f 1)
+echo "Master node identified: ${MASTER_NODE_NAME}"
+# removing taint from master node to allow control plane scheduling on it
+kubectl taint nodes $MASTER_NODE_NAME node-role.kubernetes.io/master-
+
 # istio
 cd $ROOT
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.12.5 TARGET_ARCH=x86_64 sh -
@@ -55,10 +61,10 @@ KNATIVE_VERSION="knative-v1.3.0"
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-crds.yaml
     #* Knative components for loader.
-    kubectl apply --filename $ROOT/configs/knative_yamls/loader_serving_core.yaml
+    cat $ROOT/configs/knative_yamls/loader_serving_core.yaml | envsubst | kubectl apply -f -
 else
     kubectl apply --filename $ROOT/configs/knative_yamls/serving-crds.yaml
-    kubectl apply --filename $ROOT/configs/knative_yamls/serving-core.yaml
+    cat $ROOT/configs/knative_yamls/serving-core.yaml | envsubst | kubectl apply -f -
 fi
 
 # Install local cluster registry

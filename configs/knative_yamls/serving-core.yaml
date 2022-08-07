@@ -4949,6 +4949,8 @@ spec:
         app.kubernetes.io/version: devel
         serving.knative.dev/release: devel
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: $MASTER_NODE_NAME
       serviceAccountName: controller
       containers:
         - name: activator
@@ -5104,16 +5106,8 @@ spec:
         app.kubernetes.io/version: devel
         serving.knative.dev/release: devel
     spec:
-      # To avoid node becoming SPOF, spread our replicas to different nodes.
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app: autoscaler
-                topologyKey: kubernetes.io/hostname
-              weight: 100
+      nodeSelector:
+        kubernetes.io/hostname: $MASTER_NODE_NAME
       serviceAccountName: controller
       containers:
         - name: autoscaler
@@ -5241,16 +5235,8 @@ spec:
         app.kubernetes.io/version: devel
         serving.knative.dev/release: devel
     spec:
-      # To avoid node becoming SPOF, spread our replicas to different nodes.
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app: controller
-                topologyKey: kubernetes.io/hostname
-              weight: 100
+      nodeSelector:
+        kubernetes.io/hostname: $MASTER_NODE_NAME
       serviceAccountName: controller
       containers:
         - name: controller
@@ -5356,16 +5342,8 @@ spec:
         app.kubernetes.io/version: devel
         serving.knative.dev/release: devel
     spec:
-      # To avoid node becoming SPOF, spread our replicas to different nodes.
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app: domain-mapping
-                topologyKey: kubernetes.io/hostname
-              weight: 100
+      nodeSelector:
+        kubernetes.io/hostname: $MASTER_NODE_NAME
       serviceAccountName: controller
       containers:
         - name: domain-mapping
@@ -5446,16 +5424,8 @@ spec:
         app.kubernetes.io/version: devel
         serving.knative.dev/release: devel
     spec:
-      # To avoid node becoming SPOF, spread our replicas to different nodes.
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app: domainmapping-webhook
-                topologyKey: kubernetes.io/hostname
-              weight: 100
+      nodeSelector:
+        kubernetes.io/hostname: $MASTER_NODE_NAME
       serviceAccountName: controller
       containers:
         - name: domainmapping-webhook
@@ -5649,16 +5619,8 @@ spec:
         app.kubernetes.io/version: devel
         app.kubernetes.io/name: knative-serving
     spec:
-      # To avoid node becoming SPOF, spread our replicas to different nodes.
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app: webhook
-                topologyKey: kubernetes.io/hostname
-              weight: 100
+      nodeSelector:
+        kubernetes.io/hostname: $MASTER_NODE_NAME
       serviceAccountName: controller
       containers:
         - name: webhook
