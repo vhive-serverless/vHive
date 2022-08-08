@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v3
-    - uses: rojopolis/spellcheck-github-actions@0.25.0
+    - uses: rojopolis/spellcheck-github-actions@0.26.0
       name: Spellcheck
       with:
         config_path: configs/.spellcheck.yml
