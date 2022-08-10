@@ -42,11 +42,6 @@ mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-# enabling PodNodeSelector for control plane node affinity
-#sudo sed -i "s/NodeRestriction/NodeRestriction,PodNodeSelector/" /etc/kubernetes/manifests/kube-apiserver.yaml
-#sleep 60
-#echo "Enabled PodNodeSelector plugin on API server"
-
 # Wait until all workers are connected
 while true; do
     read -p "All nodes need to be joined in the cluster. Have you joined all nodes? (y/n): " yn
