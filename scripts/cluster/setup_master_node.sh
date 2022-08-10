@@ -45,7 +45,7 @@ kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
 # export needed for envsubst
 export MASTER_NODE_NAME=$(kubectl get nodes -l node-role.kubernetes.io/master | tail -n 1 | cut -d ' ' -f 1)
-echo "Master node identified: ${MASTER_NODE_NAME}"
+echo "Master node: ${MASTER_NODE_NAME}"
 # removing taint from master node to allow control plane scheduling on it
 kubectl taint nodes $MASTER_NODE_NAME node-role.kubernetes.io/master-
 
