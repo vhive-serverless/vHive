@@ -48,8 +48,8 @@ export PATH=$PATH:$ROOT/istio-1.12.5/bin
 sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-1.12.5/bin' >> /etc/profile"
 istioctl install -y -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
-KNATIVE_VERSION="knative-v1.3.0"
-# Install KNative in the cluster
+KNATIVE_VERSION="knative-v1.4.0"
+# Install Knative in the cluster
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-crds.yaml
     kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-core.yaml
