@@ -41,6 +41,10 @@ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.9.4/manife
 kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
 kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
+# Untaint the master node to allow placing services on it
+export MASTER_NODE_NAME=$(kubectl get nodes -l node-role.kubernetes.io/master | tail -n 1 | cut -d ' ' -f 1)
+kubectl taint nodes $MASTER_NODE_NAME node-role.kubernetes.io/master-
+
 # istio
 cd $ROOT
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.12.5 TARGET_ARCH=x86_64 sh -
@@ -51,11 +55,11 @@ istioctl install -y -f $ROOT/configs/istio/istio-minimal-operator.yaml
 KNATIVE_VERSION="knative-v1.4.0"
 # Install Knative in the cluster
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
-    kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-crds.yaml
-    kubectl apply --filename https://github.com/knative/serving/releases/download/$KNATIVE_VERSION/serving-core.yaml
+    kubectl apply --filename $ROOT/configs/knative_yamls/stock/serving-crds.yaml
+    kubectl apply --filename $ROOT/configs/knative_yamls/stock/serving-core.yaml
 else
-    kubectl apply --filename $ROOT/configs/knative_yamls/serving-crds.yaml
-    kubectl apply --filename $ROOT/configs/knative_yamls/serving-core.yaml
+    kubectl apply --filename $ROOT/configs/knative_yamls/vhive/serving-crds.yaml
+    kubectl apply --filename $ROOT/configs/knative_yamls/vhive/serving-core.yaml
 fi
 
 # Install local cluster registry
@@ -67,7 +71,7 @@ kubectl apply --filename $ROOT/configs/registry/repository-update-hosts.yaml
 # magic DNS
 kubectl apply --filename $ROOT/configs/knative_yamls/serving-default-domain.yaml
 
-kubectl apply --filename https://github.com/knative/net-istio/releases/download/$KNATIVE_VERSION/release.yaml
+kubectl apply --filename $ROOT/configs/istio/net-istio.yaml
 
 # install knative eventing
 kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/eventing-crds.yaml
