@@ -29,7 +29,7 @@ STOCK_CONTAINERD=$1
 REPO_VOL_SIZE=5Gi
 
 # Install Calico network add-on
-kubectl apply -f $ROOT/configs/calico/canal.yaml
+cat $ROOT/configs/calico/canal.yaml | envsubst | kubectl apply -f -
 
 # Install and configure MetalLB
 kubectl get configmap kube-proxy -n kube-system -o yaml | \
@@ -56,10 +56,10 @@ KNATIVE_VERSION="knative-v1.4.0"
 # Install Knative in the cluster
 if [ "$STOCK_CONTAINERD" == "stock-only" ]; then
     kubectl apply --filename $ROOT/configs/knative_yamls/stock/serving-crds.yaml
-    kubectl apply --filename $ROOT/configs/knative_yamls/stock/serving-core.yaml
+    cat $ROOT/configs/knative_yamls/stock/serving-core.yaml | envsubst | kubectl apply -f -
 else
     kubectl apply --filename $ROOT/configs/knative_yamls/vhive/serving-crds.yaml
-    kubectl apply --filename $ROOT/configs/knative_yamls/vhive/serving-core.yaml
+    cat $ROOT/configs/knative_yamls/vhive/serving-core.yaml | envsubst | kubectl apply -f -
 fi
 
 # Install local cluster registry
