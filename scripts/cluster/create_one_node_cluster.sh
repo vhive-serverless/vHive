@@ -61,5 +61,6 @@ fi
 
 # Untaint master (allow pods to be scheduled on master) 
 kubectl taint nodes --all node-role.kubernetes.io/master-
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
 $DIR/setup_master_node.sh $STOCK_CONTAINERD
