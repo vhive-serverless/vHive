@@ -42,6 +42,16 @@ type `eval "$(ssh-agent -s)" && ssh-add` to allow ssh authentication in the back
 ### 3. CloudLab Deployment Notes
 We suggest renting nodes on [CloudLab][cloudlab] as their service is available to researchers world-wide.
 
+Please make sure that you are using a "bash" shell whenever you connect via ssh to your cluster nodes, otherwise running some of the following commands will prompt a **"Missing name for redirect"** error. If you chose to use CloudLab, this can be done by selecting the current user's profile (upper left corner on any CloudLab page once logged in) --> **Manage account** --> **Default Shell** --> select **"bash"** from the drop down menu --> **Save**. Sometimes the default shell preference gets overwritten therefore, once you connect to a cluster node, check what type of shell you have opened by running the following command:
+```
+echo $SHELL
+```
+The expected output should be:
+```
+/bin/bash
+```
+If the opened shell is not a "bash" one, you can just type "bash" in the terminal and it will change the current shell to "bash".
+
 #### A. CloudLab Profile
 You can use our CloudLab profile [faas-sched/vhive-ubuntu20][cloudlab-pf].
 
