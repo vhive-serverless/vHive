@@ -33,7 +33,7 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/ease-lab/vhive/metrics"
+	"github.com/vhive-serverless/vhive/metrics"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )

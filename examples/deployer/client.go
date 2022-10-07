@@ -32,7 +32,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	. "github.com/ease-lab/vhive/examples/endpoint"
+	. "github.com/vhive-serverless/vhive/examples/endpoint"
 )
 
 // Functions is an object for unmarshalled JSON with functions to deploy.

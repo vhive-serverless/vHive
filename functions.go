@@ -40,8 +40,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
-	"github.com/ease-lab/vhive/metrics"
+	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
+	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

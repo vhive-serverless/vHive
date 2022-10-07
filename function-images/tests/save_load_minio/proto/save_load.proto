@@ -22,7 +22,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/ease-lab/vhive/function-images/tests/save_load_minio/proto";
+option go_package = "github.com/vhive-serverless/vhive/function-images/tests/save_load_minio/proto";
 
 package proto_gen;
 

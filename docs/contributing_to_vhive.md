@@ -3,7 +3,7 @@ This document gives a brief overview of how you can contribute to the vHive repo
 
 ## Code Style
 ### Comments and Documentation
-All vHive documentation can be found [here](https://pkg.go.dev/github.com/ease-lab/vhive). When contributing code please make sure do document it appropriately, as described in [this guide](https://blog.golang.org/godoc).
+All vHive documentation can be found [here](https://pkg.go.dev/github.com/vhive-serverless/vhive). When contributing code please make sure do document it appropriately, as described in [this guide](https://blog.golang.org/godoc).
 
 There is no need for excessive comments within the code itself and we prefer brevity where possible.
 
@@ -20,7 +20,7 @@ When you are working on a fork of the vHive repository, keeping your fork in syn
 The most common way of syncing up your fork is with a remote that points to the upstream repository:
 1. If you have not done so already, create a new remote for the upstream vHive repo:
 	```bash
-	git remote add upstream https://github.com/ease-lab/vhive.git
+	git remote add upstream https://github.com/vhive-serverless/vhive.git
 	```
 	You can always check your existing remotes with `git remote -v`.
 2. Fetch branches and commits from the upstream (vHive) repo:

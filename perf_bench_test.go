@@ -37,8 +37,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ease-lab/vhive/metrics"
-	"github.com/ease-lab/vhive/profile"
+	"github.com/vhive-serverless/vhive/metrics"
+	"github.com/vhive-serverless/vhive/profile"
 	"github.com/montanaflynn/stats"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"

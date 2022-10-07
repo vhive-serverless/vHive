@@ -45,7 +45,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
-	"github.com/ease-lab/vhive/metrics"
+	"github.com/vhive-serverless/vhive/metrics"
 
 	"unsafe"
 )

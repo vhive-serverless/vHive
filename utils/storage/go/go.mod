@@ -1,4 +1,4 @@
-module github.com/ease-lab/vhive/utils/storage/go
+module github.com/vhive-serverless/vhive/utils/storage/go
 
 go 1.16
 

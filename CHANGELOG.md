@@ -34,12 +34,12 @@
 ### Added
 
 - Added support for [gVisor](https://gvisor.dev) MicroVMs, as an alternative to Firecracker.
-- Added [vSwarm](https://github.com/ease-lab/vSwarm), a suite of representative serverless workloads.
+- Added [vSwarm](https://github.com/vhive-serverless/vSwarm), a suite of representative serverless workloads.
 Currently, in a beta testing mode.
 - Added Python and Go tracing modules and an example showing its usage.
-Moved to [vSwarm](https://github.com/ease-lab/vSwarm/tree/main/utils/tracing).
+Moved to [vSwarm](https://github.com/vhive-serverless/vSwarm/tree/main/utils/tracing).
 - Added Golang and Python storage modules, supporting AWS S3 and AWS ElastiCache.
-Moved to [vSwarm](https://github.com/ease-lab/vSwarm/tree/main/utils/storage).
+Moved to [vSwarm](https://github.com/vhive-serverless/vSwarm/tree/main/utils/storage).
 - Added self-hosted stock-Knative runners on KinD,
 see [`scripts/self-hosted-kind`](./scripts/self-hosted-kind/).
 
@@ -127,4 +127,4 @@ using an automatically detected, or a user-specified, host interface.
 
 ### Fixed
 
-- Fixed the vHive cluster setup issue for clusters with >2 nodes [issue](https://github.com/ease-lab/vhive/issues/94).
+- Fixed the vHive cluster setup issue for clusters with >2 nodes [issue](https://github.com/vhive-serverless/vhive/issues/94).

@@ -30,7 +30,7 @@
     - name: Get GitHub runner remove token
       uri:
         method: POST
-        url: https://api.github.com/repos/ease-lab/vhive-benchmarking/actions/runners/remove-token
+        url: https://api.github.com/repos/vhive-serverless/vhive-benchmarking/actions/runners/remove-token
         headers:
           Accept: application/vnd.github.v3+json
           Authorization: "token {{ lookup('env', 'GH_ACCESS_TOKEN') }}"

@@ -34,7 +34,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
+	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

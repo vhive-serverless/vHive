@@ -30,7 +30,7 @@ WITHSNAPSHOTS:=-snapshotsTest
 CTRDLOGDIR:=/tmp/ctrd-logs
 
 vhive: proto
-	go install github.com/ease-lab/vhive
+	go install github.com/vhive-serverless/vhive
 
 protobuf:
 	protoc -I proto/ proto/orchestrator.proto --go_out=plugins=grpc:proto
@@ -136,7 +136,7 @@ test-subdirs: $(SUBDIRS)
 test-cri:
 	$(MAKE) -C cri test-cri-firecracker
 
-test-cri-gvisor:	
+test-cri-gvisor:
 	$(MAKE) -C cri test-cri-gvisor
 
 test-cri-travis: # Testing in travis is deprecated

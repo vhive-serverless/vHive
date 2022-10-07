@@ -33,12 +33,12 @@ import (
 	"runtime"
 
 	ctrdlog "github.com/containerd/containerd/log"
-	"github.com/ease-lab/vhive/cri"
-	fccri "github.com/ease-lab/vhive/cri/firecracker"
-	gvcri "github.com/ease-lab/vhive/cri/gvisor"
-	ctriface "github.com/ease-lab/vhive/ctriface"
-	hpb "github.com/ease-lab/vhive/examples/protobuf/helloworld"
-	pb "github.com/ease-lab/vhive/proto"
+	"github.com/vhive-serverless/vhive/cri"
+	fccri "github.com/vhive-serverless/vhive/cri/firecracker"
+	gvcri "github.com/vhive-serverless/vhive/cri/gvisor"
+	ctriface "github.com/vhive-serverless/vhive/ctriface"
+	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
+	pb "github.com/vhive-serverless/vhive/proto"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )

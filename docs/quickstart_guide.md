@@ -57,7 +57,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
 **On each node (both master and workers)**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
 1. Clone the vHive repository
     ```bash
-    git clone --depth=1 https://github.com/ease-lab/vhive.git
+    git clone --depth=1 https://github.com/vhive-serverless/vhive.git
     ```
 2. Change your working directory to the root of the repository:
     ```bash
@@ -285,4 +285,4 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
 [cloudlab-pf]: https://www.cloudlab.us/p/faas-sched/vhive-ubuntu20
 [cloudlab-hw]: https://docs.cloudlab.us/hardware.html
 [ext-abstract]: https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf
-[kn-benchmark]: https://github.com/ease-lab/vSwarm/blob/main/docs/adding_benchmarks.md
+[kn-benchmark]: https://github.com/vhive-serverless/vSwarm/blob/main/docs/adding_benchmarks.md

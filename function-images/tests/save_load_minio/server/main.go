@@ -34,7 +34,7 @@ import (
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 
-	pb "github.com/ease-lab/vhive/function-images/tests/save_load_minio/proto"
+	pb "github.com/vhive-serverless/vhive/function-images/tests/save_load_minio/proto"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"google.golang.org/grpc"

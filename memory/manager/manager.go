@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ease-lab/vhive/metrics"
+	"github.com/vhive-serverless/vhive/metrics"
 	"gonum.org/v1/gonum/stat"
 
 	log "github.com/sirupsen/logrus"
