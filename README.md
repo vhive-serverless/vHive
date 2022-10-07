@@ -1,8 +1,8 @@
-[![build](https://github.com/ease-lab/vhive/workflows/vHive%20build%20tests/badge.svg)](https://github.com/ease-lab/vhive/actions)
-[![Unit Tests](https://github.com/ease-lab/vhive/workflows/vHive%20unit%20tests/badge.svg)](https://github.com/ease-lab/vhive/actions)
-[![Integration Tests](https://github.com/ease-lab/vhive/workflows/vHive%20integration%20tests/badge.svg)](https://github.com/ease-lab/vhive/actions)
-[![vHive CRI tests](https://github.com/ease-lab/vhive/actions/workflows/cri_test.yml/badge.svg)](https://github.com/ease-lab/vhive/actions/workflows/cri_test.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ease-lab/vhive)](https://goreportcard.com/report/github.com/ease-lab/vhive)
+[![build](https://github.com/vhive-serverless/vhive/workflows/vHive%20build%20tests/badge.svg)](https://github.com/vhive-serverless/vhive/actions)
+[![Unit Tests](https://github.com/vhive-serverless/vhive/workflows/vHive%20unit%20tests/badge.svg)](https://github.com/vhive-serverless/vhive/actions)
+[![Integration Tests](https://github.com/vhive-serverless/vhive/workflows/vHive%20integration%20tests/badge.svg)](https://github.com/vhive-serverless/vhive/actions)
+[![vHive CRI tests](https://github.com/vhive-serverless/vhive/actions/workflows/cri_test.yml/badge.svg)](https://github.com/vhive-serverless/vhive/actions/workflows/cri_test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vhive-serverless/vhive)](https://goreportcard.com/report/github.com/vhive-serverless/vhive)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <a href="https://twitter.com/intent/follow?screen_name=ease_lab" target="_blank">
 <img src="https://img.shields.io/twitter/follow/ease_lab?style=social&logo=twitter" alt="follow on Twitter"></a>
@@ -90,24 +90,24 @@ that describes how to set up an experiment with vHive.
 We provide a basic developer's guide that we plan to extend in future.
 We encourage the community to contribute their analysis scenarios and tools.
 
-You can view the vHive documentation [here](https://pkg.go.dev/github.com/ease-lab/vhive).
+You can view the vHive documentation [here](https://pkg.go.dev/github.com/vhive-serverless/vhive).
 
 ### vHive roadmap
 
 vHive is a community-led project, maintained by the EASE lab.
-The current roadmap is [available](https://github.com/ease-lab/vhive/projects/1)
+The current roadmap is [available](https://github.com/vhive-serverless/vhive/projects/1)
 and is going to be updated to accommodate the community's goals and evolution.
 To guarantee high code quality and reliability, we deploy fully automated CI
 on cloud and self-hosted runners with GitHub Actions.
 
 The statistics of this repository's views, clones, forks is available by the following
-[link](https://ease-lab.github.io/vhive.github.io/ease-lab/vhive/latest-report/report.html).
+[link](https://vhive-serverless.github.io/vhive.github.io/vhive-serverless/vhive/latest-report/report.html).
 
 
 ### Getting help and contributing
 
 We would be happy to answer any questions in GitHub Issues and encourage the open-source community
-to submit new Issues, assist in addressing existing issues and limitations, and contribute their code with Pull Requests. 
+to submit new Issues, assist in addressing existing issues and limitations, and contribute their code with Pull Requests.
 Please check our guide on [Contributing to vHive](docs/contributing_to_vhive.md) if you would like contribute.
 You can also talk to us on the official
 [Firecracker Slack](https://join.slack.com/t/firecracker-microvm/shared_invite/zt-oxbm7tqt-GLlze9zZ7sdRSDY6OnXXHg)

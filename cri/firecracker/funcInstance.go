@@ -25,7 +25,7 @@ package firecracker
 import (
 	"sync"
 
-	"github.com/ease-lab/vhive/ctriface"
+	"github.com/vhive-serverless/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 )
 

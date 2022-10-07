@@ -1,4 +1,4 @@
-module github.com/ease-lab/vhive
+module github.com/vhive-serverless/vhive
 
 go 1.16
 
@@ -41,8 +41,8 @@ replace (
 )
 
 replace (
-	github.com/ease-lab/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
 	github.com/firecracker-microvm/firecracker-containerd => github.com/ease-lab/firecracker-containerd v0.0.0-20210618165033-6af02db30bc4
+	github.com/vhive-serverless/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
 )
 
 require (
@@ -50,7 +50,6 @@ require (
 	github.com/containerd/containerd v1.5.2
 	github.com/containerd/go-cni v1.1.4
 	github.com/davecgh/go-spew v1.1.1
-	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
@@ -60,6 +59,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
+	github.com/vhive-serverless/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect

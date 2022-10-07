@@ -4,10 +4,10 @@ package proto
 
 import (
 	context "context"
-	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -21,8 +21,8 @@ const _ = grpc.SupportPackageIsVersion7
 type TimeseriesClient interface {
 	// Invoker methods
 	// ==============
-	StartExperiment(ctx context.Context, in *ExperimentDefinition, opts ...grpc.CallOption) (*empty.Empty, error)
-	EndExperiment(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ExperimentResult, error)
+	StartExperiment(ctx context.Context, in *ExperimentDefinition, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	EndExperiment(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ExperimentResult, error)
 }
 
 type timeseriesClient struct {
@@ -33,8 +33,8 @@ func NewTimeseriesClient(cc grpc.ClientConnInterface) TimeseriesClient {
 	return &timeseriesClient{cc}
 }
 
-func (c *timeseriesClient) StartExperiment(ctx context.Context, in *ExperimentDefinition, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *timeseriesClient) StartExperiment(ctx context.Context, in *ExperimentDefinition, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/Timeseries/StartExperiment", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (c *timeseriesClient) StartExperiment(ctx context.Context, in *ExperimentDe
 	return out, nil
 }
 
-func (c *timeseriesClient) EndExperiment(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ExperimentResult, error) {
+func (c *timeseriesClient) EndExperiment(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ExperimentResult, error) {
 	out := new(ExperimentResult)
 	err := c.cc.Invoke(ctx, "/Timeseries/EndExperiment", in, out, opts...)
 	if err != nil {
@@ -57,8 +57,8 @@ func (c *timeseriesClient) EndExperiment(ctx context.Context, in *empty.Empty, o
 type TimeseriesServer interface {
 	// Invoker methods
 	// ==============
-	StartExperiment(context.Context, *ExperimentDefinition) (*empty.Empty, error)
-	EndExperiment(context.Context, *empty.Empty) (*ExperimentResult, error)
+	StartExperiment(context.Context, *ExperimentDefinition) (*emptypb.Empty, error)
+	EndExperiment(context.Context, *emptypb.Empty) (*ExperimentResult, error)
 	mustEmbedUnimplementedTimeseriesServer()
 }
 
@@ -66,10 +66,10 @@ type TimeseriesServer interface {
 type UnimplementedTimeseriesServer struct {
 }
 
-func (UnimplementedTimeseriesServer) StartExperiment(context.Context, *ExperimentDefinition) (*empty.Empty, error) {
+func (UnimplementedTimeseriesServer) StartExperiment(context.Context, *ExperimentDefinition) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartExperiment not implemented")
 }
-func (UnimplementedTimeseriesServer) EndExperiment(context.Context, *empty.Empty) (*ExperimentResult, error) {
+func (UnimplementedTimeseriesServer) EndExperiment(context.Context, *emptypb.Empty) (*ExperimentResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EndExperiment not implemented")
 }
 func (UnimplementedTimeseriesServer) mustEmbedUnimplementedTimeseriesServer() {}
@@ -104,7 +104,7 @@ func _Timeseries_StartExperiment_Handler(srv interface{}, ctx context.Context, d
 }
 
 func _Timeseries_EndExperiment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func _Timeseries_EndExperiment_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/Timeseries/EndExperiment",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TimeseriesServer).EndExperiment(ctx, req.(*empty.Empty))
+		return srv.(TimeseriesServer).EndExperiment(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

@@ -31,7 +31,7 @@ import (
 	"testing"
 
 	ctrdlog "github.com/containerd/containerd/log"
-	ctriface "github.com/ease-lab/vhive/ctriface"
+	ctriface "github.com/vhive-serverless/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )

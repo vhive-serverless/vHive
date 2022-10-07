@@ -27,7 +27,7 @@ import (
 
 	"github.com/containerd/containerd"
 
-	"github.com/ease-lab/vhive/taps"
+	"github.com/vhive-serverless/vhive/taps"
 )
 
 // VM type

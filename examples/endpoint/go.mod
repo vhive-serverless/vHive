@@ -1,3 +1,3 @@
-module "github.com/ease-lab/vhive/examples/endpoint"
+module "github.com/vhive-serverless/vhive/examples/endpoint"
 
 

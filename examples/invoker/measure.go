@@ -10,9 +10,9 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 
-	"github.com/ease-lab/vhive/utils/benchmarking/eventing/proto"
+	"github.com/vhive-serverless/vhive/utils/benchmarking/eventing/proto"
 
-	"github.com/ease-lab/vhive/examples/endpoint"
+	"github.com/vhive-serverless/vhive/examples/endpoint"
 )
 
 var (

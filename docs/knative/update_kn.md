@@ -5,7 +5,7 @@ This guide describes how to make changes to Knative Serving and use the changed 
    1. Install [`ko`](https://github.com/google/ko):
       ```sh
       wget -qO- https://github.com/google/ko/releases/download/v0.8.3/ko_0.8.3_Linux_x86_64.tar.gz | sudo tar -C /usr/bin/ -xz ko
-      sudo chmod +x /usr/bin/ko 
+      sudo chmod +x /usr/bin/ko
       ```
    2. Install `go` (1.14 or later); already installed on CloudLab.
    3. Install `git`; already installed on CloudLab.
@@ -26,7 +26,7 @@ This guide describes how to make changes to Knative Serving and use the changed 
    - `<DOCKER HUB USERNAME>` must be the same username that you used to login in the previous step.
 6. Git clone your fork:
    ```sh
-   git clone --branch=<YOUR PR BRANCH> https://github.com/ease-lab/serving
+   git clone --branch=<YOUR PR BRANCH> https://github.com/vhive-serverless/serving
    cd serving
    ```
 7. Generate new Knative YAMLs (by building the relevant Docker images and uploading them to Docker Hub too):
@@ -40,7 +40,7 @@ This guide describes how to make changes to Knative Serving and use the changed 
    ```
 9. Copy the generated Knative YAMLs to your local machine if you have used a remote server---**execute the following on your local machine**:
    ```sh
-   # Say, you are at the root of ease-lab/vhive repository...
+   # Say, you are at the root of vhive-serverless/vhive repository...
    rsync -zr <HOSTNAME>:new-yamls/ configs/knative_yamls/ --progress=info2
    ```
 10. Commit and push/merge your changes to/at both repos!

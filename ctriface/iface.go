@@ -50,9 +50,9 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
-	"github.com/ease-lab/vhive/memory/manager"
-	"github.com/ease-lab/vhive/metrics"
-	"github.com/ease-lab/vhive/misc"
+	"github.com/vhive-serverless/vhive/memory/manager"
+	"github.com/vhive-serverless/vhive/metrics"
+	"github.com/vhive-serverless/vhive/misc"
 	"github.com/go-multierror/multierror"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp

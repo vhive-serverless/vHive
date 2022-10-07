@@ -33,7 +33,7 @@
     - name: Get GitHub runner token
       uri:
         method: POST
-        url: https://api.github.com/repos/ease-lab/vhive/actions/runners/registration-token
+        url: https://api.github.com/repos/vhive-serverless/vhive/actions/runners/registration-token
         headers:
           Accept: application/vnd.github.v3+json
           Authorization: "token {{ lookup('env', 'GH_ACCESS_TOKEN') }}"

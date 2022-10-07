@@ -27,8 +27,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/ease-lab/vhive/cri"
-	"github.com/ease-lab/vhive/ctriface"
+	"github.com/vhive-serverless/vhive/cri"
+	"github.com/vhive-serverless/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )

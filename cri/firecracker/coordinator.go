@@ -30,7 +30,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ease-lab/vhive/ctriface"
+	"github.com/vhive-serverless/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -25,7 +25,7 @@ package misc
 import (
 	log "github.com/sirupsen/logrus"
 
-	"github.com/ease-lab/vhive/taps"
+	"github.com/vhive-serverless/vhive/taps"
 )
 
 // NewVMPool Initializes a pool of VMs

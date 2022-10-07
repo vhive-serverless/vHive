@@ -1,4 +1,4 @@
-module github.com/ease-lab/vhive/utils/tracing/go
+module github.com/vhive-serverless/vhive/utils/tracing/go
 
 go 1.16
 
