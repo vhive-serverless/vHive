@@ -49,6 +49,10 @@ echo "Master node: ${MASTER_NODE_NAME}"
 # removing taint from master node to allow control plane scheduling on it
 kubectl taint nodes $MASTER_NODE_NAME node-role.kubernetes.io/master-
 
+source taint.sh
+
+taint_workers
+
 # istio
 cd $ROOT
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.12.5 TARGET_ARCH=x86_64 sh -
@@ -91,3 +95,5 @@ kubectl apply --filename https://github.com/knative/eventing/releases/download/$
 kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/mt-channel-broker.yaml
 
 kubectl --namespace istio-system get service istio-ingressgateway
+
+untaint_workers
