@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# disable hyper-threading
+echo off | sudo tee /sys/devices/system/cpu/smt/control
+# disable turbo boost for better timing
+./turbo_boost.sh disable
+
 sudo setfacl -m u:${USER}:rw /dev/kvm
 sudo modprobe msr
 
