@@ -30,7 +30,7 @@ ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 # Create kubelet service
 sudo sh -c 'cat <<EOF > /etc/systemd/system/kubelet.service.d/0-containerd.conf
 [Service]                                                 
-Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --v=5 --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
 EOF'
 sudo systemctl daemon-reload
 
@@ -51,5 +51,10 @@ while true; do
         * ) echo "Please answer yes or no.";;
     esac
 done
+
+# Increase log size per container
+sudo echo "containerLogMaxSize: 512Mi" > >(sudo tee -a /var/lib/kubelet/config.yaml >/dev/null)
+sudo systemctl restart kubelet
+sleep 15
 
 $DIR/setup_master_node.sh $STOCK_CONTAINERD
