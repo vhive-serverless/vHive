@@ -1,0 +1,31 @@
+name: Intge container test
+
+on:
+  push:
+    branches: [ integ_ci ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
+  pull_request:
+    branches: [ integ_ci ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
+  workflow_dispatch:
+
+env:
+  GOOS: linux
+  GO111MODULE: on
+
+jobs:
+  integ-test:
+    name: "Integ container test"
+    runs-on: [self-hosted, integ]
+    steps:
+    
+    - name: Set up Go 1.18
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
