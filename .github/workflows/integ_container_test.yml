@@ -22,7 +22,7 @@ env:
 jobs:
   integ-test:
     name: "Integ container test"
-    runs-on: [self-hosted, integ]
+    runs-on: [integ]
     steps:
     
     - name: Set up Go 1.18
