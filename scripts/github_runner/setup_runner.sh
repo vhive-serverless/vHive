@@ -52,7 +52,7 @@ if [ ! -d "$HOME/actions-runner" ]; then
     chmod +x ./run.sh
     RUNNER_ALLOW_RUNASROOT=1 ./config.sh --url "${_SHORT_URL}" \
                     --token "${RUNNER_TOKEN}" \
-                    --name "integ-test-github-runner-${HOSTNAME}-${NUMBER}" \
+                    --name "integ-test-github-runner-${HOSTNAME}-${NUMBER}-7" \
                     --work "/root/_work" \
                     --labels "integ" \
                     --unattended \
