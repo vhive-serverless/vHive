@@ -24,7 +24,10 @@ jobs:
     name: "Integ container test"
     runs-on: [integ]
     steps:
-    
+
+    - name: Test pwd
+      run: pwd
+
     - name: Set up Go 1.18
       uses: actions/setup-go@v3
       with:
