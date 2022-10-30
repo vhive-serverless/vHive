@@ -22,7 +22,7 @@ env:
 jobs:
   integ-test:
     name: "Integ container test"
-    runs-on: [integ]
+    runs-on: [self-hosted]
     steps:
 
     - name: Test pwd
