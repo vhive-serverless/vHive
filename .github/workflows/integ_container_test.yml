@@ -30,7 +30,9 @@ jobs:
         pwd
         cd ../.. && ls -l
         echo "GITHUB_WORKSPACE=/root/_work/vhive-serverless/vHive" >> $GITHUB_ENV
-        echo "$GITHUB_WORKSPACE"
+
+    - name: Test
+      run: echo "$GITHUB_WORKSPACE"
 
     #- uses: actions/checkout@v3
 
