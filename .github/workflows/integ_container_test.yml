@@ -28,7 +28,7 @@ jobs:
     - name: Test pwd
       run: |
         pwd
-        ls -l
+        cd ../.. && ls -l
 
     - name: Set up Go 1.18
       uses: actions/setup-go@v3
