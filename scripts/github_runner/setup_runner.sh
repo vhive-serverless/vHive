@@ -50,7 +50,7 @@ if [ ! -d "$HOME/actions-runner" ]; then
     rm actions-runner-linux-x64.tar.gz
     chmod +x ./config.sh
     chmod +x ./run.sh
-    RUNNER_ALLOW_RUNASROOT=1 ./config.sh --url "${_SHORT_URL}" \
+    GITHUB_WORKSPACE="vhive-serverless/vHive" RUNNER_ALLOW_RUNASROOT=1 ./config.sh --url "${_SHORT_URL}" \
                     --token "${RUNNER_TOKEN}" \
                     --name "integ-test-github-runner-${HOSTNAME}-${NUMBER}-7" \
                     --work "/root/_work" \
