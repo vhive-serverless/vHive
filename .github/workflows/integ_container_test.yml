@@ -39,7 +39,7 @@ jobs:
     - name: Test again
       run: echo ${{ env.GITHUB_WORKSPACE }}
 
-    #- uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
     #- name: Set up Go 1.18
     #  uses: actions/setup-go@v3
