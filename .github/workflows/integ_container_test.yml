@@ -18,7 +18,6 @@ on:
 env:
   GOOS: linux
   GO111MODULE: on
-  GITHUB_WORKSPACE: '/root/_work/vhive-serverless/vHive'
 
 jobs:
   integ-test:
@@ -30,18 +29,14 @@ jobs:
       run: |
         pwd
         cd ../.. && ls -l
+        echo "GITHUB_WORKSPACE=/root/_work/vhive-serverless/vHive" >> $GITHUB_ENV
         echo "$GITHUB_WORKSPACE"
 
-    - uses: actions/checkout@v3
+    #- uses: actions/checkout@v3
 
-    - name: Test pwd
-      run: |
-        pwd
-        cd ../.. && ls -l
+    #- name: Set up Go 1.18
+    #  uses: actions/setup-go@v3
+    #  with:
+    #    go-version: 1.18
 
-    - name: Set up Go 1.18
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.18
-
-    - run: go version
+    #- run: go version
