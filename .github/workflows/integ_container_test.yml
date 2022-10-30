@@ -31,6 +31,8 @@ jobs:
         cd ../.. && ls -l
 
     - uses: actions/checkout@v3
+      with:
+        path: 'vHive/vHive'
 
     - name: Test pwd
       run: |
