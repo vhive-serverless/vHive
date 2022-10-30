@@ -32,12 +32,15 @@ jobs:
         echo "GITHUB_WORKSPACE=/root/_work/vhive-serverless/vHive" >> $GITHUB_ENV
 
     - name: Test
-      run: echo "$GITHUB_WORKSPACE"
+      run: |
+        GITHUB_WORKSPACE="/vhive-serverless/vHive"
+        echo "$GITHUB_WORKSPACE"
 
     - name: Test again
       run: echo ${{ env.GITHUB_WORKSPACE }}
 
-    #- uses: actions/checkout@v3
+    - uses: actions/checkout@v3
+      with: GITHUB_WORKSPACE =
 
     #- name: Set up Go 1.18
     #  uses: actions/setup-go@v3
