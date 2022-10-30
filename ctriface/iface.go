@@ -319,40 +319,68 @@ func getImageURL(image string) string {
 
 func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*containerd.Image, error) {
 	image, found := o.cachedImages[imageName]
-	if !found {
-		var err error
-		log.Debug(fmt.Sprintf("Pulling image %s", imageName))
 
-		imageURL := getImageURL(imageName)
-		local, _ := isLocalDomain(imageURL)
-		if local {
-			// Pull local image using HTTP
-			resolver := docker.NewResolver(docker.ResolverOptions{
-				Client: http.DefaultClient,
-				Hosts: docker.ConfigureDefaultRegistries(
-					docker.WithPlainHTTP(docker.MatchAllHosts),
-				),
-			})
-			image, err = o.client.Pull(ctx, imageURL,
-				containerd.WithPullUnpack,
-				containerd.WithPullSnapshotter(o.snapshotter),
-				containerd.WithResolver(resolver),
-			)
-		} else {
-			// Pull remote image
-			image, err = o.client.Pull(ctx, imageURL,
-				containerd.WithPullUnpack,
-				containerd.WithPullSnapshotter(o.snapshotter),
-			)
-		}
+	imageUrl := getImageURL(imageName)
+	if !found || imageIsOutdated(image, imageUrl) {
+		image, err := o.pullImage(ctx, imageUrl)
 
 		if err != nil {
 			return &image, err
 		}
 		o.cachedImages[imageName] = image
+		return &image, nil
 	}
 
 	return &image, nil
+}
+
+func imageIsOutdated(cachedImage containerd.Image, imageUrl string) bool {
+	remoteImageDigest, err := remoteImageDigest(imageUrl)
+	return err == nil && cachedImage.Target().Digest.String() != remoteImageDigest
+}
+
+func remoteImageDigest(imageUrl string) (string, error) {
+	cmd := fmt.Sprintf("skopeo inspect docker://%s | jq -r '.Digest'", imageUrl)
+
+	start := time.Now()
+	out, err := exec.Command("bash", "-c", cmd).Output()
+	elapsed := time.Since(start)
+	log.Printf("Remote digest fetching took %s", elapsed)
+
+	return string(out), err
+}
+
+func (o *Orchestrator) pullImage(ctx context.Context, imageUrl string) (containerd.Image, error) {
+	log.Debugf("Pulling image %s\n", imageUrl)
+
+	local, _ := isLocalDomain(imageUrl)
+
+	if local {
+		return o.pullLocalImage(ctx, imageUrl)
+	}
+	return o.pullRemoteImage(ctx, imageUrl)
+}
+
+func (o *Orchestrator) pullRemoteImage(ctx context.Context, imageUrl string) (containerd.Image, error) {
+	return o.client.Pull(ctx, imageUrl,
+		containerd.WithPullUnpack,
+		containerd.WithPullSnapshotter(o.snapshotter),
+	)
+}
+
+// Pull local image using HTTP
+func (o *Orchestrator) pullLocalImage(ctx context.Context, imageUrl string) (containerd.Image, error) {
+	resolver := docker.NewResolver(docker.ResolverOptions{
+		Client: http.DefaultClient,
+		Hosts: docker.ConfigureDefaultRegistries(
+			docker.WithPlainHTTP(docker.MatchAllHosts),
+		),
+	})
+	return o.client.Pull(ctx, imageUrl,
+		containerd.WithPullUnpack,
+		containerd.WithPullSnapshotter(o.snapshotter),
+		containerd.WithResolver(resolver),
+	)
 }
 
 func getK8sDNS() []string {

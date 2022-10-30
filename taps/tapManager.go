@@ -126,7 +126,6 @@ func setupForwardRules(tapName, hostIface string) error {
 		}
 	}
 
-
 	conn := nftables.Conn{}
 
 	// 1. nft add table ip filter

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+// # Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
 	//nolint:deadcode,unused,varcheck
-	isWithCache  = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 )
 
 func TestPauseSnapResume(t *testing.T) {

@@ -24,6 +24,9 @@
 
 set -e
 
+# Needed for 'skopeo'
+echo "deb http://mirrors.kernel.org/ubuntu kinetic main universe" | sudo tee -a /etc/apt/sources.list
+
 # Install base- and setup-dependencies
 apt-get update
 apt-get install --yes \
