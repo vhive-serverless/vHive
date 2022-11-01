@@ -2,6 +2,8 @@
 This guide describes how to set up an _N_-node vHive serverless cluster with Firecracker MicroVMs.
 See [here][github-toc] to learn where to find table of contents.
 
+To see how to setup a single node cluster with stock-only or gVisor, see [Developer's guide](developers_guide.md).
+
 ## Table of Contents
 1. [Host platform requirements](#I-host-platform-requirements)
     1. [Hardware](#1-hardware)
@@ -259,6 +261,8 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
     > **BEWARE:**
     >
     > Deployer **cannot be used for Knative eventing** (i.e., asynchronous) workflows. You need to deploy them manually instead.
+    >
+    > Deployer uses YAML files defined in configs/knative-workload that are **specific** to firecracker. Please refer to the [Developer's Guide](developers_guide.md) for deploying functions in the container or gVisor based environment.
 
     > **Note:**
     >

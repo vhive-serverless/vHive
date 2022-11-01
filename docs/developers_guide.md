@@ -19,6 +19,8 @@ watch kubectl get pods -A
 kn service apply
 ```
 
+To deploy a function in the stock or gVisor execution environment, please create and use your own YAML files following this [example](https://github.com/knative/docs/tree/main/code-samples/serving/hello-world/helloworld-python#yaml)
+
 ### Clean up
 ```bash
 ./scripts/github_runner/clean_cri_runner.sh stock-only
