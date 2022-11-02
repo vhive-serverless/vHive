@@ -51,7 +51,7 @@ require (
 	github.com/antchfx/xpath v1.2.0 // indirect
 	github.com/blend/go-sdk v1.20211025.3 // indirect
 	github.com/containerd/containerd v1.5.8
-	github.com/containerd/go-cni v1.0.2
+	github.com/containerd/go-cni v1.1.7
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ease-lab/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
@@ -59,20 +59,21 @@ require (
 	github.com/go-multierror/multierror v1.0.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/nftables v0.0.0-20210916140115-16a134723a96
+	github.com/minio/minio-go/v7 v7.0.44 // indirect
 	github.com/montanaflynn/stats v0.6.5
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.8.1
-	github.com/stretchr/testify v1.7.0
+	github.com/sirupsen/logrus v1.9.0
+	github.com/stretchr/testify v1.8.0
 	github.com/tamerh/xml-stream-parser v1.4.0
 	github.com/tamerh/xpath v1.0.0 // indirect
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
 	google.golang.org/grpc v1.41.0

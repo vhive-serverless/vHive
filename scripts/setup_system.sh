@@ -38,7 +38,6 @@ sudo apt-get -y install \
     make \
     acl \
     net-tools \
-    git-lfs \
     bc \
     gettext-base \
     jq \
@@ -46,10 +45,12 @@ sudo apt-get -y install \
     gnupg-agent \
     software-properties-common \
     iproute2 \
+    thin-provisioning-tools \
     nftables \
     git-lfs \
-    thin-provisioning-tools \
-    skopeo >> /dev/null
+    git-lfs >> /dev/null
+
+
 
 # stack size, # of open files, # of pids
 sudo sh -c "echo \"* soft nofile 1000000\" >> /etc/security/limits.conf"

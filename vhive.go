@@ -59,6 +59,7 @@ var (
 	snapsStorageSize   *int64
 	isSparseSnaps      *bool
 	isFullLocal        *bool
+	isRemoteSnap       *bool
 	isSnapshotsEnabled *bool
 	isUPFEnabled       *bool
 	isLazyMode         *bool
@@ -89,6 +90,7 @@ func main() {
 	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
 	isSparseSnaps = flag.Bool("sparsesnaps", false, "Makes memory files sparse after storing to reduce disk utilization")
 	isFullLocal = flag.Bool("fulllocal", false, "Use improved full local snapshotting")
+	isRemoteSnap = flag.Bool("isRemoteSnap", false, "Enable usage of snapshots from global sdtorage.")
 	snapsStorageSize = flag.Int64("snapcapacity", 100, "Total storage reserved for storing snapshots (GiB)")
 	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
@@ -131,7 +133,7 @@ func main() {
 		return
 	}
 
-	if !*isFullLocal &&  *isSparseSnaps {
+	if !*isFullLocal && *isSparseSnaps {
 		log.Error("Sparse snaps are only supported for full local snapshots")
 		return
 	}
@@ -174,6 +176,7 @@ func main() {
 		ctriface.WithMetricsMode(*isMetricsMode),
 		ctriface.WithLazyMode(*isLazyMode),
 		ctriface.WithFullLocal(*isFullLocal),
+		ctriface.WithRemoteSnap(*isRemoteSnap),
 	)
 
 	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
@@ -200,7 +203,7 @@ func setupFirecrackerCRI() {
 	s := grpc.NewServer()
 
 	snapsCapacityMiB := *snapsStorageSize * 1024
-	fcService, err := fccri.NewFirecrackerService(orch, snapsCapacityMiB, *isSparseSnaps, *isFullLocal)
+	fcService, err := fccri.NewFirecrackerService(orch, snapsCapacityMiB, *isSparseSnaps, *isFullLocal, *isRemoteSnap)
 	if err != nil {
 		log.Fatalf("failed to create firecracker service %v", err)
 	}

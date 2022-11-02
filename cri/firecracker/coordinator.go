@@ -31,6 +31,7 @@ import (
 	"github.com/ease-lab/vhive/snapshotting/fulllocal"
 	"github.com/ease-lab/vhive/snapshotting/regular"
 	"github.com/pkg/errors"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -43,10 +44,11 @@ const snapshotsDir = "/fccd/snapshots"
 
 type coordinator struct {
 	sync.Mutex
-	orch   *ctriface.Orchestrator
-	nextID uint64
+	orch          *ctriface.Orchestrator
+	nextID        uint64
 	isSparseSnaps bool
-	isFullLocal bool
+	isFullLocal   bool
+	isRemoteSnap  bool
 
 	activeInstances     map[string]*FuncInstance
 	snapshotManager     *snapshotting.SnapshotManager
@@ -67,13 +69,15 @@ func newFirecrackerCoordinator(
 	snapsCapacityMiB int64,
 	isSparseSnaps bool,
 	isFullLocal bool,
+	isRemoteSnap bool,
 	opts ...coordinatorOption) *coordinator {
 
 	c := &coordinator{
 		activeInstances: make(map[string]*FuncInstance),
 		orch:            orch,
 		isSparseSnaps:   isSparseSnaps,
-		isFullLocal: isFullLocal,
+		isFullLocal:     isFullLocal,
+		isRemoteSnap:    isRemoteSnap,
 	}
 
 	if isFullLocal {
@@ -90,31 +94,125 @@ func newFirecrackerCoordinator(
 }
 
 func (c *coordinator) startVM(ctx context.Context, image string, revision string, memSizeMib, vCPUCount uint32) (*FuncInstance, error) {
-	if c.orch != nil && c.orch.GetSnapshotsEnabled()  {
-		id := image
-		if c.isFullLocal {
-			id = revision
-		}
-
-		// Check if snapshot is available
-		if snap, err := c.snapshotManager.AcquireSnapshot(id); err == nil {
-			if snap.MemSizeMib != memSizeMib || snap.VCPUCount != vCPUCount {
-				return nil, errors.New("uVM memory size or vCPU count in the snapshot do not match the requested ones.")
-			}
-
-			vmID := ""
+	if !c.isRemoteSnap {
+		if c.orch != nil && c.orch.GetSnapshotsEnabled() {
+			id := image
 			if c.isFullLocal {
-				vmID = strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
-			} else {
-				vmID = snap.GetId()
+				id = revision
 			}
 
-			return c.orchStartVMSnapshot(ctx, snap, memSizeMib, vCPUCount, vmID)
+			// Check if snapshot is available
+			if snap, err := c.snapshotManager.AcquireSnapshot(id); err == nil {
+				if snap.MemSizeMib != memSizeMib || snap.VCPUCount != vCPUCount {
+					return nil, errors.New("uVM memory size or vCPU count in the snapshot do not match the requested ones.")
+				}
 
+				vmID := ""
+				if c.isFullLocal {
+					vmID = strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+				} else {
+					vmID = snap.GetId()
+				}
+
+				return c.orchStartVMSnapshot(ctx, snap, memSizeMib, vCPUCount, vmID)
+
+			}
 		}
+
+		return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
 	}
 
-	return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
+	//// Check if image has snapshot in global storage
+	//if c.isFullLocal {
+	//	log.Debug("Check if {} has snapshot in global storage\n", image)
+	//	ctx = context.Background()
+	//	minioEndpoint := "10.96.0.46:9000"
+	//	minioAccessKey := "minio"
+	//	minioSecretKey := "minio123"
+	//	minioBucket := "mybucket"
+	//
+	//	log.Debug("Creating minio client\n")
+	//	// Initialize minio client object.
+	//	minioClient, err := minio.New(minioEndpoint, &minio.Options{
+	//		Creds:  credentials.NewStaticV4(minioAccessKey, minioSecretKey, ""),
+	//		Secure: false,
+	//	})
+	//
+	//	if err != nil {
+	//		log.Debug("Minio not set up create container normally\n")
+	//		return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
+	//	}
+	//
+	//	log.Debug("Checking if bucket exists\n")
+	//	// Check to see if bucket exists	<-- we assume we create the bucket
+	//	// in the script, so we don't  need to take care of this in the code
+	//	exists, errBucketExists := minioClient.BucketExists(ctx, minioBucket)
+	//	if errBucketExists == nil && exists {
+	//		log.Printf("Bucket exists %s\n", minioBucket)
+	//	} else {
+	//		log.Debug("Bucket doesnt  exist, create container normally\n")
+	//		return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
+	//	}
+	//
+	//	objectPatch := image + "PatchFile"
+	//	objectSnap := image + "SnapFile"
+	//	objectMemory := image + "MemFile"
+	//
+	//	// TODO get user path dynamically
+	//	filePathPatch := "/users/estellan/vhive/patchfile"
+	//	filePathSnap := "/users/estellan/vhive/snapfile"
+	//	filePathMem := "/users/estellan/vhive/memfile"
+	//
+	//	objectCh := minioClient.ListObjects(ctx, minioBucket, minio.ListObjectsOptions{
+	//		Prefix:    image,
+	//		Recursive: true,
+	//	})
+	//	for object := range objectCh {
+	//		if object.Err != nil {
+	//			log.Debug(object.Err)
+	//		}
+	//	}
+	//
+	//	objectCh = minioClient.ListObjects(ctx, minioBucket, minio.ListObjectsOptions{
+	//		Prefix:    image,
+	//		Recursive: true,
+	//	})
+	//	for object := range objectCh {
+	//		if object.Err != nil {
+	//			log.Debug(object.Err)
+	//		}
+	//	}
+	//
+	//	log.Debug("Try fetching remote snapshot files {} \t {} \t {}\n", objectPatch, objectSnap, objectMemory)
+	//
+	//	errGetPatch := minioClient.FGetObject(ctx, minioBucket, objectPatch, filePathPatch, minio.GetObjectOptions{})
+	//	errGetSnap := minioClient.FGetObject(ctx, minioBucket, objectSnap, filePathSnap, minio.GetObjectOptions{})
+	//	errGetMem := minioClient.FGetObject(ctx, minioBucket, objectMemory, filePathMem, minio.GetObjectOptions{})
+	//
+	//	log.Debug(errGetPatch)
+	//	log.Debug(errGetSnap)
+	//	log.Debug(errGetMem)
+	//
+	//	if errGetPatch != nil || errGetSnap != nil || errGetMem != nil {
+	//		log.Debug("Could not fetch remote snapshot for {} \n", image)
+	//		log.Debug(errGetPatch, errGetSnap, errGetMem)
+	//		return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
+	//	}
+	//
+	//	log.Debug("Successfully fetched remote snapshot files {objectPatch} \t {objectSnap} \t {objectMemory}\n")
+	//
+	//	return c.orchStartVMSnapshotRemote(ctx, image, revision, memSizeMib, vCPUCount, filePathPatch, filePathSnap, filePathMem)
+	//}
+	//
+
+	if _, err := os.Stat("/users/estellan/vhive/memfile"); errors.Is(err, os.ErrNotExist) {
+		return c.orchStartVM(ctx, image, revision, memSizeMib, vCPUCount)
+	}
+	filePathPatch := "/users/estellan/vhive/patchfile"
+	filePathSnap := "/users/estellan/vhive/snapfile"
+	filePathMem := "/users/estellan/vhive/memfile"
+
+	return c.orchStartVMSnapshotRemote(ctx, image, revision, memSizeMib, vCPUCount, filePathPatch, filePathSnap, filePathMem)
 }
 
 func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
@@ -132,7 +230,7 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		return nil
 	}
 
-	if c.orch == nil || ! c.orch.GetSnapshotsEnabled() {
+	if c.orch == nil || !c.orch.GetSnapshotsEnabled() {
 		return c.orchStopVM(ctx, funcInst)
 	}
 
@@ -153,6 +251,7 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	}
 
 	if c.isFullLocal {
+		//========================= help
 		return c.orchStopVM(ctx, funcInst)
 	} else {
 		return c.orchOffloadVM(ctx, funcInst)
@@ -203,6 +302,8 @@ func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, m
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*40)
 	defer cancel()
 
+	//======================== same as startvmsnapshot until now
+
 	if !c.withoutOrchestrator {
 		trackDirtyPages := c.isSparseSnaps
 		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image, memSizeMib, vCPUCount, trackDirtyPages)
@@ -215,6 +316,57 @@ func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, m
 
 	funcInst := NewFuncInstance(vmID, image, revision, resp, false, memSizeMib, vCPUCount, coldStartTimeMs)
 	logger.Debug("successfully created fresh instance")
+	return funcInst, err
+}
+
+func (c *coordinator) orchStartVMSnapshotRemote(
+	ctx context.Context,
+	image string,
+	revision string,
+	memSizeMib,
+	vCPUCount uint32,
+	filePathPatch string,
+	filePathSnap string,
+	filePathMem string) (*FuncInstance, error) {
+
+	tStartCold := time.Now()
+	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+	logger := log.WithFields(
+		log.Fields{
+			"vmID":  vmID,
+			"image": image,
+		},
+	)
+
+	logger.Debug("loading instance from remote snapshot")
+
+	var (
+		resp *ctriface.StartVMResponse
+		err  error
+	)
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*40)
+	defer cancel()
+
+	//========================= same as start vm until now
+
+	resp, _, err = c.orch.RemoteLoadSnapshot(ctxTimeout, vmID, image, filePathPatch, filePathSnap, filePathMem)
+	if err != nil {
+		logger.WithError(err).Error("failed to load VM")
+		return nil, err
+	}
+
+	if _, err := c.orch.ResumeVM(ctxTimeout, vmID); err != nil {
+		logger.WithError(err).Error("failed to load VM")
+		return nil, err
+	}
+
+	resp, _, err = c.orch.RemoteLoadSnapshot(ctxTimeout, vmID, image, filePathPatch, filePathSnap, filePathMem)
+
+	coldStartTimeMs := metrics.ToMs(time.Since(tStartCold))
+	funcInst := NewFuncInstance(vmID, image, revision, resp, true, memSizeMib, vCPUCount, coldStartTimeMs)
+	logger.Debug("successfully loaded instance from remote snapshot")
+
 	return funcInst, err
 }
 
@@ -242,6 +394,8 @@ func (c *coordinator) orchStartVMSnapshot(
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
+
+	//========================= same as start vm until now
 
 	resp, _, err = c.orch.LoadSnapshot(ctxTimeout, vmID, snap)
 	if err != nil {

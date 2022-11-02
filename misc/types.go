@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	defaultVcpuCount = 1
+	defaultVcpuCount  = 1
 	defaultMemsizeMib = 256
 )
 
@@ -41,6 +41,7 @@ type VM struct {
 	ID               string
 	ContainerSnapKey string
 	SnapBooted       bool
+	RemoteSnapBooted bool
 	Image            *containerd.Image
 	Container        *containerd.Container
 	Task             *containerd.Task
@@ -105,7 +106,7 @@ func (vm *VM) GetNetworkNamespace() string {
 
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
-	vmMap      sync.Map
+	vmMap       sync.Map
 	isFullLocal bool
 	// Used to create network for fullLocal snapshot VMs
 	networkManager *networking.NetworkManager
@@ -119,6 +120,7 @@ func NewVM(vmID string) *VM {
 	vm.ID = vmID
 	vm.ContainerSnapKey = fmt.Sprintf("vm%s-containersnap", vmID)
 	vm.SnapBooted = false
+	vm.RemoteSnapBooted = false
 	vm.MemSizeMib = defaultMemsizeMib
 	vm.VCPUCount = defaultVcpuCount
 

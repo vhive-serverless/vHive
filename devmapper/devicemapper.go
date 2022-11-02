@@ -64,15 +64,15 @@ func getThinPoolName() string {
 // DeviceMapper creates and manages device snapshots used to store container images.
 type DeviceMapper struct {
 	sync.Mutex
-	poolName           string
-	snapDevices        map[string]*DeviceSnapshot   // maps revision snapkey to snapshot device
-	snapshotService    snapshots.Snapshotter        // used to interact with the device mapper through containerd
-	thinDelta          *thindelta.ThinDelta
+	poolName        string
+	snapDevices     map[string]*DeviceSnapshot // maps revision snapkey to snapshot device
+	snapshotService snapshots.Snapshotter      // used to interact with the device mapper through containerd
+	thinDelta       *thindelta.ThinDelta
 
 	// Manage leases to avoid garbage collection of manually created snapshots. Done automatically for snapshots
 	// created directly through containerd (eg. container.create)
-	leaseManager      leases.Manager
-	leases            map[string]*leases.Lease
+	leaseManager leases.Manager
+	leases       map[string]*leases.Lease
 }
 
 func NewDeviceMapper(client *containerd.Client, poolName, metadataDev string) *DeviceMapper {
@@ -161,7 +161,7 @@ func (dmpr *DeviceMapper) RemoveDeviceSnapshot(ctx context.Context, snapKey stri
 	dmpr.Lock()
 
 	lease, present := dmpr.leases[snapKey]
-	if ! present {
+	if !present {
 		dmpr.Unlock()
 		return errors.New(fmt.Sprintf("Delete device snapshot: lease for key %s does not exist", snapKey))
 	}
@@ -275,6 +275,9 @@ func (dmpr *DeviceMapper) CreatePatch(ctx context.Context, patchPath, containerS
 	// 3. Save changes to file
 	result := extractPatch(imageMountPath, containerMountPath, patchPath)
 
+	// 4. Change the rights of patch file to enable upload to local storage
+	_ = exec.Command("sudo", "chmod", "777", patchPath)
+
 	return result
 }
 
@@ -293,8 +296,8 @@ func extractPatch(imageMountPath, containerMountPath, patchPath string) error {
 	}
 
 	err = os.Remove(patchPath + ".sh") // Remove unnecessary script output
-	if err!= nil {
-		return errors.Wrapf(err, "removing %s", patchPath + ".sh")
+	if err != nil {
+		return errors.Wrapf(err, "removing %s", patchPath+".sh")
 	}
 	return nil
 }
@@ -322,7 +325,7 @@ func applyPatch(containerMountPath, patchPath string) error {
 	patchArg := fmt.Sprintf("--read-batch=%s", patchPath)
 	cmd := exec.Command("sudo", "rsync", "-ar", patchArg, addTrailingSlash(containerMountPath))
 	err := cmd.Run()
-	if err!= nil {
+	if err != nil {
 		return errors.Wrapf(err, "applying %s at %s", patchPath, containerMountPath)
 	}
 	return nil
@@ -383,4 +386,3 @@ func (dmpr *DeviceMapper) ForkContainerSnap(ctx context.Context, oldContainerSna
 
 	return nil
 }
-

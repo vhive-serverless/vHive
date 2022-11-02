@@ -61,7 +61,7 @@ const (
 )
 
 // StartVM Boots a VM if it does not exist
-func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memSizeMib ,vCPUCount uint32, trackDirtyPages bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memSizeMib, vCPUCount uint32, trackDirtyPages bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		startVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart        time.Time
@@ -103,6 +103,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memS
 	}
 	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 
+	//===========================same as loadvm
 	// 3. Create VM
 	tStart = time.Now()
 	conf := o.getVMConfig(vm, trackDirtyPages, o.isFullLocal)
@@ -119,6 +120,8 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memS
 			}
 		}
 	}()
+
+	log.Debug(vm.GetNetworkNamespace())
 
 	// 4. Create container
 	logger.Debug("StartVM: Creating a new container")
@@ -209,7 +212,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, memS
 		}
 	}()
 
-	if ! o.isFullLocal {
+	if !o.isFullLocal {
 		if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
 			logger.Error("Failed to create VM base dir")
 			return nil, nil, err
@@ -259,7 +262,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	logger = log.WithFields(log.Fields{"vmID": vmID})
 
 	// Cleanup and remove container if VM not booted from snapshot
-	if ! o.isFullLocal || ! vm.SnapBooted {
+	if !o.isFullLocal || !vm.SnapBooted {
 		task := *vm.Task
 		if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
 			logger.WithError(err).Error("Failed to kill the task")
@@ -282,6 +285,30 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 		}
 	}
 
+	// this doesnt break but leaves containers loaded from remote in unkown state for k8/knative
+	//if !o.isFullLocal || vm.RemoteSnapBooted {
+	//	task := *vm.Task
+	//	if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
+	//		logger.WithError(err).Error("Failed to kill the task")
+	//		return err
+	//	}
+	//
+	//	<-vm.TaskCh
+	//	//FIXME: Seems like some tasks need some extra time to die Issue#15, lr_training
+	//	time.Sleep(500 * time.Millisecond)
+	//
+	//	if _, err := task.Delete(ctx); err != nil {
+	//		logger.WithError(err).Error("failed to delete task")
+	//		return err
+	//	}
+	//
+	//	container := *vm.Container
+	//	if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+	//		logger.WithError(err).Error("failed to delete container")
+	//		return err
+	//	}
+	//}
+
 	// Stop VM
 	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
 		logger.WithError(err).Error("failed to stop firecracker-containerd VM")
@@ -303,6 +330,13 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 			return err
 		}
 	}
+
+	//if o.isFullLocal && vm.RemoteSnapBooted {
+	//	if err := o.devMapper.RemoveDeviceSnapshot(ctx, vm.ContainerSnapKey); err != nil {
+	//		logger.Error("failed to deactivate container snapshot")
+	//		return err
+	//	}
+	//}
 
 	logger.Debug("Stopped VM successfully")
 
@@ -339,8 +373,8 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM, trackDirtyPages, isFullLocal boo
 		TimeoutSeconds: 100,
 		KernelArgs:     kernelArgs,
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
-			VcpuCount:  vm.VCPUCount,
-			MemSizeMib: vm.MemSizeMib,
+			VcpuCount:       vm.VCPUCount,
+			MemSizeMib:      vm.MemSizeMib,
 			TrackDirtyPages: trackDirtyPages,
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
@@ -355,7 +389,7 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM, trackDirtyPages, isFullLocal boo
 			},
 		}},
 		NetworkNamespace: vm.GetNetworkNamespace(),
-		OffloadEnabled: ! isFullLocal,
+		OffloadEnabled:   !isFullLocal,
 	}
 }
 
@@ -452,7 +486,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 	}
 
 	// For the non full-local snapshots, no additional steps are necessary
-	if ! o.isFullLocal {
+	if !o.isFullLocal {
 		return nil
 	}
 
@@ -475,6 +509,82 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 		return err
 	}
 
+	//// 5. Save patch file, uVM memory and state to minio storage
+	//log.Debug("Save patch file to minio storage")
+	//ctx = context.Background()
+	//minioEndpoint := "10.96.0.46:9000"
+	//minioAccessKey := "minio"
+	//minioSceretKey := "minio123"
+	//minioBucket := "mybucket"
+	//
+	//log.Debug("Creating minio client")
+	//// Initialize minio client object.
+	//minioClient, err := minio.New(minioEndpoint, &minio.Options{
+	//	Creds:  credentials.NewStaticV4(minioAccessKey, minioSceretKey, ""),
+	//	Secure: false,
+	//})
+	//if err != nil {
+	//	log.Debug(err)
+	//}
+	//
+	//log.Debug("Checking if bucket exists \n")
+	//err = minioClient.MakeBucket(ctx, minioBucket, minio.MakeBucketOptions{})
+	//if err != nil {
+	//	// Check to see if bucket exists	<-- we assume we create the bucket
+	//	// in the script, so we don't  need to take care of this in the code but just
+	//	// in case
+	//	exists, errBucketExists := minioClient.BucketExists(ctx, minioBucket)
+	//	if errBucketExists == nil && exists {
+	//		log.Debug("We already own %s\n", minioBucket)
+	//	} else {
+	//		log.Debug(err)
+	//	}
+	//} else {
+	//	log.Debug("Successfully created %s\n", minioBucket)
+	//}
+	//
+	//ctx = namespaces.WithNamespace(ctx, NamespaceName)
+	//fctImage, _ := (*vm.Container).Image(ctx)
+	//objectPatch := fctImage.Name() + "PatchFile"
+	//objectSnap := fctImage.Name() + "SnapFile"
+	//objectMemory := fctImage.Name() + "MemFile"
+	//filePathPatch := snap.GetPatchFilePath()
+	//contentType := "application/octet-stream"
+	//
+	//// Change the rights of mem and snapshot files to enable upload to local storage
+	//_, errSnap := os.Stat(snapFilePath)
+	//_, errMem := os.Stat(memFilePath)
+	//
+	//if errSnap == nil && errMem == nil {
+	//
+	//	_ = exec.Command("sudo", "chmod", "777", snapFilePath)
+	//	_ = exec.Command("sudo", "chmod", "777", memFilePath)
+	//
+	//	// Upload patch file
+	//	infoPut, errPut := minioClient.FPutObject(ctx, minioBucket, objectPatch, filePathPatch, minio.PutObjectOptions{ContentType: contentType})
+	//	if errPut != nil {
+	//		log.WithError(errPut).Error("failed to upload patchfile to minio")
+	//	}
+	//
+	//	log.Debug("Successfully uploaded %s of size %d\n", objectPatch, infoPut.Size)
+	//
+	//	// upload snapshot file
+	//	infoPut, errPut = minioClient.FPutObject(ctx, minioBucket, objectSnap, snapFilePath, minio.PutObjectOptions{ContentType: contentType})
+	//	if errPut != nil {
+	//		log.WithError(errPut).Error("failed to upload snapfile to minio")
+	//	}
+	//
+	//	log.Debug("Successfully uploaded %s of size %d\n", objectSnap, infoPut.Size)
+	//
+	//	// Upload mem file
+	//	infoPut, errPut = minioClient.FPutObject(ctx, minioBucket, objectMemory, memFilePath, minio.PutObjectOptions{ContentType: contentType})
+	//	if errPut != nil {
+	//		log.WithError(errPut).Error("failed to upload memfile to minio")
+	//	}
+	//
+	//	log.Debug("Successfully uploaded %s of size %d\n", objectMemory, infoPut.Size)
+	//
+	//}
 	return nil
 }
 
@@ -505,7 +615,7 @@ func (o *Orchestrator) LoadSnapshot(
 		vm, err = o.vmPool.Allocate(vmID)
 		if err != nil {
 			logger.Error("failed to allocate VM in VM pool")
-			return nil, nil,  err
+			return nil, nil, err
 		}
 
 		defer func() {
@@ -519,9 +629,10 @@ func (o *Orchestrator) LoadSnapshot(
 
 		// 2. Fetch image for VM
 		if vm.Image, err = o.GetImage(ctx, snap.GetImage()); err != nil {
-			return nil, nil,  errors.Wrapf(err, "Failed to get/pull image")
+			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
 		}
 
+		//////////////////=================same as start vm
 		// 3. Create snapshot for container to run
 		// 3.B Alternatively could also do CreateDeviceSnapshot(ctx, vm.ContainerSnapKey, snap.GetContainerSnapName())
 		if err := o.devMapper.CreateDeviceSnapshotFromImage(ctx, vm.ContainerSnapKey, *vm.Image); err != nil {
@@ -560,7 +671,7 @@ func (o *Orchestrator) LoadSnapshot(
 		MemFilePath:      memFilePath,
 		EnableUserPF:     o.GetUPFEnabled(),
 		NetworkNamespace: "",
-		Offloaded: ! o.isFullLocal,
+		Offloaded:        !o.isFullLocal,
 	}
 
 	if o.isFullLocal {
@@ -624,8 +735,280 @@ func (o *Orchestrator) LoadSnapshot(
 
 	vm.SnapBooted = true
 
-	return  &StartVMResponse{GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
+	return &StartVMResponse{GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
 }
+
+// RemoteLoadSnapshot Loads a snapshot of a VM from remote storage
+func (o *Orchestrator) RemoteLoadSnapshot(
+	ctx context.Context,
+	vmID string,
+	image string,
+	filePathPatch string,
+	filePathSnap string,
+	filePathMem string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+
+	var (
+		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
+		tStart               time.Time
+		loadErr, activateErr error
+		loadDone             = make(chan int)
+	)
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received RemoteLoadSnapshot")
+
+	ctx = namespaces.WithNamespace(ctx, NamespaceName)
+
+	var containerSnap *devmapper.DeviceSnapshot
+	var vm *misc.VM
+	if o.isFullLocal {
+		var err error
+
+		// 1. Allocate VM metadata & create vm network
+		vm, err = o.vmPool.Allocate(vmID)
+		if err != nil {
+			logger.Error("failed to allocate VM in VM pool")
+			return nil, nil, err
+		}
+
+		defer func() {
+			// Free the VM from the pool if function returns error
+			if retErr != nil {
+				if err := o.vmPool.Free(vmID); err != nil {
+					logger.WithError(err).Errorf("failed to free VM from pool after failure")
+				}
+			}
+		}()
+
+		// 2. Fetch image for VM
+		vm.Image, err = o.GetImage(ctx, image)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
+		}
+
+		//////////////////=================same as start vm
+		// 3. Create snapshot for container to run
+		// 3.B Alternatively could also do CreateDeviceSnapshot(ctx, vm.ContainerSnapKey, snap.GetContainerSnapName())
+		if err := o.devMapper.CreateDeviceSnapshotFromImage(ctx, vm.ContainerSnapKey, *vm.Image); err != nil {
+			return nil, nil, errors.Wrapf(err, "creating container snapshot")
+		}
+
+		containerSnap, err = o.devMapper.GetDeviceSnapshot(ctx, vm.ContainerSnapKey)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "previously created container device does not exist")
+		}
+
+		// 4. Unpack patch into container snapshot
+		if err := o.devMapper.RestorePatch(ctx, vm.ContainerSnapKey, filePathPatch); err != nil {
+			return nil, nil, errors.Wrapf(err, "unpacking patch into container snapshot")
+		}
+	} else {
+		var err error
+		vm, err = o.vmPool.GetVM(vmID)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// 5. Load VM from snapshot
+	req := &proto.LoadSnapshotRequest{
+		VMID:             vmID,
+		SnapshotFilePath: filePathSnap,
+		MemFilePath:      filePathMem,
+		EnableUserPF:     o.GetUPFEnabled(),
+		NetworkNamespace: "",
+		Offloaded:        !o.isFullLocal,
+	}
+
+	if o.isFullLocal {
+		req.NewSnapshotPath = containerSnap.GetDevicePath()
+		req.NetworkNamespace = vm.GetNetworkNamespace()
+		log.Debug(vm.GetNetworkNamespace())
+
+	}
+
+	if o.GetUPFEnabled() {
+		if err := o.memoryManager.FetchState(vmID); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	tStart = time.Now()
+
+	go func() {
+		defer close(loadDone)
+
+		if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
+			logger.Error("Failed to load snapshot of the VM: ", loadErr)
+			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", filePathSnap, filePathMem, containerSnap.GetDevicePath())
+			files, err := ioutil.ReadDir(filepath.Dir(filePathSnap))
+			if err != nil {
+				logger.Error(err)
+			}
+
+			snapFiles := ""
+			for _, f := range files {
+				snapFiles += f.Name() + ", "
+			}
+
+			logger.Error(snapFiles)
+
+			files, _ = ioutil.ReadDir(filepath.Dir(containerSnap.GetDevicePath()))
+			if err != nil {
+				logger.Error(err)
+			}
+
+			snapFiles = ""
+			for _, f := range files {
+				snapFiles += f.Name() + ", "
+			}
+			logger.Error(snapFiles)
+		}
+	}()
+
+	if o.GetUPFEnabled() {
+		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
+			logger.Warn("Failed to activate VM in the memory manager", activateErr)
+		}
+	}
+
+	<-loadDone
+
+	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))
+
+	if loadErr != nil || activateErr != nil {
+		multierr := multierror.Of(loadErr, activateErr)
+		return nil, nil, multierr
+	}
+
+	vm.SnapBooted = true
+	vm.RemoteSnapBooted = true
+
+	return &StartVMResponse{GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
+}
+
+// RemoteLoadSnapshot Loads a snapshot of a VM from remote storage
+//func (o *Orchestrator) RemoteCreateContainerSnapshot(
+//	ctx context.Context,
+//	vmID string,
+//	image string,
+//	filePathPatch string,
+//	filePathSnap string,
+//	filePathMem string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+//
+//	// 4. Create container
+//
+//	containerId := vmID
+//	if o.isFullLocal {
+//		containerId = vm.ContainerSnapKey
+//	}
+//
+//	container, err := o.client.NewContainer(
+//		ctx,
+//		containerId,
+//		containerd.WithSnapshotter(o.snapshotter),
+//		containerd.WithNewSnapshot(containerId, *vm.Image),
+//		containerd.WithNewSpec(
+//			oci.WithImageConfig(*vm.Image),
+//			firecrackeroci.WithVMID(vmID),
+//			firecrackeroci.WithVMNetwork,
+//		),
+//		containerd.WithRuntime("aws.firecracker", nil),
+//	)
+//
+//	vm.Container = &container
+//	if err != nil {
+//		return nil, nil, errors.Wrap(err, "failed to create a container")
+//	}
+//
+//	defer func() {
+//		if retErr != nil {
+//			if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+//				logger.WithError(err).Errorf("failed to delete container after failure")
+//			}
+//		}
+//	}()
+//
+//	// 5. Turn container into runnable process
+//	iologger := NewWorkloadIoWriter(vmID)
+//	o.workloadIo.Store(vmID, &iologger)
+//	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, iologger, iologger)))
+//	vm.Task = &task
+//	if err != nil {
+//		return nil, nil, errors.Wrapf(err, "failed to create a task")
+//	}
+//
+//	defer func() {
+//		if retErr != nil {
+//			if _, err := task.Delete(ctx); err != nil {
+//				logger.WithError(err).Errorf("failed to delete task after failure")
+//			}
+//		}
+//	}()
+//
+//	// 6. Wait for task to get ready
+//	logger.Debug("StartVM: Waiting for the task to get ready")
+//	tStart = time.Now()
+//	ch, err := task.Wait(ctx)
+//	startVMMetric.MetricMap[metrics.TaskWait] = metrics.ToUS(time.Since(tStart))
+//	vm.TaskCh = ch
+//	if err != nil {
+//		return nil, nil, errors.Wrap(err, "failed to wait for a task")
+//	}
+//
+//	defer func() {
+//		if retErr != nil {
+//			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
+//				logger.WithError(err).Errorf("failed to kill task after failure")
+//			}
+//		}
+//	}()
+//
+//	// 7. Start process inside container
+//	logger.Debug("StartVM: Starting the task")
+//	tStart = time.Now()
+//	if err := task.Start(ctx); err != nil {
+//		return nil, nil, errors.Wrap(err, "failed to start a task")
+//	}
+//	startVMMetric.MetricMap[metrics.TaskStart] = metrics.ToUS(time.Since(tStart))
+//
+//	defer func() {
+//		if retErr != nil {
+//			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
+//				logger.WithError(err).Errorf("failed to kill task after failure")
+//			}
+//		}
+//	}()
+//
+//	if !o.isFullLocal {
+//		if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
+//			logger.Error("Failed to create VM base dir")
+//			return nil, nil, err
+//		}
+//		if o.GetUPFEnabled() {
+//			logger.Debug("Registering VM with the memory manager")
+//
+//			stateCfg := manager.SnapshotStateCfg{
+//				VMID:             vmID,
+//				GuestMemPath:     o.getMemoryFile(vmID),
+//				BaseDir:          o.getVMBaseDir(vmID),
+//				GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+//				IsLazyMode:       o.isLazyMode,
+//				VMMStatePath:     o.getSnapshotFile(vmID),
+//				WorkingSetPath:   o.getWorkingSetFile(vmID),
+//				InstanceSockAddr: resp.UPFSockPath,
+//			}
+//			if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
+//				return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
+//				// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
+//			}
+//		}
+//	}
+//
+//	logger.Debug("Successfully started a VM")
+//
+//	return
+//}
 
 // Offload Shuts down the VM but leaves shim and other resources running.
 func (o *Orchestrator) OffloadVM(ctx context.Context, vmID string) error {

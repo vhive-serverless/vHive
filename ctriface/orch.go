@@ -61,7 +61,7 @@ type WorkloadIoWriter struct {
 }
 
 func NewWorkloadIoWriter(vmID string) WorkloadIoWriter {
-	return WorkloadIoWriter {log.WithFields(log.Fields{"vmID": vmID})}
+	return WorkloadIoWriter{log.WithFields(log.Fields{"vmID": vmID})}
 }
 
 func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
@@ -90,6 +90,7 @@ type Orchestrator struct {
 	isMetricsMode    bool
 	hostIface        string
 	isFullLocal      bool
+	isRemoteSnap     bool
 
 	memoryManager *manager.MemoryManager
 }
@@ -216,7 +217,7 @@ func (o *Orchestrator) getWorkingSetFile(vmID string) string {
 }
 
 func (o *Orchestrator) getVMBaseDir(vmID string) string {
-	return filepath.Join(o.snapshotsDir,  vmID)
+	return filepath.Join(o.snapshotsDir, vmID)
 }
 
 func (o *Orchestrator) setupHeartbeat() {

@@ -49,6 +49,13 @@ func WithFullLocal(fullLocal bool) OrchestratorOption {
 	}
 }
 
+// WithRemoteSnap Sets the snapshot from global storage mode on or off
+func WithRemoteSnap(isRemoteSnap bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.isRemoteSnap = isRemoteSnap
+	}
+}
+
 // WithUPF Sets the user-page faults mode on or off
 func WithUPF(isUPFEnabled bool) OrchestratorOption {
 	return func(o *Orchestrator) {
