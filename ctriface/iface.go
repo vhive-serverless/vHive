@@ -335,17 +335,27 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 }
 
 func imageIsOutdated(cachedImage containerd.Image, imageUrl string) bool {
-	remoteImageDigest, err := remoteImageDigest(imageUrl)
-	return err == nil && cachedImage.Target().Digest.String() != remoteImageDigest
+	latestImageDigest, err := fetchLatestImageDigest(imageUrl)
+	if err != nil {
+		log.Errorf("Failed to fetch digest from image '%s': %v\n", imageUrl, err)
+		// As we would not know if the image is stale or not in this case, we act
+		// conservative and assume it not to be stale.
+		return true
+	}
+	return latestImageDigest != cachedImage.Target().Digest.String()
 }
 
-func remoteImageDigest(imageUrl string) (string, error) {
+// It is assumed that the `imageUrl` points to an image in a
+// registry that implements the "Docker Registry HTTP API V2".
+// By default, uses the authorization state in $XDG_RUNTIME_DIR/containers/auth.json,
+// which is set using skopeo login.
+func fetchLatestImageDigest(imageUrl string) (string, error) {
 	cmd := fmt.Sprintf("skopeo inspect docker://%s | jq -r '.Digest'", imageUrl)
 
 	start := time.Now()
 	out, err := exec.Command("bash", "-c", cmd).Output()
 	elapsed := time.Since(start)
-	log.Printf("Remote digest fetching took %s", elapsed)
+	log.Debugf("Latest image digest fetching took %s", elapsed)
 
 	return string(out), err
 }
