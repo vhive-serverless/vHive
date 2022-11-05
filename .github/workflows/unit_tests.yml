@@ -99,7 +99,8 @@ jobs:
       run: ./scripts/setup_tool setup_firecracker_containerd
 
     - name: Build
-      run: go build -race -v -a ./...
+      run: |
+        go build -race -v -a ./...
 
     - name: Run tests in submodules
       run: |
