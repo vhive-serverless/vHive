@@ -79,9 +79,13 @@ jobs:
         sudo apt update
         sudo apt install git -y
 
-    - name: Check if skopeo is installed
+    - name: Install skopeo
       run: |
+        echo "deb http://mirrors.kernel.org/ubuntu kinetic main universe" | sudo tee -a /etc/apt/sources.list
+        sudo apt update
+        sudo apt install skopeo -y
         skopeo --version
+        
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
