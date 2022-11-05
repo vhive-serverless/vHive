@@ -78,7 +78,11 @@ jobs:
         sudo add-apt-repository ppa:git-core/ppa -y
         sudo apt update
         sudo apt install git -y
-        
+
+    - name: Check if skopeo is installed
+      run: |
+        skopeo --version
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
       with:
