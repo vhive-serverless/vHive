@@ -350,12 +350,12 @@ func imageIsOutdated(cachedImage containerd.Image, imageUrl string) bool {
 // By default, uses the authorization state in $XDG_RUNTIME_DIR/containers/auth.json,
 // which is set using skopeo login.
 func fetchLatestImageDigest(imageUrl string) (string, error) {
-	cmd := fmt.Sprintf("skopeo inspect docker://%s | jq -r '.Digest'", imageUrl)
+	cmd := fmt.Sprintf("skopeo inspect 'docker://%s' --tls-verify=false | jq -r '.Digest'", imageUrl)
 
 	start := time.Now()
 	out, err := exec.Command("bash", "-c", cmd).Output()
 	elapsed := time.Since(start)
-	log.Debugf("Latest image digest fetching took %s", elapsed)
+	log.Debugf("Fetched '%s' image digest in %v (error = %v)\n", imageUrl, elapsed, err)
 
 	return string(out), err
 }
