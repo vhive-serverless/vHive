@@ -64,9 +64,15 @@ func getHostIfaceName() (string, error) {
 // createTap creates a TAP device with name tapName, IP gatewayIP in the network namespace with name netnsName
 func createTap(tapName, gatewayIP, netnsName string) error {
 	// 1. Create tap device
+	
+	logger := log.WithFields(log.Fields{"tap": tapName, "IP gateway":gatewayIP, "namespace": netnsName})
+
 	la := netlink.NewLinkAttrs()
 	la.Name = tapName
 	la.Namespace = netnsName
+	
+	logger.Debug("Creating tap for virtual network")
+	
 	tap0 := &netlink.Tuntap{LinkAttrs: la, Mode: netlink.TUNTAP_MODE_TAP}
 	if err := netlink.LinkAdd(tap0); err != nil {
 		return errors.Wrapf(err, "creating tap")
@@ -89,6 +95,8 @@ func createTap(tapName, gatewayIP, netnsName string) error {
 
 // deleteTap deletes the tap device identified by name tapName
 func deleteTap(tapName string) error {
+	logger := log.WithFields(log.Fields{"tap": tapName})
+	logger.Debug("Removing tap")
 	if err := netlink.LinkDel(&netlink.Tuntap{LinkAttrs: netlink.LinkAttrs{Name: tapName}}); err != nil {
 		return errors.Wrapf(err, "deleting tap %s", tapName)
 	}

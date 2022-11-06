@@ -86,6 +86,9 @@ func (mgr *NetworkManager) initConfigPool(poolSize int) {
 	var wg sync.WaitGroup
 	wg.Add(poolSize)
 
+	logger := log.WithFields(log.Fields{"poolSize": poolSize})
+	logger.Debug("Initializing network pool")
+
 	// Concurrently create poolSize network configs
 	for i := 0; i < poolSize; i++ {
 		go func() {
@@ -122,6 +125,9 @@ func (mgr *NetworkManager) allocNetConfig(funcID string) *NetworkConfig {
 	// Add netconfig to pool to keep pool to configured size
 	go mgr.addNetConfig()
 
+	logger := log.WithFields(log.Fields{"funcID": funcID})
+	logger.Debug("Allocating a new network config from network pool to function instance")
+
 	// Pop a network config from the pool and allocate it to the function instance
 	mgr.poolCond.L.Lock()
 	for len(mgr.networkPool) == 0 {
@@ -146,6 +152,9 @@ func (mgr *NetworkManager) releaseNetConfig(funcID string) {
 	delete(mgr.netConfigs, funcID)
 	mgr.Unlock()
 
+	logger := log.WithFields(log.Fields{"funcID": funcID})
+	logger.Debug("Releasing network config from function instance and adding it to network pool")
+
 	// Add network config back to the pool. We allow the pool to grow over it's configured size here since the
 	// overhead of keeping a network config in the pool is low compared to the cost of creating a new config.
 	mgr.poolCond.L.Lock()
@@ -156,6 +165,9 @@ func (mgr *NetworkManager) releaseNetConfig(funcID string) {
 
 // CreateNetwork creates the networking for a function instance identified by funcID
 func (mgr *NetworkManager) CreateNetwork(funcID string) (*NetworkConfig, error) {
+	logger := log.WithFields(log.Fields{"funcID": funcID})
+	logger.Debug("Creating network config for function instance")
+
 	netCfg := mgr.allocNetConfig(funcID)
 	return netCfg, nil
 }
@@ -172,6 +184,8 @@ func (mgr *NetworkManager) GetConfig(funcID string) *NetworkConfig {
 // RemoveNetwork removes the network config of a function instance identified by funcID. The allocated network devices
 // for the given function instance must not be in use anymore when calling this function.
 func (mgr *NetworkManager) RemoveNetwork(funcID string) error {
+	logger := log.WithFields(log.Fields{"funcID": funcID})
+	logger.Debug("Removing network config for function instance")
 	mgr.releaseNetConfig(funcID)
 	return nil
 }

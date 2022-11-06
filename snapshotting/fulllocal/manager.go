@@ -30,6 +30,8 @@ import (
 	"math"
 	"os"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // FullLocalSnapshotManager manages snapshots stored on the node.
@@ -111,6 +113,8 @@ func (mgr *FullLocalSnapshotManager) AcquireSnapshot(revision string) (*snapshot
 func (mgr *FullLocalSnapshotManager) ReleaseSnapshot(revision string) error {
 	mgr.Lock()
 	defer mgr.Unlock()
+	logger := log.WithFields(log.Fields{"revision":  revision})
+	logger.Debug("Releasing snapshot corresponding to revision")
 
 	snapStat, present := mgr.snapStats[revision]
 	if !present {
@@ -136,6 +140,9 @@ func (mgr *FullLocalSnapshotManager) ReleaseSnapshot(revision string) error {
 // CommitSnapshot must be run to finalize the snapshot creation and make the snapshot available fo ruse
 func (mgr *FullLocalSnapshotManager) InitSnapshot(revision, image string, coldStartTimeMs int64, memSizeMib, vCPUCount uint32, sparse bool) (*[]string, *snapshotting.Snapshot, error) {
 	mgr.Lock()
+
+	logger := log.WithFields(log.Fields{"revision":  revision, "image":image})
+	logger.Debug("Initializing snapshot corresponding to revision and image")
 
 	if _, present := mgr.snapshots[revision]; present {
 		mgr.Unlock()

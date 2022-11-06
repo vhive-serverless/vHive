@@ -433,43 +433,49 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 	// 1. Create VM & VM memory state snapshot
 	snapFilePath := o.getSnapshotFile(vmID)
 	memFilePath := o.getMemoryFile(vmID)
-
+	
 	if o.isFullLocal {
 		snapFilePath = snap.GetSnapFilePath()
 		memFilePath = snap.GetMemFilePath()
 	}
-
+	
 	req := &proto.CreateSnapshotRequest{
 		VMID:             vmID,
 		SnapshotFilePath: snapFilePath,
 		MemFilePath:      memFilePath,
 		SnapshotType:     snap.GetSnapType(),
 	}
-
+	
 	if _, err := o.fcClient.CreateSnapshot(ctx, req); err != nil {
 		logger.WithError(err).Error("failed to create snapshot of the VM")
 		return err
 	}
-
+	
 	// For the non full-local snapshots, no additional steps are necessary
 	if ! o.isFullLocal {
 		return nil
 	}
-
+	
 	// 2. Get VM metadata
 	vm, err := o.vmPool.GetVM(vmID)
 	if err != nil {
 		return err
 	}
-
+	
 	// 3. Backup disk state difference.
 	// 3.B Alternatively could also do ForkContainerSnap(ctx, vm.ContainerSnapKey, snap.GetContainerSnapName(), *vm.Image, forkMetric)
-	if err := o.devMapper.CreatePatch(ctx, snap.GetPatchFilePath(), vm.ContainerSnapKey, *vm.Image); err != nil {
+	patchFilePath := snap.GetPatchFilePath()
+	logger = log.WithFields(log.Fields{"vmID": vmID, "patchFilePath": patchFilePath})
+	logger.Debug("Creating patch file with disk state difference")
+
+	if err := o.devMapper.CreatePatch(ctx, patchFilePath, vm.ContainerSnapKey, *vm.Image); err != nil {
 		logger.WithError(err).Error("failed to create container patch file")
 		return err
 	}
-
+	
 	// 4. Serialize snapshot info
+	logger = log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Serializing snapshot info")
 	if err := snap.SerializeSnapInfo(); err != nil {
 		logger.WithError(err).Error("failed to serialize snapshot info")
 		return err
