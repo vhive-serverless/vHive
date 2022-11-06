@@ -27,9 +27,9 @@ import (
 	"errors"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -73,7 +73,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 // CreateContainer starts a container or a VM, depending on the name
 // if the name matches "user-container", the cri plugin starts a VM, assigning it an IP,
 // otherwise starts a regular container
-func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+func (fs *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	log.Debugf("CreateContainer within sandbox %q for container %+v",
 		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
 
@@ -81,17 +81,19 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	containerName := config.GetMetadata().GetName()
 
 	if containerName == userContainerName {
-		return s.createUserContainer(ctx, r)
+		return fs.createUserContainer(ctx, r)
 	}
 	if containerName == queueProxyName {
-		return s.createQueueProxy(ctx, r)
+		return fs.createQueueProxy(ctx, r)
 	}
 
 	// Containers relevant for control plane
-	return s.stockRuntimeClient.CreateContainer(ctx, r)
+	return fs.stockRuntimeClient.CreateContainer(ctx, r)
 }
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	log.Infof("Create User container: ctx = %v, r = %v, config = %v\n", ctx, r, r.GetConfig())
+
 	var (
 		stockResp *criapi.CreateContainerResponse
 		stockErr  error
@@ -127,12 +129,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	// Wait for placeholder UC to be created
 	<-stockDone
-	
+
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)
@@ -208,6 +210,7 @@ func (fs *FirecrackerService) getVMConfig(podID string) (*VMConfig, error) {
 
 func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 	envs := config.GetEnvs()
+	log.Infof("Environment variables: %v\n", envs)
 	for _, kv := range envs {
 		if kv.GetKey() == key {
 			return kv.GetValue(), nil
