@@ -27,9 +27,9 @@ import (
 	"errors"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -110,7 +110,8 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
+	environment := cri.ToStringArray(config.GetEnvs())
+	funcInst, err := fs.coordinator.startVMWithEnvironment(context.Background(), guestImage, environment)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
@@ -127,12 +128,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	// Wait for placeholder UC to be created
 	<-stockDone
-	
+
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)
@@ -216,5 +217,4 @@ func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 	}
 
 	return "", errors.New("failed to provide non empty guest image in user container config")
-
 }

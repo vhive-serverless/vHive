@@ -50,10 +50,10 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
+	"github.com/go-multierror/multierror"
 	"github.com/vhive-serverless/vhive/memory/manager"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/misc"
-	"github.com/go-multierror/multierror"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
@@ -71,6 +71,10 @@ const (
 
 // StartVM Boots a VM if it does not exist
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+	return o.StartVMWithEnvironment(ctx, vmID, imageName, []string{})
+}
+
+func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		startVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart        time.Time
@@ -128,6 +132,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 			oci.WithImageConfig(*vm.Image),
 			firecrackeroci.WithVMID(vmID),
 			firecrackeroci.WithVMNetwork,
+			oci.WithEnv(environmentVariables),
 		),
 		containerd.WithRuntime("aws.firecracker", nil),
 	)

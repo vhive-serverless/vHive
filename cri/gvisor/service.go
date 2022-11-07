@@ -28,8 +28,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/vhive-serverless/vhive/cri"
 	log "github.com/sirupsen/logrus"
+	"github.com/vhive-serverless/vhive/cri"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -108,7 +108,8 @@ func (gs *GVisorService) createUserContainer(ctx context.Context, r *criapi.Crea
 		return nil, err
 	}
 
-	ctr, err := gs.coor.startContainer(ctx, guestImage)
+	environment := cri.ToStringArray(config.GetEnvs())
+	ctr, err := gs.coor.startContainer(ctx, guestImage, environment)
 	if err != nil {
 		log.WithError(err).Error("failed to start container")
 		return nil, err

@@ -83,7 +83,7 @@ func newCoordinator() (*coordinator, error) {
 	return c, nil
 }
 
-func (c *coordinator) startContainer(ctx context.Context, imageName string) (_ *gvContainer, retErr error) {
+func (c *coordinator) startContainer(ctx context.Context, imageName string, environment []string) (_ *gvContainer, retErr error) {
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 	ctrID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
 	image, err := c.getImage(ctx, imageName)
@@ -95,7 +95,10 @@ func (c *coordinator) startContainer(ctx context.Context, imageName string) (_ *
 		ctrID,
 		containerd.WithImage(*image),
 		containerd.WithNewSnapshot(ctrID, *image),
-		containerd.WithNewSpec(oci.WithImageConfig(*image)),
+		containerd.WithNewSpec(
+			oci.WithImageConfig(*image),
+			oci.WithEnv(environment),
+		),
 	)
 	if err != nil {
 		return nil, err
