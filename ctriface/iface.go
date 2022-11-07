@@ -71,6 +71,10 @@ const (
 
 // StartVM Boots a VM if it does not exist
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+	return o.StartVMWithEnvVariables(ctx, vmID, imageName, []string{})
+}
+
+func (o *Orchestrator) StartVMWithEnvVariables(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		startVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart        time.Time
@@ -128,6 +132,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 			oci.WithImageConfig(*vm.Image),
 			firecrackeroci.WithVMID(vmID),
 			firecrackeroci.WithVMNetwork,
+			oci.WithEnv(environmentVariables),
 		),
 		containerd.WithRuntime("aws.firecracker", nil),
 	)

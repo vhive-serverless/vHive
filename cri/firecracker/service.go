@@ -25,6 +25,7 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -112,7 +113,8 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
+	envVariables := mapKeyValueToStringArray(config.GetEnvs())
+	funcInst, err := fs.coordinator.startVMWithEnvVariables(context.Background(), guestImage, envVariables)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
@@ -219,5 +221,17 @@ func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 	}
 
 	return "", errors.New("failed to provide non empty guest image in user container config")
+}
 
+// (Key, Value) pair is mapped to a 'Key=Value' entry.
+func mapKeyValueToStringArray(envVariables []*criapi.KeyValue) []string {
+	result := make([]string, len(envVariables))
+
+	for _, kv := range envVariables {
+		env := fmt.Sprintf("%s=%s", kv.GetKey(), kv.GetValue())
+		result = append(result, env)
+	}
+
+	log.Infof("Converted '%v' to '%v'\n", envVariables, result)
+	return result
 }
