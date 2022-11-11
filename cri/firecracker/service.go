@@ -25,11 +25,11 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/vhive-serverless/vhive/ctriface"
+	"github.com/vhive-serverless/vhive/utils"
 	"sync"
 
 	"github.com/vhive-serverless/vhive/cri"
-	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -40,6 +40,8 @@ const (
 	guestPortEnv      = "GUEST_PORT"
 	guestImageEnv     = "GUEST_IMAGE"
 )
+
+var log = utils.GetLogger()
 
 type FirecrackerService struct {
 	sync.Mutex
@@ -57,7 +59,7 @@ type VMConfig struct {
 	guestPort string
 }
 
-func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, error) {
+func NewFirecrackerService(orchestrator *ctriface.Orchestrator) (*FirecrackerService, error) {
 	fs := new(FirecrackerService)
 	stockRuntimeClient, err := cri.NewStockRuntimeServiceClient()
 	if err != nil {
@@ -65,7 +67,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 		return nil, err
 	}
 	fs.stockRuntimeClient = stockRuntimeClient
-	fs.coordinator = newFirecrackerCoordinator(orch)
+	fs.coordinator = newFirecrackerCoordinator(orchestrator)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
 }
@@ -73,25 +75,26 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 // CreateContainer starts a container or a VM, depending on the name
 // if the name matches "user-container", the cri plugin starts a VM, assigning it an IP,
 // otherwise starts a regular container
-func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	log.Debugf("CreateContainer within sandbox %q for container %+v",
-		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
+func (fs *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	log.Traceln(ctx, r)
 
 	config := r.GetConfig()
 	containerName := config.GetMetadata().GetName()
 
 	if containerName == userContainerName {
-		return s.createUserContainer(ctx, r)
+		return fs.createUserContainer(ctx, r)
 	}
 	if containerName == queueProxyName {
-		return s.createQueueProxy(ctx, r)
+		return fs.createQueueProxy(ctx, r)
 	}
 
 	// Containers relevant for control plane
-	return s.stockRuntimeClient.CreateContainer(ctx, r)
+	return fs.stockRuntimeClient.CreateContainer(ctx, r)
 }
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	log.Traceln(ctx, r)
+
 	var (
 		stockResp *criapi.CreateContainerResponse
 		stockErr  error
@@ -101,10 +104,10 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	go func() {
 		defer close(stockDone)
 		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
+		log.Debugf("stockResponse: %v\n", stockResp)
 	}()
 
-	config := r.GetConfig()
-	guestImage, err := getEnvVal(guestImageEnv, config)
+	guestImage, err := getEnvVal(guestImageEnv, r.GetConfig())
 	if err != nil {
 		log.WithError(err).Error()
 		return nil, err
@@ -116,7 +119,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	guestPort, err := getEnvVal(guestPortEnv, config)
+	guestPort, err := getEnvVal(guestPortEnv, r.GetConfig())
 	if err != nil {
 		log.WithError(err).Error()
 		return nil, err
@@ -127,12 +130,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	// Wait for placeholder UC to be created
 	<-stockDone
-	
+
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)
@@ -145,6 +148,8 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 }
 
 func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	log.Traceln(ctx, r)
+
 	vmConfig, err := fs.getVMConfig(r.GetPodSandboxId())
 	if err != nil {
 		log.WithError(err).Error()
@@ -167,7 +172,9 @@ func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.Cr
 }
 
 func (fs *FirecrackerService) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
+	log.Traceln(ctx, r)
 	log.Debugf("RemoveContainer for %q", r.GetContainerId())
+
 	containerID := r.GetContainerId()
 
 	go func() {
@@ -180,6 +187,8 @@ func (fs *FirecrackerService) RemoveContainer(ctx context.Context, r *criapi.Rem
 }
 
 func (fs *FirecrackerService) insertVMConfig(podID string, vmConfig *VMConfig) {
+	log.Traceln(podID, vmConfig)
+
 	fs.Lock()
 	defer fs.Unlock()
 
@@ -187,6 +196,8 @@ func (fs *FirecrackerService) insertVMConfig(podID string, vmConfig *VMConfig) {
 }
 
 func (fs *FirecrackerService) removeVMConfig(podID string) {
+	log.Traceln(podID)
+
 	fs.Lock()
 	defer fs.Unlock()
 
@@ -194,6 +205,8 @@ func (fs *FirecrackerService) removeVMConfig(podID string) {
 }
 
 func (fs *FirecrackerService) getVMConfig(podID string) (*VMConfig, error) {
+	log.Traceln(podID)
+
 	fs.Lock()
 	defer fs.Unlock()
 

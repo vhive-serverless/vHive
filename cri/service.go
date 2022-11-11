@@ -27,7 +27,6 @@ import (
 	"errors"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -41,7 +40,7 @@ type Service struct {
 	stockRuntimeClient criapi.RuntimeServiceClient
 	stockImageClient   criapi.ImageServiceClient
 
-	// generic coordinator
+	// The service that creates and removes containers
 	serv ServiceInterface
 }
 

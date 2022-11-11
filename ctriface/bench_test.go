@@ -31,11 +31,9 @@ import (
 	"testing"
 	"time"
 
-	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/vhive-serverless/vhive/metrics"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"github.com/vhive-serverless/vhive/metrics"
 )
 
 const (
@@ -43,15 +41,6 @@ const (
 )
 
 func TestBenchmarkStart(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 2000 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -69,7 +58,7 @@ func TestBenchmarkStart(t *testing.T) {
 		startMetrics := make([]*metrics.Metric, benchCount)
 
 		// Pull image
-		_, err := orch.getImage(ctx, imageName)
+		_, err := orch.pullImage(ctx, imageName)
 		require.NoError(t, err, "Failed to pull image "+imageName)
 
 		for i := 0; i < benchCount; i++ {

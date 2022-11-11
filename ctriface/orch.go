@@ -23,15 +23,14 @@
 package ctriface
 
 import (
+	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 	"strings"
 	"sync"
-
-	log "github.com/sirupsen/logrus"
+	"syscall"
+	"time"
 
 	"github.com/containerd/containerd"
 
@@ -55,30 +54,30 @@ const (
 )
 
 type WorkloadIoWriter struct {
-	logger *log.Entry
+	logger *logrus.Entry
 }
 
 func NewWorkloadIoWriter(vmID string) WorkloadIoWriter {
-	return WorkloadIoWriter {log.WithFields(log.Fields{"vmID": vmID})}
+	return WorkloadIoWriter{logrus.WithFields(logrus.Fields{"vmID": vmID})}
 }
 
 func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
 	s := string(p)
 	lines := strings.Split(s, "\n")
 	for i := range lines {
-		wio.logger.Info(string(lines[i]))
+		wio.logger.Info(lines[i])
 	}
 	return len(p), nil
 }
 
 // Orchestrator Drives all VMs
 type Orchestrator struct {
-	vmPool       *misc.VMPool
-	cachedImages map[string]containerd.Image
-	workloadIo   sync.Map // vmID string -> WorkloadIoWriter
-	snapshotter  string
-	client       *containerd.Client
-	fcClient     *fcclient.Client
+	vmPool           *misc.VMPool
+	cachedImages     map[string]containerd.Image
+	workloadIo       sync.Map // vmID string -> WorkloadIoWriter
+	snapshotter      string
+	containerdClient *containerd.Client
+	fcClient         *fcclient.Client
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
@@ -122,19 +121,19 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		o.memoryManager = manager.NewMemoryManager(managerCfg)
 	}
 
-	log.Info("Creating containerd client")
-	o.client, err = containerd.New(containerdAddress)
+	log.Info("Creating containerd containerdClient")
+	o.containerdClient, err = containerd.New(containerdAddress)
 	if err != nil {
-		log.Fatal("Failed to start containerd client", err)
+		log.Fatal("Failed to start containerd containerdClient", err)
 	}
-	log.Info("Created containerd client")
+	log.Info("Created containerd containerdClient")
 
-	log.Info("Creating firecracker client")
+	log.Info("Creating firecracker containerdClient")
 	o.fcClient, err = fcclient.New(containerdTTRPCAddress)
 	if err != nil {
-		log.Fatal("Failed to start firecracker client", err)
+		log.Fatal("Failed to start firecracker containerdClient", err)
 	}
-	log.Info("Created firecracker client")
+	log.Info("Created firecracker containerdClient")
 	return o
 }
 
@@ -172,24 +171,21 @@ func (o *Orchestrator) GetUPFEnabled() bool {
 // DumpUPFPageStats Dumps the memory manager's stats about the number of
 // the unique pages and the number of the pages that are reused across invocations
 func (o *Orchestrator) DumpUPFPageStats(vmID, functionName, metricsOutFilePath string) error {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received DumpUPFPageStats")
+	log.Debug("Orchestrator received DumpUPFPageStats")
 
 	return o.memoryManager.DumpUPFPageStats(vmID, functionName, metricsOutFilePath)
 }
 
 // DumpUPFLatencyStats Dumps the memory manager's latency stats
 func (o *Orchestrator) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath string) error {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received DumpUPFPageStats")
+	log.Debug("Orchestrator received DumpUPFPageStats")
 
 	return o.memoryManager.DumpUPFLatencyStats(vmID, functionName, latencyOutFilePath)
 }
 
 // GetUPFLatencyStats Returns the memory manager's latency stats
 func (o *Orchestrator) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, error) {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received DumpUPFPageStats")
+	log.Debug("Orchestrator received DumpUPFPageStats")
 
 	return o.memoryManager.GetUPFLatencyStats(vmID)
 }

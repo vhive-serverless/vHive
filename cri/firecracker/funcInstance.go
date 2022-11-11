@@ -23,16 +23,16 @@
 package firecracker
 
 import (
+	"github.com/sirupsen/logrus"
 	"sync"
 
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 )
 
 type funcInstance struct {
 	VmID                   string
 	Image                  string
-	Logger                 *log.Entry
+	Logger                 *logrus.Entry
 	OnceCreateSnapInstance *sync.Once
 	StartVMResponse        *ctriface.StartVMResponse
 }
@@ -45,8 +45,8 @@ func newFuncInstance(vmID, image string, startVMResponse *ctriface.StartVMRespon
 		StartVMResponse:        startVMResponse,
 	}
 
-	f.Logger = log.WithFields(
-		log.Fields{
+	f.Logger = logrus.WithFields(
+		logrus.Fields{
 			"vmID":  vmID,
 			"image": image,
 		},
