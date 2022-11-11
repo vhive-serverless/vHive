@@ -25,30 +25,15 @@ package ctriface
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
-	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSnapLoad(t *testing.T) {
-	// Need to clean up manually after this test because StopVM does not
-	// work for stopping machines which are loaded from snapshots yet
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -88,17 +73,6 @@ func TestSnapLoad(t *testing.T) {
 }
 
 func TestSnapLoadMultiple(t *testing.T) {
-	// Needs to be cleaned up manually.
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -147,17 +121,6 @@ func TestSnapLoadMultiple(t *testing.T) {
 }
 
 func TestParallelSnapLoad(t *testing.T) {
-	// Needs to be cleaned up manually.
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -174,7 +137,7 @@ func TestParallelSnapLoad(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
+	_, err := orch.pullImage(ctx, testImageName)
 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	var vmGroup sync.WaitGroup
@@ -209,17 +172,6 @@ func TestParallelSnapLoad(t *testing.T) {
 }
 
 func TestParallelPhasedSnapLoad(t *testing.T) {
-	// Needs to be cleaned up manually.
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -236,7 +188,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
+	_, err := orch.pullImage(ctx, testImageName)
 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{

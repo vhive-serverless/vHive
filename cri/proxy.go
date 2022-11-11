@@ -24,10 +24,12 @@ package cri
 
 import (
 	"context"
+	"github.com/vhive-serverless/vhive/utils"
 
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
+
+var log = utils.GetLogger()
 
 // RunPodSandbox creates and starts a pod-level sandbox. Runtimes must ensure
 // the sandbox is in the ready state on success.

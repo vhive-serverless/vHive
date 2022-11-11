@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+// # Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
-	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,20 +38,10 @@ var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
 	//nolint:deadcode,unused,varcheck
-	isWithCache  = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 )
 
 func TestPauseSnapResume(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -88,16 +75,6 @@ func TestPauseSnapResume(t *testing.T) {
 }
 
 func TestStartStopSerial(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -122,16 +99,6 @@ func TestStartStopSerial(t *testing.T) {
 }
 
 func TestPauseResumeSerial(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -162,16 +129,6 @@ func TestPauseResumeSerial(t *testing.T) {
 }
 
 func TestStartStopParallel(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 360 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -186,7 +143,7 @@ func TestStartStopParallel(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
+	_, err := orch.pullImage(ctx, testImageName)
 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{
@@ -221,16 +178,6 @@ func TestStartStopParallel(t *testing.T) {
 }
 
 func TestPauseResumeParallel(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
-
-	log.SetOutput(os.Stdout)
-
-	log.SetLevel(log.InfoLevel)
-
 	testTimeout := 120 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
@@ -245,7 +192,7 @@ func TestPauseResumeParallel(t *testing.T) {
 	)
 
 	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
+	_, err := orch.pullImage(ctx, testImageName)
 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
 	{

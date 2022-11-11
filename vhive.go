@@ -33,13 +33,13 @@ import (
 	"runtime"
 
 	ctrdlog "github.com/containerd/containerd/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	fccri "github.com/vhive-serverless/vhive/cri/firecracker"
 	gvcri "github.com/vhive-serverless/vhive/cri/gvisor"
 	ctriface "github.com/vhive-serverless/vhive/ctriface"
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 	pb "github.com/vhive-serverless/vhive/proto"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -72,7 +72,7 @@ func main() {
 
 	rand.Seed(42)
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
-	debug := flag.Bool("dbg", false, "Enable debug logging")
+	debug := flag.Bool("dbg", true, "Enable debug logging")
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
 	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
