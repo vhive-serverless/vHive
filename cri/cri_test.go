@@ -25,7 +25,6 @@ package cri
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"sync"

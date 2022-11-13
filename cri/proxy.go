@@ -40,14 +40,14 @@ func (s *Service) RunPodSandbox(ctx context.Context, r *criapi.RunPodSandboxRequ
 
 // ListPodSandbox returns a list of PodSandboxes.
 func (s *Service) ListPodSandbox(ctx context.Context, r *criapi.ListPodSandboxRequest) (*criapi.ListPodSandboxResponse, error) {
-	log.Tracef("ListPodSandbox with filter %+v", r.GetFilter())
+	//log.Tracef("ListPodSandbox with filter %+v", r.GetFilter())
 	return s.stockRuntimeClient.ListPodSandbox(ctx, r)
 }
 
 // PodSandboxStatus returns the status of the PodSandbox. If the PodSandbox is not
 // present, returns an error.
 func (s *Service) PodSandboxStatus(ctx context.Context, r *criapi.PodSandboxStatusRequest) (*criapi.PodSandboxStatusResponse, error) {
-	log.Tracef("PodSandboxStatus for %q", r.GetPodSandboxId())
+	//log.Tracef("PodSandboxStatus for %q", r.GetPodSandboxId())
 	return s.stockRuntimeClient.PodSandboxStatus(ctx, r)
 }
 
@@ -81,14 +81,14 @@ func (s *Service) StartContainer(ctx context.Context, r *criapi.StartContainerRe
 
 // ListContainers lists all containers by filters.
 func (s *Service) ListContainers(ctx context.Context, r *criapi.ListContainersRequest) (*criapi.ListContainersResponse, error) {
-	log.Tracef("ListContainers with filter %+v", r.GetFilter())
+	//log.Tracef("ListContainers with filter %+v", r.GetFilter())
 	return s.stockRuntimeClient.ListContainers(ctx, r)
 }
 
 // ContainerStatus returns status of the container. If the container is not
 // present, returns an error.
 func (s *Service) ContainerStatus(ctx context.Context, r *criapi.ContainerStatusRequest) (*criapi.ContainerStatusResponse, error) {
-	log.Tracef("ContainerStatus for %q", r.GetContainerId())
+	//log.Tracef("ContainerStatus for %q", r.GetContainerId())
 	return s.stockRuntimeClient.ContainerStatus(ctx, r)
 }
 
@@ -130,7 +130,7 @@ func (s *Service) PullImage(ctx context.Context, r *criapi.PullImageRequest) (*c
 
 // ListImages lists existing images.
 func (s *Service) ListImages(ctx context.Context, r *criapi.ListImagesRequest) (*criapi.ListImagesResponse, error) {
-	log.Tracef("ListImages with filter %+v", r.GetFilter())
+	//log.Tracef("ListImages with filter %+v", r.GetFilter())
 	return s.stockImageClient.ListImages(ctx, r)
 }
 
@@ -138,7 +138,7 @@ func (s *Service) ListImages(ctx context.Context, r *criapi.ListImagesRequest) (
 // present, returns a response with ImageStatusResponse.Image set to
 // nil.
 func (s *Service) ImageStatus(ctx context.Context, r *criapi.ImageStatusRequest) (*criapi.ImageStatusResponse, error) {
-	log.Tracef("ImageStatus for %q", r.GetImage().GetImage())
+	//log.Tracef("ImageStatus for %q", r.GetImage().GetImage())
 	return s.stockImageClient.ImageStatus(ctx, r)
 }
 
@@ -163,19 +163,19 @@ func (s *Service) ContainerStats(ctx context.Context, r *criapi.ContainerStatsRe
 
 // ListContainerStats returns stats of all running containers.
 func (s *Service) ListContainerStats(ctx context.Context, r *criapi.ListContainerStatsRequest) (*criapi.ListContainerStatsResponse, error) {
-	log.Tracef("ListContainerStats with filter %+v", r.GetFilter())
+	//log.Tracef("ListContainerStats with filter %+v", r.GetFilter())
 	return s.stockRuntimeClient.ListContainerStats(ctx, r)
 }
 
 // Status returns the status of the runtime.
 func (s *Service) Status(ctx context.Context, r *criapi.StatusRequest) (*criapi.StatusResponse, error) {
-	log.Tracef("Status")
+	//log.Tracef("Status")
 	return s.stockRuntimeClient.Status(ctx, r)
 }
 
 // Version returns the runtime name, runtime version, and runtime API version.
 func (s *Service) Version(ctx context.Context, r *criapi.VersionRequest) (*criapi.VersionResponse, error) {
-	log.Tracef("Version with client side version %q", r.GetVersion())
+	//log.Tracef("Version with client side version %q", r.GetVersion())
 	return s.stockRuntimeClient.Version(ctx, r)
 }
 

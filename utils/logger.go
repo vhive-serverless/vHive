@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/sirupsen/logrus"
+	easy "github.com/t-tomalak/logrus-easy-formatter"
 	"os"
 	"sync"
 )
@@ -20,8 +21,9 @@ func createLogger() *logrus.Logger {
 	return &logrus.Logger{
 		Out:   os.Stderr,
 		Level: logrus.TraceLevel,
-		Formatter: &logrus.TextFormatter{
-			TimestampFormat: "2006-01-02 15:04:05",
+		Formatter: &easy.Formatter{
+			TimestampFormat: "15:04:05",
+			LogFormat:       "[%lvl%]: %time% - %msg%",
 		},
 		ReportCaller: true,
 	}
