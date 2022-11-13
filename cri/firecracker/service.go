@@ -27,10 +27,10 @@ import (
 	"errors"
 	"github.com/vhive-serverless/vhive/ctriface"
 	"github.com/vhive-serverless/vhive/utils"
+	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"sync"
 
 	"github.com/vhive-serverless/vhive/cri"
-	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 const (
@@ -96,16 +96,15 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	log.Traceln(ctx, r)
 
 	var (
-		stockResp *criapi.CreateContainerResponse
-		stockErr  error
-		stockDone = make(chan struct{})
+		//stockResp *criapi.CreateContainerResponse
+		stockErr error
+		//stockDone = make(chan struct{})
 	)
-
-	go func() {
-		defer close(stockDone)
-		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
-		log.Debugf("stockResponse: %v\n", stockResp)
-	}()
+	//go func() {
+	//	defer close(stockDone)
+	//	stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
+	//	log.Debugf("stockResponse: %v\n", stockResp)
+	//}()
 
 	guestImage, err := getEnvVal(guestImageEnv, r.GetConfig())
 	if err != nil {
@@ -129,7 +128,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
 
 	// Wait for placeholder UC to be created
-	<-stockDone
+	//<-stockDone
 
 	// Check for error from container creation
 	if stockErr != nil {
@@ -137,14 +136,18 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, stockErr
 	}
 
-	containerdID := stockResp.ContainerId
-	err = fs.coordinator.insertActive(containerdID, funcInst)
+	id := (*funcInst.StartVMResponse.VM.Container).ID()
+	//containerdID := stockResp.ContainerId
+	//err = fs.coordinator.insertActive(containerdID, funcInst)
+	err = fs.coordinator.insertActive(id, funcInst)
 	if err != nil {
 		log.WithError(err).Error("failed to insert active VM")
 		return nil, err
 	}
 
-	return stockResp, stockErr
+	return &criapi.CreateContainerResponse{ContainerId: id}, nil
+	//return &runtime., nil
+	//return stockResp, stockErr
 }
 
 func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {

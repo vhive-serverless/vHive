@@ -48,9 +48,9 @@ import (
 )
 
 const (
-	containerdAddress      = "/run/firecracker-containerd/containerd.sock"
-	containerdTTRPCAddress = containerdAddress + ".ttrpc"
-	namespaceName          = "firecracker-containerd"
+	firecrackerContainerdAddress = "/run/firecracker-containerd/containerd.sock"
+	containerdTTRPCAddress       = firecrackerContainerdAddress + ".ttrpc"
+	namespaceName                = "firecracker-containerd"
 )
 
 type WorkloadIoWriter struct {
@@ -72,12 +72,12 @@ func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
 
 // Orchestrator Drives all VMs
 type Orchestrator struct {
-	vmPool           *misc.VMPool
-	cachedImages     map[string]containerd.Image
-	workloadIo       sync.Map // vmID string -> WorkloadIoWriter
-	snapshotter      string
-	containerdClient *containerd.Client
-	fcClient         *fcclient.Client
+	vmPool                      *misc.VMPool
+	cachedImages                map[string]containerd.Image
+	workloadIo                  sync.Map // vmID string -> WorkloadIoWriter
+	snapshotter                 string
+	firecrackerContainerdClient *containerd.Client
+	fcClient                    *fcclient.Client
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
@@ -121,19 +121,19 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		o.memoryManager = manager.NewMemoryManager(managerCfg)
 	}
 
-	log.Info("Creating containerd containerdClient")
-	o.containerdClient, err = containerd.New(containerdAddress)
+	log.Info("Creating containerd firecrackerContainerdClient")
+	o.firecrackerContainerdClient, err = containerd.New(firecrackerContainerdAddress)
 	if err != nil {
-		log.Fatal("Failed to start containerd containerdClient", err)
+		log.Fatal("Failed to start containerd firecrackerContainerdClient", err)
 	}
-	log.Info("Created containerd containerdClient")
+	log.Info("Created containerd firecrackerContainerdClient")
 
-	log.Info("Creating firecracker containerdClient")
+	log.Info("Creating firecracker firecrackerContainerdClient")
 	o.fcClient, err = fcclient.New(containerdTTRPCAddress)
 	if err != nil {
-		log.Fatal("Failed to start firecracker containerdClient", err)
+		log.Fatal("Failed to start firecracker firecrackerContainerdClient", err)
 	}
-	log.Info("Created firecracker containerdClient")
+	log.Info("Created firecracker firecrackerContainerdClient")
 	return o
 }
 

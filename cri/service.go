@@ -46,6 +46,7 @@ type Service struct {
 
 // NewService initializes the host orchestration state.
 func NewService(serv ServiceInterface) (*Service, error) {
+	//s, err := server.NewCRIService(config.Config{}, nil)
 	if serv == nil {
 		return nil, errors.New("coor must be non nil")
 	}

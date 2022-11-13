@@ -62,6 +62,7 @@ var log = utils.GetLogger()
 // StartVMResponse is the response returned by StartVM
 // TODO: Integrate response with non-cri API
 type StartVMResponse struct {
+	VM *misc.VM
 	// GuestIP is the IP of the guest MicroVM
 	GuestIP string
 }
@@ -124,7 +125,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	}()
 
 	tStart = time.Now()
-	container, err := o.containerdClient.NewContainer(
+	firecrackerContainer, err := o.firecrackerContainerdClient.NewContainer(
 		ctx,
 		vmID,
 		containerd.WithSnapshotter(o.snapshotter),
@@ -137,15 +138,15 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 		containerd.WithRuntime("aws.firecracker", nil),
 	)
 	startVMMetric.MetricMap[metrics.NewContainer] = metrics.ToUS(time.Since(tStart))
-	vm.Container = &container
+	vm.Container = &firecrackerContainer
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to create a container")
+		return nil, nil, errors.Wrap(err, "failed to create a firecrackerContainer")
 	}
 
 	defer func() {
 		if retErr != nil {
-			if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-				log.WithError(err).Errorf("failed to delete container after failure")
+			if err := firecrackerContainer.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+				log.WithError(err).Errorf("failed to delete firecrackerContainer after failure")
 			}
 		}
 	}()
@@ -155,7 +156,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 
 	log.Debug("StartVM: Creating a new task")
 	tStart = time.Now()
-	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, workloadIoWriter, workloadIoWriter)))
+	task, err := firecrackerContainer.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, workloadIoWriter, workloadIoWriter)))
 	startVMMetric.MetricMap[metrics.NewTask] = metrics.ToUS(time.Since(tStart))
 	vm.Task = &task
 	if err != nil {
@@ -227,7 +228,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 
 	log.Debug("Successfully started a VM")
 
-	return &StartVMResponse{GuestIP: vm.Ni.PrimaryAddress}, startVMMetric, nil
+	return &StartVMResponse{VM: vm, GuestIP: vm.Ni.PrimaryAddress}, startVMMetric, nil
 }
 
 // StopSingleVM Shuts down a VM
@@ -331,14 +332,14 @@ func (o *Orchestrator) pullImage(ctx context.Context, imageName string) (*contai
 					docker.WithPlainHTTP(docker.MatchAllHosts),
 				),
 			})
-			image, err = o.containerdClient.Pull(ctx, imageURL,
+			image, err = o.firecrackerContainerdClient.Pull(ctx, imageURL,
 				containerd.WithPullUnpack,
 				containerd.WithPullSnapshotter(o.snapshotter),
 				containerd.WithResolver(resolver),
 			)
 		} else {
 			// Pull remote image
-			image, err = o.containerdClient.Pull(ctx, imageURL,
+			image, err = o.firecrackerContainerdClient.Pull(ctx, imageURL,
 				containerd.WithPullUnpack,
 				containerd.WithPullSnapshotter(o.snapshotter),
 			)
@@ -416,8 +417,8 @@ func (o *Orchestrator) StopActiveVMs() error {
 
 	log.Info("Closing fcClient")
 	o.fcClient.Close()
-	log.Info("Closing containerd containerdClient")
-	o.containerdClient.Close()
+	log.Info("Closing firecrackerContainerdClient")
+	o.firecrackerContainerdClient.Close()
 
 	return nil
 }
