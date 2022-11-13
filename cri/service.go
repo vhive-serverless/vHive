@@ -42,6 +42,9 @@ type Service struct {
 
 	// The service that creates and removes containers
 	serv ServiceInterface
+
+	containerdRuntimeServiceServer criapi.RuntimeServiceServer
+	containerdImageServiceServer   criapi.ImageServiceServer
 }
 
 // NewService initializes the host orchestration state.
@@ -50,22 +53,36 @@ func NewService(serv ServiceInterface) (*Service, error) {
 		return nil, errors.New("coor must be non nil")
 	}
 
-	stockRuntimeClient, err := NewStockRuntimeServiceClient()
+	containerdRuntimeServiceServer, err := NewContainerdRuntimeServiceServer()
 	if err != nil {
-		log.WithError(err).Error("failed to create new stock runtime service client")
+		log.WithError(err).Error("failed to create new stock runtime service server")
 		return nil, err
 	}
 
-	stockImageClient, err := NewStockImageServiceClient()
+	containerdImageServiceServer, err := NewContainerdImageServiceServer()
 	if err != nil {
 		log.WithError(err).Error("failed to create new stock image service client")
 		return nil, err
 	}
 
+	//stockRuntimeClient, err := NewStockRuntimeServiceClient()
+	//if err != nil {
+	//	log.WithError(err).Error("failed to create new stock runtime service client")
+	//	return nil, err
+	//}
+
+	//stockImageClient, err := NewStockImageServiceClient()
+	//if err != nil {
+	//	log.WithError(err).Error("failed to create new stock image service client")
+	//	return nil, err
+	//}
+
 	cs := &Service{
-		stockRuntimeClient: stockRuntimeClient,
-		stockImageClient:   stockImageClient,
-		serv:               serv,
+		//stockRuntimeClient: stockRuntimeClient,
+		//stockImageClient:   stockImageClient,
+		serv:                           serv,
+		containerdImageServiceServer:   containerdImageServiceServer,
+		containerdRuntimeServiceServer: containerdRuntimeServiceServer,
 	}
 
 	return cs, nil

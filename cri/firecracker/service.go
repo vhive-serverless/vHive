@@ -46,7 +46,7 @@ var log = utils.GetLogger()
 type FirecrackerService struct {
 	sync.Mutex
 
-	stockRuntimeClient criapi.RuntimeServiceClient
+	containerdRuntimeServiceServer criapi.RuntimeServiceClient
 
 	coordinator *coordinator
 
@@ -61,12 +61,12 @@ type VMConfig struct {
 
 func NewFirecrackerService(orchestrator *ctriface.Orchestrator) (*FirecrackerService, error) {
 	fs := new(FirecrackerService)
-	stockRuntimeClient, err := cri.NewStockRuntimeServiceClient()
+	containerdRuntimeServiceServer, err := cri.NewStockRuntimeServiceClient()
 	if err != nil {
 		log.WithError(err).Error("failed to create new stock runtime service client")
 		return nil, err
 	}
-	fs.stockRuntimeClient = stockRuntimeClient
+	fs.containerdRuntimeServiceServer = containerdRuntimeServiceServer
 	fs.coordinator = newFirecrackerCoordinator(orchestrator)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
@@ -89,7 +89,7 @@ func (fs *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Cre
 	}
 
 	// Containers relevant for control plane
-	return fs.stockRuntimeClient.CreateContainer(ctx, r)
+	return fs.containerdRuntimeServiceServer.CreateContainer(ctx, r)
 }
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
@@ -103,7 +103,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	go func() {
 		defer close(stockDone)
-		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
+		stockResp, stockErr = fs.containerdRuntimeServiceServer.CreateContainer(ctx, r)
 		log.Debugf("stockResponse: %v\n", stockResp)
 	}()
 
@@ -162,7 +162,7 @@ func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.Cr
 	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: vmConfig.guestPort}
 	r.Config.Envs = append(r.Config.Envs, guestIPKeyVal, guestPortKeyVal)
 
-	resp, err := fs.stockRuntimeClient.CreateContainer(ctx, r)
+	resp, err := fs.containerdRuntimeServiceServer.CreateContainer(ctx, r)
 	if err != nil {
 		log.WithError(err).Error("stock containerd failed to start UC")
 		return nil, err
@@ -183,7 +183,7 @@ func (fs *FirecrackerService) RemoveContainer(ctx context.Context, r *criapi.Rem
 		}
 	}()
 
-	return fs.stockRuntimeClient.RemoveContainer(ctx, r)
+	return fs.containerdRuntimeServiceServer.RemoveContainer(ctx, r)
 }
 
 func (fs *FirecrackerService) insertVMConfig(podID string, vmConfig *VMConfig) {

@@ -24,9 +24,12 @@ package cri
 
 import (
 	"context"
+	"github.com/containerd/containerd/pkg/cri/server"
 	"net"
 	"time"
 
+	"github.com/containerd/containerd"
+	criconfig "github.com/containerd/containerd/pkg/cri/config"
 	"google.golang.org/grpc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -49,6 +52,22 @@ func NewStockImageServiceClient() (criapi.ImageServiceClient, error) {
 	}
 
 	return criapi.NewImageServiceClient(conn), nil
+}
+
+func NewContainerdRuntimeServiceServer() (criapi.RuntimeServiceServer, error) {
+	client, err := containerd.New(stockCtrdSockAddr)
+	if err != nil {
+		log.Errorf("Could not create client: %v\n", err)
+	}
+	return server.NewCRIService(criconfig.Config{}, client)
+}
+
+func NewContainerdImageServiceServer() (criapi.ImageServiceServer, error) {
+	client, err := containerd.New(stockCtrdSockAddr)
+	if err != nil {
+		log.Errorf("Could not create client: %v\n", err)
+	}
+	return server.NewCRIService(criconfig.Config{}, client)
 }
 
 func NewStockRuntimeServiceClient() (criapi.RuntimeServiceClient, error) {
