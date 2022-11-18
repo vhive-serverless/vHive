@@ -25,11 +25,12 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/containerd/containerd"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -70,6 +71,11 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 	return fs, nil
 }
 
+var client, _ = containerd.New(
+	"/run/containerd/containerd.sock",
+	containerd.WithDefaultNamespace("k8s.io"),
+)
+
 // CreateContainer starts a container or a VM, depending on the name
 // if the name matches "user-container", the cri plugin starts a VM, assigning it an IP,
 // otherwise starts a regular container
@@ -88,7 +94,41 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	}
 
 	// Containers relevant for control plane
-	return s.stockRuntimeClient.CreateContainer(ctx, r)
+	resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	containerdId := resp.ContainerId
+	cntr, err := client.ContainerService().Get(ctx, containerdId)
+	if err != nil {
+		log.WithError(err).Error()
+	}
+	err = client.ContainerService().Delete(ctx, containerdId)
+	if err != nil {
+		log.WithError(err).Error()
+	} else {
+		log.Infof("Delected: %s\n", containerdId)
+	}
+
+	cntr, err = client.ContainerService().Create(ctx, cntr)
+	if err != nil {
+		log.WithError(err).Error()
+	} else {
+		log.Infof("Put back in: %+v\n", cntr)
+	}
+	log.Infof("Container %+v", cntr)
+
+	//log.Info("%v\n", cntr)
+	//err = client.ContainerService().Delete(ctx, containerdId)
+	//if err != nil {
+	//	log.Error(err)
+	//}
+	//cntr, err = client.ContainerService().Create(ctx, cntr)
+	//if err != nil {
+	//	log.Error(err)
+	//}
+
+	return resp, err
 }
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
@@ -127,12 +167,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	// Wait for placeholder UC to be created
 	<-stockDone
-	
+
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)

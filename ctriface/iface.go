@@ -50,10 +50,10 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
+	"github.com/go-multierror/multierror"
 	"github.com/vhive-serverless/vhive/memory/manager"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/misc"
-	"github.com/go-multierror/multierror"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
@@ -102,8 +102,8 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 
 	tStart = time.Now()
-	conf := o.getVMConfig(vm)
-	resp, err := o.fcClient.CreateVM(ctx, conf)
+	createVMRequest := o.newCreateVMRequest(vm)
+	createVMResponse, err := o.fcClient.CreateVM(ctx, createVMRequest)
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to create the microVM in firecracker-containerd")
@@ -207,11 +207,11 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 			VMID:             vmID,
 			GuestMemPath:     o.getMemoryFile(vmID),
 			BaseDir:          o.getVMBaseDir(vmID),
-			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			GuestMemSize:     int(createVMRequest.MachineCfg.MemSizeMib) * 1024 * 1024,
 			IsLazyMode:       o.isLazyMode,
 			VMMStatePath:     o.getSnapshotFile(vmID),
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
-			InstanceSockAddr: resp.UPFSockPath,
+			InstanceSockAddr: createVMResponse.UPFSockPath,
 		}
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
@@ -368,7 +368,7 @@ func getK8sDNS() []string {
 	return dnsIPs
 }
 
-func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
+func (o *Orchestrator) newCreateVMRequest(vm *misc.VM) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
 	return &proto.CreateVMRequest{
