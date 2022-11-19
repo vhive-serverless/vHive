@@ -25,7 +25,6 @@ package firecracker
 import (
 	"context"
 	"errors"
-	"github.com/containerd/containerd"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -71,10 +70,15 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 	return fs, nil
 }
 
-var client, _ = containerd.New(
-	"/run/containerd/containerd.sock",
-	containerd.WithDefaultNamespace("k8s.io"),
-)
+//var containerdClient, _ = containerd.New(
+//	"/run/containerd/containerd.sock",
+//	containerd.WithDefaultNamespace("k8s.io"),
+//)
+
+//var firecrackerContainerdClient, _ = containerd.New(
+//	"/run/firecracker-containerd/containerd.sock",
+//	containerd.WithDefaultNamespace("k8s.io"),
+//)
 
 // CreateContainer starts a container or a VM, depending on the name
 // if the name matches "user-container", the cri plugin starts a VM, assigning it an IP,
@@ -93,30 +97,33 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 		return s.createQueueProxy(ctx, r)
 	}
 
-	// Containers relevant for control plane
-	resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	containerdId := resp.ContainerId
-	cntr, err := client.ContainerService().Get(ctx, containerdId)
-	if err != nil {
-		log.WithError(err).Error()
-	}
-	err = client.ContainerService().Delete(ctx, containerdId)
-	if err != nil {
-		log.WithError(err).Error()
-	} else {
-		log.Infof("Delected: %s\n", containerdId)
-	}
+	return s.stockRuntimeClient.CreateContainer(ctx, r)
 
-	cntr, err = client.ContainerService().Create(ctx, cntr)
-	if err != nil {
-		log.WithError(err).Error()
-	} else {
-		log.Infof("Put back in: %+v\n", cntr)
-	}
-	log.Infof("Container %+v", cntr)
+	// Containers relevant for control plane
+	//resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//containerdId := resp.ContainerId
+	//cntr, err := client.ContainerService().Get(ctx, containerdId)
+	//if err != nil {
+	//	log.WithError(err).Error()
+	//}
+
+	//err = client.ContainerService().Delete(ctx, containerdId)
+	//if err != nil {
+	//	log.WithError(err).Error()
+	//} else {
+	//	log.Infof("Deleted: %s\n", containerdId)
+	//}
+
+	//cntr, err = client.ContainerService().Create(ctx, cntr)
+	//if err != nil {
+	//	log.WithError(err).Error()
+	//} else {
+	//	log.Infof("Put back in: %+v\n", cntr)
+	//}
+	//log.Infof("Container %+v", cntr)
 
 	//log.Info("%v\n", cntr)
 	//err = client.ContainerService().Delete(ctx, containerdId)
@@ -128,60 +135,62 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	//	log.Error(err)
 	//}
 
-	return resp, err
+	//return resp, err
 }
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	var (
-		stockResp *criapi.CreateContainerResponse
-		stockErr  error
-		stockDone = make(chan struct{})
-	)
+	stockResp, stockErr := fs.stockRuntimeClient.CreateContainer(ctx, r)
+	return stockResp, stockErr
 
-	go func() {
-		defer close(stockDone)
-		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
-	}()
+	//var (
+	//	stockResp *criapi.CreateContainerResponse
+	//	stockErr  error
+	//	stockDone = make(chan struct{})
+	//)
 
-	config := r.GetConfig()
-	guestImage, err := getEnvVal(guestImageEnv, config)
-	if err != nil {
-		log.WithError(err).Error()
-		return nil, err
-	}
+	//go func() {
+	//	defer close(stockDone)
+	//	stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
+	//}()
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
-	if err != nil {
-		log.WithError(err).Error("failed to start VM")
-		return nil, err
-	}
+	//guestImage, err := getEnvVal(guestImageEnv, config)
+	//if err != nil {
+	//	log.WithError(err).Error()
+	//	return nil, err
+	//}
 
-	guestPort, err := getEnvVal(guestPortEnv, config)
-	if err != nil {
-		log.WithError(err).Error()
-		return nil, err
-	}
+	//funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
+	//if err != nil {
+	//	log.WithError(err).Error("failed to start VM")
+	//	return nil, err
+	//}
 
-	vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPort}
-	fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
+	//guestPort, err := getEnvVal(guestPortEnv, config)
+	//if err != nil {
+	//	log.WithError(err).Error()
+	//	return nil, err
+	//}
+
+	//vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPort}
+	//fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
 
 	// Wait for placeholder UC to be created
-	<-stockDone
+	//<-stockDone
 
 	// Check for error from container creation
-	if stockErr != nil {
-		log.WithError(stockErr).Error("failed to create container")
-		return nil, stockErr
-	}
+	//if stockErr != nil {
+	//	log.WithError(stockErr).Error("failed to create container")
+	//	return nil, stockErr
+	//}
 
-	containerdID := stockResp.ContainerId
-	err = fs.coordinator.insertActive(containerdID, funcInst)
-	if err != nil {
-		log.WithError(err).Error("failed to insert active VM")
-		return nil, err
-	}
+	//containerdID := stockResp.ContainerId
+	//err = fs.coordinator.insertActive(containerdID, funcInst)
+	//if err != nil {
+	//	log.WithError(err).Error("failed to insert active VM")
+	//	return nil, err
+	//}
 
-	return stockResp, stockErr
+	//return stockResp, stockErr
 }
 
 func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {

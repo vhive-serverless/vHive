@@ -122,8 +122,10 @@ func (s *Service) UpdateContainerResources(ctx context.Context, r *criapi.Update
 
 // PullImage pulls an image with authentication config.
 func (s *Service) PullImage(ctx context.Context, r *criapi.PullImageRequest) (*criapi.PullImageResponse, error) {
-	log.Debugf("PullImage %q", r.GetImage().GetImage())
-	return s.stockImageClient.PullImage(ctx, r)
+	log.Infof("PullImageRequest: %+v\n", r)
+	response, err := s.stockImageClient.PullImage(ctx, r)
+	log.Infof("PullImageResponse: %+v\n", r)
+	return response, err
 }
 
 // ListImages lists existing images.
