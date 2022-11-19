@@ -124,7 +124,10 @@ func (s *Service) UpdateContainerResources(ctx context.Context, r *criapi.Update
 func (s *Service) PullImage(ctx context.Context, r *criapi.PullImageRequest) (*criapi.PullImageResponse, error) {
 	log.Infof("PullImageRequest: %+v\n", r)
 	response, err := s.stockImageClient.PullImage(ctx, r)
-	log.Infof("PullImageResponse: %+v\n", r)
+	log.Infof("PullImageResponse: %+v\n", response)
+
+	Put(response.GetImageRef(), r.GetImage().GetImage())
+
 	return response, err
 }
 

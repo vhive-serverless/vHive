@@ -25,6 +25,7 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/containerd/containerd"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -70,10 +71,10 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 	return fs, nil
 }
 
-//var containerdClient, _ = containerd.New(
-//	"/run/containerd/containerd.sock",
-//	containerd.WithDefaultNamespace("k8s.io"),
-//)
+var containerdClient, _ = containerd.New(
+	"/run/containerd/containerd.sock",
+	containerd.WithDefaultNamespace("k8s.io"),
+)
 
 //var firecrackerContainerdClient, _ = containerd.New(
 //	"/run/firecracker-containerd/containerd.sock",
@@ -97,7 +98,8 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 		return s.createQueueProxy(ctx, r)
 	}
 
-	return s.stockRuntimeClient.CreateContainer(ctx, r)
+	return s.createUserContainer(ctx, r)
+	//return s.stockRuntimeClient.CreateContainer(ctx, r)
 
 	// Containers relevant for control plane
 	//resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
@@ -140,6 +142,16 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	stockResp, stockErr := fs.stockRuntimeClient.CreateContainer(ctx, r)
+
+	imageRef := r.GetConfig().GetImage().GetImage()
+	localImageRef := cri.Get(imageRef)
+
+	image, err := containerdClient.GetImage(context.Background(), localImageRef)
+	if err != nil {
+		log.WithError(err)
+	}
+	log.Infof("Image: %+v\n", image)
+
 	return stockResp, stockErr
 
 	//var (
