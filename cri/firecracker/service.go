@@ -76,15 +76,15 @@ var containerdClient, _ = containerd.New(
 	containerd.WithDefaultNamespace("k8s.io"),
 )
 
-//var firecrackerContainerdClient, _ = containerd.New(
-//	"/run/firecracker-containerd/containerd.sock",
-//	containerd.WithDefaultNamespace("k8s.io"),
-//)
+var firecrackerContainerdClient, _ = containerd.New(
+	"/run/firecracker-containerd/containerd.sock",
+	containerd.WithDefaultNamespace("k8s.io"),
+)
 
 // CreateContainer starts a container or a VM, depending on the name
 // if the name matches "user-container", the cri plugin starts a VM, assigning it an IP,
 // otherwise starts a regular container
-func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+func (fs *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	log.Debugf("CreateContainer within sandbox %q for container %+v",
 		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
 
@@ -92,17 +92,16 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	containerName := config.GetMetadata().GetName()
 
 	if containerName == userContainerName {
-		return s.createUserContainer(ctx, r)
+		return fs.createUserContainer2(ctx, r)
 	}
 	if containerName == queueProxyName {
-		return s.createQueueProxy(ctx, r)
+		return fs.createQueueProxy(ctx, r)
 	}
 
-	return s.createUserContainer(ctx, r)
-	//return s.stockRuntimeClient.CreateContainer(ctx, r)
+	return fs.stockRuntimeClient.CreateContainer(ctx, r)
 
 	// Containers relevant for control plane
-	//resp, err := s.stockRuntimeClient.CreateContainer(ctx, r)
+	//resp, err := fs.stockRuntimeClient.CreateContainer(ctx, r)
 	//if err != nil {
 	//	return nil, err
 	//}
@@ -116,7 +115,7 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	//if err != nil {
 	//	log.WithError(err).Error()
 	//} else {
-	//	log.Infof("Deleted: %s\n", containerdId)
+	//	log.Infof("Deleted: %fs\n", containerdId)
 	//}
 
 	//cntr, err = client.ContainerService().Create(ctx, cntr)
@@ -146,7 +145,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	imageRef := r.GetConfig().GetImage().GetImage()
 	localImageRef := cri.Get(imageRef)
 
-	image, err := containerdClient.GetImage(context.Background(), localImageRef)
+	image, err := containerdClient.GetImage(ctx, localImageRef)
 	if err != nil {
 		log.WithError(err)
 	}

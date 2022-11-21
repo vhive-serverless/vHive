@@ -26,10 +26,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -49,9 +49,7 @@ import (
 )
 
 const (
-	containerdAddress      = "/run/firecracker-containerd/containerd.sock"
-	containerdTTRPCAddress = containerdAddress + ".ttrpc"
-	namespaceName          = "firecracker-containerd"
+	namespaceName = "firecracker-containerd"
 )
 
 type WorkloadIoWriter struct {
@@ -59,7 +57,7 @@ type WorkloadIoWriter struct {
 }
 
 func NewWorkloadIoWriter(vmID string) WorkloadIoWriter {
-	return WorkloadIoWriter {log.WithFields(log.Fields{"vmID": vmID})}
+	return WorkloadIoWriter{log.WithFields(log.Fields{"vmID": vmID})}
 }
 
 func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
@@ -123,14 +121,14 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 
 	log.Info("Creating containerd client")
-	o.client, err = containerd.New(containerdAddress)
+	o.client, err = containerd.New("/run/firecracker-containerd/containerd.sock")
 	if err != nil {
 		log.Fatal("Failed to start containerd client", err)
 	}
 	log.Info("Created containerd client")
 
 	log.Info("Creating firecracker client")
-	o.fcClient, err = fcclient.New(containerdTTRPCAddress)
+	o.fcClient, err = fcclient.New("/run/firecracker-containerd/containerd.sock.ttrpc")
 	if err != nil {
 		log.Fatal("Failed to start firecracker client", err)
 	}
