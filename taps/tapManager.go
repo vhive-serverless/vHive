@@ -76,8 +76,8 @@ func NewTapManager() *TapManager {
 }
 
 // Creates the bridge, add a gateway to it, and enables it
-func createBridge(bridgeName, gatewayAddr string) {
-	logger := log.WithFields(log.Fields{"bridge": bridgeName})
+func createBridge(bridgeName string, gatewayAddr string) {
+	logger := log.WithFields(log.Fields{"bridge": bridgeName, "gateway": gatewayAddr})
 
 	logger.Debug("Creating bridge")
 
