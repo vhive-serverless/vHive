@@ -25,7 +25,6 @@ package ctriface
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/cri/firecracker"
 	"net"
 	"net/http"
 	"net/url"
@@ -102,7 +101,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 
 	tStart = time.Now()
-	createVMRequest := firecracker.NewCreateVMRequest(vm)
+	createVMRequest := NewCreateVMRequest(vm)
 	createVMResponse, err := o.fcClient.CreateVM(ctx, createVMRequest)
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
+	"github.com/vhive-serverless/vhive/ctriface"
 	"github.com/vhive-serverless/vhive/misc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -43,7 +44,7 @@ func (fs *FirecrackerService) createUserContainer2(ctx context.Context, r *criap
 	if err != nil {
 		log.Error("failed to allocate VM in VM pool")
 	}
-	createVMRequest := NewCreateVMRequest(vm)
+	createVMRequest := ctriface.NewCreateVMRequest(vm)
 	_, err = firecrackerVMClient.CreateVM(ctx, createVMRequest)
 
 	log.Infof("Image: %+v\n", image)

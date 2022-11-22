@@ -1,4 +1,4 @@
-package firecracker
+package ctriface
 
 import (
 	"github.com/firecracker-microvm/firecracker-containerd/proto"
