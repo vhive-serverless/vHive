@@ -78,7 +78,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
 
-	vm, err := o.vmPool.Allocate(vmID, o.hostIface)
+	vm, err := o.VmPool.Allocate(vmID, o.HostIface)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
 		return nil, nil, err
@@ -87,7 +87,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	defer func() {
 		// Free the VM from the pool if function returns error
 		if retErr != nil {
-			if err := o.vmPool.Free(vmID); err != nil {
+			if err := o.VmPool.Free(vmID); err != nil {
 				logger.WithError(err).Errorf("failed to free VM from pool after failure")
 			}
 		}
@@ -230,7 +230,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	logger.Debug("Orchestrator received StopVM")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
-	vm, err := o.vmPool.GetVM(vmID)
+	vm, err := o.VmPool.GetVM(vmID)
 	if err != nil {
 		if _, ok := err.(*misc.NonExistErr); ok {
 			logger.Panic("StopVM: VM does not exist")
@@ -267,7 +267,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 		return err
 	}
 
-	if err := o.vmPool.Free(vmID); err != nil {
+	if err := o.VmPool.Free(vmID); err != nil {
 		logger.Error("failed to free VM from VM pool")
 		return err
 	}
@@ -352,7 +352,7 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 // StopActiveVMs Shuts down all active VMs
 func (o *Orchestrator) StopActiveVMs() error {
 	var vmGroup sync.WaitGroup
-	for vmID, vm := range o.vmPool.GetVMMap() {
+	for vmID, vm := range o.VmPool.GetVMMap() {
 		vmGroup.Add(1)
 		logger := log.WithFields(log.Fields{"vmID": vmID})
 		go func(vmID string, vm *misc.VM) {
@@ -496,7 +496,7 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) error {
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-	_, err := o.vmPool.GetVM(vmID)
+	_, err := o.VmPool.GetVM(vmID)
 	if err != nil {
 		if _, ok := err.(*misc.NonExistErr); ok {
 			logger.Panic("Offload: VM does not exist")
@@ -517,7 +517,7 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) error {
 		return err
 	}
 
-	if err := o.vmPool.RecreateTap(vmID, o.hostIface); err != nil {
+	if err := o.VmPool.RecreateTap(vmID, o.HostIface); err != nil {
 		logger.Error("Failed to recreate tap upon offloading")
 		return err
 	}

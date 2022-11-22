@@ -77,6 +77,6 @@ func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
 // for the VMs to link to
 func WithCustomHostIface(hostIface string) OrchestratorOption {
 	return func(o *Orchestrator) {
-		o.hostIface = hostIface
+		o.HostIface = hostIface
 	}
 }

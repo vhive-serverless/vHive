@@ -9,12 +9,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	"github.com/vhive-serverless/vhive/misc"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 var firecrackerVMClient, _ = fcclient.New("/run/firecracker-containerd/containerd.sock.ttrpc")
-var vmPool = misc.NewVMPool()
 
 func (fs *FirecrackerService) createUserContainer2(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	log.Infof("Container ctx: %+v", ctx)
@@ -40,9 +38,10 @@ func (fs *FirecrackerService) createUserContainer2(ctx context.Context, r *criap
 
 	// Allocate a new VM with the id returned from containerd.
 	// We use the same ID, in order for Kubernetes to find it.
-	vm, err := vmPool.Allocate(id, "hostIface")
+	vm, err := fs.coordinator.orch.VmPool.Allocate(id, fs.coordinator.orch.HostIface)
 	if err != nil {
 		log.Error("failed to allocate VM in VM pool")
+		return stockResp, stockErr
 	}
 	createVMRequest := ctriface.NewCreateVMRequest(vm)
 	_, err = firecrackerVMClient.CreateVM(ctx, createVMRequest)
