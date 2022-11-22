@@ -95,7 +95,8 @@ func (fs *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Cre
 		return fs.createUserContainer2(ctx, r)
 	}
 	if containerName == queueProxyName {
-		return fs.createQueueProxy(ctx, r)
+		return fs.stockRuntimeClient.CreateContainer(ctx, r)
+		//return fs.createQueueProxy(ctx, r)
 	}
 
 	return fs.stockRuntimeClient.CreateContainer(ctx, r)
