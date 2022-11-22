@@ -87,11 +87,11 @@ func createBridge(bridgeName, gatewayAddr string) {
 	br := &netlink.Bridge{LinkAttrs: la}
 
 	if err := netlink.LinkAdd(br); err != nil {
-		logger.Panic("Bridge could not be created")
+		logger.Panicf("Bridge could not be created: %v\n", err)
 	}
 
 	if err := netlink.LinkSetUp(br); err != nil {
-		logger.Panic("Bridge could not be enabled")
+		logger.Panicf("Bridge could not be enabled: %v\n", err)
 	}
 
 	bridgeAddress := gatewayAddr + Subnet
@@ -125,7 +125,6 @@ func setupForwardRules(tapName, hostIface string) error {
 			}
 		}
 	}
-
 
 	conn := nftables.Conn{}
 
