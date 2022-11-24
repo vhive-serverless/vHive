@@ -24,8 +24,6 @@ package cri
 
 import (
 	"context"
-	"github.com/vhive-serverless/vhive/cri/firecracker"
-
 	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -196,7 +194,7 @@ func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainer
 	config := r.GetConfig()
 	containerName := config.GetMetadata().GetName()
 
-	if containerName == firecracker.UserContainerName {
+	if containerName == "user-container" {
 		return s.serv.CreateContainer(ctx, r)
 	}
 	return s.containerdRuntimeClient.CreateContainer(ctx, r)

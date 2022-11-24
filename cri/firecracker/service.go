@@ -36,11 +36,10 @@ import (
 )
 
 const (
-	UserContainerName = "user-container"
-	queueProxyName    = "queue-proxy"
-	guestIPEnv        = "GUEST_ADDR"
-	guestPortEnv      = "GUEST_PORT"
-	guestImageEnv     = "GUEST_IMAGE"
+	queueProxyName = "queue-proxy"
+	guestIPEnv     = "GUEST_ADDR"
+	guestPortEnv   = "GUEST_PORT"
+	guestImageEnv  = "GUEST_IMAGE"
 )
 
 type FirecrackerService struct {
