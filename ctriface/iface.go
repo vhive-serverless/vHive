@@ -102,7 +102,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 
 	tStart = time.Now()
-	conf := o.getVMConfig(vm)
+	conf := o.CreateVMRequest(vm)
 	resp, err := o.FcClient.CreateVM(ctx, conf)
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {
@@ -368,7 +368,7 @@ func getK8sDNS() []string {
 	return dnsIPs
 }
 
-func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
+func (o *Orchestrator) CreateVMRequest(vm *misc.VM) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
 	return &proto.CreateVMRequest{

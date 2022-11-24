@@ -25,11 +25,12 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -77,18 +78,45 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	log.Debugf("CreateContainer within sandbox %q for container %+v",
 		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
 
-	config := r.GetConfig()
-	containerName := config.GetMetadata().GetName()
+	//config := r.GetConfig()
+	//containerName := config.GetMetadata().GetName()
 
-	if containerName == userContainerName {
-		return s.createUserContainer(ctx, r)
+	//if containerName == userContainerName {
+	//	return s.createUserContainer(ctx, r)
+	//}
+	//if containerName == queueProxyName {
+	//	return s.createQueueProxy(ctx, r)
+	//}
+
+	response, err := s.stockRuntimeClient.CreateContainer(ctx, r)
+	if err != nil {
+		log.WithError(err)
+		return nil, err
 	}
-	if containerName == queueProxyName {
-		return s.createQueueProxy(ctx, r)
+	containerId := response.GetContainerId()
+
+	vm, err := s.coordinator.orch.VmPool.Allocate(containerId, s.coordinator.orch.HostIface)
+	if err != nil {
+		log.Errorf("Failed to allocate VM\n")
+		return nil, err
 	}
 
-	// Containers relevant for control plane
-	return s.stockRuntimeClient.CreateContainer(ctx, r)
+	createVMRequest := s.coordinator.orch.CreateVMRequest(vm)
+	_, err = s.coordinator.orch.FcClient.CreateVM(ctx, createVMRequest)
+	if err != nil {
+		log.Errorf("Failed to create VM\n")
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			if _, err := s.coordinator.orch.FcClient.StopVM(ctx, &proto.StopVMRequest{VMID: containerId}); err != nil {
+				log.WithError(err).Errorf("failed to stop firecracker-containerd VM after failure")
+			}
+		}
+	}()
+
+	return response, err
 }
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
@@ -127,12 +155,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	// Wait for placeholder UC to be created
 	<-stockDone
-	
+
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)
