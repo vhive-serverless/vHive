@@ -25,6 +25,7 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/firecracker-microvm/firecracker-containerd/proto"
 	"sync"
 
@@ -101,6 +102,7 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 		return nil, err
 	}
 
+	ctx = namespaces.WithNamespace(ctx, "k8s.io")
 	createVMRequest := s.coordinator.orch.CreateVMRequest(vm)
 	_, err = s.coordinator.orch.FcClient.CreateVM(ctx, createVMRequest)
 	if err != nil {

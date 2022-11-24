@@ -386,7 +386,7 @@ func (o *Orchestrator) CreateVMRequest(vm *misc.VM) *proto.CreateVMRequest {
 				IPConfig: &proto.IPConfiguration{
 					PrimaryAddr: vm.Ni.PrimaryAddress + vm.Ni.Subnet,
 					GatewayAddr: vm.Ni.GatewayAddress,
-					Nameservers: getK8sDNS(),
+					Nameservers: []string{"8.8.8.8"},
 				},
 			},
 		}},
