@@ -28,8 +28,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/vhive-serverless/vhive/cri"
 	log "github.com/sirupsen/logrus"
+	"github.com/vhive-serverless/vhive/cri"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -57,7 +57,7 @@ type ctrConfig struct {
 
 func NewGVisorService() (*GVisorService, error) {
 	gs := new(GVisorService)
-	stockRC, err := cri.NewStockRuntimeServiceClient()
+	stockRC, err := cri.NewRuntimeServiceClient(cri.ContainerdCriSock)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new stock runtime service client: %v", err)
 	}

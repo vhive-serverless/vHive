@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	userContainerName = "user-container"
+	UserContainerName = "user-container"
 	queueProxyName    = "queue-proxy"
 	guestIPEnv        = "GUEST_ADDR"
 	guestPortEnv      = "GUEST_PORT"
@@ -46,7 +46,8 @@ const (
 type FirecrackerService struct {
 	sync.Mutex
 
-	stockRuntimeClient criapi.RuntimeServiceClient
+	containerdCri  criapi.RuntimeServiceClient
+	firecrackerCri criapi.RuntimeServiceClient
 
 	coordinator *coordinator
 
@@ -61,12 +62,19 @@ type VMConfig struct {
 
 func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, error) {
 	fs := new(FirecrackerService)
-	stockRuntimeClient, err := cri.NewStockRuntimeServiceClient()
+	containerdCri, err := cri.NewRuntimeServiceClient(cri.ContainerdCriSock)
 	if err != nil {
 		log.WithError(err).Error("failed to create new stock runtime service client")
 		return nil, err
 	}
-	fs.stockRuntimeClient = stockRuntimeClient
+	firecrackerCri, err := cri.NewRuntimeServiceClient(cri.FirecrackerCriSock)
+	if err != nil {
+		log.WithError(err).Error("failed to create new stock runtime service client")
+		return nil, err
+	}
+
+	fs.containerdCri = containerdCri
+	fs.firecrackerCri = firecrackerCri
 	fs.coordinator = newFirecrackerCoordinator(orch)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
@@ -82,14 +90,14 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	//config := r.GetConfig()
 	//containerName := config.GetMetadata().GetName()
 
-	//if containerName == userContainerName {
+	//if containerName == UserContainerName {
 	//	return s.createUserContainer(ctx, r)
 	//}
 	//if containerName == queueProxyName {
 	//	return s.createQueueProxy(ctx, r)
 	//}
 
-	response, err := s.stockRuntimeClient.CreateContainer(ctx, r)
+	response, err := s.firecrackerCri.CreateContainer(ctx, r)
 	if err != nil {
 		log.WithError(err)
 		return nil, err
@@ -130,7 +138,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	go func() {
 		defer close(stockDone)
-		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
+		stockResp, stockErr = fs.containerdCri.CreateContainer(ctx, r)
 	}()
 
 	config := r.GetConfig()
@@ -187,7 +195,7 @@ func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.Cr
 	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: vmConfig.guestPort}
 	r.Config.Envs = append(r.Config.Envs, guestIPKeyVal, guestPortKeyVal)
 
-	resp, err := fs.stockRuntimeClient.CreateContainer(ctx, r)
+	resp, err := fs.containerdCri.CreateContainer(ctx, r)
 	if err != nil {
 		log.WithError(err).Error("stock containerd failed to start UC")
 		return nil, err
@@ -206,7 +214,7 @@ func (fs *FirecrackerService) RemoveContainer(ctx context.Context, r *criapi.Rem
 		}
 	}()
 
-	return fs.stockRuntimeClient.RemoveContainer(ctx, r)
+	return fs.containerdCri.RemoveContainer(ctx, r)
 }
 
 func (fs *FirecrackerService) insertVMConfig(podID string, vmConfig *VMConfig) {

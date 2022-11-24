@@ -32,18 +32,19 @@ import (
 )
 
 const (
-	stockCtrdSockAddr = "/run/containerd/containerd.sock"
-	dialTimeout       = 10 * time.Second
+	ContainerdCriSock  = "/run/containerd/containerd.sock"
+	FirecrackerCriSock = "/run/firecracker-containerd2/containerd.sock"
+	dialTimeout        = 10 * time.Second
 	// maxMsgSize use 16MB as the default message size limit.
 	// grpc library default is 4MB
 	maxMsgSize = 1024 * 1024 * 16
 )
 
-func NewStockImageServiceClient() (criapi.ImageServiceClient, error) {
+func NewImageServiceClient(sock string) (criapi.ImageServiceClient, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
+	conn, err := grpc.DialContext(ctx, sock, getDialOpts()...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,11 +52,11 @@ func NewStockImageServiceClient() (criapi.ImageServiceClient, error) {
 	return criapi.NewImageServiceClient(conn), nil
 }
 
-func NewStockRuntimeServiceClient() (criapi.RuntimeServiceClient, error) {
+func NewRuntimeServiceClient(sock string) (criapi.RuntimeServiceClient, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
+	conn, err := grpc.DialContext(ctx, sock, getDialOpts()...)
 	if err != nil {
 		return nil, err
 	}

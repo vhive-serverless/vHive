@@ -23,7 +23,6 @@
 package cri
 
 import (
-	"context"
 	"errors"
 	"sync"
 
@@ -38,8 +37,10 @@ type Service struct {
 
 	criapi.ImageServiceServer
 	criapi.RuntimeServiceServer
-	stockRuntimeClient criapi.RuntimeServiceClient
-	stockImageClient   criapi.ImageServiceClient
+	containerdRuntimeClient  criapi.RuntimeServiceClient
+	containerdImageClient    criapi.ImageServiceClient
+	firecrackerRuntimeClient criapi.RuntimeServiceClient
+	firecrackerImageClient   criapi.ImageServiceClient
 
 	// generic coordinator
 	serv ServiceInterface
@@ -51,34 +52,48 @@ func NewService(serv ServiceInterface) (*Service, error) {
 		return nil, errors.New("coor must be non nil")
 	}
 
-	stockRuntimeClient, err := NewStockRuntimeServiceClient()
+	stockRuntimeClient, err := NewRuntimeServiceClient(ContainerdCriSock)
 	if err != nil {
 		log.WithError(err).Error("failed to create new stock runtime service client")
 		return nil, err
 	}
 
-	stockImageClient, err := NewStockImageServiceClient()
+	stockImageClient, err := NewImageServiceClient(ContainerdCriSock)
+	if err != nil {
+		log.WithError(err).Error("failed to create new stock image service client")
+		return nil, err
+	}
+
+	firecrackerRuntimeClient, err := NewRuntimeServiceClient(ContainerdCriSock)
+	if err != nil {
+		log.WithError(err).Error("failed to create new stock runtime service client")
+		return nil, err
+	}
+
+	firecrackerImageClient, err := NewImageServiceClient(ContainerdCriSock)
 	if err != nil {
 		log.WithError(err).Error("failed to create new stock image service client")
 		return nil, err
 	}
 
 	cs := &Service{
-		stockRuntimeClient: stockRuntimeClient,
-		stockImageClient:   stockImageClient,
-		serv:               serv,
+		containerdRuntimeClient:  stockRuntimeClient,
+		containerdImageClient:    stockImageClient,
+		firecrackerRuntimeClient: firecrackerRuntimeClient,
+		firecrackerImageClient:   firecrackerImageClient,
+		serv:                     serv,
 	}
 
 	return cs, nil
 }
 
-func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	return s.serv.CreateContainer(ctx, r)
-}
-
-func (s *Service) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
-	return s.serv.RemoveContainer(ctx, r)
-}
+//func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+//	return s.serv.CreateContainer(ctx, r)
+//}
+//
+//func (s *Service) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {
+//	return s.serv.RemoveContainer(ctx, r)
+//}
 
 // Register registers the criapi servers.
 func (s *Service) Register(server *grpc.Server) {
