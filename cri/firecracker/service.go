@@ -25,11 +25,12 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/containerd/containerd"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -44,7 +45,8 @@ const (
 type FirecrackerService struct {
 	sync.Mutex
 
-	stockRuntimeClient criapi.RuntimeServiceClient
+	firecrackerContainerdClient *containerd.Client
+	stockRuntimeClient          criapi.RuntimeServiceClient
 
 	coordinator *coordinator
 
@@ -67,6 +69,14 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 	fs.stockRuntimeClient = stockRuntimeClient
 	fs.coordinator = newFirecrackerCoordinator(orch)
 	fs.vmConfigs = make(map[string]*VMConfig)
+
+	client, err := containerd.New("/run/firecracker-containerd/containerd.sock")
+	if err != nil {
+		log.WithError(err).Error("Could not create firecracker containerd client")
+		return nil, err
+	}
+	fs.firecrackerContainerdClient = client
+
 	return fs, nil
 }
 
@@ -127,12 +137,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	// Wait for placeholder UC to be created
 	<-stockDone
-	
+
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)

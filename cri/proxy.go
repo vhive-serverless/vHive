@@ -73,6 +73,7 @@ func (s *Service) PortForward(ctx context.Context, r *criapi.PortForwardRequest)
 // StartContainer starts the container.
 func (s *Service) StartContainer(ctx context.Context, r *criapi.StartContainerRequest) (*criapi.StartContainerResponse, error) {
 	log.Debugf("StartContainer for %q", r.GetContainerId())
+	_, _ = s.serv.StartContainer(ctx, r)
 	return s.stockRuntimeClient.StartContainer(ctx, r)
 
 }
