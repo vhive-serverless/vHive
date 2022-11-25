@@ -26,10 +26,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -59,7 +59,7 @@ type WorkloadIoWriter struct {
 }
 
 func NewWorkloadIoWriter(vmID string) WorkloadIoWriter {
-	return WorkloadIoWriter {log.WithFields(log.Fields{"vmID": vmID})}
+	return WorkloadIoWriter{log.WithFields(log.Fields{"vmID": vmID})}
 }
 
 func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
@@ -73,19 +73,19 @@ func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
 
 // Orchestrator Drives all VMs
 type Orchestrator struct {
-	vmPool       *misc.VMPool
+	VmPool       *misc.VMPool
 	cachedImages map[string]containerd.Image
-	workloadIo   sync.Map // vmID string -> WorkloadIoWriter
+	WorkloadIo   sync.Map // vmID string -> WorkloadIoWriter
 	snapshotter  string
 	client       *containerd.Client
-	fcClient     *fcclient.Client
+	FcClient     *fcclient.Client
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
 	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
-	hostIface        string
+	HostIface        string
 
 	memoryManager *manager.MemoryManager
 }
@@ -95,11 +95,11 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	var err error
 
 	o := new(Orchestrator)
-	o.vmPool = misc.NewVMPool()
+	o.VmPool = misc.NewVMPool()
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
-	o.hostIface = hostIface
+	o.HostIface = hostIface
 
 	for _, opt := range opts {
 		opt(o)
@@ -130,7 +130,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	log.Info("Created containerd client")
 
 	log.Info("Creating firecracker client")
-	o.fcClient, err = fcclient.New(containerdTTRPCAddress)
+	o.FcClient, err = fcclient.New(containerdTTRPCAddress)
 	if err != nil {
 		log.Fatal("Failed to start firecracker client", err)
 	}
@@ -153,7 +153,7 @@ func (o *Orchestrator) setupCloseHandler() {
 // Cleanup Removes the bridges created by the VM pool's tap manager
 // Cleans up snapshots directory
 func (o *Orchestrator) Cleanup() {
-	o.vmPool.RemoveBridges()
+	o.VmPool.RemoveBridges()
 	if err := os.RemoveAll(o.snapshotsDir); err != nil {
 		log.Panic("failed to delete snapshots dir", err)
 	}
@@ -216,7 +216,7 @@ func (o *Orchestrator) setupHeartbeat() {
 	go func() {
 		for {
 			<-heartbeat.C
-			log.Info("HEARTBEAT: number of active VMs: ", len(o.vmPool.GetVMMap()))
+			log.Info("HEARTBEAT: number of active VMs: ", len(o.VmPool.GetVMMap()))
 		} // for
 	}() // go func
 }

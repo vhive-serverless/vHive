@@ -50,10 +50,10 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
+	"github.com/go-multierror/multierror"
 	"github.com/vhive-serverless/vhive/memory/manager"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/misc"
-	"github.com/go-multierror/multierror"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
@@ -79,7 +79,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
 
-	vm, err := o.vmPool.Allocate(vmID, o.hostIface)
+	vm, err := o.VmPool.Allocate(vmID, o.HostIface)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
 		return nil, nil, err
@@ -88,7 +88,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	defer func() {
 		// Free the VM from the pool if function returns error
 		if retErr != nil {
-			if err := o.vmPool.Free(vmID); err != nil {
+			if err := o.VmPool.Free(vmID); err != nil {
 				logger.WithError(err).Errorf("failed to free VM from pool after failure")
 			}
 		}
@@ -102,8 +102,8 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 
 	tStart = time.Now()
-	conf := o.getVMConfig(vm)
-	resp, err := o.fcClient.CreateVM(ctx, conf)
+	conf := o.GetVMConfig(vm)
+	resp, err := o.FcClient.CreateVM(ctx, conf)
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to create the microVM in firecracker-containerd")
@@ -111,7 +111,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 
 	defer func() {
 		if retErr != nil {
-			if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+			if _, err := o.FcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
 				logger.WithError(err).Errorf("failed to stop firecracker-containerd VM after failure")
 			}
 		}
@@ -146,7 +146,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	}()
 
 	iologger := NewWorkloadIoWriter(vmID)
-	o.workloadIo.Store(vmID, &iologger)
+	o.WorkloadIo.Store(vmID, &iologger)
 	logger.Debug("StartVM: Creating a new task")
 	tStart = time.Now()
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, iologger, iologger)))
@@ -231,7 +231,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	logger.Debug("Orchestrator received StopVM")
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
-	vm, err := o.vmPool.GetVM(vmID)
+	vm, err := o.VmPool.GetVM(vmID)
 	if err != nil {
 		if _, ok := err.(*misc.NonExistErr); ok {
 			logger.Panic("StopVM: VM does not exist")
@@ -263,17 +263,17 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 		return err
 	}
 
-	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+	if _, err := o.FcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
 		logger.WithError(err).Error("failed to stop firecracker-containerd VM")
 		return err
 	}
 
-	if err := o.vmPool.Free(vmID); err != nil {
+	if err := o.VmPool.Free(vmID); err != nil {
 		logger.Error("failed to free VM from VM pool")
 		return err
 	}
 
-	o.workloadIo.Delete(vmID)
+	o.WorkloadIo.Delete(vmID)
 
 	logger.Debug("Stopped VM successfully")
 
@@ -368,7 +368,7 @@ func getK8sDNS() []string {
 	return dnsIPs
 }
 
-func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
+func (o *Orchestrator) GetVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
 	return &proto.CreateVMRequest{
@@ -396,7 +396,7 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 // StopActiveVMs Shuts down all active VMs
 func (o *Orchestrator) StopActiveVMs() error {
 	var vmGroup sync.WaitGroup
-	for vmID, vm := range o.vmPool.GetVMMap() {
+	for vmID, vm := range o.VmPool.GetVMMap() {
 		vmGroup.Add(1)
 		logger := log.WithFields(log.Fields{"vmID": vmID})
 		go func(vmID string, vm *misc.VM) {
@@ -413,7 +413,7 @@ func (o *Orchestrator) StopActiveVMs() error {
 	log.Info("waiting done")
 
 	log.Info("Closing fcClient")
-	o.fcClient.Close()
+	o.FcClient.Close()
 	log.Info("Closing containerd client")
 	o.client.Close()
 
@@ -427,7 +427,7 @@ func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) error {
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-	if _, err := o.fcClient.PauseVM(ctx, &proto.PauseVMRequest{VMID: vmID}); err != nil {
+	if _, err := o.FcClient.PauseVM(ctx, &proto.PauseVMRequest{VMID: vmID}); err != nil {
 		logger.WithError(err).Error("failed to pause the VM")
 		return err
 	}
@@ -448,7 +448,7 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metr
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
 	tStart = time.Now()
-	if _, err := o.fcClient.ResumeVM(ctx, &proto.ResumeVMRequest{VMID: vmID}); err != nil {
+	if _, err := o.FcClient.ResumeVM(ctx, &proto.ResumeVMRequest{VMID: vmID}); err != nil {
 		logger.WithError(err).Error("failed to resume the VM")
 		return nil, err
 	}
@@ -470,7 +470,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) error {
 		MemFilePath:      o.getMemoryFile(vmID),
 	}
 
-	if _, err := o.fcClient.CreateSnapshot(ctx, req); err != nil {
+	if _, err := o.FcClient.CreateSnapshot(ctx, req); err != nil {
 		logger.WithError(err).Error("failed to create snapshot of the VM")
 		return err
 	}
@@ -510,7 +510,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (*metrics.
 	go func() {
 		defer close(loadDone)
 
-		if _, loadErr = o.fcClient.LoadSnapshot(ctx, req); loadErr != nil {
+		if _, loadErr = o.FcClient.LoadSnapshot(ctx, req); loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
 		}
 	}()
@@ -540,7 +540,7 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) error {
 
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
-	_, err := o.vmPool.GetVM(vmID)
+	_, err := o.VmPool.GetVM(vmID)
 	if err != nil {
 		if _, ok := err.(*misc.NonExistErr); ok {
 			logger.Panic("Offload: VM does not exist")
@@ -556,12 +556,12 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) error {
 		}
 	}
 
-	if _, err := o.fcClient.Offload(ctx, &proto.OffloadRequest{VMID: vmID}); err != nil {
+	if _, err := o.FcClient.Offload(ctx, &proto.OffloadRequest{VMID: vmID}); err != nil {
 		logger.WithError(err).Error("failed to offload the VM")
 		return err
 	}
 
-	if err := o.vmPool.RecreateTap(vmID, o.hostIface); err != nil {
+	if err := o.VmPool.RecreateTap(vmID, o.HostIface); err != nil {
 		logger.Error("Failed to recreate tap upon offloading")
 		return err
 	}

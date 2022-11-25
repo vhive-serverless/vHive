@@ -50,7 +50,8 @@ type FirecrackerService struct {
 
 	coordinator *coordinator
 
-	vmConfigs map[string]*VMConfig
+	vmConfigs      map[string]*VMConfig
+	userContainers []string
 }
 
 // VMConfig wraps the IP and port of the guest VM
@@ -76,6 +77,7 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 		return nil, err
 	}
 	fs.firecrackerContainerdClient = client
+	fs.userContainers = make([]string, 10)
 
 	return fs, nil
 }
@@ -83,7 +85,8 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 // CreateContainer starts a container or a VM, depending on the name
 // if the name matches "user-container", the cri plugin starts a VM, assigning it an IP,
 // otherwise starts a regular container
-func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+func (fs *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
+	log.SetLevel(log.DebugLevel)
 	log.Debugf("CreateContainer within sandbox %q for container %+v",
 		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
 
@@ -91,14 +94,18 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	containerName := config.GetMetadata().GetName()
 
 	if containerName == userContainerName {
-		return s.createUserContainer(ctx, r)
-	}
-	if containerName == queueProxyName {
-		return s.createQueueProxy(ctx, r)
+		// TODO: Modify the request, add annotations
+		resp, err := fs.stockRuntimeClient.CreateContainer(ctx, r)
+		if err != nil {
+			log.WithError(err)
+			return resp, err
+		}
+
+		fs.addUserContainer(resp.GetContainerId())
+		return resp, err
 	}
 
-	// Containers relevant for control plane
-	return s.stockRuntimeClient.CreateContainer(ctx, r)
+	return fs.stockRuntimeClient.CreateContainer(ctx, r)
 }
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
@@ -227,4 +234,23 @@ func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 
 	return "", errors.New("failed to provide non empty guest image in user container config")
 
+}
+
+func (fs *FirecrackerService) IsUserContainer(containerId string) bool {
+	return contains(fs.userContainers, containerId)
+}
+
+func (fs *FirecrackerService) addUserContainer(containerId string) {
+	fs.userContainers = append(fs.userContainers, containerId)
+}
+
+// Check if a string is present in a slice
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }

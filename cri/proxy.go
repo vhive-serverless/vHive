@@ -70,14 +70,6 @@ func (s *Service) PortForward(ctx context.Context, r *criapi.PortForwardRequest)
 	return s.stockRuntimeClient.PortForward(ctx, r)
 }
 
-// StartContainer starts the container.
-func (s *Service) StartContainer(ctx context.Context, r *criapi.StartContainerRequest) (*criapi.StartContainerResponse, error) {
-	log.Debugf("StartContainer for %q", r.GetContainerId())
-	_, _ = s.serv.StartContainer(ctx, r)
-	return s.stockRuntimeClient.StartContainer(ctx, r)
-
-}
-
 // ListContainers lists all containers by filters.
 func (s *Service) ListContainers(ctx context.Context, r *criapi.ListContainersRequest) (*criapi.ListContainersResponse, error) {
 	log.Tracef("ListContainers with filter %+v", r.GetFilter())
