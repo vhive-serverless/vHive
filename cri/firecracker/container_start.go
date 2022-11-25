@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/firecracker-microvm/firecracker-containerd/proto"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -31,43 +30,43 @@ func (fs *FirecrackerService) StartContainer(ctx context.Context, r *criapi.Star
 	}
 	log.Infof("Successfully loaded container %s\n", containerId)
 
-	vm, err := fs.coordinator.orch.VmPool.Allocate(containerId, fs.coordinator.orch.HostIface)
-	if err != nil {
-		log.Error("failed to allocate VM in VM pool")
-		return nil, err
-	}
+	//vm, err := fs.coordinator.orch.VmPool.Allocate(containerId, fs.coordinator.orch.HostIface)
+	//if err != nil {
+	//	log.Error("failed to allocate VM in VM pool")
+	//	return nil, err
+	//}
 
-	defer func() {
-		// Free the VM from the pool if function returns error
-		if retErr != nil {
-			if err := fs.coordinator.orch.VmPool.Free(containerId); err != nil {
-				log.WithError(err).Errorf("failed to free VM from pool after failure")
-			}
-		}
-	}()
+	//defer func() {
+	//	// Free the VM from the pool if function returns error
+	//	if retErr != nil {
+	//		if err := fs.coordinator.orch.VmPool.Free(containerId); err != nil {
+	//			log.WithError(err).Errorf("failed to free VM from pool after failure")
+	//		}
+	//	}
+	//}()
 
-	conf := fs.coordinator.orch.GetVMConfig(vm)
-	_, err = fs.coordinator.orch.FcClient.CreateVM(ctx, conf)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create VM")
-	}
-	log.Debugf("Successfully created VM")
+	//conf := fs.coordinator.orch.GetVMConfig(vm)
+	//_, err = fs.coordinator.orch.FcClient.CreateVM(ctx, conf)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "failed to create VM")
+	//}
+	//log.Debugf("Successfully created VM")
 
-	defer func() {
-		if retErr != nil {
-			if _, err := fs.coordinator.orch.FcClient.StopVM(ctx, &proto.StopVMRequest{VMID: containerId}); err != nil {
-				log.WithError(err).Errorf("failed to stop VM after failure")
-			}
-		}
-	}()
+	//defer func() {
+	//	if retErr != nil {
+	//		if _, err := fs.coordinator.orch.FcClient.StopVM(ctx, &proto.StopVMRequest{VMID: containerId}); err != nil {
+	//			log.WithError(err).Errorf("failed to stop VM after failure")
+	//		}
+	//	}
+	//}()
 
-	vm.Container = &container
+	//vm.Container = &container
 
 	iologger := NewWorkloadIoWriter(containerId)
 	fs.coordinator.orch.WorkloadIo.Store(containerId, &iologger)
 	log.Debug("StartVM: Creating a new task")
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, iologger, iologger)))
-	vm.Task = &task
+	//vm.Task = &task
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create a task")
 	}
@@ -82,8 +81,8 @@ func (fs *FirecrackerService) StartContainer(ctx context.Context, r *criapi.Star
 	}()
 
 	log.Debug("StartVM: Waiting for the task to get ready")
-	ch, err := task.Wait(ctx)
-	vm.TaskCh = ch
+	_, err = task.Wait(ctx)
+	//vm.TaskCh = ch
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to wait for a task")
 	}
