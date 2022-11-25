@@ -6,7 +6,7 @@ spec:
   template:
     spec:
       containers:
-        - image: crccheck/hello-world:latest # Stub image. See https://github.com/vhive-serverless/vhive/issues/68
+        - image: ghcr.io/ease-lab/helloworld:var_workload
           ports:
             - name: h2c # For GRPC support
               containerPort: 50051

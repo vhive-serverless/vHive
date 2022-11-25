@@ -26,10 +26,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -51,7 +51,7 @@ import (
 const (
 	containerdAddress      = "/run/firecracker-containerd/containerd.sock"
 	containerdTTRPCAddress = containerdAddress + ".ttrpc"
-	namespaceName          = "firecracker-containerd"
+	namespaceName          = "k8s.io"
 )
 
 type WorkloadIoWriter struct {
@@ -59,7 +59,7 @@ type WorkloadIoWriter struct {
 }
 
 func NewWorkloadIoWriter(vmID string) WorkloadIoWriter {
-	return WorkloadIoWriter {log.WithFields(log.Fields{"vmID": vmID})}
+	return WorkloadIoWriter{log.WithFields(log.Fields{"vmID": vmID})}
 }
 
 func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
@@ -219,4 +219,12 @@ func (o *Orchestrator) setupHeartbeat() {
 			log.Info("HEARTBEAT: number of active VMs: ", len(o.vmPool.GetVMMap()))
 		} // for
 	}() // go func
+}
+
+func (o *Orchestrator) GetVM(vmId string) (*misc.VM, error) {
+	return o.vmPool.GetVM(vmId)
+}
+
+func (o *Orchestrator) FirecrackerContainerdClient() *containerd.Client {
+	return o.client
 }

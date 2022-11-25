@@ -25,12 +25,14 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"strconv"
 )
 
 const (
@@ -45,6 +47,7 @@ type FirecrackerService struct {
 	sync.Mutex
 
 	stockRuntimeClient criapi.RuntimeServiceClient
+	stockImageClient   criapi.ImageServiceClient
 
 	coordinator *coordinator
 
@@ -64,7 +67,13 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 		log.WithError(err).Error("failed to create new stock runtime service client")
 		return nil, err
 	}
+	stockImageClient, err := cri.NewStockImageServiceClient()
+	if err != nil {
+		log.WithError(err).Error("failed to create new stock image service client")
+		return nil, err
+	}
 	fs.stockRuntimeClient = stockRuntimeClient
+	fs.stockImageClient = stockImageClient
 	fs.coordinator = newFirecrackerCoordinator(orch)
 	fs.vmConfigs = make(map[string]*VMConfig)
 	return fs, nil
@@ -95,13 +104,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	var (
 		stockResp *criapi.CreateContainerResponse
 		stockErr  error
-		stockDone = make(chan struct{})
 	)
-
-	go func() {
-		defer close(stockDone)
-		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
-	}()
 
 	config := r.GetConfig()
 	guestImage, err := getEnvVal(guestImageEnv, config)
@@ -110,7 +113,26 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
+	_, err = fs.stockImageClient.PullImage(ctx, &criapi.PullImageRequest{
+		Image: &criapi.ImageSpec{
+			Image: guestImage,
+		},
+	})
+	if err != nil {
+		log.WithError(err).Error("Failed to pull image")
+	}
+
+	client := fs.coordinator.orch.FirecrackerContainerdClient()
+	image, err := client.GetImage(ctx, guestImage)
+	if err != nil {
+		log.WithError(err).Error("Failed to get image")
+	}
+	log.Info(image)
+
+	stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
+
+	containerId := strconv.Itoa(rand.Intn(1000))
+	funcInst, err := fs.coordinator.startVM(context.Background(), containerId, guestImage)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
@@ -125,14 +147,11 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPort}
 	fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
 
-	// Wait for placeholder UC to be created
-	<-stockDone
-	
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)

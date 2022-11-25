@@ -25,13 +25,11 @@ package firecracker
 import (
 	"context"
 	"errors"
-	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/vhive-serverless/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
+	"github.com/vhive-serverless/vhive/ctriface"
 )
 
 type coordinator struct {
@@ -98,13 +96,13 @@ func (c *coordinator) setIdleInstance(fi *funcInstance) {
 	c.idleInstances[fi.Image] = append(c.idleInstances[fi.Image], fi)
 }
 
-func (c *coordinator) startVM(ctx context.Context, image string) (*funcInstance, error) {
+func (c *coordinator) startVM(ctx context.Context, containerId string, image string) (*funcInstance, error) {
 	if fi := c.getIdleInstance(image); c.orch != nil && c.orch.GetSnapshotsEnabled() && fi != nil {
 		err := c.orchLoadInstance(ctx, fi)
 		return fi, err
 	}
 
-	return c.orchStartVM(ctx, image)
+	return c.orchStartVM(ctx, containerId, image)
 }
 
 func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
@@ -150,11 +148,10 @@ func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
 	return nil
 }
 
-func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInstance, error) {
-	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+func (c *coordinator) orchStartVM(ctx context.Context, containerdId string, image string) (*funcInstance, error) {
 	logger := log.WithFields(
 		log.Fields{
-			"vmID":  vmID,
+			"vmID":  containerdId,
 			"image": image,
 		},
 	)
@@ -170,13 +167,13 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInsta
 	defer cancel()
 
 	if !c.withoutOrchestrator {
-		resp, _, err = c.orch.StartVM(ctxTimeout, vmID, image)
+		resp, _, err = c.orch.StartVM(ctxTimeout, containerdId, image)
 		if err != nil {
 			logger.WithError(err).Error("coordinator failed to start VM")
 		}
 	}
 
-	fi := newFuncInstance(vmID, image, resp)
+	fi := newFuncInstance(containerdId, image, resp)
 	logger.Debug("successfully created fresh instance")
 	return fi, err
 }
