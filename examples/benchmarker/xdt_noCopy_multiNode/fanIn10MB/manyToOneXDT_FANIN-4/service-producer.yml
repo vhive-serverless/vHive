@@ -12,7 +12,7 @@ spec:
     spec:
       containerConcurrency: 1
       nodeSelector:
-        nodeLabel: A
+        nodeType: producer
       containers:
       - env:
         - name: TRANSFER_TYPE
