@@ -30,8 +30,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/vhive-serverless/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
+	"github.com/vhive-serverless/vhive/ctriface"
 )
 
 type coordinator struct {
@@ -98,13 +98,22 @@ func (c *coordinator) setIdleInstance(fi *funcInstance) {
 	c.idleInstances[fi.Image] = append(c.idleInstances[fi.Image], fi)
 }
 
+func (c *coordinator) startVMWithContainerId(ctx context.Context, image string, containerId string) (*funcInstance, error) {
+	if fi := c.getIdleInstance(image); c.orch != nil && c.orch.GetSnapshotsEnabled() && fi != nil {
+		err := c.orchLoadInstance(ctx, fi)
+		return fi, err
+	}
+
+	return c.orchStartVMWithContainerId(ctx, image, containerId)
+}
+
 func (c *coordinator) startVM(ctx context.Context, image string) (*funcInstance, error) {
 	if fi := c.getIdleInstance(image); c.orch != nil && c.orch.GetSnapshotsEnabled() && fi != nil {
 		err := c.orchLoadInstance(ctx, fi)
 		return fi, err
 	}
 
-	return c.orchStartVM(ctx, image)
+	return c.orchStartVMWithContainerId(ctx, image, "0")
 }
 
 func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
@@ -148,6 +157,36 @@ func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
 
 	c.activeInstances[containerID] = fi
 	return nil
+}
+func (c *coordinator) orchStartVMWithContainerId(ctx context.Context, image string, containerId string) (*funcInstance, error) {
+	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+	logger := log.WithFields(
+		log.Fields{
+			"vmID":  vmID,
+			"image": image,
+		},
+	)
+
+	logger.Debug("creating fresh instance")
+
+	var (
+		resp *ctriface.StartVMResponse
+		err  error
+	)
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*40)
+	defer cancel()
+
+	if !c.withoutOrchestrator {
+		resp, _, err = c.orch.StartVMWithContainerId(ctxTimeout, vmID, image, containerId)
+		if err != nil {
+			logger.WithError(err).Error("coordinator failed to start VM")
+		}
+	}
+
+	fi := newFuncInstance(containerId, image, resp)
+	logger.Debug("successfully created fresh instance")
+	return fi, err
 }
 
 func (c *coordinator) orchStartVM(ctx context.Context, image string) (*funcInstance, error) {

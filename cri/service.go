@@ -25,6 +25,7 @@ package cri
 import (
 	"context"
 	"errors"
+	"github.com/containerd/containerd"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -43,6 +44,9 @@ type Service struct {
 
 	// generic coordinator
 	serv ServiceInterface
+
+	// stock containerd client (not cri interface)
+	client *containerd.Client
 }
 
 // NewService initializes the host orchestration state.
@@ -63,17 +67,35 @@ func NewService(serv ServiceInterface) (*Service, error) {
 		return nil, err
 	}
 
+	client, err := containerd.New("/run/containerd/containerd.sock",
+		containerd.WithDefaultNamespace("k8s.io"),
+	)
+	if err != nil {
+		log.WithError(err).Error("Failed to create containerd client")
+	}
+
 	cs := &Service{
 		stockRuntimeClient: stockRuntimeClient,
 		stockImageClient:   stockImageClient,
 		serv:               serv,
+		client:             client,
 	}
 
 	return cs, nil
 }
 
 func (s *Service) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	return s.serv.CreateContainer(ctx, r)
+	response, err := s.serv.CreateContainer(ctx, r)
+
+	//imageRef := r.GetConfig().GetImage().GetImage()
+	//image, err := s.client.GetImage(ctx, imageRef)
+	//if err != nil {
+	//	log.WithError(err)
+	//} else {
+	//	log.Infof("Image %s present", image.Name())
+	//}
+
+	return response, err
 }
 
 func (s *Service) RemoveContainer(ctx context.Context, r *criapi.RemoveContainerRequest) (*criapi.RemoveContainerResponse, error) {

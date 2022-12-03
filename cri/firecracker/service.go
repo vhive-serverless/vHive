@@ -27,9 +27,9 @@ import (
 	"errors"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -110,7 +110,10 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
+	// Wait for placeholder UC to be created
+	<-stockDone
+
+	funcInst, err := fs.coordinator.startVMWithContainerId(context.Background(), guestImage, stockResp.GetContainerId())
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
@@ -126,13 +129,13 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
 
 	// Wait for placeholder UC to be created
-	<-stockDone
-	
+	//<-stockDone
+
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)
