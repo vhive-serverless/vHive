@@ -50,10 +50,10 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
+	"github.com/go-multierror/multierror"
 	"github.com/vhive-serverless/vhive/memory/manager"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/misc"
-	"github.com/go-multierror/multierror"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
@@ -378,6 +378,17 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
 			VcpuCount:  1,
 			MemSizeMib: 256,
+		},
+		RootDrive: &proto.FirecrackerRootDrive{
+			HostPath: "/var/lib/firecracker-containerd/runtime/default-rootfs.img",
+		},
+		DriveMounts: []*proto.FirecrackerDriveMount{
+			{
+				HostPath:       "/users/dimeyer",
+				VMPath:         "/tmp",
+				FilesystemType: "squashfs",
+				Options:        []string{"ro"},
+			},
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
 			StaticConfig: &proto.StaticNetworkConfiguration{
