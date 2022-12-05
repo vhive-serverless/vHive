@@ -37,7 +37,7 @@ fi
 
 KUBECONFIG=/etc/kubernetes/admin.conf kn service delete --all
 if [ "$SANDBOX" == "stock-only" ]; then
-    sudo kubeadm reset --cri-socket /run/containerd/containerd.sock -f
+    sudo kubeadm reset --cri-socket /run/firecracker-containerd/containerd.sock -f
 else
     sudo kubeadm reset --cri-socket /etc/vhive-cri/vhive-cri.sock -f
 fi

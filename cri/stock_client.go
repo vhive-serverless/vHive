@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	stockCtrdSockAddr = "/run/containerd/containerd.sock"
+	stockCtrdSockAddr = "/run/firecracker-containerd/containerd.sock"
 	dialTimeout       = 10 * time.Second
 	// maxMsgSize use 16MB as the default message size limit.
 	// grpc library default is 4MB

@@ -30,11 +30,11 @@ ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 # Create kubelet service
 sudo sh -c 'cat <<EOF > /etc/systemd/system/kubelet.service.d/0-containerd.conf
 [Service]                                                 
-Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/firecracker-containerd/containerd.sock"
 EOF'
 sudo systemctl daemon-reload
 
-sudo kubeadm init --ignore-preflight-errors=all --cri-socket /run/containerd/containerd.sock --pod-network-cidr=192.168.0.0/16
+sudo kubeadm init --ignore-preflight-errors=all --cri-socket /run/firecracker-containerd/containerd.sock --pod-network-cidr=192.168.0.0/16
 
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
