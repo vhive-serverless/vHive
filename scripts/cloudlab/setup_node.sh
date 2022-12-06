@@ -27,6 +27,7 @@ ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 SCRIPTS=$ROOT/scripts
 
 SANDBOX=$1
+USE_STARGZ=$2
 
 if [ -z "$SANDBOX" ]; then
     SANDBOX="firecracker"
@@ -58,3 +59,10 @@ if [ "$SANDBOX" == "firecracker" ]; then
     $SCRIPTS/create_devmapper.sh
 fi
 
+if [ -z "$USE_STARGZ" ]; then
+    USE_STARGZ=false
+fi
+
+if [ "$USE_STARGZ" = true]; then
+    $SCRIPTS/stargz/setup_stock_only_stargz.sh
+fi
