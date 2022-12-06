@@ -1,0 +1,12 @@
+version = 2
+
+# Enable stargz snapshotter for CRI
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  snapshotter = "stargz"
+  disable_snapshot_annotations = false
+
+# Plug stargz snapshotter into containerd
+[proxy_plugins]
+  [proxy_plugins.stargz]
+    type = "snapshot"
+    address = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
