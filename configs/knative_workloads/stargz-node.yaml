@@ -1,0 +1,20 @@
+apiVersion: serving.knative.dev/v1
+kind: Pod
+metadata:
+  name: stargz-test
+spec:
+  template:
+    spec:
+      containers:
+      - name: nodejs-stargz
+        image: ghcr.io/stargz-containers/node:17.8.0-esgz
+        command: ["node"]
+        args:
+        - -e
+        - var http = require('http');
+          http.createServer(function(req, res) {
+            res.writeHead(200);
+            res.end('Hello World!\n');
+          }).listen(80);
+        ports:
+        - containerPort: 80

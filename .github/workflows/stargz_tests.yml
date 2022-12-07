@@ -1,0 +1,53 @@
+name: vHive stock-only stargz tests
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
+  workflow_dispatch:
+
+env:
+  GOOS: linux
+  GO111MODULE: on
+
+jobs:
+  stargz-container-test:
+    name: Test running stargz-based image using kn
+    runs-on: ubuntu-20.04
+    steps:
+
+    - name: Set up Go 1.18
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v3
+
+    - name: Setup stock-only node
+      run: sudo ./scripts/cloudlab/setup_node.sh stock-only use-stargz
+
+    - name: Check containerd service is running
+      run: sudo screen -list | grep "containerd"
+
+    - name: Check stargz-snapshotter is running
+      run: sudo systemctl is-active --quiet stargz-snapshotter
+    
+    - name: Setup single-node cluster
+      run: sudo ./scripts/cluster/create_one_node_cluster.sh stock-only
+
+    - name: Run test container with kn
+      run: sudo kn service apply stargz-test -f ./configs/knative_workloads/stargz-node.yaml --concurrency-target 1 
+
+    - name: Curl container
+      run: curl http://stargz-test.default.192.168.1.240.sslip.io | grep "Hello World"
+

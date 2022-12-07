@@ -60,9 +60,9 @@ if [ "$SANDBOX" == "firecracker" ]; then
 fi
 
 if [ -z "$USE_STARGZ" ]; then
-    USE_STARGZ=false
+    USE_STARGZ="no-stargz"
 fi
 
-if [ "$USE_STARGZ" = true]; then
+if [ "$USE_STARGZ" == "use-stargz" ]; then
     $SCRIPTS/stargz/setup_stock_only_stargz.sh
 fi
