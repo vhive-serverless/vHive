@@ -25,6 +25,7 @@
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 SANDBOX=$1
+USE_STARGZ=$2
 
 if [ -z "$SANDBOX" ]; then
     SANDBOX="firecracker"
@@ -101,4 +102,16 @@ fi
 if [ "$SANDBOX" == "firecracker" ]; then
     echo Creating a fresh devmapper
     $PWD/../create_devmapper.sh
+fi
+
+if [ -z "$USE_STARGZ" ]; then
+    USE_STARGZ="no-stargz"
+fi
+
+if [ "$USE_STARGZ" == "use-stargz" ]; then
+    # Stop the stargz snapshotter
+    sudo systemctl stop stargz-snapshotter
+    sudo systemctl disable stargz-snapshotter
+    sudo rm /etc/systemd/system/stargz-snapshotter.service
+    sudo systemctl daemon-reload
 fi
