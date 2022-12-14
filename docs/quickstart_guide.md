@@ -25,6 +25,9 @@ To see how to setup a single node cluster with stock-only or gVisor, see [Develo
     1. [Deploy Functions](#1-deploy-functions)
     2. [Invoke Functions](#2-invoke-functions)
     3. [Delete Deployed Functions](#3-delete-deployed-functions)
+5. [Deploying eStargz-based Functions](#v-deploying-estargz-based-functions)
+    1. [Deploy and Invoke Functions](#1-deploy-and-invoke-functions)
+    2. [Delete Deployed Function](#2-delete-deployed-function)
 
 ## I. Host platform requirements
 ### 1. Hardware
@@ -87,12 +90,38 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     >
     > This script can print `Command failed` when creating the devmapper at the end. This can be safely ignored.
 
+    > **Note:**
+    >
+    > [eStargz](https://github.com/containerd/stargz-snapshotter/tree/cmd/v0.12.1) is a
+    > lazily-pullable image format developed to improve the performance of container boot-ups by
+    > making better usage of the layering structure of container images. The image format is 
+    > compatible to [OCI](https://github.com/opencontainers/image-spec/)/[Docker](https://github.com/moby/moby/blob/master/image/spec/v1.2.md) images, therefore it allows pushing images to 
+    > standard container registries.
+    > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
+    > flags as follows:
+    >   ```bash
+    >   ./scripts/cloudlab/setup_node.sh stock-only use-stargz > >(tee -a /tmp/vhive-logs
+    > setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
+    >   ```
+    > **IMPORTANT**
+    > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
+    > Therefore, the following steps from this guide must **not** be executed:
+    > * `2.3`,
+    > * `2.4`,
+    > * `2.5`.
+
+
 ### 2. Setup Worker Nodes
 **On each worker node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
 1. Run the script that setups kubelet:
     ```bash
     ./scripts/cluster/setup_worker_kubelet.sh > >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
     ```
+    > **IMPORTANT:**
+    > If step `1.3` was executed with the `stock-only` flag, execute the following instead:
+    >   ```bash
+    >   ./scripts/cluster/setup_worker_kubelet.sh stock-only > >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
+    >   ```
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
     sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
@@ -149,7 +178,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     ```bash
     sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
     ```
-2. Run the script that creates the multinode cluster:
+2. Run the script that creates the multinode cluster (without `stargz`):
     ```bash
     ./scripts/cluster/create_multinode_cluster.sh > >(tee -a /tmp/vhive-logs/create_multinode_cluster.stdout) 2> >(tee -a /tmp/vhive-logs/create_multinode_cluster.stderr >&2)
     ```
@@ -167,6 +196,14 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     >     --discovery-token-ca-cert-hash sha256:<hash>
     > ```
     > Please copy the both lines of this command.
+
+    > **IMPORTANT:**
+    > If you built the cluster using the `stock-only` flag, execute the following 
+    > script instead:
+    >   ```bash
+    >   ./scripts/cluster/create_multinode_cluster.sh stock-only > >(tee -a /tmp/vhive-logs/
+    > create_multinode_cluster.stdout) 2> >(tee -a /tmp/vhive-logs/create_multinode_cluster.stderr >&2)
+    >   ```
 
 ### 4. Configure Worker Nodes
 **On each worker node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
@@ -207,6 +244,18 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     ```bash
     ./scripts/cloudlab/setup_node.sh;
     ```
+    > **Note:**
+    > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
+    > flags as follows:
+    >   ```bash
+    >   ./scripts/cloudlab/setup_node.sh; stock-only use-stargz
+    >   ```
+    > **IMPORTANT**
+    > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
+    > Therefore, the following steps from this guide must **not** be executed:
+    > * `2.3`,
+    > * `2.4`,
+    > * `2.5`.
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
     sudo screen -dmS containerd containerd; sleep 5;
@@ -231,11 +280,23 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     ```bash
     ./scripts/cluster/create_one_node_cluster.sh
     ```
+    > **IMPORTANT:**
+    > If you setup the node using the `stock-only` flag, execute the following 
+    > script instead:
+    >   ```bash
+    >   ./scripts/cluster/create_one_node_cluster.sh stock-only
+    >   ```
 
 ### 2. Clean Up
 ```bash
 ./scripts/github_runner/clean_cri_runner.sh
 ```
+
+> **IMPORTANT:**
+> If the setup script was done using the `stock-only` and `use-stargz` flags, add the corresponding flags to the script as follows:
+>   ```bash
+>   ./scripts/github_runner/clean_cri_runner.sh stock-only use-stargz
+>   ```
 
 ### 3. Using a Script
 This script stops the existing cluster if any, cleans up and then starts a fresh single-node cluster.
@@ -288,6 +349,24 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
 
 ### 3. Delete Deployed Functions
 **On the master node**, execute the following instructions below using **bash**:
+
+1. Delete **all** deployed functions:
+    ```bash
+    kn service delete --all
+    ```
+
+## V. Deploying eStargz-based Functions
+This section provides an example function run using a `nodejs` base image that has been converted to the `stargz` format. To create other images supported by `stargz`, please refer to the [creating-estargz-images-using-ctr-remote](https://github.com/containerd/stargz-snapshotter/tree/cmd/v0.12.1#creating-estargz-images-using-ctr-remote) section of the official `stargz` repository.
+### 1. Deploy and Invoke Functions
+**On the master node**, execute the following using **bash**:
+
+```bash
+kn service apply <name> -f <yaml_config_path> --concurrency-target 1
+```
+
+Interact with the deployed function from any node using the exposed interface of the deployed function.
+### 2. Delete Deployed Function
+**On the master node**, execute the following using **bash**:
 
 1. Delete **all** deployed functions:
     ```bash
