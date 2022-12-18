@@ -356,13 +356,6 @@ func (c *coordinator) orchStartVMSnapshotRemote(
 		return nil, err
 	}
 
-	if _, err := c.orch.ResumeVM(ctxTimeout, vmID); err != nil {
-		logger.WithError(err).Error("failed to load VM")
-		return nil, err
-	}
-
-	resp, _, err = c.orch.RemoteLoadSnapshot(ctxTimeout, vmID, image, filePathPatch, filePathSnap, filePathMem)
-
 	coldStartTimeMs := metrics.ToMs(time.Since(tStartCold))
 	funcInst := NewFuncInstance(vmID, image, revision, resp, true, memSizeMib, vCPUCount, coldStartTimeMs)
 	logger.Debug("successfully loaded instance from remote snapshot")
