@@ -59,10 +59,6 @@ if [ "$SANDBOX" == "firecracker" ]; then
     $SCRIPTS/create_devmapper.sh
 fi
 
-if [ -z "$USE_STARGZ" ]; then
-    USE_STARGZ="no-stargz"
-fi
-
 if [ "$USE_STARGZ" == "use-stargz" ]; then
     $SCRIPTS/stargz/setup_stock_only_stargz.sh
 fi
