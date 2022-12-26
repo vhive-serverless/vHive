@@ -48,9 +48,11 @@ and Containerd containers (as in vanilla Knative).
 ### Technical talks
 
 * [Slides](docs/talks/vHive_REAP_@AWS_04_02_2021.pdf) from
-[Dmitrii](http://homepages.inf.ed.ac.uk/s1373190/)'s talk at AWS on Feb, 4th 2021.
+[Dmitrii](https://ustiugov.github.io)'s talk at AWS on Feb, 4th 2021.
 * ASPLOS'21 talks on YouTube:
 [short](https://www.youtube.com/watch?v=w1vGb0X0SUQ), [long](https://www.youtube.com/watch?v=zfLd_MTGOA8).
+* Serverless and vHive tutorial [series](https://www.youtube.com/playlist?list=PLVdxPJaekjWqBsEUwnrYRQCaMqvcDVsBE)
+* Upcoming serverless computing workshop at EuroSys 2023 [website](https://vhive-serverless.github.io/sesame-eurosys23)
 
 
 ## Referencing our work
@@ -125,7 +127,6 @@ The software is maintained at the [EASE lab](https://easelab.inf.ed.ac.uk/) in t
 ### Maintainers
 
 * High-level architecture, issues and discussions on GitHub, roadmap: Dmitrii Ustiugov ([GitHub](https://github.com/ustiugov),
-[twitter](https://twitter.com/DmitriiUstiugov), [web page](http://homepages.inf.ed.ac.uk/s1373190/));
+[twitter](https://twitter.com/DmitriiUstiugov), [web page](https://ustiugov.github.io));
 * Integration with firecracker-containerd [Plamen Petrov](https://github.com/plamenmpetrov);
-* Integration with gVisor: [Nathaniel Tornow](https://github.com/nathanieltornow), [Alexandrina Panfil](https://github.com/alexandrinapanfil);
 * Integration with Knative: [Shyam Jesalpura](https://github.com/shyamjesal)
