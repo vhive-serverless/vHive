@@ -1,8 +1,11 @@
 {
     "ignorePatterns": [
-		{
-			"pattern": "^http://localhost:*"
-		}
+        {
+            "pattern": "^http://localhost:*"
+        },
+        {
+            "pattern": "^https://opensource.org*"
+        }
     ],
     "replacementPatterns": [
         {
