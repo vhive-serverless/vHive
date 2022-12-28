@@ -83,7 +83,7 @@ Profiler:
 At the root of this repository, please run the following script to install the essential tools
 for profiling and binding.
 ```bash
-scripts/install_pmutool.sh
+scripts/install_pmutools.sh
 ```
 
 ## Quick-start guide
