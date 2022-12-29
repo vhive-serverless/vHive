@@ -113,6 +113,8 @@ func TestAutoscaler(t *testing.T) {
 }
 
 func TestMultipleFuncInvoke(t *testing.T) {
+	t.Skip("Test often fails in the CI: https://github.com/vhive-serverless/vHive/issues/655")
+
 	var wg sync.WaitGroup
 	funcs := []string{
 		"helloworld",
