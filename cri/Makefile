@@ -36,7 +36,7 @@ test-cri-firecracker:
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldlocal -f ./../configs/knative_workloads/helloworld_local.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
-	sleep 1m
+	#sleep 1m
 	go clean -testcache
 	go test ./... $(EXTRAGOARGS)
 
@@ -55,7 +55,7 @@ test-cri-gvisor:
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldlocal -f ./../configs/knative_workloads/helloworld_local.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f ./../configs/knative_workloads/helloworldSerial.yaml
 	KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f ./../configs/knative_workloads/pyaes.yaml
-	sleep 1m
+	#sleep 1m
 	go clean -testcache
 	go test . $(EXTRAGOARGS)
 

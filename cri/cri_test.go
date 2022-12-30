@@ -93,13 +93,13 @@ func TestAutoscaler(t *testing.T) {
 			},
 		},
 // Excluded due to its failure in the CRI CI. Raised Issue: https://github.com/vhive-serverless/vHive/issues/655
-//		{
-//			name: "Scale from 0",
-//			scale: func(funcURL string) {
-//				time.Sleep(200 * time.Second)
-//				invoke(t, funcURL)
-//			},
-//		},
+		{
+			name: "Scale from 0",
+			scale: func(funcURL string) {
+				time.Sleep(200 * time.Second)
+				invoke(t, funcURL)
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -162,7 +162,7 @@ func invoke(t *testing.T, functionURL string) {
 	client, conn, err := getClient(functionURL)
 	require.NoError(t, err, "Failed to dial function URL")
 	defer conn.Close()
-	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Minute))
+	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Minute))
 	defer cancel()
 
 	resp, err := client.SayHello(ctxFwd, &hpb.HelloRequest{Name: reqPayload})
