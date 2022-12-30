@@ -162,7 +162,7 @@ func invoke(t *testing.T, functionURL string) {
 	client, conn, err := getClient(functionURL)
 	require.NoError(t, err, "Failed to dial function URL")
 	defer conn.Close()
-	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Minute))
+	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Minute))
 	defer cancel()
 
 	resp, err := client.SayHello(ctxFwd, &hpb.HelloRequest{Name: reqPayload})
