@@ -4,16 +4,17 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd ../.. && pwd)"
 BINS=$ROOT/bin
 CONFIGS=$ROOT/configs/stargz
+STARGZ_VERSION=v0.13.0
 
 # Get stargz snapshotter tar
-wget --continue --quiet https://github.com/containerd/stargz-snapshotter/releases/download/v0.13.0/stargz-snapshotter-v0.13.0-linux-amd64.tar.gz
+wget --continue --quiet https://github.com/containerd/stargz-snapshotter/releases/download/${STARGZ_VERSION}/stargz-snapshotter-${STARGZ_VERSION}-linux-amd64.tar.gz
 
 # Copy stargz config
 sudo mkdir -p /etc/containerd
 sudo cp $CONFIGS/config.toml /etc/containerd/config.toml
 
 # Unzip stargz binary and install it
-sudo tar -C /usr/local/bin -xvf stargz-snapshotter-v0.13.0-linux-amd64.tar.gz containerd-stargz-grpc ctr-remote
+sudo tar -C /usr/local/bin -xvf stargz-snapshotter-${STARGZ_VERSION}-linux-amd64.tar.gz containerd-stargz-grpc ctr-remote
 
 # Download stargz snapshotter service configuration file
 sudo wget -O /etc/systemd/system/stargz-snapshotter.service https://raw.githubusercontent.com/containerd/stargz-snapshotter/main/script/config/etc/systemd/system/stargz-snapshotter.service

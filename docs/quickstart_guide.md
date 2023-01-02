@@ -100,8 +100,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
     > flags as follows:
     >   ```bash
-    >   ./scripts/cloudlab/setup_node.sh stock-only use-stargz > >(tee -a /tmp/vhive-logs
-    > setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
+    >   ./scripts/cloudlab/setup_node.sh stock-only use-stargz > >(tee -a /tmp/vhive-logs/setup_node.stdout) 2> >(tee -a /tmp/vhive-logs/setup_node.stderr >&2)
     >   ```
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
@@ -248,7 +247,7 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
     > flags as follows:
     >   ```bash
-    >   ./scripts/cloudlab/setup_node.sh; stock-only use-stargz
+    >   ./scripts/cloudlab/setup_node.sh stock-only use-stargz
     >   ```
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
@@ -291,12 +290,6 @@ Execute the following below **as a non-root user with sudo rights** using **bash
 ```bash
 ./scripts/github_runner/clean_cri_runner.sh
 ```
-
-> **IMPORTANT:**
-> If the setup script was done using the `stock-only` and `use-stargz` flags, add the corresponding flags to the script as follows:
->   ```bash
->   ./scripts/github_runner/clean_cri_runner.sh stock-only use-stargz
->   ```
 
 ### 3. Using a Script
 This script stops the existing cluster if any, cleans up and then starts a fresh single-node cluster.
