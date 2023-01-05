@@ -3527,7 +3527,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:b0118479b2a3580c6c6959b68d457bf399f6c20b7c82738adccbb303d26dc3df
+  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:39ae2de29f1194cbc0e28706e9b2f6f48f58f300d93de7bd6e6443efd7b97b70
 
 ---
 # Copyright 2018 The Knative Authors
@@ -3913,7 +3913,7 @@ data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
   # TODO: switch to 'queue-sidecar-image' after 0.27
-  queueSidecarImage: docker.io/shyamjesal/queue-39be6f1d08a095bd076a71d288d295b6@sha256:b0118479b2a3580c6c6959b68d457bf399f6c20b7c82738adccbb303d26dc3df
+  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:39ae2de29f1194cbc0e28706e9b2f6f48f58f300d93de7bd6e6443efd7b97b70
   _example: |-
     ################################
     #                              #
@@ -4955,7 +4955,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/activator-ecd51ca5034883acbe737fde417a3d86@sha256:2fa535041f15cadf5063db1150f3c8b214ac434881a2f551ad07bcd89d83c2b4
+          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:3c2bb6b2f1a16da490934344087dee8821b1d46798d82364dff9bec2461ff622
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -5120,7 +5120,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:2f4ad1a1a273dcfdec074c8b7fea8023f182ee03a326eddd74992189407efab9
+          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:90db70cfb9c608403091f420a41fe712e0adc15ea841dc1f8ee52707e0823cef
           resources:
             requests:
               cpu: 100m
@@ -5254,7 +5254,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:9083d7ca1609bca598f9db7dcc9b44cd271dffb55654a44c43fea9df989338b5
+          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:fc5dfcc64440677d1eeac84c3b8928fee6e2aa806d8b3fba37ebfb0fc492b67b
           resources:
             requests:
               cpu: 100m
@@ -5366,7 +5366,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:e1e53c5dec3013908145eaf5d136245d5eca8e71a504f6ef67d59ef2db4d6a26
+          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:4c7b4c1406eb049b1967444aeec7937cebddafdb106d55e5f85a6a8772885a9f
           resources:
             requests:
               cpu: 30m
@@ -5454,7 +5454,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:a0bd032563fab2d9ab04974f7c77bc889ca5422febf803319a089672916db9ea
+          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:b34b03cdb575aff97d76ac484f3169d5deddcfc8ae306f34a720eae95b4a8577
           resources:
             requests:
               cpu: 100m
@@ -5651,7 +5651,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/shyamjesal/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:b82fb0d9946cb1e2ceb03e1642c01e460fe9cbfb25b94c85f7dee6f276b84243
+          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:1113ee0c5cd6d5013bf1952646acaad7937cf18f539a2ba1744eba3b7af53880
           resources:
             requests:
               cpu: 100m
