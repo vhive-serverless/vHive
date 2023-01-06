@@ -32,19 +32,19 @@ import (
 // that can be used to connect a function instance to the network.
 type NetworkManager struct {
 	sync.Mutex
-	nextID          int
-	hostIfaceName   string
+	nextID        int
+	hostIfaceName string
 
 	// Pool of free network configs
-	networkPool     []*NetworkConfig
-	poolCond        *sync.Cond
-	poolSize        int
+	networkPool []*NetworkConfig
+	poolCond    *sync.Cond
+	poolSize    int
 
 	// Mapping of function instance IDs to their network config
-	netConfigs      map[string]*NetworkConfig
+	netConfigs map[string]*NetworkConfig
 
 	// Network configs that are being created
-	inCreation      sync.WaitGroup
+	inCreation sync.WaitGroup
 }
 
 // NewNetworkManager creates and returns a new network manager that connects function instances to the network
@@ -136,6 +136,22 @@ func (mgr *NetworkManager) allocNetConfig(funcID string) *NetworkConfig {
 	mgr.Lock()
 	mgr.netConfigs[funcID] = config
 	mgr.Unlock()
+
+	logger := log.WithFields(log.Fields{
+		"ContainerIP":   config.getContainerIP(),
+		"NamespaceName": config.getNamespaceName(),
+		"Veth0CIDR":     config.getVeth0CIDR(),
+		"Veth0Name":     config.getVeth0Name(),
+		"Veth1CIDR":     config.getVeth1CIDR(),
+		"Veth1Name":     config.getVeth1Name(),
+		"CloneIP":       config.GetCloneIP(),
+		"ContainerCIDR": config.GetContainerCIDR(),
+		"GatewayIP":     config.GetGatewayIP(),
+		"HostDevName":   config.GetHostDevName(),
+		"NamespacePath": config.GetNamespacePath()})
+
+	logger.Debug("Allocated a new network config")
+
 	return config
 }
 
