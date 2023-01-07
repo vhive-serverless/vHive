@@ -23,6 +23,7 @@
 package misc
 
 import (
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/vhive-serverless/vhive/taps"
@@ -37,7 +38,7 @@ func NewVMPool() *VMPool {
 }
 
 // Allocate Initializes a VM, activates it and then adds it to VM map
-func (p *VMPool) Allocate(vmID, hostIface string) (*VM, error) {
+func (p *VMPool) Allocate(vmID, hostIface string, config *proto.JailerConfig) (*VM, error) {
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
@@ -48,6 +49,7 @@ func (p *VMPool) Allocate(vmID, hostIface string) (*VM, error) {
 	}
 
 	vm := NewVM(vmID)
+	vm.JailerConfig = config
 
 	var err error
 	vm.Ni, err = p.tapManager.AddTap(vmID+"_tap", hostIface)

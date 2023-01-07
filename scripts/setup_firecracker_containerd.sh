@@ -60,3 +60,4 @@ if [ 64 -eq ${#CONTAINERID} ]; then
 fi
 
 sudo cp $CONFIGS/firecracker-runtime.json /etc/containerd/
+sudo cp $CONFIGS/firecracker-runtime.json /etc/containerd/firecracker-runc-config.json

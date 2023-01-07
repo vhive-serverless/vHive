@@ -50,10 +50,10 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
+	"github.com/go-multierror/multierror"
 	"github.com/vhive-serverless/vhive/memory/manager"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/misc"
-	"github.com/go-multierror/multierror"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
@@ -70,7 +70,7 @@ const (
 )
 
 // StartVM Boots a VM if it does not exist
-func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string, config *proto.JailerConfig) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		startVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart        time.Time
@@ -79,7 +79,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
 
-	vm, err := o.vmPool.Allocate(vmID, o.hostIface)
+	vm, err := o.vmPool.Allocate(vmID, o.hostIface, config)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
 		return nil, nil, err
@@ -390,6 +390,7 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 				},
 			},
 		}},
+		JailerConfig: vm.JailerConfig,
 	}
 }
 

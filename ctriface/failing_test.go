@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 	"os"
 	"testing"
 	"time"
@@ -55,7 +56,7 @@ func TestStartSnapStop(t *testing.T) {
 
 	vmID := "2"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, testImageName, &proto.JailerConfig{})
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)

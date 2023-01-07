@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,9 +34,9 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/vhive-serverless/vhive/metrics"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"github.com/vhive-serverless/vhive/metrics"
 )
 
 const (
@@ -75,7 +76,7 @@ func TestBenchmarkStart(t *testing.T) {
 		for i := 0; i < benchCount; i++ {
 			dropPageCache()
 
-			_, metric, err := orch.StartVM(ctx, vmIDString, imageName)
+			_, metric, err := orch.StartVM(ctx, vmIDString, imageName, &proto.JailerConfig{})
 			require.NoError(t, err, "Failed to start VM")
 			startMetrics[i] = metric
 

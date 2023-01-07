@@ -25,11 +25,16 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/containerd/containerd"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
+	"github.com/opencontainers/runtime-spec/specs-go"
+	"os/user"
+	"strconv"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
-	log "github.com/sirupsen/logrus"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -103,6 +108,49 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
 	}()
 
+	log.Infof("PodSandboxId: %s\n", r.GetPodSandboxId())
+	log.Infof("SandboxConfig: %v\n", r.GetSandboxConfig())
+
+	client, err := containerd.New("/run/containerd/containerd.sock", containerd.WithDefaultNamespace("k8s.io"))
+	if err != nil {
+		log.Println("Unable to locate client")
+	}
+
+	// Wait for placeholder UC to be created
+	<-stockDone
+
+	userContainer, err := client.LoadContainer(ctx, stockResp.GetContainerId())
+	if err != nil {
+		log.Println("Unable to locate user container")
+	}
+	userContainerSpec, _ := userContainer.Spec(ctx)
+	log.Printf("%v\n", userContainerSpec.Linux)
+
+	netNsPath := ""
+	for _, ns := range userContainerSpec.Linux.Namespaces {
+		if ns.Type == specs.NetworkNamespace {
+			netNsPath = ns.Path
+		}
+	}
+
+	dimeyer, err := user.Lookup("dimeyer")
+	gid, _ := strconv.ParseInt(dimeyer.Gid, 10, 32)
+	uid, _ := strconv.ParseInt(dimeyer.Uid, 10, 32)
+
+	log.Printf("GID: %d\n", gid)
+	log.Printf("UID: %d\n", uid)
+	log.Printf("NetNS: %s\n", netNsPath)
+
+	//b := cpuset.Builder{}
+	//cset := b.AddCPU(0).AddMem(0).Build()
+	jailerConfig := &proto.JailerConfig{
+		//CPUs:  cset.CPUs(),
+		//Mems:  cset.Mems(),
+		//NetNS: netNsPath,
+		UID: uint32(uid),
+		GID: uint32(gid),
+	}
+
 	config := r.GetConfig()
 	guestImage, err := getEnvVal(guestImageEnv, config)
 	if err != nil {
@@ -110,7 +158,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage)
+	funcInst, err := fs.coordinator.startVM(context.Background(), guestImage, jailerConfig)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err
@@ -127,12 +175,12 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 
 	// Wait for placeholder UC to be created
 	<-stockDone
-	
+
 	// Check for error from container creation
- 	if stockErr != nil {
- 		log.WithError(stockErr).Error("failed to create container")
- 		return nil, stockErr
- 	}
+	if stockErr != nil {
+		log.WithError(stockErr).Error("failed to create container")
+		return nil, stockErr
+	}
 
 	containerdID := stockResp.ContainerId
 	err = fs.coordinator.insertActive(containerdID, funcInst)

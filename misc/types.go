@@ -23,6 +23,7 @@
 package misc
 
 import (
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 	"sync"
 
 	"github.com/containerd/containerd"
@@ -32,12 +33,13 @@ import (
 
 // VM type
 type VM struct {
-	ID        string
-	Image     *containerd.Image
-	Container *containerd.Container
-	Task      *containerd.Task
-	TaskCh    <-chan containerd.ExitStatus
-	Ni        *taps.NetworkInterface
+	ID           string
+	Image        *containerd.Image
+	Container    *containerd.Container
+	Task         *containerd.Task
+	TaskCh       <-chan containerd.ExitStatus
+	Ni           *taps.NetworkInterface
+	JailerConfig *proto.JailerConfig
 }
 
 // VMPool Pool of active VMs (can be in several states though)
