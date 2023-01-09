@@ -55,7 +55,7 @@ require (
 	github.com/go-multierror/multierror v1.0.2
 	github.com/golang/protobuf v1.4.3
 	github.com/google/nftables v0.0.0-20210916140115-16a134723a96
-	github.com/montanaflynn/stats v0.6.5
+	github.com/montanaflynn/stats v0.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
