@@ -62,9 +62,10 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 
 	var err error
 	if p.isFullLocal {
+		logger.Debug("Create virtual network for VM")
 		vm.netConfig, err = p.networkManager.CreateNetwork(vmID)
 	} else {
-		vm.ni, err = p.tapManager.AddTap(vmID+"_tap")
+		vm.ni, err = p.tapManager.AddTap(vmID + "_tap")
 	}
 
 	if err != nil {
@@ -127,7 +128,7 @@ func (p *VMPool) RecreateTap(vmID string) error {
 		return err
 	}
 
-	_, err := p.tapManager.AddTap(vmID+"_tap")
+	_, err := p.tapManager.AddTap(vmID + "_tap")
 	if err != nil {
 		logger.Error("Failed to add tap")
 		return err

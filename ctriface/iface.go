@@ -498,12 +498,18 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 
 	// 3. Backup disk state difference.
 	// 3.B Alternatively could also do ForkContainerSnap(ctx, vm.ContainerSnapKey, snap.GetContainerSnapName(), *vm.Image, forkMetric)
-	if err := o.devMapper.CreatePatch(ctx, snap.GetPatchFilePath(), vm.ContainerSnapKey, *vm.Image); err != nil {
+	patchFilePath := snap.GetPatchFilePath()
+	logger = log.WithFields(log.Fields{"vmID": vmID, "patchFilePath": patchFilePath})
+	logger.Debug("Creating patch file with disk state difference")
+
+	if err := o.devMapper.CreatePatch(ctx, patchFilePath, vm.ContainerSnapKey, *vm.Image); err != nil {
 		logger.WithError(err).Error("failed to create container patch file")
 		return err
 	}
 
 	// 4. Serialize snapshot info
+	logger = log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Serializing snapshot info")
 	if err := snap.SerializeSnapInfo(); err != nil {
 		logger.WithError(err).Error("failed to serialize snapshot info")
 		return err

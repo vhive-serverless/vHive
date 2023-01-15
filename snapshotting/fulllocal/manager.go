@@ -30,6 +30,8 @@ import (
 	"math"
 	"os"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // FullLocalSnapshotManager manages snapshots stored on the node.
@@ -38,15 +40,15 @@ type FullLocalSnapshotManager struct {
 	baseFolder string
 
 	// Stored snapshots
-	snapshots          map[string]*snapshotting.Snapshot
+	snapshots map[string]*snapshotting.Snapshot
 	// Eviction metadata for stored snapshots
-	snapStats          map[string]*SnapshotStats
+	snapStats map[string]*SnapshotStats
 
 	// Heap of snapshots not in use that can be freed to save space. Sorted by score
-	freeSnaps  SnapHeap
+	freeSnaps SnapHeap
 
 	// Eviction
-	clock       int64 	// When container last used. Increased to priority terminated container on termination
+	clock       int64 // When container last used. Increased to priority terminated container on termination
 	capacityMib int64
 	usedMib     int64
 }
@@ -81,7 +83,7 @@ func (mgr *FullLocalSnapshotManager) AcquireSnapshot(revision string) (*snapshot
 	}
 
 	// Snapshot registered in manager but creation not finished yet
-	if ! snapStat.usable { // Could also wait until snapshot usable (trade-off)
+	if !snapStat.usable { // Could also wait until snapshot usable (trade-off)
 		return nil, errors.New("Snapshot is not yet usable")
 	}
 
@@ -111,6 +113,8 @@ func (mgr *FullLocalSnapshotManager) AcquireSnapshot(revision string) (*snapshot
 func (mgr *FullLocalSnapshotManager) ReleaseSnapshot(revision string) error {
 	mgr.Lock()
 	defer mgr.Unlock()
+	logger := log.WithFields(log.Fields{"revision": revision})
+	logger.Debug("Releasing snapshot corresponding to revision")
 
 	snapStat, present := mgr.snapStats[revision]
 	if !present {
@@ -136,6 +140,9 @@ func (mgr *FullLocalSnapshotManager) ReleaseSnapshot(revision string) error {
 // CommitSnapshot must be run to finalize the snapshot creation and make the snapshot available fo ruse
 func (mgr *FullLocalSnapshotManager) InitSnapshot(revision, image string, coldStartTimeMs int64, memSizeMib, vCPUCount uint32, sparse bool) (*[]string, *snapshotting.Snapshot, error) {
 	mgr.Lock()
+
+	logger := log.WithFields(log.Fields{"revision": revision, "image": image})
+	logger.Debug("Initializing snapshot corresponding to revision and image")
 
 	if _, present := mgr.snapshots[revision]; present {
 		mgr.Unlock()
