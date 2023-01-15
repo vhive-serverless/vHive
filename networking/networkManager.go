@@ -138,6 +138,7 @@ func (mgr *NetworkManager) allocNetConfig(funcID string) *NetworkConfig {
 	mgr.Unlock()
 
 	logger := log.WithFields(log.Fields{
+		"funcID":        funcID,
 		"ContainerIP":   config.getContainerIP(),
 		"NamespaceName": config.getNamespaceName(),
 		"Veth0CIDR":     config.getVeth0CIDR(),
