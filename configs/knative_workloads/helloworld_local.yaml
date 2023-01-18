@@ -14,4 +14,4 @@ spec:
             - name: GUEST_PORT # Port on which the firecracker-containerd container is accepting requests
               value: "50051"
             - name: GUEST_IMAGE # Container image to use for firecracker-containerd container
-              value: "docker-registry.registry.svc.cluster.local:5000/vhiveease/helloworld:var_workload"
+              value: "estellapaula/test_image:latest"

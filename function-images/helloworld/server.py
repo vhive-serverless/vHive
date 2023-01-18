@@ -11,6 +11,7 @@ responses = ["record_response", "replay_response"]
 class Greeter(helloworld_pb2_grpc.GreeterServicer):
 
     def SayHello(self, request, context):
+        print("Server received request for hello")
         if request.name == "record":
             msg = 'Hello, %s!' % responses[0]
         elif request.name == "replay":
@@ -22,6 +23,7 @@ class Greeter(helloworld_pb2_grpc.GreeterServicer):
 
 
 def serve():
+    print("Server is running")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     helloworld_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
     server.add_insecure_port('[::]:50051')
@@ -30,5 +32,5 @@ def serve():
 
 
 if __name__ == '__main__':
-    logging.basicConfig()
+    logging.basicConfig(level=logging.DEBUG)
     serve()
