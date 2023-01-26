@@ -83,14 +83,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     mkdir -p /tmp/vhive-logs
     ```
 3. Run the node setup script:
-    ```bash
-    ./scripts/cloudlab/setup_node.sh > >(tee -a /tmp/vhive-logs/setup_node.stdout) 2> >(tee -a /tmp/vhive-logs/setup_node.stderr >&2)
-    ```
-    > **BEWARE:**
-    >
-    > This script can print `Command failed` when creating the devmapper at the end. This can be safely ignored.
-
-    > **Note:**
+    > **Note - stargz deployments:**
     >
     > [eStargz](https://github.com/containerd/stargz-snapshotter/tree/cmd/v0.12.1) is a
     > lazily-pullable image format developed to improve the performance of container boot-ups by
@@ -105,22 +98,31 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
     > Therefore, the following steps from this guide must **not** be executed:
-    > * `2.3`,
-    > * `2.4`,
-    > * `2.5`.
+    > * `2.3 - Start firecracker-containerd in a background terminal named firecracker`,
+    > * `2.4 - Build vHive host orchestrator`,
+    > * `2.5 - Start vHive in a background terminal named vhive`.
+
+    For the standard setup, run the following script:
+    ```bash
+    ./scripts/cloudlab/setup_node.sh > >(tee -a /tmp/vhive-logs/setup_node.stdout) 2> >(tee -a /tmp/vhive-logs/setup_node.stderr >&2)
+    ```
+    > **BEWARE:**
+    >
+    > This script can print `Command failed` when creating the devmapper at the end. This can be safely ignored.
 
 
 ### 2. Setup Worker Nodes
 **On each worker node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
 1. Run the script that setups kubelet:
-    ```bash
-    ./scripts/cluster/setup_worker_kubelet.sh > >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
-    ```
     > **IMPORTANT:**
-    > If step `1.3` was executed with the `stock-only` flag, execute the following instead:
+    > If step `1.4 - Run the node setup script` was executed with the `stock-only` flag, execute the following instead:
     >   ```bash
     >   ./scripts/cluster/setup_worker_kubelet.sh stock-only > >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
-    >   ```
+    >
+
+    For the standard kubelet setup, run the following script:
+    ```bash
+    ./scripts/cluster/setup_worker_kubelet.sh > >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
     sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
@@ -252,9 +254,9 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
     > Therefore, the following steps from this guide must **not** be executed:
-    > * `2.3`,
-    > * `2.4`,
-    > * `2.5`.
+    > * `2.3 - Start firecracker-containerd in a background terminal named firecracker`,
+    > * `2.4 - Build vHive host orchestrator`,
+    > * `2.5 - Start vHive in a background terminal named vhive`.
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
     sudo screen -dmS containerd containerd; sleep 5;
