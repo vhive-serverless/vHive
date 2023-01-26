@@ -350,6 +350,11 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
 
 ## V. Deploying eStargz-based Functions
 This section provides an example function run using a `nodejs` base image that has been converted to the `stargz` format. To create other images supported by `stargz`, please refer to the [creating-estargz-images-using-ctr-remote](https://github.com/containerd/stargz-snapshotter/tree/cmd/v0.12.1#creating-estargz-images-using-ctr-remote) section of the official `stargz` repository.
+
+Our example image can be found in [/configs/knative_workloads/stargz-node.yaml](../configs/knative_workloads/stargz-node.yaml) and can be run with:
+```bash
+kn service apply stargz-test -f configs/knative_workloads/stargz-node.yaml --concurrency-target 1
+```
 ### 1. Deploy and Invoke Functions
 **On the master node**, execute the following using **bash**:
 
