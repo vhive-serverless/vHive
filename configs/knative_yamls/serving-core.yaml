@@ -3527,7 +3527,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:7664e43ef34eccf3c311a0a7fa75da472303faf387e3f5f0a5fb863a9dbc3aff
+  image: docker.io/anshalshukla/queue-39be6f1d08a095bd076a71d288d295b6@sha256:83f30dc6090edb7d830abaf96921914631b9c886bccd7c3ea658d8647498e361
 
 ---
 # Copyright 2018 The Knative Authors
@@ -3913,8 +3913,7 @@ data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
   # TODO: switch to 'queue-sidecar-image' after 0.27
-  registries-skipping-tag-resolving: "kind.local,ko.local,dev.local,index.docker.io,gcr.io"
-  queueSidecarImage: docker.io/vhiveease/queue-39be6f1d08a095bd076a71d288d295b6@sha256:7664e43ef34eccf3c311a0a7fa75da472303faf387e3f5f0a5fb863a9dbc3aff
+  queueSidecarImage: docker.io/anshalshukla/queue-39be6f1d08a095bd076a71d288d295b6@sha256:83f30dc6090edb7d830abaf96921914631b9c886bccd7c3ea658d8647498e361
   _example: |-
     ################################
     #                              #
@@ -4077,7 +4076,7 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/version: devel
   annotations:
-    knative.dev/example-checksum: "e1c6e542"
+    knative.dev/example-checksum: "433d7e74"
 data:
   _example: |-
     ################################
@@ -4142,6 +4141,18 @@ data:
     # WARNING: Cannot safely be disabled once enabled.
     # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-runtime-class
     kubernetes.podspec-runtimeclassname: "disabled"
+
+    # Indicates whether Kubernetes DNSPolicy support is enabled
+    #
+    # WARNING: Cannot safely be disabled once enabled.
+    # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-dnspolicy
+    kubernetes.podspec-dnspolicy: "disabled"
+
+    # Indicates whether Kubernetes DNSConfig support is enabled
+    #
+    # WARNING: Cannot safely be disabled once enabled.
+    # See: https://knative.dev/docs/serving/feature-flags/#kubernetes-dnsconfig
+    kubernetes.podspec-dnsconfig: "disabled"
 
     # This feature allows end-users to set a subset of fields on the Pod's SecurityContext
     #
@@ -4245,7 +4256,7 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/version: devel
   annotations:
-    knative.dev/example-checksum: "45463e45"
+    knative.dev/example-checksum: "aa3813a8"
 data:
   _example: |
     ################################
@@ -4262,7 +4273,6 @@ data:
     # These sample configuration options may be copied out of
     # this example block and unindented to be in the data block
     # to actually change the configuration.
-
 
     # ---------------------------------------
     # Garbage Collector Settings
@@ -4295,7 +4305,7 @@ data:
     #     retain-since-last-active-time: "disabled"
     #     max-non-active-revisions: "10"
     #
-    # Example config to disable all GC:
+    # Example config to disable all garbage collection:
     #     retain-since-create-time: "disabled"
     #     retain-since-last-active-time: "disabled"
     #     max-non-active-revisions: "disabled"
@@ -4956,7 +4966,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/activator-ecd51ca5034883acbe737fde417a3d86@sha256:8b32b2accc0f7bd73183818446aab9bfdce0f82690f3b3643d5bbee4d1521565
+          image: docker.io/anshalshukla/activator-ecd51ca5034883acbe737fde417a3d86@sha256:cff35fcd590e137eaae376411a19b557c0c458ecf6fb5927eb9fb33a351c56c2
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -5121,7 +5131,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:979e95f893616dd8c02e2d0c8590b4e02695d32d66e400741e6643eb178a4ee9
+          image: docker.io/anshalshukla/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:5a4c914ae53463efac1e1b59349d4ef277e72d94022c1907defc4f8f20cbc1d4
           resources:
             requests:
               cpu: 100m
@@ -5255,7 +5265,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:1a9a865482a00f96c2af7b58a49cc52ebc74ca647242ece752aa8a60439c0f65
+          image: docker.io/anshalshukla/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:4d8da1254c47e39cb3072833a6367d70d276fa15b10b20a8e3e039b3550c618c
           resources:
             requests:
               cpu: 100m
@@ -5367,7 +5377,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:133a55174224d6bf30497580ec527f1b683ea3564620f5647dda9b9450e6ab16
+          image: docker.io/anshalshukla/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:2655bc806fad3a71234ea531c2b82a6f9d8afffd0f8d9e4e1a400f085882ad2d
           resources:
             requests:
               cpu: 30m
@@ -5455,7 +5465,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:166eecb471d6fcd14ecadd7f6bbf6e856505f3ed875fed7d1ac59b8fcb1b2997
+          image: docker.io/anshalshukla/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:a5a9fbbeba4136b870b5ee18f935fa9d22ca50f4502eb7488678ecffb9c0c0db
           resources:
             requests:
               cpu: 100m
@@ -5652,7 +5662,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:e06c7d4f2bb661f5ea8193ed0cfe4b87fc849142556003e2a135c0e2f241e83b
+          image: docker.io/anshalshukla/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:1e37ff7a6a7c29c3e08f3e26577db2a0c83a081038584a8088f8eb41590f65db
           resources:
             requests:
               cpu: 100m
