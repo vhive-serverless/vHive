@@ -4969,11 +4969,11 @@ spec:
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
             requests:
-              cpu: 300m
-              memory: 60Mi
+              cpu: 2000m
+              memory: 2000Mi
             limits:
-              cpu: 2
-              memory: 3Gi
+              cpu: 4
+              memory: 6Gi
           env:
             # Run Activator with GC collection when newly generated memory is 500%.
             - name: GOGC
@@ -5133,8 +5133,8 @@ spec:
           image: docker.io/vhiveease/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:b327d3152ae36087152477c05cad8ecd73eb6d2cb7d4657462daa16cc322b3e5
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 1000m
+              memory: 1000Mi
             limits:
               cpu: 2
               memory: 3Gi
@@ -5271,11 +5271,11 @@ spec:
           image: docker.io/vhiveease/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:2d8fdc26659f3bed5d772ef30caa615da230e98a800d674ed70db762fe3034fe
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 2000m
+              memory: 2000Mi
             limits:
-              cpu: 1
-              memory: 2Gi
+              cpu: 4
+              memory: 8Gi
           env:
             - name: POD_NAME
               valueFrom:
@@ -5387,11 +5387,11 @@ spec:
           image: docker.io/vhiveease/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:c633e82cc461ce4290f19e8c7bddb0168ae324333fc1c811d73c42d36ff36a02
           resources:
             requests:
-              cpu: 30m
-              memory: 40Mi
+              cpu: 1000m
+              memory: 1000Mi
             limits:
-              cpu: 1
-              memory: 2Gi
+              cpu: 3
+              memory: 4Gi
           env:
             - name: SYSTEM_NAMESPACE
               valueFrom:
@@ -5478,11 +5478,11 @@ spec:
           image: docker.io/vhiveease/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:e4e89edf0b0ee536b53f9987dd12888b4c034fc2da4be2810cd8d40cddb19bcb
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 1000m
+              memory: 1000Mi
             limits:
-              cpu: 1
-              memory: 2Gi
+              cpu: 2
+              memory: 4Gi
           env:
             - name: POD_NAME
               valueFrom:
@@ -5682,11 +5682,11 @@ spec:
           image: docker.io/vhiveease/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:396c9777db3c4f1952cf0d3aeff3364925898ed33bf12271c4248e19aadce402
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 5000m
+              memory: 1000Mi
             limits:
-              cpu: 1
-              memory: 2Gi
+              cpu: 2
+              memory: 4Gi
           env:
             - name: POD_NAME
               valueFrom:

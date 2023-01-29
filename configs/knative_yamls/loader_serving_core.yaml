@@ -4959,8 +4959,8 @@ spec:
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
             requests:
-              cpu: 300m
-              memory: 60Mi
+              cpu: 2000m
+              memory: 2000Mi
             limits:
               cpu: 3
               memory: 10Gi
@@ -5123,8 +5123,8 @@ spec:
           image: gcr.io/knative-releases/knative.dev/serving/cmd/autoscaler@sha256:6b77fce9159173ce700cbe8202eb0ab33b2128688baadf34e916b7341889bde0
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 2000m
+              memory: 2000Mi
             limits:
               cpu: 3
               memory: 10Gi
@@ -5261,11 +5261,11 @@ spec:
           image: gcr.io/knative-releases/knative.dev/serving/cmd/controller@sha256:712ac88a1ec328ad366a0245882061de01bdf631cb21bac2b621af8e20e7082d
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 2000m
+              memory: 2000Mi
             limits:
-              cpu: 1
-              memory: 2Gi
+              cpu: 4
+              memory: 4Gi
           env:
             - name: POD_NAME
               valueFrom:
@@ -5377,10 +5377,10 @@ spec:
           image: gcr.io/knative-releases/knative.dev/serving/cmd/domain-mapping@sha256:5f9d8293f8d8d04cbfeed796ea15cf6dd967d2213f326debfe76983ab58b63fd
           resources:
             requests:
-              cpu: 30m
-              memory: 40Mi
+              cpu: 500m
+              memory: 400Mi
             limits:
-              cpu: 1
+              cpu: 2
               memory: 2Gi
           env:
             - name: SYSTEM_NAMESPACE
@@ -5468,10 +5468,10 @@ spec:
           image: gcr.io/knative-releases/knative.dev/serving/cmd/domain-mapping-webhook@sha256:51800b3435af2cd551f7de5119133de3cb30e3d72ec9df18d5e2e14ec482668f
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 1000m
+              memory: 1000Mi
             limits:
-              cpu: 1
+              cpu: 2
               memory: 2Gi
           env:
             - name: POD_NAME
@@ -5672,10 +5672,10 @@ spec:
           image: gcr.io/knative-releases/knative.dev/serving/cmd/webhook@sha256:881a707c3f5b8537adf1fd460405fb8e65ae2676e4591926f9cdfb4454efd350
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 1000m
+              memory: 1000Mi
             limits:
-              cpu: 1
+              cpu: 2
               memory: 2Gi
           env:
             - name: POD_NAME

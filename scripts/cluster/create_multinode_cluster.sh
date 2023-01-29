@@ -22,7 +22,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-STOCK_CONTAINERD=$1
+readonly STOCK_CONTAINERD=$1
+shift
+readonly KNATIVE_NODES_CNT="$@"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
@@ -56,5 +58,15 @@ done
 sudo echo "containerLogMaxSize: 512Mi" > >(sudo tee -a /var/lib/kubelet/config.yaml >/dev/null)
 sudo systemctl restart kubelet
 sleep 15
+
+readarray -t NODE_ARRAY < <(kubectl get nodes | tail -n +2 | cut -d ' ' -f 1)
+
+readonly START=1
+readonly END=$KNATIVE_NODES_CNT+1
+
+for (( c=$START; c<=$END; c++ ))
+do
+    kubectl label nodes ${NODE_ARRAY[$c]} vhive=knative
+done
 
 $DIR/setup_master_node.sh $STOCK_CONTAINERD
