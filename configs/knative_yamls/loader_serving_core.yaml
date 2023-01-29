@@ -4949,8 +4949,6 @@ spec:
         app.kubernetes.io/version: "1.3.0"
         serving.knative.dev/release: "v1.3.0"
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: $MASTER_NODE_NAME
       serviceAccountName: controller
       containers:
         - name: activator
@@ -5106,8 +5104,17 @@ spec:
         app.kubernetes.io/version: "1.3.0"
         serving.knative.dev/release: "v1.3.0"
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: $MASTER_NODE_NAME
+      # To avoid node becoming SPOF, spread our replicas to different nodes.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: vhive
+                operator: In
+                values:
+                - knative
       serviceAccountName: controller
       containers:
         - name: autoscaler
@@ -5235,8 +5242,17 @@ spec:
         app.kubernetes.io/version: "1.3.0"
         serving.knative.dev/release: "v1.3.0"
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: $MASTER_NODE_NAME
+      # To avoid node becoming SPOF, spread our replicas to different nodes.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: vhive
+                operator: In
+                values:
+                - knative
       serviceAccountName: controller
       containers:
         - name: controller
@@ -5342,8 +5358,17 @@ spec:
         app.kubernetes.io/version: "1.3.0"
         serving.knative.dev/release: "v1.3.0"
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: $MASTER_NODE_NAME
+      # To avoid node becoming SPOF, spread our replicas to different nodes.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: vhive
+                operator: In
+                values:
+                - knative
       serviceAccountName: controller
       containers:
         - name: domain-mapping
@@ -5424,8 +5449,17 @@ spec:
         app.kubernetes.io/version: "1.3.0"
         serving.knative.dev/release: "v1.3.0"
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: $MASTER_NODE_NAME
+      # To avoid node becoming SPOF, spread our replicas to different nodes.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: vhive
+                operator: In
+                values:
+                - knative
       serviceAccountName: controller
       containers:
         - name: domainmapping-webhook
@@ -5619,8 +5653,17 @@ spec:
         app.kubernetes.io/version: "1.3.0"
         app.kubernetes.io/name: knative-serving
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: $MASTER_NODE_NAME
+      # To avoid node becoming SPOF, spread our replicas to different nodes.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: vhive
+                operator: In
+                values:
+                - knative
       serviceAccountName: controller
       containers:
         - name: webhook
