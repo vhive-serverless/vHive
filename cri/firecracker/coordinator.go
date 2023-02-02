@@ -43,10 +43,10 @@ const snapshotsDir = "/fccd/snapshots"
 
 type coordinator struct {
 	sync.Mutex
-	orch   *ctriface.Orchestrator
-	nextID uint64
+	orch          *ctriface.Orchestrator
+	nextID        uint64
 	isSparseSnaps bool
-	isFullLocal bool
+	isFullLocal   bool
 
 	activeInstances     map[string]*FuncInstance
 	snapshotManager     *snapshotting.SnapshotManager
@@ -54,6 +54,18 @@ type coordinator struct {
 }
 
 type coordinatorOption func(*coordinator)
+
+// timing function
+func timeTrack(start time.Time) {
+	elapsed := time.Since(start)
+	logger := log.WithFields(
+		log.Fields{
+			"coldStartTime": elapsed,
+		},
+	)
+
+	logger.Debug("Reloading instance from snapshot took: ")
+}
 
 // withoutOrchestrator is used for testing the coordinator without calling the orchestrator
 func withoutOrchestrator() coordinatorOption {
@@ -73,7 +85,7 @@ func newFirecrackerCoordinator(
 		activeInstances: make(map[string]*FuncInstance),
 		orch:            orch,
 		isSparseSnaps:   isSparseSnaps,
-		isFullLocal: isFullLocal,
+		isFullLocal:     isFullLocal,
 	}
 
 	if isFullLocal {
@@ -90,10 +102,17 @@ func newFirecrackerCoordinator(
 }
 
 func (c *coordinator) startVM(ctx context.Context, image string, revision string, memSizeMib, vCPUCount uint32) (*FuncInstance, error) {
-	if c.orch != nil && c.orch.GetSnapshotsEnabled()  {
+	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
 		id := image
 		if c.isFullLocal {
 			id = revision
+			logger := log.WithFields(
+				log.Fields{
+					"revision": id,
+				},
+			)
+
+			logger.Debug("Revision for reloaded function")
 		}
 
 		// Check if snapshot is available
@@ -132,13 +151,20 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		return nil
 	}
 
-	if c.orch == nil || ! c.orch.GetSnapshotsEnabled() {
+	if c.orch == nil || !c.orch.GetSnapshotsEnabled() {
 		return c.orchStopVM(ctx, funcInst)
 	}
 
 	id := funcInst.vmID
 	if c.isFullLocal {
 		id = funcInst.revisionId
+		logger := log.WithFields(
+			log.Fields{
+				"revisionId": id,
+			},
+		)
+
+		logger.Debug("Revisionid for reloaded function")
 	}
 
 	if funcInst.snapBooted {
@@ -225,6 +251,7 @@ func (c *coordinator) orchStartVMSnapshot(
 	vCPUCount uint32,
 	vmID string) (*FuncInstance, error) {
 
+	defer timeTrack(time.Now())
 	tStartCold := time.Now()
 	logger := log.WithFields(
 		log.Fields{
@@ -255,6 +282,14 @@ func (c *coordinator) orchStartVMSnapshot(
 	}
 
 	coldStartTimeMs := metrics.ToMs(time.Since(tStartCold))
+	logger = log.WithFields(
+		log.Fields{
+			"coldStartTimeMs": coldStartTimeMs,
+		},
+	)
+
+	logger.Debug("Time to create a function from snapshot: ")
+
 	funcInst := NewFuncInstance(vmID, snap.GetImage(), snap.GetId(), resp, true, memSizeMib, vCPUCount, coldStartTimeMs)
 	logger.Debug("successfully loaded instance from snapshot")
 
