@@ -8,6 +8,18 @@
 
 ### Fixed
 
+## v1.6
+[@davidbuzatu-marian](https://github.com/DavidBuzatu-Marian)
+### Added
+- Added support for [eStargz](https://github.com/containerd/stargz-snapshotter) in stock-only setup.
+- Added [setup script](./scripts/stargz/setup_stargz.sh) for stargz-snapshotter.
+- Added [example](./configs/knative_workloads/stargz-node.yaml) knative deployment for eStargz.
+### Changed
+- Changed stock-only setup steps to support eStargz installation.
+- Changed quickstart guide to include description of *eStargz* and how to use it.
+- Changed [README.md](./README.md) to include eStargz support.
+### Fixed
+
 
 ## v1.5
 

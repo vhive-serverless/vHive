@@ -190,3 +190,5 @@ We plan to keep our code loosely up to date with the upstream Firecracker reposi
 
 * vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind)
 to speed up testing environment setup requiring Kubernetes.
+
+* Current [eStargz](https://github.com/containerd/stargz-snapshotter) version is 0.13.0.
