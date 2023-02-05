@@ -151,7 +151,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     >   ```
 3. Start `firecracker-containerd` in a background terminal named `firecracker`:
     ```bash
-    sudo PATH=$PATH screen -dmS firecracker bash -c "/usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml > >(tee -a /tmp/vhive-logs/firecracker.stdout) 2> >(tee -a /tmp/vhive-logs/firecracker.stderr >&2)"
+    sudo PATH=$PATH screen -dmS firecracker bash -c "/usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml > >(tee -a /tmp/vhive-logs/firecracker.stdout 2> >(tee -a /tmp/vhive-logs/firecracker.stderr >&2)"
     ```
 
 4. Build vHive host orchestrator:
@@ -202,8 +202,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     > If you built the cluster using the `stock-only` flag, execute the following 
     > script instead:
     >   ```bash
-    >   ./scripts/cluster/create_multinode_cluster.sh stock-only > >(tee -a /tmp/vhive-logs/
-    > create_multinode_cluster.stdout) 2> >(tee -a /tmp/vhive-logs/create_multinode_cluster.stderr >&2)
+    >   ./scripts/cluster/create_multinode_cluster.sh stock-only > >(tee -a /tmp/vhive-logs/create_multinode_cluster.stdout) 2> >(tee -a /tmp/vhive-logs/create_multinode_cluster.stderr >&2)
     >   ```
 
 ### 4. Configure Worker Nodes
@@ -254,9 +253,8 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
     > Therefore, the following steps from this guide must **not** be executed:
-    > * `2.3 - Start firecracker-containerd in a background terminal named firecracker`,
-    > * `2.4 - Build vHive host orchestrator`,
-    > * `2.5 - Start vHive in a background terminal named vhive`.
+    > * `1.3 - Start firecracker-containerd in a background terminal named firecracker`,
+    > * `1.5 - Start vHive in a background terminal named vhive`.
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
     sudo screen -dmS containerd containerd; sleep 5;
@@ -351,27 +349,77 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
     ```
 
 ## V. Deploying eStargz-based Functions
-This section provides an example function run using a `nodejs` base image that has been converted to the `stargz` format. To create other images supported by `stargz`, please refer to the [creating-estargz-images-using-ctr-remote](https://github.com/containerd/stargz-snapshotter/tree/cmd/v0.12.1#creating-estargz-images-using-ctr-remote) section of the official `stargz` repository.
+This section provides an example function run using a `nodejs` base image that has been converted to the `stargz` format. To create other images supported by `stargz`, please refer to the [creating-estargz-images-using-ctr-remote](https://github.com/containerd/stargz-snapshotter/tree/cmd/v0.12.1#creating-estargz-images-using-ctr-remote) section of the official `stargz` repository or follow the instructions below.
 
-Our example image can be found in [/configs/knative_workloads/stargz-node.yaml](../configs/knative_workloads/stargz-node.yaml) and can be run with:
+### 1. Convert a native image to stargz format
+If all installation steps have been followed accordingly, the `ctr-remote` CLI tool will be available on your node(s).
+To start, pull the image by replacing the path in the following command:
+
+`ctr-remote image pull <registry/image:tag>`
+
+Next, convert the image to the eStargz expected format by replacing the old path and new path in the following:
+
+`ctr-remote image optimize --oci <registry/image:tag> <registry/image:new_tag>`
+
+Finally, push the image to your repository by replacing the new path in the following:
+
+`ctr-remote image push <registry/image:new_tag>`
+
+> **Note**
+>
+> If prompted for authentication, add the following flag to the previous command:
+> `-u name:auth_token`
+
+
+Our example deployment configuration can be found in [/configs/knative_workloads/stargz-node.yaml](../configs/knative_workloads/stargz-node.yaml) and can be run with:
 ```bash
 kn service apply stargz-test -f configs/knative_workloads/stargz-node.yaml --concurrency-target 1
 ```
-### 1. Deploy and Invoke Functions
+
+To create your own deployment, replace the marked fields as needed:
+
+```yaml
+apiVersion: serving.knative.dev/v1
+kind: Pod
+metadata:
+  // required
+  name: <deployment_name>
+spec:
+  template:
+    spec:
+      containers:
+        // required
+      - name: <container_name>
+        // required
+        image: <stargz_image_registry_path>
+        // optional
+        command: [<command>]
+        // optional
+        args: <args>
+        // optional
+        ports:
+        - containerPort: <port_number>
+```
+
+
+### 2. Deploy Function
 **On the master node**, execute the following using **bash**:
 
 ```bash
 kn service apply <name> -f <yaml_config_path> --concurrency-target 1
 ```
 
-Interact with the deployed function from any node using the exposed interface of the deployed function.
-### 2. Delete Deployed Function
-**On the master node**, execute the following using **bash**:
+### 3. Interact with your function
+Interact with the deployed function from any node using the exposed interface of the deployed function. Considering our example deployment running exposing port `80` we can run:
+```bash
+curl http://stargz-test.default.<deployment_ip>.sslip.io
+```
+### 4. Delete Deployed Function
+**On the master node**, execute the following using to delete all deployed functions:
 
-1. Delete **all** deployed functions:
-    ```bash
-    kn service delete --all
-    ```
+```bash
+kn service delete --all
+```
 
 [github-toc]: https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/
 [cloudlab]: https://www.cloudlab.us

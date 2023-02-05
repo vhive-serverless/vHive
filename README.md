@@ -20,7 +20,7 @@ of a modern serverless platform. Hence, we built vHive to be representative of t
 Function-as-a-Service (FaaS) providers, integrating the same production-grade components used by the providers, including
 [AWS Firecracker hypervisor](https://firecracker-microvm.github.io/),
 Cloud Native Computing Foundation's [Containerd](https://containerd.io/),
-and [Kubernetes](https://kubernetes.io/).
+and [Kubernetes](https://kubernetes.io/). 
 
 vHive adopts the [Knative](https://knative.dev/) flexible programming model, allowing the researchers to quickly deploy
 and experiment with *any* serverless applications that may comprise many functions,
@@ -29,6 +29,8 @@ Both the functions and the stateful services can be deployed using OCI/Docker im
 
 vHive empowers systems researchers to innovate on key serverless features,
 including functions autoscaling and cold-start delay optimization with several snapshotting mechanisms.
+
+vHive has added support for the state-of-the-art extension [eStargz](https://github.com/containerd/stargz-snapshotter) to container layers and lazy pull support for container images.
 
 
 ## vHive architecture
