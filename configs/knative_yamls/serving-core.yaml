@@ -3549,7 +3549,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/anshalshukla/queue-39be6f1d08a095bd076a71d288d295b6@sha256:06e4fbc172db573961a1ab63ff8c3ff78fa4e2c583843ccb7b3b8d79d808ccff
+  image: docker.io/anshalshukla/queue-39be6f1d08a095bd076a71d288d295b6@sha256:4e2709f9a2df71a3fcd6a9f063c01b306eecbf84ab3012795bca95dd28e5373f
 
 ---
 # Copyright 2018 The Knative Authors
@@ -3938,7 +3938,7 @@ data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
   # TODO: switch to 'queue-sidecar-image' after 0.27
-  queueSidecarImage: docker.io/anshalshukla/queue-39be6f1d08a095bd076a71d288d295b6@sha256:06e4fbc172db573961a1ab63ff8c3ff78fa4e2c583843ccb7b3b8d79d808ccff
+  queueSidecarImage: docker.io/anshalshukla/queue-39be6f1d08a095bd076a71d288d295b6@sha256:4e2709f9a2df71a3fcd6a9f063c01b306eecbf84ab3012795bca95dd28e5373f
   _example: |-
     ################################
     #                              #
@@ -4954,7 +4954,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/activator-ecd51ca5034883acbe737fde417a3d86@sha256:94ccf5e5808373ca7305ebff6214db7eab2054c4780132d12804ac3f6571c65a
+          image: docker.io/anshalshukla/activator-ecd51ca5034883acbe737fde417a3d86@sha256:5dfa33b0bb101dc7f77a648b6917a08013392c806bfd796042ebeecd7a56f77a
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -5119,7 +5119,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:6638e23105767c7912da1ad499b8e35b2c7646b118875441488dfdc960fd585f
+          image: docker.io/anshalshukla/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:8d6b8f5ccb8459ce372a41841ca62722eaf979972fab9f6d2d5e1c7bbf039742
           resources:
             requests:
               cpu: 100m
@@ -5256,7 +5256,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:70fb3d007bd4f2bf3851c296b5a59fffc30077edb446c2f33dc7e5b2cf7f957d
+          image: docker.io/anshalshukla/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:6d97b67b4107d31ecfa9ddddb760153a42cc86d24313829a41f40f274c89860f
           resources:
             requests:
               cpu: 100m
@@ -5371,7 +5371,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:ee66e45c227ba3fdbd06f6bf13fde3b51fbe35da0e8765bba0a1c52bd25f9ad1
+          image: docker.io/anshalshukla/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:ecf0f7466765c0e54adb9c2ccf2ac6274d53df14ee2959705942cae00ed96d6b
           resources:
             requests:
               cpu: 30m
@@ -5461,7 +5461,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:695b52621559b1f247a837e0f6ee6a3a4641fde3d385643111caa7ea9b59daeb
+          image: docker.io/anshalshukla/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:e16daa7cb0035e93a695d8dc94d046bfa262a2d790e2a3daf661431c25d7dd63
           resources:
             requests:
               cpu: 100m
@@ -5664,7 +5664,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:cea42731618fcf0e4cb76370a172876b81de54102ea0d91c8038dad9b9b59aa4
+          image: docker.io/anshalshukla/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:7ca4a492e415ce2cb943bfa1edf2fe03ff4d1d41c6ed218560045ac8daf2b3ea
           resources:
             requests:
               cpu: 100m
