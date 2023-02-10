@@ -22,7 +22,6 @@ metadata:
     app.kubernetes.io/name: knative-serving
     app.kubernetes.io/component: storage-version-migration-job
     app.kubernetes.io/version: devel
-    serving.knative.dev/release: devel
 spec:
   ttlSecondsAfterFinished: 600
   backoffLimit: 10
@@ -42,7 +41,7 @@ spec:
         - name: migrate
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/migrate-242d0a35bf580c5b411a545d79618fbf@sha256:974f6ee3aa99252086fe9d7b7439e6f5bba592ff96d3fc5cbddc5cf5ae8e29ad
+          image: docker.io/anshalshukla/migrate-242d0a35bf580c5b411a545d79618fbf@sha256:5a8c959c12f1c86807d47cd1e68be85a36d1ddbdfefffc942415507f997fc1a0
           args:
             - "services.serving.knative.dev"
             - "configurations.serving.knative.dev"
@@ -59,5 +58,10 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
 
 ---
