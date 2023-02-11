@@ -51,7 +51,7 @@ spec:
         - name: autoscaler-hpa
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/vhiveease/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:b455e4be91b939abadce40c40344feb83ea01c50e547c5d18795ebf869ac24eb
+          image: docker.io/anshalshukla/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:389a82da600ab3f60bb3d315a9fc92dd0d46f192dabc5ab1b6b11e47dad923bd
           resources:
             requests:
               cpu: 30m
@@ -77,7 +77,9 @@ spec:
             runAsNonRoot: true
             capabilities:
               drop:
-                - all
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - name: metrics
               containerPort: 9090
