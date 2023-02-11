@@ -43,9 +43,9 @@ kubectl apply -f $ROOT/configs/metallb/metallb-configmap.yaml
 
 # istio
 cd $ROOT
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.12.5 TARGET_ARCH=x86_64 sh -
-export PATH=$PATH:$ROOT/istio-1.12.5/bin
-sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-1.12.5/bin' >> /etc/profile"
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.16.0 TARGET_ARCH=x86_64 sh -
+export PATH=$PATH:$ROOT/istio-1.16.0/bin
+sudo sh -c  "echo 'export PATH=\$PATH:$ROOT/istio-1.16.0/bin' >> /etc/profile"
 istioctl install -y -f $ROOT/configs/istio/istio-minimal-operator.yaml
 
 KNATIVE_VERSION="knative-v1.9.0"
@@ -67,7 +67,7 @@ kubectl apply --filename $ROOT/configs/registry/repository-update-hosts.yaml
 # magic DNS
 kubectl apply --filename $ROOT/configs/knative_yamls/serving-default-domain.yaml
 
-kubectl apply --filename https://github.com/knative/net-istio/releases/download/$KNATIVE_VERSION/release.yaml
+kubectl apply --filename https://github.com/knative/net-istio/releases/download/$KNATIVE_VERSION/net-istio.yaml
 
 # install knative eventing
 kubectl apply --filename https://github.com/knative/eventing/releases/download/$KNATIVE_VERSION/eventing-crds.yaml
