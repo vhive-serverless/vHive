@@ -212,7 +212,7 @@ Here are some useful commands (there are plenty of Zipkin tutorials online):
 of our [fork](https://github.com/vhive-serverless/firecracker-containerd) of the upstream repository.
 Currently, we are in the process of upstreaming VM snapshots support to the upstream repository.
 
-* Current Firecracker version is 0.24.0, Knative 1.9, Kubernetes 1.23.5, gVisor 20210622.0, and Istio 1.12.5.
+* Current Firecracker version is 0.24.0, Knative 1.9, Kubernetes 1.25.3, gVisor 20210622.0, and Istio 1.16.0.
 We plan to keep our code loosely up to date with the upstream Firecracker repository.
 
 * vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind)
