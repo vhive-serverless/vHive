@@ -47,13 +47,13 @@ replace (
 
 require (
 	github.com/blend/go-sdk v1.20211025.3 // indirect
-	github.com/containerd/containerd v1.5.2
+	github.com/containerd/containerd v1.5.18
 	github.com/containerd/go-cni v1.1.4
 	github.com/davecgh/go-spew v1.1.1
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
-	github.com/golang/protobuf v1.4.3
+	github.com/golang/protobuf v1.5.0
 	github.com/google/nftables v0.0.0-20210916140115-16a134723a96
 	github.com/montanaflynn/stats v0.6.5
 	github.com/pkg/errors v0.9.1
@@ -63,9 +63,9 @@ require (
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
 	google.golang.org/grpc v1.34.0
