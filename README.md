@@ -29,3 +29,14 @@ from this stage come from)
 
 # Manual reload from remote snapshot
 See ./manual_reload to reload a serverless function from a remote snapshot without going through vHive, and using firecracker-containerd directly.
+
+
+# Validation of network configuration of reloaded uVM
+To check the configuration, from vHive logs, get the lines of log that document the network configuration 
+for the uVM you want to debug. It should look something like so:
+```
+time="2023-01-19T23:19:27.830614078-07:00" level=debug msg="Allocated a new network config" CloneIP=172.18.0.53 ContainerCIDR=172.16.0.2/24 ContainerIP=172.16.0.2 GatewayIP=172.16.0.1 HostDevName=tap0 NamespaceName=uvmns52 NamespacePath=/var/run/netns/uvmns52 Veth0CIDR=172.17.0.210/30 Veth0Name=veth52-0 Veth1CIDR=172.17.0.209/30 Veth1Name=veth52-1 funcID=4
+time="2023-01-19T23:19:27.837626054-07:00" level=debug msg="Creating tap for virtual network" IP gateway=172.16.0.1/24 namespace=uvmns53 tap=tap0
+```
+
+Then run ./check_network.sh (give execution rights if you can't run it), after replacing the environment variables accordingly, and validate that the returned network configuration matches vHive logs.
