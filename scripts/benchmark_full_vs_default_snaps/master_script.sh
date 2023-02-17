@@ -6,9 +6,9 @@ rm -rf ./latencies
 mkdir latencies
 touch log_master_script.txt
 
-echo -e "Deploy function\n"
-source /etc/profile >> log_master_script.txt && pushd ./examples/deployer >> log_master_script.txt && go build >> log_master_script.txt && popd && ./examples/deployer/deployer >> log_master_script.txt
-echo -e "Deploy function ended\n"
+#echo -e "Deploy function\n"
+#source /etc/profile >> log_master_script.txt && pushd ./examples/deployer >> log_master_script.txt && go build >> log_master_script.txt && popd && ./examples/deployer/deployer >> log_master_script.txt
+#echo -e "Deploy function ended\n"
 
 
 for i in {1..200}
@@ -24,7 +24,7 @@ do
 
 	now=$(date +"%T")
 	echo -e "Sleep for 1 minute: $now\n" >> log_master_script.txt
-	sleep 70
+	sleep 200
 
 	now=$(date +"%T")
 	echo -e "Sleep ended at time run $i: $now\n" >> log_master_script.txt
