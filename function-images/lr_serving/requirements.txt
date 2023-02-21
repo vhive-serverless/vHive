@@ -2,4 +2,4 @@ futures
 protobuf
 pandas
 grpcio
-sklearn
+scikit-learn
