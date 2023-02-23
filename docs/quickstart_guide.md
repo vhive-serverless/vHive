@@ -151,7 +151,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     >   ```
 3. Start `firecracker-containerd` in a background terminal named `firecracker`:
     ```bash
-    sudo PATH=$PATH screen -dmS firecracker bash -c "/usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml > >(tee -a /tmp/vhive-logs/firecracker.stdout 2> >(tee -a /tmp/vhive-logs/firecracker.stderr >&2)"
+    sudo PATH=$PATH screen -dmS firecracker bash -c "/usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml > >(tee -a /tmp/vhive-logs/firecracker.stdout) 2> >(tee -a /tmp/vhive-logs/firecracker.stderr >&2)"
     ```
 
 4. Build vHive host orchestrator:
