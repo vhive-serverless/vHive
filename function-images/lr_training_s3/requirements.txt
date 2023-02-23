@@ -2,6 +2,6 @@ futures
 protobuf
 pandas
 grpcio
-sklearn
+scikit-learn
 urllib3
 minio
