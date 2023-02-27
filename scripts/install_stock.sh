@@ -46,8 +46,7 @@ containerd --version || echo "failed to build containerd"
 
 # Install k8s
 K8S_VERSION=1.23.5-00
-curl --silent --show-error https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-sudo sh -c "echo 'deb http://apt.kubernetes.io/ kubernetes-xenial main' > /etc/apt/sources.list.d/kubernetes.list"
+sudo sh -c "echo 'deb [trusted=yes] http://apt.kubernetes.io/ kubernetes-xenial main' > /etc/apt/sources.list.d/kubernetes.list"
 sudo apt-get update >> /dev/null
 sudo apt-get -y install cri-tools ebtables ethtool kubeadm=$K8S_VERSION kubectl=$K8S_VERSION kubelet=$K8S_VERSION kubernetes-cni >> /dev/null
 
