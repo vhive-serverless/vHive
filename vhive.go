@@ -33,13 +33,13 @@ import (
 	"runtime"
 
 	ctrdlog "github.com/containerd/containerd/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	fccri "github.com/vhive-serverless/vhive/cri/firecracker"
 	gvcri "github.com/vhive-serverless/vhive/cri/gvisor"
 	ctriface "github.com/vhive-serverless/vhive/ctriface"
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 	pb "github.com/vhive-serverless/vhive/proto"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -91,13 +91,6 @@ func main() {
 		return
 	}
 
-	if *sandbox == "gvisor" {
-		if err := setupGVisorCRI(); err != nil {
-			log.Fatalf("failed to setup GVisorCRI: %v", err)
-		}
-		return
-	}
-
 	if *isUPFEnabled && !*isSnapshotsEnabled {
 		log.Error("User-level page faults are not supported without snapshots")
 		return
@@ -132,23 +125,25 @@ func main() {
 		log.Info(fmt.Sprintf("Creating orchestrator for pinned=%d functions", *pinnedFuncNum))
 	}
 
-	testModeOn := false
-
-	orch = ctriface.NewOrchestrator(
-		*snapshotter,
-		*hostIface,
-		ctriface.WithTestModeOn(testModeOn),
-		ctriface.WithSnapshots(*isSnapshotsEnabled),
-		ctriface.WithUPF(*isUPFEnabled),
-		ctriface.WithMetricsMode(*isMetricsMode),
-		ctriface.WithLazyMode(*isLazyMode),
-	)
-
-	funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
-
-	go setupFirecrackerCRI()
-	go orchServe()
-	fwdServe()
+	switch *sandbox {
+	case "firecracker":
+		testModeOn := false
+		orch = ctriface.NewOrchestrator(
+			*snapshotter,
+			*hostIface,
+			ctriface.WithTestModeOn(testModeOn),
+			ctriface.WithSnapshots(*isSnapshotsEnabled),
+			ctriface.WithUPF(*isUPFEnabled),
+			ctriface.WithMetricsMode(*isMetricsMode),
+			ctriface.WithLazyMode(*isLazyMode),
+		)
+		funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
+		go setupFirecrackerCRI()
+		go orchServe()
+		fwdServe()
+	case "gvisor":
+		setupGVisorCRI()
+	}
 }
 
 type server struct {
@@ -265,28 +260,27 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 	return resp, err
 }
 
-func setupGVisorCRI() error {
+func setupGVisorCRI() {
 	lis, err := net.Listen("unix", *criSock)
 	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
 
 	gvService, err := gvcri.NewGVisorService()
 	if err != nil {
-		return fmt.Errorf("failed to create firecracker service %v", err)
+		log.Fatalf("failed to create gVisor service %v", err)
 	}
 
 	criService, err := cri.NewService(gvService)
 	if err != nil {
-		return fmt.Errorf("failed to create CRI service %v", err)
+		log.Fatalf("failed to create CRI service %v", err)
 	}
 
 	criService.Register(s)
 
 	if err := s.Serve(lis); err != nil {
-		return fmt.Errorf("failed to serve: %v", err)
+		log.Fatalf("failed to serve: %v", err)
 	}
-	return nil
 }
