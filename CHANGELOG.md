@@ -26,7 +26,7 @@
 ### Added
 
 ### Changed
-- Bumped Containerd to v1.6, Knative to v1.9, Go to v1.18, Kubernetes to v1.25.3, Istio to 1.16.0, protoc to 3.19, runc to 1.1.
+- Bumped Containerd to v1.6, Knative to v1.9, Go to v1.18, Kubernetes to v1.25.3, Istio to 1.16.0, protoc to 3.19, runc to 1.1, metallb 0.13.9.
 
 ### Fixed
 
@@ -37,6 +37,7 @@
 
 ### Changed
 - Support Ubuntu 20 as the host OS, Ubuntu 18 support dropped.
+- Removed local registry CRI tests.
 
 ### Fixed
 
