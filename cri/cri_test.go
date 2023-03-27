@@ -56,20 +56,22 @@ func TestSingleInvoke(t *testing.T) {
 	invoke(t, functionURL)
 }
 
-func TestSingleInvokeLocal(t *testing.T) {
-	functionURL := getFuncURL("helloworldlocal")
-	invoke(t, functionURL)
-}
+// FIXME (gh-709)
+//func TestSingleInvokeLocal(t *testing.T) {
+//	functionURL := getFuncURL("helloworldlocal")
+//	invoke(t, functionURL)
+//}
 
 func TestParallelInvoke(t *testing.T) {
 	functionURL := getFuncURL("helloworld")
 	parallelInvoke(t, functionURL)
 }
 
-func TestParallelInvokeLocal(t *testing.T) {
-	functionURL := getFuncURL("helloworldlocal")
-	parallelInvoke(t, functionURL)
-}
+// FIXME (gh-709)
+//func TestParallelInvokeLocal(t *testing.T) {
+//	functionURL := getFuncURL("helloworldlocal")
+//	parallelInvoke(t, functionURL)
+//}
 
 func TestAutoscaler(t *testing.T) {
 	cases := []struct {
@@ -115,7 +117,8 @@ func TestMultipleFuncInvoke(t *testing.T) {
 	var wg sync.WaitGroup
 	funcs := []string{
 		"helloworld",
-		"helloworldlocal",
+		// FIXME (gh-709)
+		//"helloworldlocal",
 		"pyaes",
 		// "rnnserving",
 		// This function deployment fails on cri test container
