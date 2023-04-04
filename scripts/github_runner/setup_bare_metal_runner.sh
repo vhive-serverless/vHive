@@ -22,29 +22,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-if [ -z $REPO_NAME ] || [ -z $RUNNER_TOKEN ] || [ -z $RUNNER_LABEL ] || [ -z $RUNNER_NAME ] || [ -z $SANDBOX ]; then
-    echo "Parameters missing"
-    exit -1
+set -Eeo pipefail
+
+cd "$( dirname "${BASH_SOURCE[0]}" )"
+
+if (( $# < 3)); then
+    echo "Invalid number of parameters"
+    echo "USAGE: setup_bare_metal_runner.sh <GitHub organization> <Github PAT> <sandbox> [restart]"
+    exit 1
 fi
 
-URL="https://github.com/${REPO_NAME}"
+GH_ORG=$1
+GH_PAT=$2
+SANDBOX=$3
+RESTART=$4
 
-sudo apt-get update
+if [ "$RESTART" == "restart" ]; then
+  sudo reboot
+fi
+
+VHIVE_ROOT="$(git rev-parse --show-toplevel)"
+"$VHIVE_ROOT"/scripts/cloudlab/setup_node.sh "$SANDBOX"
 
 cd
-git clone "https://github.com/${REPO_NAME}"
-cd vhive
-./scripts/cloudlab/setup_node.sh ${SANDBOX}
+export RUNNER_CFG_PAT=$GH_PAT
+RUNNER_NAME=$RUNNER_LABEL-${HOSTNAME//[.]/-}
+RUNNER_NAME=${RUNNER_NAME:0:64}
+RUNNER_LABEL=$SANDBOX-cri
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s - -s "$GH_ORG"/vhive -n "$RUNNER_NAME" -l "$RUNNER_LABEL"
 
-cd
-mkdir actions-runner && cd actions-runner
-
-curl -o actions-runner-linux-x64.tar.gz -L -C - $(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep 'browser_' | cut -d\" -f4 | grep 'linux-x64-[0-9\.]*.tar.gz')
-tar xzf "./actions-runner-linux-x64.tar.gz"
-rm actions-runner-linux-x64.tar.gz
-
-./config.sh --url "https://github.com/${REPO_NAME}" --token ${RUNNER_TOKEN} --name ${RUNNER_NAME} --runnergroup default --labels ${RUNNER_LABEL} --work _work --replace
-
-sudo ./svc.sh install root
-sudo ./svc.sh start
+echo "0 4 * * * root reboot" | sudo tee -a /etc/crontab
 

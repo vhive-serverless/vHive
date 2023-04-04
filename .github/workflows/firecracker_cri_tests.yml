@@ -1,25 +1,25 @@
-name: vHive gVisor CRI tests
+name: vHive firecracker CRI tests
 
 on:
   push:
     branches: [ main ]
     paths-ignore:
-    - 'docs/**'
-    - '**.md'
-    - 'function-images/**'
+      - 'docs/**'
+      - '**.md'
+      - 'function-images/**'
   pull_request:
     branches: [ main ]
     paths-ignore:
-    - 'docs/**'
-    - '**.md'
-    - 'function-images/**'
+      - 'docs/**'
+      - '**.md'
+      - 'function-images/**'
   workflow_dispatch:
 
 env:
   GO111MODULE: on
 
 jobs:
-  gvisor-cri-tests:
+  firecracker-cri-tests:
     uses: ./.github/workflows/cri_tests.yml
     with:
-      sandbox: gvisor
+      sandbox: firecracker
