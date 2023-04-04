@@ -1,0 +1,20 @@
+{
+  "ghOrg": "<GitHub account>",
+  "ghPat": "<GitHub PAT>",
+  "hostUsername": "ubuntu",
+  "runners": {
+    "pc91.cloudlab.umass.edu": {
+      "type": "cri",
+      "sandbox": "firecracker"
+    },
+    "pc101.cloudlab.umass.edu": {
+      "type": "cri",
+      "sandbox": "gvisor",
+      "restart": true
+    },
+    "pc72.cloudlab.umass.edu": {
+      "type": "integ",
+      "num": 2
+    }
+  }
+}

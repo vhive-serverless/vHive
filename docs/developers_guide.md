@@ -34,7 +34,7 @@ inside a container and contains packages to setup vHive on top of it.
 
 ```bash
 # Set up the host (the same script as for the self-hosted GitHub CI runner)
-./scripts/github_runner/setup_runner_host.sh
+./scripts/github_runner/setup_integ_runners_host.sh
 # pull latest image
 docker pull vhiveease/vhive_dev_env
 # Start a container
@@ -105,6 +105,33 @@ We also offer self-hosted stock-Knative environments powered by KinD. To be able
     ```
     - If you have used `kubectl apply -f ...` then use `kubectl delete -f ...`
     - If you have used `kn service apply` then use `kn service delete -f ... --wait`
+
+## Running CRI tests locally
+Assuming you rented a node using the vHive CloudLab profile:
+
+1. Setup the node for the desired sandbox:
+
+```bash
+./scripts/cloudlab/setup_node.sh <firecracker|gvisor>
+```
+
+2. Setup the CRI test environment for the desired sandbox:
+
+```bash
+./scripts/github_runner/setup_cri_test_env.sh <firecracker|gvisor>
+```
+
+3. Run CRI tests:
+
+```bash
+source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
+```
+
+4. Cleanup:
+
+```bash
+./scripts/github_runner/clean_cri_runner.sh <firecracker|gvisor>
+```
 
 ## High-level features
 

@@ -69,4 +69,4 @@ sudo sysctl -w net.netfilter.nf_conntrack_max=655360
 sudo swapoff -a || :
 
 sudo usermod -aG docker $USER
-newgrp docker 
+newgrp docker
