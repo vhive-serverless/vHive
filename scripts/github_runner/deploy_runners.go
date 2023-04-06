@@ -126,7 +126,7 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 	}
 
 	log.Debugf("Cloning vHive repository on %s@%s", deployerConf.HostUsername, host)
-	out, err := client.Exec(fmt.Sprintf("rm -rf ./vhive ./runner && git clone https://github.com/%s/vhive", deployerConf.GhOrg))
+	out, err := client.Exec(fmt.Sprintf("rm -rf ./vhive ./runner && git clone --depth=1 -b ci_fix https://github.com/%s/vhive", deployerConf.GhOrg))
 	log.Debug(string(out))
 	if err != nil {
 		log.Fatalf("Failed to clone vHive repository on %s@%s: %s", deployerConf.HostUsername, host, err)
@@ -135,7 +135,7 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 	var setupCmd string
 	switch runnerConf.Type {
 	case "cri":
-		setupCmd = fmt.Sprintf("./scripts/github_runner/setup_bare_metal_runner.sh %s %s %s %s", deployerConf.GhOrg,
+		setupCmd = fmt.Sprintf("cd vhive && ./scripts/github_runner/setup_bare_metal_runner.sh %s %s %s %s", deployerConf.GhOrg,
 			deployerConf.GhPat, runnerConf.Sandbox, restart)
 	case "integ":
 		if !runnerConf.Restart {
@@ -147,14 +147,14 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 			}
 		}
 
-		setupCmd = fmt.Sprintf("./scripts/github_runner/setup_integ_runners.sh %d %s %s %s", runnerConf.Num,
+		setupCmd = fmt.Sprintf("cd vhive && ./scripts/github_runner/setup_integ_runners.sh %d %s %s %s", runnerConf.Num,
 			deployerConf.GhOrg, deployerConf.GhPat, restart)
 	default:
 		log.Fatalf("Invalid runner type: '%s', expected 'cri' or 'integ'", runnerConf.Type)
 	}
 
 	log.Debugf("Setting up runner on %s@%s", deployerConf.HostUsername, host)
-	out, err = client.Exec(fmt.Sprintf("cd vhive && %s", setupCmd))
+	out, err = client.Exec(setupCmd)
 	log.Debug(string(out))
 	if err != nil {
 		log.Fatalf("Failed to setup runner on %s@%s: %s", deployerConf.HostUsername, host, err)
