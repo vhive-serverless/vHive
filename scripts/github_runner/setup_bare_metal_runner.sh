@@ -37,19 +37,16 @@ GH_PAT=$2
 SANDBOX=$3
 RESTART=$4
 
-if [ "$RESTART" == "restart" ]; then
-  sudo reboot
-fi
-
 VHIVE_ROOT="$(git rev-parse --show-toplevel)"
 "$VHIVE_ROOT"/scripts/cloudlab/setup_node.sh "$SANDBOX"
 
 cd
+export RUNNER_ALLOW_RUNASROOT=1
 export RUNNER_CFG_PAT=$GH_PAT
 RUNNER_NAME=$RUNNER_LABEL-${HOSTNAME//[.]/-}
 RUNNER_NAME=${RUNNER_NAME:0:64}
 RUNNER_LABEL=$SANDBOX-cri
-curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s - -s "$GH_ORG"/vhive -n "$RUNNER_NAME" -l "$RUNNER_LABEL"
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s - -s "$GH_ORG"/vhive -n "$RUNNER_NAME" -l "$RUNNER_LABEL" -f
 
 echo "0 4 * * * root reboot" | sudo tee -a /etc/crontab
 
