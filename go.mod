@@ -54,7 +54,7 @@ require (
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
 	github.com/golang/protobuf v1.4.3
-	github.com/google/nftables v0.0.0-20210916140115-16a134723a96
+	github.com/google/nftables v0.1.0
 	github.com/montanaflynn/stats v0.6.5
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
@@ -63,8 +63,8 @@ require (
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+	golang.org/x/net v0.0.0-20211209124913-491a49abca63
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/plot v0.9.0
