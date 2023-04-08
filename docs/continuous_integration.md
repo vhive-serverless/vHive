@@ -36,10 +36,8 @@ git clone https://github.com/vhive-serverless/vhive && cd vhive
 2. Setup the runner for the desired sandbox:
 
 ```bash
-./scripts/github_runner/setup_bare_metal_runner.sh <GitHub Account: e.g., vhive-serverless> <Github PAT> <firecracker|gvisor> [restart]
+./scripts/github_runner/setup_bare_metal_runner.sh <GitHub Account: e.g., vhive-serverless> <Github PAT> <firecracker|gvisor>
 ```
-
-The `restart` flag indicates whether a runner is already setup on this host and a reboot is needed.
 
 ## Deploying GitHub self-hosted runners automatically
 

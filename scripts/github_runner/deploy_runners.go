@@ -61,12 +61,16 @@ func main() {
 				},
 				"pc101.cloudlab.umass.edu": {
 				  "type": "cri",
-				  "sandbox": "gvisor",
-				  "restart": true
+				  "sandbox": "gvisor"
 				},
 				"pc72.cloudlab.umass.edu": {
 				  "type": "integ",
 				  "num": 2
+				}
+				"pc75.cloudlab.umass.edu": {
+				  "type": "integ",
+				  "num": 6,
+      			  "restart": true
 				}
 			  }
 			}
@@ -118,13 +122,6 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 		log.Fatalf("Failed to connect to %s@%s: %s", deployerConf.HostUsername, host, err)
 	}
 
-	var restart string
-	if runnerConf.Restart {
-		restart = "restart"
-	} else {
-		restart = ""
-	}
-
 	log.Debugf("Cloning vHive repository on %s@%s", deployerConf.HostUsername, host)
 	out, err := client.Exec(fmt.Sprintf("rm -rf ./vhive ./runner && git clone --depth=1 -b ci_fix https://github.com/%s/vhive", deployerConf.GhOrg))
 	log.Debug(string(out))
@@ -135,9 +132,15 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 	var setupCmd string
 	switch runnerConf.Type {
 	case "cri":
-		setupCmd = fmt.Sprintf("cd vhive && ./scripts/github_runner/setup_bare_metal_runner.sh %s %s %s %s", deployerConf.GhOrg,
-			deployerConf.GhPat, runnerConf.Sandbox, restart)
+		setupCmd = fmt.Sprintf("cd vhive && ./scripts/github_runner/setup_bare_metal_runner.sh %s %s %s", deployerConf.GhOrg,
+			deployerConf.GhPat, runnerConf.Sandbox)
 	case "integ":
+		var restart string
+		if runnerConf.Restart {
+			restart = "restart"
+		} else {
+			restart = ""
+		}
 		if !runnerConf.Restart {
 			log.Debugf("Setting up integration runners host on %s@%s", deployerConf.HostUsername, host)
 			out, err = client.Exec("cd vhive && ./scripts/github_runner/setup_integ_runners_host.sh")
