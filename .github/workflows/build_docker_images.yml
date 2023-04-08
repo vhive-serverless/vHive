@@ -9,7 +9,7 @@ on:
 jobs:
   function_images:
     name: Build function docker images
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +29,7 @@ jobs:
         DOCKER_BUILDKIT=1 docker build ./function-images/${{ matrix.image }}
   integ_test_image:
     name: Build integration test docker images
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:

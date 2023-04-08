@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Spellcheck
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - uses: rojopolis/spellcheck-github-actions@0.30.0
@@ -17,7 +17,7 @@ jobs:
         config_path: configs/.spellcheck.yml
   commitlint:
     name: Commitlint
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -37,7 +37,7 @@ jobs:
           --verbose
   markdown-link-check:
     name: LinkCheck
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - uses: gaurav-nelson/github-action-markdown-link-check@v1
