@@ -35,7 +35,6 @@ fi
 GH_ORG=$1
 GH_PAT=$2
 SANDBOX=$3
-RESTART=$4
 
 VHIVE_ROOT="$(git rev-parse --show-toplevel)"
 "$VHIVE_ROOT"/scripts/cloudlab/setup_node.sh "$SANDBOX"
