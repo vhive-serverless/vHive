@@ -123,7 +123,7 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 	}
 
 	log.Debugf("Cloning vHive repository on %s@%s", deployerConf.HostUsername, host)
-	out, err := client.Exec(fmt.Sprintf("rm -rf ./vhive ./runner && git clone --depth=1 -b ci_fix https://github.com/%s/vhive", deployerConf.GhOrg))
+	out, err := client.Exec(fmt.Sprintf("rm -rf ./vhive ./runner && git clone --depth=1 https://github.com/%s/vhive", deployerConf.GhOrg))
 	log.Debug(string(out))
 	if err != nil {
 		log.Fatalf("Failed to clone vHive repository on %s@%s: %s", deployerConf.HostUsername, host, err)
