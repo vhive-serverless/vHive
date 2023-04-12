@@ -4431,7 +4431,7 @@ metadata:
 spec:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  image: docker.io/anshalshukla/queue-39be6f1d08a095bd076a71d288d295b6@sha256:5720c2d09754942e946257dc39fece1f5bb1ecc6818fa4d462996f532aefc3fa
+  image: ghcr.io/vhive-serverless/queue-39be6f1d08a095bd076a71d288d295b6@sha256:41259c52c99af616fae4e7a44e40c0e90eb8f5593378a4f3de5dbf35ab1df49c
 
 ---
 # Copyright 2018 The Knative Authors
@@ -4828,7 +4828,7 @@ metadata:
 data:
   # This is the Go import path for the binary that is containerized
   # and substituted here.
-  queue-sidecar-image: docker.io/anshalshukla/queue-39be6f1d08a095bd076a71d288d295b6@sha256:5720c2d09754942e946257dc39fece1f5bb1ecc6818fa4d462996f532aefc3fa
+  queue-sidecar-image: ghcr.io/vhive-serverless/queue-39be6f1d08a095bd076a71d288d295b6@sha256:41259c52c99af616fae4e7a44e40c0e90eb8f5593378a4f3de5dbf35ab1df49c
   _example: |-
     ################################
     #                              #
@@ -5881,7 +5881,7 @@ spec:
         - name: activator
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/activator-ecd51ca5034883acbe737fde417a3d86@sha256:b2511873e2dda76c7c4a07ddb97f1474a08a59a0921208c54029d30521d267e3
+          image: ghcr.io/vhive-serverless/activator-ecd51ca5034883acbe737fde417a3d86@sha256:abf65c8cb9598c6e7c5afb6186618b40afdd75d15b762f44910a0d8a718d953c
           # The numbers are based on performance test results from
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
@@ -6048,7 +6048,7 @@ spec:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:dad4c68fb6ea58d54ca0e1ff98d95b5977490069715d7ae01762c2a0a28fe68c
+          image: ghcr.io/vhive-serverless/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:76e66b57c8233f9852a719f17b7727bb7d70988cf0cc3a7c86b57e7fdaf1b328
           resources:
             requests:
               cpu: 100m
@@ -6184,7 +6184,7 @@ spec:
         - name: controller
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:bfc4a7268e21bf17783126ca26281a530f9ff6c1a6ef3ad3b0ef656cc74fe880
+          image: ghcr.io/vhive-serverless/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:5496a4fdb200544d88a099aa049bc8cb107b20d0b7da05da241e502ae3d89620
           resources:
             requests:
               cpu: 100m
@@ -6298,7 +6298,7 @@ spec:
         - name: domain-mapping
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:a61f0695c68f0f08eb6b743f7acb104198d21d3a80272d5bcf81b795f2f68438
+          image: ghcr.io/vhive-serverless/domain-mapping-82f8626be89c35bcd6c666fd2fc8ccb7@sha256:6d34ad9e43c2052408e2143017c9a6dadd17beedb7723f24ae8a93a484165127
           resources:
             requests:
               cpu: 30m
@@ -6388,7 +6388,7 @@ spec:
         - name: domainmapping-webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:587bf2352b81cd44c4fafdc1dcb85c94430cc2e5c2976169d7741f3fe2566086
+          image: ghcr.io/vhive-serverless/domain-mapping-webhook-a127ae3e896f4e4bc1179581011b7824@sha256:cb682d3b328bcd2ecfc75479bba436af6718d3bf5f2bc28080e6b8ab7cbe7008
           resources:
             requests:
               cpu: 100m
@@ -6589,7 +6589,7 @@ spec:
         - name: webhook
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: docker.io/anshalshukla/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:afee64a8785deaafe25a8213d6459fc04ae811b7fbfe513caaa58dce9c83cc80
+          image: ghcr.io/vhive-serverless/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:2c559264619d779884b5d3121d7214efc22df54b716fa843c94af29e38eb6238
           resources:
             requests:
               cpu: 100m
