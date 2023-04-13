@@ -279,6 +279,7 @@ maxVMNum
 md
 MECS
 metadata
+metallb
 Micheli
 Microarchitecting
 microarchitectural
