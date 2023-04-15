@@ -80,7 +80,7 @@ for arbitrary serverless deployments.
 
 ### Changed
 
-- Bumped Containerd to v1.5.2.
+- Bumped Containerd to v1.6.0.
 - Bumped Knative to v0.23.0.
 - Bumped Go to v1.16.4.
 - Frozen Kubernetes at v1.20.6-00.

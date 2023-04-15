@@ -27,7 +27,6 @@ import (
 	"flag"
 	"fmt"
 
-	"math/rand"
 	"net"
 	"os"
 	"runtime"
@@ -70,7 +69,6 @@ func main() {
 	var err error
 	runtime.GOMAXPROCS(16)
 
-	rand.Seed(42)
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 

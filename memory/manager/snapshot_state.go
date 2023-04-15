@@ -32,7 +32,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -241,7 +240,7 @@ func AlignedBlock(blockSize int) []byte {
 
 // fetchState Fetches the working set file (or the whole guest memory) and the VMM state file
 func (s *SnapshotState) fetchState() error {
-	if _, err := ioutil.ReadFile(s.VMMStatePath); err != nil {
+	if _, err := os.ReadFile(s.VMMStatePath); err != nil {
 		log.Errorf("Failed to fetch VMM state: %v\n", err)
 		return err
 	}
