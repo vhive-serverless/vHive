@@ -1,6 +1,6 @@
 module github.com/vhive-serverless/vhive
 
-go 1.16
+go 1.19
 
 // Copied from firecracker-containerd
 replace (
@@ -46,7 +46,6 @@ replace (
 )
 
 require (
-	github.com/blend/go-sdk v1.20211025.3 // indirect
 	github.com/containerd/containerd v1.5.2
 	github.com/containerd/go-cni v1.1.4
 	github.com/davecgh/go-spew v1.1.1
@@ -62,7 +61,6 @@ require (
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
-	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
@@ -70,4 +68,46 @@ require (
 	gonum.org/v1/plot v0.9.0
 	google.golang.org/grpc v1.34.0
 	k8s.io/cri-api v0.20.6
+)
+
+require (
+	github.com/Microsoft/go-winio v0.4.17 // indirect
+	github.com/Microsoft/hcsshim v0.8.16 // indirect
+	github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af // indirect
+	github.com/blend/go-sdk v1.20211025.3 // indirect
+	github.com/containerd/cgroups v1.0.1 // indirect
+	github.com/containerd/continuity v0.1.0 // indirect
+	github.com/containerd/fifo v1.0.0 // indirect
+	github.com/containerd/ttrpc v1.0.2 // indirect
+	github.com/containerd/typeurl v1.0.2 // indirect
+	github.com/containernetworking/cni v1.0.1 // indirect
+	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
+	github.com/fogleman/gg v1.3.0 // indirect
+	github.com/go-fonts/liberation v0.1.1 // indirect
+	github.com/go-latex/latex v0.0.0-20210118124228-b3d85cf34e07 // indirect
+	github.com/gogo/googleapis v1.4.0 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
+	github.com/google/uuid v1.2.0 // indirect
+	github.com/klauspost/compress v1.11.13 // indirect
+	github.com/koneu/natend v0.0.0-20150829182554-ec0926ea948d // indirect
+	github.com/mdlayher/netlink v0.0.0-20191009155606-de872b0d824b // indirect
+	github.com/moby/locker v1.0.1 // indirect
+	github.com/moby/sys/mountinfo v0.4.1 // indirect
+	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/opencontainers/image-spec v1.0.1 // indirect
+	github.com/opencontainers/runc v1.0.0-rc93 // indirect
+	github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d // indirect
+	github.com/opencontainers/selinux v1.8.0 // indirect
+	github.com/phpdave11/gofpdf v1.4.2 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
+	github.com/willf/bitset v1.1.11 // indirect
+	go.opencensus.io v0.22.4 // indirect
+	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
+	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
+	golang.org/x/text v0.3.5 // indirect
+	google.golang.org/genproto v0.0.0-20200825200019-8632dd797987 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -26,8 +26,6 @@ package manager
 import (
 	"os"
 
-	"io/ioutil"
-
 	log "github.com/sirupsen/logrus"
 
 	"errors"
@@ -174,7 +172,7 @@ func prepareGuestMemoryFile(guestFileName string, size int) {
 		}
 	}
 
-	err := ioutil.WriteFile(guestFileName, toWrite, 0777)
+	err := os.WriteFile(guestFileName, toWrite, 0777)
 	if err != nil {
 		panic(err)
 	}

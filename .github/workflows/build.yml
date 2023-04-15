@@ -22,7 +22,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go: ['1.16', '1.17', '1.18']
+        go: ['1.18', '1.19']
       # Build all variants regardless of failures
       fail-fast: false
 

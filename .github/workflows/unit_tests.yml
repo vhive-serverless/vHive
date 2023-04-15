@@ -29,10 +29,10 @@ jobs:
         module: [taps, misc, profile]
     steps:
 
-    - name: Set up Go 1.18
+    - name: Set up Go 1.19
       uses: actions/setup-go@v4
       with:
-        go-version: 1.18
+        go-version: '1.19'
         
     - name: Set up Python 3.x
       uses: actions/setup-python@v4
@@ -65,10 +65,10 @@ jobs:
     runs-on: [self-hosted, integ]
     steps:
     
-    - name: Set up Go 1.18
+    - name: Set up Go 1.19
       uses: actions/setup-go@v4
       with:
-        go-version: 1.18
+        go-version: '1.19'
 
     - name: Upgrade git
       run: |

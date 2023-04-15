@@ -26,7 +26,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -47,7 +47,7 @@ type functionType struct {
 	// number of functions to deploy from the same file (with different names)
 	Count int `json:"count"`
 
-	Eventing bool `json:"eventing"`
+	Eventing    bool   `json:"eventing"`
 	ApplyScript string `json:"applyScript"`
 }
 
@@ -77,7 +77,7 @@ func main() {
 
 func getFuncSlice(file string) []functionType {
 	log.Debug("Opening JSON file with functions: ", file)
-	byteValue, err := ioutil.ReadFile(file)
+	byteValue, err := os.ReadFile(file)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func writeEndpoints(filePath string, urls []string) {
 	if err != nil {
 		log.Fatalln("failed to marshal", err)
 	}
-	if err := ioutil.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		log.Fatalln("failed to write", err)
 	}
 }

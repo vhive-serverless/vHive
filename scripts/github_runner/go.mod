@@ -1,6 +1,6 @@
 module github.com/vhive-serverless/vhive/scripts/github_runner/deploy_runners
 
-go 1.16
+go 1.19
 
 require (
 	github.com/sfreiberg/simplessh v0.0.0-20220719182921-185eafd40485
