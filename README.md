@@ -1,7 +1,6 @@
 [![build](https://github.com/vhive-serverless/vhive/workflows/vHive%20build%20tests/badge.svg)](https://github.com/vhive-serverless/vhive/actions)
-[![Unit Tests](https://github.com/vhive-serverless/vhive/workflows/vHive%20unit%20tests/badge.svg)](https://github.com/vhive-serverless/vhive/actions)
-[![Integration Tests](https://github.com/vhive-serverless/vhive/workflows/vHive%20integration%20tests/badge.svg)](https://github.com/vhive-serverless/vhive/actions)
-[![vHive CRI tests](https://github.com/vhive-serverless/vhive/workflows/vHive%20cri%20tests/badge.svg)](https://github.com/vhive-serverless/vhive/actions/workflows/cri_test.yml)
+[![Firecracker MicroVM E2E tests](https://github.com/vhive-serverless/vHive/actions/workflows/firecracker_cri_tests.yml/badge.svg)](https://github.com/vhive-serverless/vHive/actions/workflows/firecracker_cri_tests.yml)
+[![gVisor MicroVM E2E tests](https://github.com/vhive-serverless/vHive/actions/workflows/gvisor_cri_tests.yml/badge.svg)](https://github.com/vhive-serverless/vHive/actions/workflows/gvisor_cri_tests.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/vhive-serverless/vhive)](https://goreportcard.com/report/github.com/vhive-serverless/vhive)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <a href="https://twitter.com/intent/follow?screen_name=ease_lab" target="_blank">
