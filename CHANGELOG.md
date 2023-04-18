@@ -8,25 +8,27 @@
 
 ### Fixed
 
-## v1.6
-[@davidbuzatu-marian](https://github.com/DavidBuzatu-Marian)
-### Added
-- Added support for [eStargz](https://github.com/containerd/stargz-snapshotter) in stock-only setup.
-- Added [setup script](./scripts/stargz/setup_stargz.sh) for stargz-snapshotter.
-- Added [example](./configs/knative_workloads/stargz-node.yaml) knative deployment for eStargz.
-### Changed
-- Changed stock-only setup steps to support eStargz installation.
-- Changed quickstart guide to include description of *eStargz* and how to use it.
-- Changed [README.md](./README.md) to include eStargz support.
-### Fixed
-
 
 ## v1.5
 
 ### Added
+- Added support for [eStargz](https://github.com/containerd/stargz-snapshotter) in stock-only setup.
+- Added [setup script](./scripts/stargz/setup_stargz.sh) for stargz-snapshotter.
+- Added [example](./configs/knative_workloads/stargz-node.yaml) knative deployment for eStargz.
 
 ### Changed
-- Bumped Containerd to v1.6, Knative to v1.9, Go to v1.18, Kubernetes to v1.25.3, Istio to 1.16.0, protoc to 3.19, runc to 1.1, metallb 0.13.9.
+- Bumped Knative to v1.9, Go to v1.19, Kubernetes to v1.25, Istio to 1.16.0, metallb 0.13.9.
+- Bumped the GitHub-hosted runner OS version to ubuntu 20.
+
+### Fixed
+
+
+## v1.4.2
+
+### Added
+
+### Changed
+- Bumped Knative to v1.4, Go to v1.18, Kubernetes to v1.23, Istio to 1.12, protoc to 3.19, runc to 1.1.
 
 ### Fixed
 
