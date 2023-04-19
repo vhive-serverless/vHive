@@ -37,7 +37,7 @@ spec:
           value: "0"
         - name: FANOUT
           value: "2"
-        image: docker.io/vhiveease/chained-functions-serving-driver:capnp-datapath
+        image: docker.io/vhiveease/chained-functions-serving-driver:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80

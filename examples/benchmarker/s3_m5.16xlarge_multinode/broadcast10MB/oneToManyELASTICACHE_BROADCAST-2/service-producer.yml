@@ -35,7 +35,7 @@ spec:
           value: "0"
         - name: BROADCAST
           value: "2"
-        image: docker.io/vhiveease/chained-functions-serving-producer:capnp-datapath
+        image: docker.io/vhiveease/chained-functions-serving-producer:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80
