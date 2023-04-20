@@ -17,7 +17,7 @@
 - Added [example](./configs/knative_workloads/stargz-node.yaml) knative deployment for eStargz.
 
 ### Changed
-- Bumped Knative to v1.9, Go to v1.19, Kubernetes to v1.25, Istio to 1.16.0, metallb 0.13.9.
+- Bumped Knative to v1.9, Go to v1.19, Kubernetes to v1.25, Istio to 1.16.0, metallb 0.13.9, Calico to 3.25.1
 - Bumped the GitHub-hosted runner OS version to ubuntu 20.
 
 ### Fixed
