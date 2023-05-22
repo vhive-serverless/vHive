@@ -1,0 +1,42 @@
+apiVersion: apps.openyurt.io/v1alpha1
+kind: YurtAppSet
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: nginx-yurtappset
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  workloadTemplate:
+    deploymentTemplate:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        template:
+          metadata:
+            labels:
+              app: nginx
+          spec:
+            containers:
+              - name: nginx
+                image: nginx:1.14.2
+  topology:
+    pools:
+    - name: singapore
+      nodeSelectorTerm:
+        matchExpressions:
+          - key: apps.openyurt.io/nodepool
+            operator: In
+            values:
+            - singapore
+      replicas: 2
+    - name: hongkong
+      nodeSelectorTerm:
+        matchExpressions:
+        - key: apps.openyurt.io/nodepool
+          operator: In
+          values:
+          - hongkong
+      replicas: 2
