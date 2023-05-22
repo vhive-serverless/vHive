@@ -26,10 +26,11 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd .. && cd .. && pwd)"
 
 STOCK_CONTAINERD=$1
+MASTER_NODE_IP=$2
 REPO_VOL_SIZE=5Gi
 
 # Install Flannel-Calico network add-on with permitted IP range on cloudlab.
-export IFACE=$(netstat -ie | grep -B1 '10.0.1.1' | head -n1 | awk '{print $1}' | cut -d ':' -f 1)
+export IFACE=$(netstat -ie | grep -B1 $MASTER_NODE_IP | head -n1 | awk '{print $1}' | cut -d ':' -f 1)
 echo $IFACE
 cat $ROOT/configs/calico/canal.yaml | envsubst | kubectl apply -f -
 

@@ -3690,7 +3690,7 @@ spec:
           args:
             - --ip-masq
             - --kube-subnet-mgr
-            - --iface-regex=10.0.*.*
+            - --iface-regex=10.*.*.*
           securityContext:
             privileged: true
           env:

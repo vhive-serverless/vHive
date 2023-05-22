@@ -51,4 +51,6 @@ fi
 # Untaint master (allow pods to be scheduled on master) 
 kubectl taint nodes --all node-role.kubernetes.io/master-
 
-$DIR/setup_master_node.sh $STOCK_CONTAINERD
+MASTER_NODE_IP=$(ip route | awk '{print $(NF)}' | awk '/10\..*/')
+
+$DIR/setup_master_node.sh $STOCK_CONTAINERD $MASTER_NODE_IP
