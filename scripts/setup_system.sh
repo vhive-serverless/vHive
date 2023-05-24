@@ -79,3 +79,11 @@ sudo nft "add rule ip filter FORWARD ct state related,established counter accept
 sudo nft "add table ip nat"
 sudo nft "add chain ip nat POSTROUTING { type nat hook postrouting priority 0; policy accept; }"
 sudo nft "add rule ip nat POSTROUTING oifname ${hostiface} counter masquerade"
+
+# Install helm
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 \
+   && chmod 700 get_helm.sh \
+   && ./get_helm.sh
+
+helm repo add nvdp https://nvidia.github.io/k8s-device-plugin \
+   && helm repo update

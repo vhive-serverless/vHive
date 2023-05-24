@@ -97,6 +97,8 @@ CRI
 csv
 ctrdlog
 Ctrl
+cuda
+CUDA
 Daglis
 datacenter
 Datacenter
@@ -170,6 +172,7 @@ github
 Golang
 GOPRIVATE
 goroutine
+gpu
 Gratz
 grot
 Grot
@@ -431,6 +434,8 @@ SIGPLAN
 sinkbinding
 SinkBinding
 SinkBindings
+smi
+SMI
 sms
 SMT
 snapshotting
