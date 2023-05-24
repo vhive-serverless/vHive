@@ -3,9 +3,9 @@
 ## [Unreleased]
 
 ### Added
-
+- Added support for [NVIDIA GPU](https://docs.nvidia.com/datacenter/cloud-native/kubernetes/install-k8s.html) in stock-only setup, with [setup script](./scripts/gpu/setup_nvidia_gpu.sh) and [example](./configs/gpu/gpu-function.yaml) Knative deployment 
 ### Changed
-
+- Changed [system setup script](./scripts/setup_system.sh). NVIDIA helm is now one of the vHive dependencies.
 ### Fixed
 
 

@@ -219,3 +219,92 @@ We plan to keep our code loosely up to date with the upstream Firecracker reposi
 to speed up testing environment setup requiring Kubernetes.
 
 * Current [eStargz](https://github.com/containerd/stargz-snapshotter) version is 0.13.0.
+
+
+## Deploying Knative functions that require GPU Support
+
+Knative functions can use GPU although only `stock-only` mode is supported. 
+
+### Install Stock Kubernetes and Knative
+
+Follow the guide to [setup stock knative](#testing-stock-knative-setup-or-images). 
+
+``` bash
+./scripts/cloudlab/setup_node.sh stock-only
+```
+
+### Install NVIDIA Driver and NVIDIA Container Toolkit 
+The script will install NVIDIA CUDA Driver and assume there’s no NVIDIA driver currently running. 
+
+You can use the script provided if the install of containerd is using our script or manually edit the containerd settings following [NVIDIA's official document](https://docs.nvidia.com/datacenter/cloud-native/kubernetes/install-k8s.html#install-nvidia-container-toolkit-nvidia-docker2).
+
+The script has been tested on ubuntu20.04, with GPU including NVIDIA A100, V100 or P100.
+
+``` bash
+./scripts/gpu/setup_nvidia_gpu.sh
+```
+
+
+### Start Containerd and Knative
+
+``` bash
+sudo screen -dmS containerd containerd; sleep 5;
+./scripts/cluster/create_one_node_cluster.sh stock-only
+```
+
+### Install NVIDIA Device Plugin
+
+Using helm to install the NVIDIA Device plugin after all pods are running or completed.
+
+``` bash
+helm install --generate-name -n nvidia-device-plugin --create-namespace nvdp/nvidia-device-plugin
+```
+At this point, all pods should be successfully deployed.
+``` bash
+$ kubectl get pods -A
+NAMESPACE              NAME                                       READY   STATUS      RESTARTS   AGE
+nvidia-device-plugin   nvidia-device-plugin-1684892866-rtgk9      1/1     Running     0          80s
+```
+And you can use the gpu-pod.yaml to test whether the NVIDIA Device Plugin works
+
+``` bash
+kubectl apply -f ./configs/gpu/gpu-pod.yaml
+```
+After that, check the log to contain:
+
+``` bash
+$ kubectl logs gpu-operator-test
+```
+``` bash
+[Vector addition of 50000 elements]
+Copy input data from the host memory to the CUDA device
+CUDA kernel launch with 196 blocks of 256 threads
+Copy output data from the CUDA device to the host memory
+Test PASSED
+Done
+```
+### Test Knative with GPU
+Using GPU in Knative is simple and similar as for a regular Kubernetes service. The only change is to add the limits of GPU to the YAML file.
+
+``` yaml
+resources:
+  limits:
+    nvidia.com/gpu: 1
+```
+You can also deploy our example container, which is a Golang function that calls and returns the output of `nvidia-smi`.
+
+``` bash
+kn service apply -f ./configs/gpu/gpu-function.yaml
+```
+Once the service has been deployed successfully, you can call it and check it's response.
+``` bash
+curl "$(kn service describe hello-gpu -o URL)"
+```
+``` bash
+Hello GPU!
+Wed May 24 02:04:40 2023       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 530.30.02              Driver Version: 530.30.02    CUDA Version: 12.1     |
++---------------------------------------------------------------------------------------+
+
+```
