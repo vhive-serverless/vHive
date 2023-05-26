@@ -34,7 +34,7 @@ Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --v=5 --runtime-reque
 EOF'
 sudo systemctl daemon-reload
 
-MASTER_NODE_IP=$(ip route | awk '{print $(NF)}' | awk '/10\..*/')
+MASTER_NODE_IP=$(ip route | awk '{print $(NF)}' | awk '/^10\..*/')
 
 sudo kubeadm init --v=7 --apiserver-advertise-address=$MASTER_NODE_IP --cri-socket /run/containerd/containerd.sock --pod-network-cidr=10.168.0.0/16
 # sudo kubeadm init --control-plane-endpoint=10.1.1.1 --cri-socket /run/containerd/containerd.sock --pod-network-cidr=10.168.0.0/16
