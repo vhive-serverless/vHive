@@ -112,9 +112,7 @@ The statistics of this repository's views, clones, forks is available by the fol
 We would be happy to answer any questions in GitHub Issues and encourage the open-source community
 to submit new Issues, assist in addressing existing issues and limitations, and contribute their code with Pull Requests.
 Please check our guide on [Contributing to vHive](docs/contributing_to_vhive.md) if you would like contribute.
-You can also talk to us on the official
-[Firecracker Slack](https://join.slack.com/t/firecracker-microvm/shared_invite/zt-oxbm7tqt-GLlze9zZ7sdRSDY6OnXXHg)
-in the **#firecracker-vHive-research** channel.
+You can also talk to us in our [Slack space](https://join.slack.com/t/vhivetutorials/shared_invite/zt-1fk4v71gn-nV5oev5sc9F4fePg3_OZMQ).
 
 
 ## License and copyright
