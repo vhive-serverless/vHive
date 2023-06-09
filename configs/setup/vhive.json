@@ -1,0 +1,4 @@
+{
+	"FirecrackerKernelImgDownloadUrl": "https://s3.amazonaws.com/spec.ccfc.min/img/hello/kernel/hello-vmlinux.bin",
+	"StargzVersion": "0.13.0"
+}

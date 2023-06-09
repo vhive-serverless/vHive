@@ -1,0 +1,38 @@
+name: vHive setup scripts build tests
+
+on:
+    push:
+      branches: [ vhive-scripts-dev ]
+      paths-ignore:
+      - 'docs/**'
+      - '**.md'
+    pull_request:
+      branches: [ vhive-scripts-dev ]
+      paths-ignore:
+      - 'docs/**'
+      - '**.md'
+    workflow_dispatch:
+  
+env:
+    GOOS: linux
+    GO111MODULE: on
+
+jobs:
+    build_setup:
+        name: Build setup scripts
+        runs-on: ubuntu-20.04
+        steps:
+        - name: Set up Go 1.19
+          uses: actions/setup-go@v4
+          with:
+            go-version: '1.19'
+        
+        - name: Check out the code
+          uses: actions/checkout@v3
+
+        - name: Build scripts
+          run: pushd scripts && go build -o vhive_setup && popd
+        
+        - name: Show scripts help info
+          run: ./scripts/vhive_setup -h
+        

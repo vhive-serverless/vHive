@@ -1,19 +1,42 @@
+// MIT License
+//
+// Copyright (c) 2023 Haoyuan Ma and vHive team
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 package cloudlab
 
 import (
 	"time"
 
 	cluster "github.com/vhive-serverless/vHive/scripts/cluster"
+	"github.com/vhive-serverless/vHive/scripts/configs"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func StartOnenodeVhiveCluster(sandBox string) error {
+func StartOnenodeVhiveCluster(sandbox string) error {
 
 	// Arguments check
-	if sandBox == "" {
-		sandBox = "firecracker"
+	if sandbox == "" {
+		sandbox = "firecracker"
 	}
-	switch sandBox {
+	switch sandbox {
 	case "gvisor":
 	case "firecracker":
 	default:
@@ -24,8 +47,14 @@ func StartOnenodeVhiveCluster(sandBox string) error {
 	// Clean up host resources
 	utils.WaitPrintf("Cleaning up host resources if left after previous runs")
 	cleanCriRunnerScriptPath := "scripts/github_runner/clean_cri_runner.sh"
-	_, err := utils.ExecVHiveBashScript(cleanCriRunnerScriptPath, sandBox)
+	_, err := utils.ExecVHiveBashScript(cleanCriRunnerScriptPath, sandbox)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to clean up host resources!\n") {
+		return err
+	}
+
+	// Set up node
+	utils.WaitPrintf("Set up node")
+	if err = SetupNode(sandbox, "false"); err != nil {
 		return err
 	}
 
@@ -47,7 +76,7 @@ func StartOnenodeVhiveCluster(sandBox string) error {
 	time.Sleep(1 * time.Second)
 
 	// Run the containerd daemon
-	switch sandBox {
+	switch sandbox {
 	case "gvisor":
 		utils.WaitPrintf("Running the gvisor-containerd daemon")
 		_, err := utils.ExecShellCmd("sudo /usr/local/bin/gvisor-containerd --address /run/gvisor-containerd/gvisor-containerd.sock --config /etc/gvisor-containerd/config.toml 1>%s/gvisor.out 2>%s/gvisor.err &",
@@ -70,7 +99,7 @@ func StartOnenodeVhiveCluster(sandBox string) error {
 
 	// Build vHive
 	utils.WaitPrintf("Building vHive")
-	_, err = utils.ExecShellCmd("cd %s && source /etc/profile && go build")
+	_, err = utils.ExecShellCmd("cd %s && source /etc/profile && go build", configs.VHive.VHiveRepoPath)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to build vHive!\n") {
 		return err
 	}
@@ -79,7 +108,7 @@ func StartOnenodeVhiveCluster(sandBox string) error {
 	githubVHiveArgs := utils.GetEnvironmentVariable("GITHUB_VHIVE_ARGS")
 	utils.WaitPrintf("Running vHive with \"%s\" arguments", githubVHiveArgs)
 	_, err = utils.ExecShellCmd("sudo ./vhive -sandbox %s %s 1>%s/orch.out 2>%s/orch.err &",
-		sandBox,
+		sandbox,
 		githubVHiveArgs,
 		ctrdLogDir,
 		ctrdLogDir)
@@ -87,10 +116,10 @@ func StartOnenodeVhiveCluster(sandBox string) error {
 		return err
 	}
 
-	time.Sleep(time.Second)
+	time.Sleep(1 * time.Second)
 
 	utils.InfoPrintf("Create one node cluster\n")
-	if err := cluster.CreateOneNodeCluster(sandBox); err != nil {
+	if err := cluster.CreateOneNodeCluster(sandbox); err != nil {
 		return err
 	}
 

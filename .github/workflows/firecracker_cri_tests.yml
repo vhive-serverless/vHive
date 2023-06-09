@@ -2,13 +2,13 @@ name: vHive firecracker CRI tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ vhive-scripts-dev ]
     paths-ignore:
       - 'docs/**'
       - '**.md'
       - 'function-images/**'
   pull_request:
-    branches: [ main ]
+    branches: [ vhive-scripts-dev ]
     paths-ignore:
       - 'docs/**'
       - '**.md'
