@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 	"time"
-
-	configs "github.com/vhive-serverless/vHive/scripts/configs"
 )
 
 var (
@@ -113,16 +111,6 @@ func CheckErrorWithTagAndMsg(err error, format string, pars ...any) bool {
 	return false
 }
 
-// Print general usage tips
-func PrintGeneralUsage() {
-	InfoPrintf("Usage: %s <object: system | kube | yurt> <nodeRole: master | worker> <operation: init | join | expand> [Parameters...]\n", os.Args[0])
-}
-
-// Print welcome information
-func PrintWelcomeInfo() {
-	coloredPrintf(_colorGreen, "<<<<<<<<< vHiveSetupScripts %s >>>>>>>>>\n", configs.Version)
-}
-
 // Print warning information
 func PrintWarningInfo() {
 	WarnPrintf("THIS IS AN EXPERIMENTAL PROGRAM DEVELOPED PERSONALLY\n")
@@ -131,16 +119,20 @@ func PrintWarningInfo() {
 }
 
 // Create Logs
-func CreateLogs(logDir string) {
+func CreateLogs(logDir string) error {
 	// notify user
 	WaitPrintf("Creating log files")
 
 	// create log files
 	commonLogFile, err := os.OpenFile(logDir+"/vHiveSetupScriptsCommon.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	CheckErrorWithMsg(err, "Failed to create log files!\n")
+	if !CheckErrorWithMsg(err, "Failed to create log files!\n") {
+		return err
+	}
 
 	errorLogFile, err := os.OpenFile(logDir+"/vHiveSetupScriptsError.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	CheckErrorWithMsg(err, "Failed to create log files!\n")
+	if !CheckErrorWithMsg(err, "Failed to create log files!\n") {
+		return err
+	}
 
 	// create Logger
 	CommonLog = log.New(commonLogFile, "INFO: ", log.Ltime|log.Lshortfile)
@@ -150,4 +142,6 @@ func CreateLogs(logDir string) {
 	SuccessPrintf("\n")
 	SuccessPrintf("Stdout Log -> %s/vHiveSetupScriptsCommon.log\n", logDir)
 	SuccessPrintf("Stderr Log -> %s/vHiveSetupScriptsError.log\n", logDir)
+
+	return nil
 }

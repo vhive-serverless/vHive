@@ -12,35 +12,30 @@ import (
 func CreateMultinodeCluster(stockContainerd string) error {
 	// Original Bash Scripts: scripts/cluster/create_multinode_cluster.sh
 
-	err := CreateMasterKubeletService()
-	if err != nil {
+	if err := CreateMasterKubeletService(); err != nil {
 		return err
 	}
 
-	err = DeployKubernetes()
-	if err != nil {
+	if err := DeployKubernetes(); err != nil {
 		return err
 	}
 
-	err = KubectlForNonRoot()
-	if err != nil {
+	if err := KubectlForNonRoot(); err != nil {
 		return err
 	}
 
-	err = ExtractMasterNodeInfo()
-	if err != nil {
+	if err := ExtractMasterNodeInfo(); err != nil {
 		return err
 	}
 
-	err = WaitForWorkerNodes()
-	if err != nil {
+	if err := WaitForWorkerNodes(); err != nil {
 		return err
 	}
 
-	// Set up Master Node
-	utils.WaitPrintf("Setting up master node")
-	err = SetupMasterNode(stockContainerd)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to set up Master Node!\n") {
+	// Set up master node
+	utils.InfoPrintf("Set up master node\n")
+	if err := SetupMasterNode(stockContainerd); err != nil {
+		utils.FatalPrintf("Failed to set up master node!\n")
 		return err
 	}
 

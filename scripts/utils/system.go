@@ -3,7 +3,6 @@ package utils
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -20,45 +19,6 @@ type ShellError struct {
 
 func (err *ShellError) Error() string {
 	return fmt.Sprintf("[exit %d] -> %s", err.ExitCode, err.Msg)
-}
-
-// Parse parameters for subcommand `system`
-func ParseSubcommandSystem(args []string) {
-	nodeRole := args[0]
-	operation := args[1]
-
-	// Check nodeRole
-	if (nodeRole != "master") && (nodeRole != "worker") {
-		InfoPrintf("Usage: %s %s <master | worker> init [parameters...]\n", os.Args[0], os.Args[1])
-		FatalPrintf("Invalid nodeRole: <nodeRole> -> %s\n", nodeRole)
-	}
-
-	// Check operation
-	if operation != "init" {
-		InfoPrintf("Usage: %s %s %s init [parameters...]\n", os.Args[0], os.Args[1], nodeRole)
-		FatalPrintf("Invalid operation: <operation> -> %s\n", operation)
-	}
-
-	// Parse parameters for `system master/worker init`
-	var help bool
-	systemFlagsName := fmt.Sprintf("%s system %s init", os.Args[0], nodeRole)
-	systemFlags := flag.NewFlagSet(systemFlagsName, flag.ExitOnError)
-	systemFlags.StringVar(&configs.System.GoVersion, "go-version", configs.System.GoVersion, "Golang version")
-	systemFlags.StringVar(&configs.System.ContainerdVersion, "containerd-version", configs.System.ContainerdVersion, "Containerd version")
-	systemFlags.StringVar(&configs.System.RuncVersion, "runc-version", configs.System.RuncVersion, "Runc version")
-	systemFlags.StringVar(&configs.System.CniPluginsVersion, "cni-plugins-version", configs.System.CniPluginsVersion, "CNI plugins version")
-	systemFlags.StringVar(&configs.System.KubectlVersion, "kubectl-version", configs.System.KubectlVersion, "Kubectl version")
-	systemFlags.StringVar(&configs.System.KubeadmVersion, "kubeadm-version", configs.System.KubeadmVersion, "Kubeadm version")
-	systemFlags.StringVar(&configs.System.KubeletVersion, "kubelet-version", configs.System.KubeletVersion, "Kubelet version")
-	systemFlags.BoolVar(&help, "help", false, "Show help")
-	systemFlags.BoolVar(&help, "h", false, "Show help")
-	systemFlags.Parse(args[2:])
-	// Show help
-	if help {
-		systemFlags.Usage()
-		os.Exit(0)
-	}
-	SuccessPrintf("Init System Successfully!\n")
 }
 
 // Execute Shell Command
@@ -112,9 +72,9 @@ func ExecShellCmd(cmd string, pars ...any) (string, error) {
 func DetectArch() error {
 	switch configs.System.CurrentArch {
 	case "amd64":
-	case "arm64":
+	// case "arm64":
 	default:
-		// Only amd64(x86_64) and arm64(aarch64) are supported at present
+		// Only amd64(x86_64) are supported at present
 		FatalPrintf("Unsupported architecture: %s\n", configs.System.CurrentArch)
 		return &ShellError{"Unsupported architecture", 1}
 	}
@@ -221,23 +181,25 @@ func InstallPackages(packagesTemplate string, pars ...any) error {
 	case "ubuntu":
 		_, err := ExecShellCmd("sudo apt-get -qq update && sudo apt-get -qq install -y --allow-downgrades %s", packages)
 		return err
-	case "centos":
-		_, err := ExecShellCmd("sudo dnf -y -q install %s", packages)
-		return err
-	case "rocky linux":
-		_, err := ExecShellCmd("sudo dnf -y -q install %s", packages)
-		return err
+	// case "centos":
+	// 	_, err := ExecShellCmd("sudo dnf -y -q install %s", packages)
+	// 	return err
+	// case "rocky linux":
+	// 	_, err := ExecShellCmd("sudo dnf -y -q install %s", packages)
+	// 	return err
 	default:
 		FatalPrintf("Unsupported Linux distribution: %s\n", configs.System.CurrentOS)
 		return &ShellError{Msg: "Unsupported Linux distribution", ExitCode: 1}
 	}
 }
 
+// Get the value of specific environment variable
 func GetEnvironmentVariable(variableNameTemplate string, pars ...any) string {
 	variableName := fmt.Sprintf(variableNameTemplate, pars...)
 	return os.Getenv(variableName)
 }
 
+// Update the value of specific environment variable
 func UpdateEnvironmentVariable(variableName string, newValueTemplate string, pars ...any) (string, error) {
 	oldValue := GetEnvironmentVariable(variableName)
 	newValue := fmt.Sprintf(newValueTemplate, pars...)
@@ -245,8 +207,45 @@ func UpdateEnvironmentVariable(variableName string, newValueTemplate string, par
 	return oldValue, err
 }
 
+// Write to sysctl.conf
 func WriteToSysctl(sysConfigTemplate string, pars ...any) error {
 	sysConfig := fmt.Sprintf(sysConfigTemplate, pars...)
 	_, err := ExecShellCmd("sudo sysctl --quiet -w %s", sysConfig)
 	return err
+}
+
+// Detect and prepare for the environment
+func PrepareEnvironment() error {
+	// Define task List
+	preTaskList := []func() error{
+		DetectArch,
+		DetectOS,
+		GetCurrentDir,
+		GetUserHomeDir,
+		CreateTmpDir,
+	}
+	// Execute task
+	for _, task := range preTaskList {
+		if err := task(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Clean the Environment
+func CleanEnvironment() error {
+	// Define task List
+	cleanTaskList := []func() error{
+		CleanUpTmpDir,
+	}
+	// Execute task
+	for _, task := range cleanTaskList {
+		if err := task(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -10,10 +10,7 @@ import (
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
 )
 
-// func CheckGoInstalled() (bool, error) {
-
-// }
-
+// Append directory to current PATH variable
 func AppendDirToPathVariable(pathTemplate string, pars ...any) error {
 	oldPath := GetEnvironmentVariable("PATH")
 	appendedPath := fmt.Sprintf(pathTemplate, pars...)
@@ -32,15 +29,19 @@ func AppendDirToPath(pathTemplate string, pars ...any) error {
 	}
 
 	// For bash
-	_, err = ExecShellCmd("echo 'export PATH=$PATH:%s' >> %s/.bashrc", appendedPath, configs.System.UserHomeDir)
-	if err != nil {
+	if _, err = ExecShellCmd("echo 'export PATH=$PATH:%s' >> %s/.bashrc", appendedPath, configs.System.UserHomeDir); err != nil {
 		return err
 	}
 	// For zsh
 	_, err = exec.LookPath("zsh")
 	if err != nil {
 		_, err = ExecShellCmd("echo 'export PATH=$PATH:%s' >> %s/.zshrc", appendedPath, configs.System.UserHomeDir)
+		if err != nil {
+			return err
+		}
 	}
+	// For other users
+	_, err = ExecShellCmd("echo 'export PATH=$PATH:%s' | sudo tee -a /etc/profile", appendedPath)
 
 	return err
 }
@@ -49,28 +50,27 @@ func AppendDirToPath(pathTemplate string, pars ...any) error {
 func DownloadToTmpDir(urlTemplate string, pars ...any) (string, error) {
 	url := fmt.Sprintf(urlTemplate, pars...)
 	fileName := path.Base(url)
-	filePath := configs.System.TmpDir + "/" + fileName
+	filePath := path.Join(configs.System.TmpDir, fileName)
 	// Create temporary directory (if not exist)
-	err := CreateTmpDir()
-	if err != nil {
+	if err := CreateTmpDir(); err != nil {
 		return filePath, err
 	}
 	// Download file
-	_, err = ExecShellCmd("curl -sSL --output %s %s", filePath, url)
+	_, err := ExecShellCmd("curl -sSL --output %s %s", filePath, url)
 	return filePath, err
 }
 
+// Clone git repo to temporary directory (absolute path of cloned repo will be the first return value if successful)
 func CloneRepoToTmpDir(branch string, urlTemplate string, pars ...any) (string, error) {
 	url := fmt.Sprintf(urlTemplate, pars...)
 	repoName := strings.TrimSuffix(path.Base(url), ".git")
-	repoPath := configs.System.TmpDir + "/" + repoName
+	repoPath := path.Join(configs.System.TmpDir, repoName)
 	// Create temporary directory (if not exist)
-	err := CreateTmpDir()
-	if err != nil {
+	if err := CreateTmpDir(); err != nil {
 		return repoPath, err
 	}
 	// Clone repo
-	_, err = ExecShellCmd("git clone --quiet -c advice.detachedHead=false --branch %s %s %s", branch, url, repoPath)
+	_, err := ExecShellCmd("git clone --quiet --recurse-submodules -c advice.detachedHead=false --branch %s %s %s", branch, url, repoPath)
 	return repoPath, err
 }
 
@@ -91,7 +91,7 @@ func ExtractToDir(archiveFilePath string, dirPath string, privileged bool) error
 		// Extract `zip` file
 		_, err = ExecShellCmd("%s unzip -o -q %s -d %s", privilegedCmd, archiveFilePath, dirPath)
 	case ".gz":
-		if strings.HasSuffix(fileExtName, ".tar.gz") {
+		if strings.HasSuffix(archiveFilePath, ".tar.gz") {
 			// Extract `tar.gz` file
 			_, err = ExecShellCmd("%s tar -xzvf %s -C %s", privilegedCmd, archiveFilePath, dirPath)
 		} else {
@@ -109,18 +109,22 @@ func ExtractToDir(archiveFilePath string, dirPath string, privileged bool) error
 }
 
 // Download and execute remote bash script
-func DownloadAndExecScript(scriptUrlTemplate string, pars ...any) error {
-	scriptUrl := fmt.Sprintf(scriptUrlTemplate, pars...)
+func DownloadAndExecScript(scriptUrl string, scriptPars ...string) error {
 	// Create temporary directory (if not exist)
 	err := CreateTmpDir()
 	if err != nil {
 		return err
 	}
+	// Combine all script parameters
+	combinedScriptPars := ""
+	for _, scriptPar := range scriptPars {
+		combinedScriptPars = combinedScriptPars + " " + scriptPar
+	}
 	// Download bash script
 	scriptPath, err := DownloadToTmpDir(scriptUrl)
 	if err == nil {
 		// Execute the script
-		_, err = ExecShellCmd("bash %s", scriptPath)
+		_, err = ExecShellCmd("bash %s %s", scriptPath, combinedScriptPars)
 	}
 	return err
 }
@@ -130,7 +134,9 @@ func TurnOffAutomaticUpgrade() error {
 	switch configs.System.CurrentOS {
 	case "ubuntu":
 		// Execute vHive bash script to disable auto update on Ubuntu
-		err := DownloadAndExecScript(configs.System.DisableAutoUpgradeScriptsDownloadUrl)
+		WaitPrintf("Turning off automatic update")
+		_, err := ExecVHiveBashScript("scripts/utils/disable_auto_updates.sh")
+		CheckErrorWithTagAndMsg(err, "Failed to turn off automatic update!\n")
 		return err
 	default:
 		return nil

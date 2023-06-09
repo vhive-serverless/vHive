@@ -2,8 +2,11 @@ go 1.19
 
 use (
 	.
+	./cloudlab
 	./cluster
 	./configs
+	./gpu
 	./setup
+	./stargz
 	./utils
 )

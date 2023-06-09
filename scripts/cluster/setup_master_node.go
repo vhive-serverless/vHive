@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"path"
+
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
@@ -105,8 +107,19 @@ func InstallMetalLB() error {
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
 	}
-	for _, value := range configs.Knative.MetalLBConfigURLArray {
-		_, err = utils.ExecShellCmd("kubectl apply -f %s", value)
+
+	metalibConfigsDir := "configs/metallb"
+	metalibConfigsList := []string{
+		"metallb-ipaddresspool.yaml",
+		"metallb-l2advertisement.yaml",
+	}
+
+	for _, configFile := range metalibConfigsList {
+		metalibConfigPath, err := utils.GetVHiveFilePath(path.Join(metalibConfigsDir, configFile))
+		if err != nil {
+			return err
+		}
+		_, err = utils.ExecShellCmd("kubectl apply -f %s", metalibConfigPath)
 		if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 			return err
 		}
