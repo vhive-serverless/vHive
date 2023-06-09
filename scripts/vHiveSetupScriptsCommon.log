@@ -1,7 +1,0 @@
-INFO: 19:24:02 logs.go:67: 
-INFO: 19:24:02 logs.go:67: Stdout Log -> /home/lowell/Code/myVHive/vHive/scripts/vHiveSetupScriptsCommon.log
-INFO: 19:24:02 logs.go:67: Stderr Log -> /home/lowell/Code/myVHive/vHive/scripts/vHiveSetupScriptsError.log
-INFO: 19:24:02 logs.go:79: Loading config files from /home/lowell/Code/myVHive/vHive/configs/setup >>>>> 
-INFO: 19:24:02 logs.go:67: 
-INFO: 19:24:02 logs.go:79: Cleaning up temporary directory >>>>> 
-INFO: 19:24:02 logs.go:67: 

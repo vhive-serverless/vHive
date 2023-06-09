@@ -16,7 +16,8 @@ jobs:
     env:
       GITHUB_RUN_ID: ${{ github.run_id }}
       GITHUB_VHIVE_ARGS: "-dbg"
-    runs-on: ${{ fromJSON(format('["self-hosted", "{0}-cri"]', inputs.sandbox)) }}
+    # runs-on: ${{ fromJSON(format('["self-hosted", "{0}-cri"]', inputs.sandbox)) }}
+    runs-on: ubuntu-20.04
 
     steps:
 
@@ -27,6 +28,14 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Set up golang
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.19'
+
+      - name: Build setup scripts
+        run: pushd scripts && go build -o vhive_setup && popd
 
       - name: Setup vHive CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
