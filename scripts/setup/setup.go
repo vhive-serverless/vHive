@@ -8,26 +8,27 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
+// Set up firecracker containerd
 func SetupFirecrackerContainerd() error {
 	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/firecracker-containerd && sudo mkdir -p /var/lib/firecracker-containerd/runtime && sudo mkdir -p /etc/containerd/")
 	if err != nil {
 		return err
 	}
 
-	utils.WaitPrintf("Pulling vHive repo and LFS")
-	vHiveRepoPath, err := utils.CloneRepoToTmpDir(configs.VHive.FirecrackerVHiveBranch, configs.VHive.FirecrackerVHiveRepoUrl)
-	if !utils.CheckErrorWithMsg(err, "Failed to pull vHive repo and LFS!\n") {
+	// Pull LFS in vHive
+	utils.WaitPrintf("Pulling LFS in vHive")
+	if err := utils.CheckVHiveRepo(); !utils.CheckErrorWithMsg(err, "Failed to pull LFS in vHive!\n") {
 		return err
 	}
-	_, err = utils.ExecShellCmd("cd %s && git lfs pull", vHiveRepoPath)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to pull vHive repo and LFS!\n") {
+	_, err = utils.ExecShellCmd("cd %s && git lfs pull", configs.VHive.VHiveRepoPath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to pull LFS in vHive!\n") {
 		return err
 	}
 
 	utils.WaitPrintf("Copying required files")
 	dstDir := "/usr/local/bin"
-	binsDir := path.Join(vHiveRepoPath, "bin")
-	// configsDir := path.Join(vHiveRepoPath, "configs/firecracker-containerd")
+	binsDir := "bin"
+	configsDir := "configs/firecracker-containerd"
 
 	binLists := []string{
 		"firecracker",
@@ -37,7 +38,10 @@ func SetupFirecrackerContainerd() error {
 		"firecracker-ctr",
 	}
 	for _, bin := range binLists {
-		src := path.Join(binsDir, bin)
+		src, err := utils.GetVHiveFilePath(path.Join(binsDir, bin))
+		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+			return err
+		}
 		err = utils.CopyToDir(src, dstDir, true)
 		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
 			return err
@@ -50,9 +54,54 @@ func SetupFirecrackerContainerd() error {
 		return err
 	}
 
+	// kernel image
+	kernelImgPath, err := utils.DownloadToTmpDir(configs.VHive.FirecrackerKernelImgDownloadUrl)
+	if !utils.CheckErrorWithMsg(err, "Failed to download kernel image!\n") {
+		return err
+	}
+	err = utils.CopyToDir(kernelImgPath, "/var/lib/firecracker-containerd/runtime/", true)
+	if !utils.CheckErrorWithMsg(err, "Failed to copy kernel image!\n") {
+		return err
+	}
+
+	// Copy config.toml
+	configFilePath, err := utils.GetVHiveFilePath(path.Join(configsDir, "config.toml"))
+	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+		return err
+	}
+	err = utils.CopyToDir(configFilePath, "/etc/firecracker-containerd/", true)
+	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+		return err
+	}
+
+	// When executed inside a docker container, this command returns the container ID of the container.
+	// on a non container environment, this returns "/".
+	containerId, err := utils.ExecShellCmd("basename $(cat /proc/1/cpuset)")
+	if err != nil {
+		return err
+	}
+	if len(containerId) == 64 {
+		// Inside a container
+		_, err = utils.ExecShellCmd(`sudo sed -i "s/fc-dev-thinpool/${CONTAINERID}_thinpool/" /etc/firecracker-containerd/config.toml`)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Copy `firecracker-runtime.json`
+	configFilePath, err = utils.GetVHiveFilePath(path.Join(configsDir, "firecracker-runtime.json"))
+	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+		return err
+	}
+	err = utils.CopyToDir(configFilePath, "/etc/containerd/", true)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to copy required files!\n") {
+		return err
+	}
+
 	return nil
 }
 
+// Set up gvisor containerd
 func SetupGvisorContainerd() error {
 	// Create required directory
 	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/gvisor-containerd && sudo mkdir -p /etc/cni/net.d")
@@ -60,36 +109,43 @@ func SetupGvisorContainerd() error {
 		return err
 	}
 
-	utils.WaitPrintf("Pulling vHive repo and LFS")
-	vHiveRepoPath, err := utils.CloneRepoToTmpDir(configs.VHive.GVisorVHiveBranch, configs.VHive.GVisorVHiveRepoUrl)
-	if !utils.CheckErrorWithMsg(err, "Failed to pull vHive repo and LFS!\n") {
+	// Pull LFS in vHive
+	utils.WaitPrintf("Pulling LFS in vHive")
+	if err := utils.CheckVHiveRepo(); !utils.CheckErrorWithMsg(err, "Failed to pull LFS in vHive!\n") {
 		return err
 	}
-	_, err = utils.ExecShellCmd("cd %s && git lfs pull", vHiveRepoPath)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to pull vHive repo and LFS!\n") {
+	_, err = utils.ExecShellCmd("cd %s && git lfs pull", configs.VHive.VHiveRepoPath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to pull LFS in vHive!\n") {
 		return err
 	}
 
 	// Copy various required files
 	utils.WaitPrintf("Copying required files")
 	dstDir := "/usr/local/bin"
-	binsDir := path.Join(vHiveRepoPath, "bin")
-	ctrdConfigsDir := path.Join(vHiveRepoPath, "configs/gvisor-containerd")
-	cniConfigsDir := path.Join(vHiveRepoPath, "configs/cni")
+	binsDir := "bin"
+	ctrdConfigsDir := "configs/gvisor-containerd"
+	cniConfigsDir := "configs/cni"
 
 	binLists := []string{
 		"containerd-shim-runsc-v1",
 		"gvisor-containerd",
 	}
 	for _, bin := range binLists {
-		src := path.Join(binsDir, bin)
+		src, err := utils.GetVHiveFilePath(path.Join(binsDir, bin))
+		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+			return err
+		}
 		err = utils.CopyToDir(src, dstDir, true)
 		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
 			return err
 		}
 	}
 
-	err = utils.CopyToDir(path.Join(ctrdConfigsDir, "config.toml"), "/etc/gvisor-containerd/", true)
+	configFilePath, err := utils.GetVHiveFilePath(path.Join(ctrdConfigsDir, "config.toml"))
+	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+		return err
+	}
+	err = utils.CopyToDir(configFilePath, "/etc/gvisor-containerd/", true)
 	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
 		return err
 	}
@@ -100,7 +156,10 @@ func SetupGvisorContainerd() error {
 		"99-loopback.conf",
 	}
 	for _, configFile := range configLists {
-		src := path.Join(cniConfigsDir, configFile)
+		src, err := utils.GetVHiveFilePath(path.Join(cniConfigsDir, configFile))
+		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+			return err
+		}
 		err = utils.CopyToDir(src, dstDir, true)
 		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
 			return err
@@ -207,6 +266,7 @@ func SetupSystem() error {
 	return nil
 }
 
+// Original Bash Scripts: scripts/setup_zipkin.sh
 func SetupZipkin() error {
 	// Original Bash Scripts: scripts/setup_zipkin.sh
 
