@@ -42,7 +42,7 @@ jobs:
         fetch-depth: 21
 
     - name: Check code
-      uses: golangci/golangci-lint-action@v3.4.0
+      uses: golangci/golangci-lint-action@v3.6.0
       with:
         args: --timeout 5m
 
