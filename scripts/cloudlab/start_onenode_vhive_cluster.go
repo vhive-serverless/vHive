@@ -26,7 +26,7 @@ import (
 	"time"
 
 	cluster "github.com/vhive-serverless/vHive/scripts/cluster"
-	"github.com/vhive-serverless/vHive/scripts/configs"
+	configs "github.com/vhive-serverless/vHive/scripts/configs"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
@@ -49,12 +49,6 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 	cleanCriRunnerScriptPath := "scripts/github_runner/clean_cri_runner.sh"
 	_, err := utils.ExecVHiveBashScript(cleanCriRunnerScriptPath, sandbox)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to clean up host resources!\n") {
-		return err
-	}
-
-	// Set up node
-	utils.WaitPrintf("Set up node")
-	if err = SetupNode(sandbox, "false"); err != nil {
 		return err
 	}
 
@@ -107,7 +101,12 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 	// Run vHive
 	githubVHiveArgs := utils.GetEnvironmentVariable("GITHUB_VHIVE_ARGS")
 	utils.WaitPrintf("Running vHive with \"%s\" arguments", githubVHiveArgs)
-	_, err = utils.ExecShellCmd("sudo ./vhive -sandbox %s %s 1>%s/orch.out 2>%s/orch.err &",
+	vhiveExecutablePath, err := utils.GetVHiveFilePath("vhive")
+	if !utils.CheckErrorWithMsg(err, "Failed to find vHive executable!\n") {
+		return err
+	}
+	_, err = utils.ExecShellCmd("sudo %s -sandbox %s %s 1>%s/orch.out 2>%s/orch.err &",
+		vhiveExecutablePath,
 		sandbox,
 		githubVHiveArgs,
 		ctrdLogDir,

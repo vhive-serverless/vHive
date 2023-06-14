@@ -32,7 +32,7 @@ type VHiveConfigStruct struct {
 }
 
 var VHive = VHiveConfigStruct{
-	VHiveRepoPath:        "",
+	VHiveRepoPath:        ".",
 	VHiveRepoBranch:      "main",
 	VHiveRepoUrl:         "https://github.com/vhive-serverless/vHive.git",
 	VHiveSetupConfigPath: "",

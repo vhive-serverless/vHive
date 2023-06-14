@@ -24,7 +24,7 @@ package configs
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 )
@@ -38,7 +38,7 @@ func DecodeConfig(configFilePath string, configStruct interface{}) error {
 	defer configFile.Close()
 
 	// Read file content
-	configContent, err := ioutil.ReadAll(configFile)
+	configContent, err := io.ReadAll(configFile)
 	if err != nil {
 		return err
 	}

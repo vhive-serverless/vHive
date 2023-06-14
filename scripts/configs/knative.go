@@ -31,15 +31,15 @@ type KnativeConfigStruct struct {
 	NotStockOnlyKnativeServingYamlUrlPrefix string
 	IstioVersion                            string
 	IstioDownloadUrlTemplate                string
-	IstioOperatorConfigUrl                  string
+	IstioOperatorConfigPath                 string
 	IstioZipkinVersion                      string
 	IstioZipkinDownloadUrlTemplate          string
 	MetalLBVersion                          string
 	LocalRegistryRepoVolumeSize             string
-	LocalRegistryVolumeConfigUrl            string
-	LocalRegistryDockerRegistryConfigUrl    string
-	LocalRegistryHostUpdateConfigUrl        string
-	MagicDNSConfigUrl                       string
+	LocalRegistryVolumeConfigPath           string
+	LocalRegistryDockerRegistryConfigPath   string
+	LocalRegistryHostUpdateConfigPath       string
+	MagicDNSConfigPath                      string
 }
 
 var Knative = KnativeConfigStruct{}

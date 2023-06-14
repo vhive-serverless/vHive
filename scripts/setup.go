@@ -84,16 +84,29 @@ func main() {
 		"setup_nvidia_gpu",
 	}
 
+	// Check vHive repo
+	// In-repo setup (default, use the current git repo as vHive repo)
+	if configs.VHive.VHiveRepoPath == "." {
+		repoRoot, err := utils.ExecShellCmd("git rev-parse --show-toplevel")
+		if err != nil {
+			// Invalid git repo, set vHive repo path to empty
+			configs.VHive.VHiveRepoPath = ""
+		} else {
+			configs.VHive.VHiveRepoPath = repoRoot
+		}
+	}
+	utils.CheckVHiveRepo()
 	utils.InfoPrintf("vHive repo Path: %s\n", configs.VHive.VHiveRepoPath)
+
 	// Check config directory
 	if len(configs.VHive.VHiveSetupConfigPath) == 0 {
-		utils.CheckVHiveRepo()
 		configs.VHive.VHiveSetupConfigPath, err = utils.GetVHiveFilePath("configs/setup")
 		if err != nil {
 			utils.CleanEnvironment()
 			os.Exit(1)
 		}
 	}
+
 	// load config file
 	utils.WaitPrintf("Loading config files from %s", configs.VHive.VHiveSetupConfigPath)
 	if err = configs.VHive.LoadConfig(); !utils.CheckErrorWithMsg(err, "Failed to load config files!\n") {

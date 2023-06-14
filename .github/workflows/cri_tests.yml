@@ -37,6 +37,9 @@ jobs:
       - name: Build setup scripts
         run: pushd scripts && go build -o vhive_setup && popd
 
+      - name: Set up node
+        run: ./scripts/vhive_setup setup_node ${{ inputs.sandbox }} "false"
+
       - name: Setup vHive CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
 

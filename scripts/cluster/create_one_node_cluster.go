@@ -90,14 +90,14 @@ func CreateOneNodeKubernetes(criSock string) error {
 	if len(containerId) == 64 {
 		// Inside a docker, create cluster using the config file
 		utils.WaitPrintf("Creating cluster using the config file")
-		_, err = utils.ExecShellCmd(`CRI_SOCK=%s envsubst < "/scripts/kubeadm.conf" > "/scripts/kubeadm_patched.conf" && sudo kubeadm init --skip-phases="preflight" --config="/scripts/kubeadm_patched.conf"`, criSock)
+		_, err = utils.ExecShellCmd(`CRI_SOCK=unix://'%s' envsubst < "/scripts/kubeadm.conf" > "/scripts/kubeadm_patched.conf" && sudo kubeadm init --kubernetes-version %s --skip-phases="preflight" --config="/scripts/kubeadm_patched.conf"`, criSock, configs.Kube.K8sVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to create cluster using the config file!\n") {
 			return err
 		}
 	} else {
 		// On a non container environment
 		utils.WaitPrintf("Creating cluster")
-		_, err = utils.ExecShellCmd(`sudo kubeadm init --ignore-preflight-errors=all --cri-socket %s --pod-network-cidr=%s`, criSock, configs.Kube.PodNetworkCidr)
+		_, err = utils.ExecShellCmd(`sudo kubeadm init --ignore-preflight-errors=all --cri-socket unix://'%s' --pod-network-cidr=%s --kubernetes-version %s`, criSock, configs.Kube.PodNetworkCidr, configs.Kube.K8sVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to create cluster!\n") {
 			return err
 		}
