@@ -4,14 +4,14 @@
 	"KnativeCLIRepoUrl": "https://github.com/knative/client.git",
 	"NotStockOnlyKnativeServingYamlUrlPrefix": "https://raw.githubusercontent.com/vhive-serverless/vHive/main/configs/knative_yamls",
 	"IstioVersion": "1.16.3",
-	"IstioOperatorConfigUrl": "https://raw.githubusercontent.com/vhive-serverless/vHive/main/configs/istio/istio-minimal-operator.yaml",
+	"IstioOperatorConfigPath": "configs/istio/istio-minimal-operator.yaml",
 	"IstioDownloadUrlTemplate": "https://github.com/istio/istio/releases/download/%s/istio-%s-linux-%s.tar.gz",
 	"IstioZipkinVersion": "1.16",
 	"IstioZipkinDownloadUrlTemplate": "https://raw.githubusercontent.com/istio/istio/release-%s/samples/addons/extras/zipkin.yaml",
 	"MetalLBVersion": "0.13.9",
 	"LocalRegistryRepoVolumeSize": "5Gi",
-	"LocalRegistryVolumeConfigUrl": "https://raw.githubusercontent.com/vhive-serverless/vHive/main/configs/registry/repository-volume.yaml",
-	"LocalRegistryDockerRegistryConfigUrl": "https://raw.githubusercontent.com/vhive-serverless/vHive/main/configs/registry/docker-registry.yaml",
-	"LocalRegistryHostUpdateConfigUrl": "https://raw.githubusercontent.com/vhive-serverless/vHive/main/configs/registry/repository-update-hosts.yaml",
-	"MagicDNSConfigUrl": "https://raw.githubusercontent.com/vhive-serverless/vHive/main/configs/knative_yamls/serving-default-domain.yaml"
+	"LocalRegistryVolumeConfigPath": "configs/registry/repository-volume.yaml",
+	"LocalRegistryDockerRegistryConfigPath": "configs/registry/docker-registry.yaml",
+	"LocalRegistryHostUpdateConfigPath": "configs/registry/repository-update-hosts.yaml",
+	"MagicDNSConfigPath": "configs/knative_yamls/serving-default-domain.yaml"
 }
