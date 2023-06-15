@@ -2,12 +2,12 @@ name: vHive setup scripts build tests
 
 on:
     push:
-      branches: [ vhive-scripts-dev ]
+      branches: [ main, vhive-scripts-dev ]
       paths-ignore:
       - 'docs/**'
       - '**.md'
     pull_request:
-      branches: [ vhive-scripts-dev ]
+      branches: [ main, vhive-scripts-dev ]
       paths-ignore:
       - 'docs/**'
       - '**.md'
@@ -31,8 +31,8 @@ jobs:
           uses: actions/checkout@v3
 
         - name: Build scripts
-          run: pushd scripts && go build -o vhive_setup && popd
+          run: pushd scripts && go build -o setup_tool && popd
         
         - name: Show scripts help info
-          run: ./scripts/vhive_setup -h
+          run: ./scripts/setup_tool -h
         

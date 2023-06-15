@@ -47,6 +47,9 @@ jobs:
         with:
           go-version: '1.19'
 
+      - name: Build setup scripts
+        run: pushd scripts && go build -o setup_tool && popd
+
       - name: Create k8s Kind Cluster
         run: bash ./scripts/stargz/01-kind.sh
 
@@ -64,7 +67,7 @@ jobs:
           kubectl patch configmap -n knative-serving config-autoscaler -p "{\"data\": {\"allow-zero-initial-scale\": \"true\"}}"
 
       - name: Setup stock-only node
-        run: ./scripts/cloudlab/setup_node.sh stock-only use-stargz
+        run: ./scripts/setup_tool setup_node stock-only use-stargz
 
       - name: Check containerd service is running
         run: sudo screen -list | grep "containerd"

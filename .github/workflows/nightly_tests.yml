@@ -36,8 +36,11 @@ jobs:
       with:
         lfs: true
 
+    - name: Build setup scripts
+      run: pushd scripts && go build -o setup_tool && popd
+
     - name: Pull binaries
-      run: ./scripts/setup_firecracker_containerd.sh
+      run: ./scripts/setup_tool setup_firecracker_containerd
 
     - name: Build
       run: go build -race -v -a ./...
@@ -47,7 +50,7 @@ jobs:
 
     - name: Cleaning
       if: ${{ always() }}
-      run: ./scripts/clean_fcctr.sh
+      run: ./scripts/setup_tool clean_fcctr
 
   cri-tests:
     name: CRI tests (nightly)
@@ -80,8 +83,11 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
 
+    - name: Build setup scripts
+      run: pushd scripts && go build -o setup_tool && popd
+
     - name: Setup firecracker-containerd
-      run: ./scripts/setup_firecracker_containerd.sh
+      run: ./scripts/setup_tool setup_firecracker_containerd
 
     - name: Build
       run: go build

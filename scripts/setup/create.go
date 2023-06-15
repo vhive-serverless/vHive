@@ -35,7 +35,7 @@ func CreateDevmapper() error {
 	return err
 }
 
-// Original bash script `scripts/create_devmapper.sh`
+// Original bash script `scripts/create_docker_image.sh`
 func CreateDockerImage() error {
 	utils.WaitPrintf("Creating docker image")
 	scriptPath := "scripts/create_docker_image.sh"
