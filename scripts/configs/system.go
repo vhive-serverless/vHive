@@ -40,9 +40,7 @@ type SystemEnvironmentStruct struct {
 	RunscDownloadUrlTemplate            string
 	CniPluginsVersion                   string
 	CniPluginsDownloadUrlTemplate       string
-	KubectlVersion                      string
-	KubeadmVersion                      string
-	KubeletVersion                      string
+	KubeVersion                         string
 	Dependencies                        string
 	TmpDir                              string
 	CurrentOS                           string

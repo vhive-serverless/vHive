@@ -2,13 +2,13 @@ name: vHive gVisor CRI tests
 
 on:
   push:
-    branches: [ vhive-scripts-dev ]
+    branches: [ main ]
     paths-ignore:
     - 'docs/**'
     - '**.md'
     - 'function-images/**'
   pull_request:
-    branches: [ vhive-scripts-dev ]
+    branches: [ main ]
     paths-ignore:
     - 'docs/**'
     - '**.md'

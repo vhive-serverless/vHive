@@ -167,7 +167,7 @@ func InstallStock() error {
 	}
 	// Install kubeadm, kubelet, kubectl via apt
 	utils.WaitPrintf("Installing kubeadm, kubelet, kubectl")
-	err = utils.InstallPackages("cri-tools ebtables ethtool kubernetes-cni kubeadm=%s kubelet=%s kubectl=%s", configs.System.KubeadmVersion, configs.System.KubeletVersion, configs.System.KubectlVersion)
+	err = utils.InstallPackages("cri-tools ebtables ethtool kubernetes-cni kubeadm=%s kubelet=%s kubectl=%s", configs.System.KubeVersion, configs.System.KubeVersion, configs.System.KubeVersion)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install kubeadm, kubelet, kubectl!\n") {
 		return err
 	}

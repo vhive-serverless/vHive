@@ -68,7 +68,7 @@ func main() {
 	}
 
 	// Create logs
-	if err = utils.CreateLogs(configs.System.CurrentDir); err != nil {
+	if err = utils.CreateLogs(configs.System.CurrentDir, setupFlags.Args()[0]); err != nil {
 		utils.CleanEnvironment()
 		os.Exit(1)
 	}
@@ -82,6 +82,16 @@ func main() {
 		"setup_node",
 		"start_onenode_vhive_cluster",
 		"setup_nvidia_gpu",
+		"setup_zipkin",
+		"setup_system",
+		"setup_gvisor_containerd",
+		"setup_firecracker_containerd",
+		"install_stock",
+		"install_pmutools",
+		"install_go",
+		"create_docker_image",
+		"create_devmapper",
+		"clean_fcctr",
 	}
 
 	// Check vHive repo
@@ -185,8 +195,35 @@ func main() {
 		err = gpu.SetupNvidiaGpu()
 		// Original scripts from `scripts` directory
 	case "setup_zipkin":
-		utils.InfoPrintf("Setup zipkin")
+		utils.InfoPrintf("Setup zipkin\n")
 		err = setup.SetupZipkin()
+	case "setup_system":
+		utils.InfoPrintf("Set up system\n")
+		err = setup.SetupSystem()
+	case "setup_gvisor_containerd":
+		utils.InfoPrintf("Set up gvisor_containerd")
+		err = setup.SetupGvisorContainerd()
+	case "setup_firecracker_containerd":
+		utils.InfoPrintf("Set up firecracker_containerd")
+		err = setup.SetupFirecrackerContainerd()
+	case "install_stock":
+		utils.InfoPrintf("Install stock")
+		err = setup.InstallStock()
+	case "install_pmutools":
+		utils.InfoPrintf("Install pmutools")
+		err = setup.InstallPmuTools()
+	case "install_go":
+		utils.InfoPrintf("Install go")
+		err = setup.InstallGo()
+	case "create_docker_image":
+		utils.InfoPrintf("Create docker image")
+		err = setup.CreateDockerImage()
+	case "create_devmapper":
+		utils.InfoPrintf("Create devmapper")
+		err = setup.CreateDevmapper()
+	case "clean_fcctr":
+		utils.InfoPrintf("Clean fcctr")
+		err = setup.CleanFcctr()
 	default:
 		utils.FatalPrintf("Invalid subcommand --> %s! Available subcommands list: \n", subCmd)
 		for _, subCmd := range availableCmds {

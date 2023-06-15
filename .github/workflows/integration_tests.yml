@@ -50,8 +50,11 @@ jobs:
       with:
         lfs: true
     
+    - name: Build setup scripts
+      run: pushd scripts && go build -o setup_tool && popd
+    
     - name: Pull binaries
-      run: ./scripts/setup_firecracker_containerd.sh
+      run: ./scripts/setup_tool setup_firecracker_containerd
 
     - name: Build
       run: go build -race -v -a ./...
@@ -66,7 +69,9 @@ jobs:
         name: ctrd-logs
         path: |
           /tmp/ctrd-logs/
+          ${{ github.workspace }}/*.log
+          ${{ github.workspace }}/scripts/github_runner/*.log
           
     - name: Cleaning
       if: ${{ always() }}
-      run: ./scripts/clean_fcctr.sh
+      run: ./scripts/setup_tool clean_fcctr

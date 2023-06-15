@@ -22,16 +22,24 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
 
+    - name: Set up golang
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.19'
+
+    - name: Build setup scripts
+      run: pushd scripts && go build -o setup_tool && popd
+
     - name: Start Containerd
       run: sudo containerd &
 
     - name: Create k8s cluster
-      run: ./scripts/cluster/create_one_node_cluster.sh stock-only && sleep 2m
+      run: ./scripts/setup_tool create_one_node_cluster stock-only && sleep 2m
 
     - name: Deploy zipkin
       env:
         KUBECONFIG: /etc/kubernetes/admin.conf
-      run: ./scripts/setup_zipkin.sh && sleep 5s
+      run: ./scripts/setup_tool setup_zipkin && sleep 5s
 
     - name: Create helloworld container
       run: KUBECONFIG=/etc/kubernetes/admin.conf kn service create helloworld-go --image gcr.io/knative-samples/helloworld-go --env TARGET="vHive CRI test"
