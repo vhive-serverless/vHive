@@ -49,7 +49,14 @@ K8S_VERSION=1.25.3-00
 sudo mkdir -p /etc/apt/keyrings
 sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
 echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt-get update >> /dev/null
+if sudo apt-get update | grep "Err"; then
+    echo "Google GPG server unreachable, Trying k8s mirror"
+    sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://dl.k8s.io/apt/doc/apt-key.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    if sudo apt-get update | grep "Err"; then
+    echo "GPG server unreachable, check GPG server status" && exit 1
+    fi
+fi
 sudo apt-get -y install cri-tools ebtables ethtool kubeadm=$K8S_VERSION kubectl=$K8S_VERSION kubelet=$K8S_VERSION kubernetes-cni >> /dev/null
 
 # Install knative CLI
