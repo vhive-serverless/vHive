@@ -20,6 +20,50 @@ env:
 
 jobs:
   gvisor-cri-tests:
-    uses: ./.github/workflows/cri_tests.yml
-    with:
-      sandbox: gvisor
+    name: CRI tests
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+    #    uses: ./.github/workflows/cri_tests.yml
+    #    with:
+    #      sandbox: gvisor
+    #      runnerType: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: "true"
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
+      - name: Set up Go 1.19
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.19'
+
+      - name: Create k8s Kind Cluster
+        run: bash ./scripts/stargz/01-kind.sh
+
+      - name: Install Serving
+        run: bash ./scripts/stargz/02-serving.sh
+
+      - name: Install Kourier
+        run: bash ./scripts/stargz/02-kourier.sh
+
+      - name: Setup domain and autoscaler
+        run: |
+          INGRESS_HOST="127.0.0.1"
+          KNATIVE_DOMAIN=$INGRESS_HOST.sslip.io
+          kubectl patch configmap -n knative-serving config-domain -p "{\"data\": {\"$KNATIVE_DOMAIN\": \"\"}}"
+          kubectl patch configmap -n knative-serving config-autoscaler -p "{\"data\": {\"allow-zero-initial-scale\": \"true\"}}"
+
+      - name: Setup stock-only node
+        run: ./scripts/cloudlab/setup_node.sh gvisor
+
+      - name: Check containerd service is running
+        run: sudo screen -list | grep "containerd"
+
+      - name: Create helloworld container
+        run: kn service create helloworld-go --image gcr.io/knative-samples/helloworld-go --env TARGET="vHive CRI test"
+
+      - name: Invoke the deployed function
+        run: curl http://helloworld-go.default.192.168.1.240.sslip.io

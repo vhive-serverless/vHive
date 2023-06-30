@@ -6,6 +6,9 @@ on:
       sandbox:
         required: true
         type: string
+      runnerType:
+        required: true
+        type: string
 
 env:
   GO111MODULE: on
@@ -16,7 +19,8 @@ jobs:
     env:
       GITHUB_RUN_ID: ${{ github.run_id }}
       GITHUB_VHIVE_ARGS: "-dbg"
-    runs-on: ${{ fromJSON(format('["self-hosted", "{0}-cri"]', inputs.sandbox)) }}
+    #runs-on: ${{ fromJSON(format('["{0}", "{1}-cri"]', inputs.runnerType, inputs.sandbox)) }}
+    runs-on: ${{ inputs.runnerType }}
 
     steps:
 

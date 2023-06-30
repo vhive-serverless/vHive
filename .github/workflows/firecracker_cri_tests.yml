@@ -23,3 +23,4 @@ jobs:
     uses: ./.github/workflows/cri_tests.yml
     with:
       sandbox: firecracker
+      runnerType: self-hosted
