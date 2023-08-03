@@ -29,6 +29,7 @@ import (
 	"path"
 )
 
+// Decode specific config files (JSON format)
 func DecodeConfig(configFilePath string, configStruct interface{}) error {
 	// Open & read the config file
 	configFile, err := os.Open(configFilePath)
@@ -50,6 +51,7 @@ func DecodeConfig(configFilePath string, configStruct interface{}) error {
 
 }
 
+// Load knative config files
 func (knative *KnativeConfigStruct) LoadConfig() error {
 	// Get the (absolute) path of the config file
 	configFilePath := path.Join(VHive.VHiveSetupConfigPath, "knative.json")
@@ -61,6 +63,7 @@ func (knative *KnativeConfigStruct) LoadConfig() error {
 
 }
 
+// Load kubernetes config files
 func (kube *KubeConfigStruct) LoadConfig() error {
 	// Get the (absolute) path of the config file
 	configFilePath := path.Join(VHive.VHiveSetupConfigPath, "kube.json")
@@ -71,6 +74,7 @@ func (kube *KubeConfigStruct) LoadConfig() error {
 	return err
 }
 
+// Load system config files
 func (system *SystemEnvironmentStruct) LoadConfig() error {
 	// Get the (absolute) path of the config file
 	configFilePath := path.Join(VHive.VHiveSetupConfigPath, "system.json")
@@ -81,6 +85,7 @@ func (system *SystemEnvironmentStruct) LoadConfig() error {
 	return err
 }
 
+// Load vHive config files
 func (vhive *VHiveConfigStruct) LoadConfig() error {
 	// Get the (absolute) path of the config file
 	configFilePath := path.Join(VHive.VHiveSetupConfigPath, "vhive.json")

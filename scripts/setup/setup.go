@@ -32,7 +32,10 @@ import (
 
 // Set up firecracker containerd
 func SetupFirecrackerContainerd() error {
-	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/firecracker-containerd && sudo mkdir -p /var/lib/firecracker-containerd/runtime && sudo mkdir -p /etc/containerd/")
+	_, err := utils.ExecShellCmd(
+		"sudo mkdir -p /etc/firecracker-containerd" +
+			" && sudo mkdir -p /var/lib/firecracker-containerd/runtime" +
+			" && sudo mkdir -p /etc/containerd/")
 	if err != nil {
 		return err
 	}
@@ -108,7 +111,7 @@ func SetupFirecrackerContainerd() error {
 	}
 	if len(containerId) == 64 {
 		// Inside a container
-		_, err = utils.ExecShellCmd(`sudo sed -i "s/fc-dev-thinpool/${CONTAINERID}_thinpool/" /etc/firecracker-containerd/config.toml`)
+		_, err = utils.ExecShellCmd(`sudo sed -i "s/fc-dev-thinpool/%s_thinpool/" /etc/firecracker-containerd/config.toml`, containerId)
 		if err != nil {
 			return err
 		}
@@ -210,7 +213,7 @@ func SetupSystem() error {
 	if !utils.CheckErrorWithMsg(err, "Failed to install required dependencies!\n") {
 		return err
 	}
-	err = utils.InstallPackages("apt-transport-https gcc g++ make acl net-tools git-lfs bc gettext-base jq dmsetup gnupg-agent software-properties-common iproute2 nftables")
+	err = utils.InstallPackages("apt-transport-https gcc g++ make acl net-tools git-lfs bc gettext-base jq dmsetup gnupg-agent software-properties-common iproute2 nftables git-lfs")
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install required dependencies!\n") {
 		return err
 	}
@@ -308,10 +311,11 @@ func SetupZipkin() error {
 
 	// Enable tracing in Knative
 	utils.WaitPrintf("Enabling tracing in Knative")
-	_, err = utils.ExecShellCmd(`kubectl patch configmap/config-tracing \
--n knative-serving \
---type merge \
--p '{"data":{"backend":"zipkin","zipkin-endpoint":"http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans","debug":"true"}}'`)
+	_, err = utils.ExecShellCmd(
+		`kubectl patch configmap/config-tracing` +
+			` -n knative-serving` +
+			` --type merge` +
+			` -p '{"data":{"backend":"zipkin","zipkin-endpoint":"http://zipkin.istio-system.svc.cluster.local:9411/api/v2/spans","debug":"true"}}'`)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to enable tracing in Knative!\n") {
 		return err
 	}

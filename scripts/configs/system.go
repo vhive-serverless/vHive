@@ -80,5 +80,5 @@ func (system *SystemEnvironmentStruct) GetRunscDownloadUrl() string {
 	default:
 	}
 
-	return fmt.Sprintf(system.RunscDownloadUrlTemplate, system.RuncVersion, unameArch)
+	return fmt.Sprintf(system.RunscDownloadUrlTemplate, system.RunscVersion, unameArch)
 }
