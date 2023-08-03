@@ -73,6 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Current available commands
 	subCmd := setupFlags.Args()[0]
 	availableCmds := []string{
 		"create_multinode_cluster",
@@ -174,13 +175,18 @@ func main() {
 		err = cluster.SetupWorkerKubelet(setupFlags.Args()[1])
 		// Original scripts from `scripts/cloudlab` directory
 	case "setup_node":
-		if setupFlags.NArg() < 3 {
-			utils.FatalPrintf("Missing parameters: %s <sandbox> <use-stargz>\n", subCmd)
+		if setupFlags.NArg() < 2 {
+			utils.FatalPrintf("Missing parameters: %s <sandbox> [use-stargz]\n", subCmd)
 			utils.CleanEnvironment()
 			os.Exit(1)
 		}
 		utils.InfoPrintf("Set up node\n")
-		err = cloudlab.SetupNode(setupFlags.Args()[1], setupFlags.Args()[2])
+		if setupFlags.NArg() >= 3 {
+			err = cloudlab.SetupNode(setupFlags.Args()[1], setupFlags.Args()[2])
+		} else {
+			err = cloudlab.SetupNode(setupFlags.Args()[1], "")
+		}
+
 	case "start_onenode_vhive_cluster":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <sandbox>\n", subCmd)
@@ -201,28 +207,28 @@ func main() {
 		utils.InfoPrintf("Set up system\n")
 		err = setup.SetupSystem()
 	case "setup_gvisor_containerd":
-		utils.InfoPrintf("Set up gvisor_containerd")
+		utils.InfoPrintf("Set up gvisor_containerd\n")
 		err = setup.SetupGvisorContainerd()
 	case "setup_firecracker_containerd":
-		utils.InfoPrintf("Set up firecracker_containerd")
+		utils.InfoPrintf("Set up firecracker_containerd\n")
 		err = setup.SetupFirecrackerContainerd()
 	case "install_stock":
-		utils.InfoPrintf("Install stock")
+		utils.InfoPrintf("Install stock\n")
 		err = setup.InstallStock()
 	case "install_pmutools":
-		utils.InfoPrintf("Install pmutools")
+		utils.InfoPrintf("Install pmutools\n")
 		err = setup.InstallPmuTools()
 	case "install_go":
-		utils.InfoPrintf("Install go")
+		utils.InfoPrintf("Install go\n")
 		err = setup.InstallGo()
 	case "create_docker_image":
-		utils.InfoPrintf("Create docker image")
+		utils.InfoPrintf("Create docker image\n")
 		err = setup.CreateDockerImage()
 	case "create_devmapper":
-		utils.InfoPrintf("Create devmapper")
+		utils.InfoPrintf("Create devmapper\n")
 		err = setup.CreateDevmapper()
 	case "clean_fcctr":
-		utils.InfoPrintf("Clean fcctr")
+		utils.InfoPrintf("Clean fcctr\n")
 		err = setup.CleanFcctr()
 	default:
 		utils.FatalPrintf("Invalid subcommand --> %s! Available subcommands list: \n", subCmd)

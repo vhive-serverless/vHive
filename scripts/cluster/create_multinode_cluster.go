@@ -134,10 +134,11 @@ func ExtractMasterNodeInfo() error {
 		return err
 	}
 	configs.Kube.ApiserverTokenHash = shellOut
-	masterKeyYamlTemplate := `ApiserverAdvertiseAddress: %s
-ApiserverPort: %s
-ApiserverToken: %s
-ApiserverTokenHash: %s`
+	masterKeyYamlTemplate :=
+		"ApiserverAdvertiseAddress: %s\n" +
+			"ApiserverPort: %s\n" +
+			"ApiserverToken: %s\n" +
+			"ApiserverTokenHash: %s"
 
 	// Create masterKey.yaml with master node information
 	utils.WaitPrintf("Creating masterKey.yaml with master node information")
