@@ -169,6 +169,7 @@ func CleanUpTmpDir() error {
 	return err
 }
 
+// Copy file(directory) to the specific destination
 func CopyToDir(source string, target string, privileged bool) error {
 	var err error
 
@@ -176,7 +177,7 @@ func CopyToDir(source string, target string, privileged bool) error {
 	if privileged {
 		privilegedCmd = "sudo"
 	}
-
+	// Copy recursively
 	_, err = ExecShellCmd("%s cp -R %s %s", privilegedCmd, source, target)
 
 	return err

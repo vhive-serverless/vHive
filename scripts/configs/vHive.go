@@ -29,6 +29,7 @@ type VHiveConfigStruct struct {
 	VHiveRepoBranch                 string
 	VHiveRepoUrl                    string
 	VHiveSetupConfigPath            string
+	ForceRemote                     bool
 }
 
 var VHive = VHiveConfigStruct{
@@ -36,4 +37,5 @@ var VHive = VHiveConfigStruct{
 	VHiveRepoBranch:      "main",
 	VHiveRepoUrl:         "https://github.com/vhive-serverless/vHive.git",
 	VHiveSetupConfigPath: "",
+	ForceRemote:          false,
 }

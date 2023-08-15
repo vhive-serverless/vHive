@@ -314,6 +314,8 @@ NEURALWALKER
 neuroevolution
 NewServer
 Nicopoulos
+Nvidia
+nvidia
 nmi
 NoC
 NOC
