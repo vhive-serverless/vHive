@@ -31,6 +31,16 @@ import (
 
 // Check whether vHive repo exists, if not, clone it to the temporary directory
 func CheckVHiveRepo() error {
+
+	if configs.VHive.ForceRemote {
+		WaitPrintf("Force to use the online repo! Automatically cloning the vHive repo")
+		vHiveRepoPath, err := CloneRepoToTmpDir(configs.VHive.VHiveRepoBranch, configs.VHive.VHiveRepoUrl)
+		if CheckErrorWithTagAndMsg(err, "Failed to clone the vHive repo!\n") {
+			configs.VHive.VHiveRepoPath = vHiveRepoPath
+		}
+		return err
+	}
+
 	if _, err := os.Stat(configs.VHive.VHiveRepoPath); err != nil {
 		// vHive Repo not specified or not exist
 		WaitPrintf("vHive repo not detected! Automatically cloning the vHive repo")
@@ -41,6 +51,7 @@ func CheckVHiveRepo() error {
 		}
 		return err
 	}
+
 	return nil
 }
 

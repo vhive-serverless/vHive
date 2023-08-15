@@ -51,6 +51,7 @@ func main() {
 	setupFlags.StringVar(&configs.VHive.VHiveRepoPath, "vhive-repo-dir", configs.VHive.VHiveRepoPath, "vHive repo path (left blank to use online repo automatically)")
 	setupFlags.StringVar(&configs.VHive.VHiveRepoBranch, "vhive-repo-branch", configs.VHive.VHiveRepoBranch, "vHive repo branch (valid only when using online repo)")
 	setupFlags.StringVar(&configs.VHive.VHiveRepoUrl, "vhive-repo-url", configs.VHive.VHiveRepoUrl, "vHive repo url (valid only when using online repo)")
+	setupFlags.BoolVar(&configs.VHive.ForceRemote, "force-remote", configs.VHive.ForceRemote, "Force scripts to use the online repo")
 	setupFlags.BoolVar(&help, "help", false, "Show help")
 	setupFlags.BoolVar(&help, "h", false, "Show help")
 
