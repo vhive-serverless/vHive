@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 9 * * *'
+    - cron: '0 19 * * 1'
 
 env:
   GOOS: linux
