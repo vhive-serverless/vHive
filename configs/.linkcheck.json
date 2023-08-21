@@ -5,6 +5,9 @@
         },
         {
             "pattern": "^https://opensource.org*"
+        },
+        {
+            "pattern": "^https://twitter.com*"
         }
     ],
     "replacementPatterns": [
