@@ -1,18 +1,17 @@
 {
-  "ghOrg": "<GitHub account>",
-  "ghPat": "<GitHub PAT>",
-  "hostUsername": "ubuntu",
+  "ghOrg": "vhive-serverless",
+  "ghPat": "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",
+  "hostUsername": "root",
   "runners": {
-    "pc91.cloudlab.umass.edu": {
+    "172.21.140.51": {
       "type": "cri",
       "sandbox": "firecracker"
     },
-    "pc101.cloudlab.umass.edu": {
+    "172.21.140.36": {
       "type": "cri",
-      "sandbox": "gvisor",
-      "restart": true
+      "sandbox": "gvisor"
     },
-    "pc72.cloudlab.umass.edu": {
+    "172.21.140.24": {
       "type": "integ",
       "num": 2
     }

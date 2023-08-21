@@ -51,29 +51,24 @@ func main() {
 		deployerConf = flag.String("conf", "conf.json",
 			`Configuration file with the following structure:
 			{
-			  "ghOrg": "<GitHub account>",
-			  "ghPat": "<GitHub PAT>",
-			  "hostUsername": "ubuntu",
-			  "runners": {
-				"pc91.cloudlab.umass.edu": {
-				  "type": "cri",
-				  "sandbox": "firecracker"
-				},
-				"pc101.cloudlab.umass.edu": {
-				  "type": "cri",
-				  "sandbox": "gvisor"
-				},
-				"pc72.cloudlab.umass.edu": {
-				  "type": "integ",
-				  "num": 2
-				}
-				"pc75.cloudlab.umass.edu": {
-				  "type": "integ",
-				  "num": 6,
-      			  "restart": true
+				"ghOrg": "vhive-serverless",
+				"ghPat": "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",
+				"hostUsername": "root",
+				"runners": {
+				  "172.21.140.51": {
+					"type": "cri",
+					"sandbox": "firecracker"
+				  },
+				  "172.21.140.36": {
+					"type": "cri",
+					"sandbox": "gvisor"
+				  },
+				  "172.21.140.24": {
+					"type": "integ",
+					"num": 2
+				  }
 				}
 			  }
-			}
 			`)
 		logLvl = flag.String("loglvl", "info", "Debug level: 'info' or 'debug'")
 	)
