@@ -9,4 +9,5 @@ use (
 	./setup
 	./stargz
 	./utils
+	./github_runner
 )
