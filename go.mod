@@ -60,6 +60,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
+	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/net v0.6.0
 	golang.org/x/sync v0.1.0
@@ -102,7 +103,6 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d // indirect
 	github.com/opencontainers/selinux v1.8.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
 	github.com/willf/bitset v1.1.11 // indirect
 	go.opencensus.io v0.22.4 // indirect
 	golang.org/x/image v0.7.0 // indirect
