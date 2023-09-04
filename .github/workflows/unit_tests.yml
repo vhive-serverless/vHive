@@ -66,6 +66,10 @@ jobs:
   firecracker-containerd-interface-test:
     name: "Unit tests: Firecracker-containerd interface"
     runs-on: [self-hosted, integ]
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [ ctriface, ctriface/image ]
     steps:
     
     - name: Set up Go 1.19
@@ -94,9 +98,13 @@ jobs:
       run: go build -race -v -a ./...
 
     - name: Run tests in submodules
+      env:
+        MODULE: ${{ matrix.module }}
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: |
-        make -C ctriface test
-        make -C ctriface test-man
+        make -C $MODULE test
+        make -C $MODULE test-man
 
     - name: Cleaning
       if: ${{ always() }}
