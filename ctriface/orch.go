@@ -41,6 +41,7 @@ import (
 	_ "google.golang.org/grpc/codes"  //tmp
 	_ "google.golang.org/grpc/status" //tmp
 
+	"github.com/vhive-serverless/vhive/ctriface/image"
 	"github.com/vhive-serverless/vhive/memory/manager"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/misc"
@@ -79,6 +80,7 @@ type Orchestrator struct {
 	snapshotter  string
 	client       *containerd.Client
 	fcClient     *fcclient.Client
+	imageManager *image.ImageManager
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
@@ -135,6 +137,9 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		log.Fatal("Failed to start firecracker client", err)
 	}
 	log.Info("Created firecracker client")
+
+	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
+
 	return o
 }
 
