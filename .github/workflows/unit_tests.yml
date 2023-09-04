@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [taps, misc, profile]
+        module: [taps, misc, profile, networking]
     steps:
 
     - name: Set up Go 1.19
