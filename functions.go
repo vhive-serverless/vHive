@@ -42,6 +42,7 @@ import (
 
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 	"github.com/vhive-serverless/vhive/metrics"
+	"github.com/vhive-serverless/vhive/snapshotting"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -450,7 +451,8 @@ func (f *Function) CreateInstanceSnapshot() {
 		log.Panic(err)
 	}
 
-	err = orch.CreateSnapshot(ctx, f.vmID)
+	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName)
+	err = orch.CreateSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -487,7 +489,8 @@ func (f *Function) LoadInstance() *metrics.Metric {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
-	loadMetr, err := orch.LoadSnapshot(ctx, f.vmID)
+	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName)
+	_, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}

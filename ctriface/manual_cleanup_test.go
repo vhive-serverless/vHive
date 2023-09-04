@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vhive-serverless/vhive/snapshotting"
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
@@ -69,7 +70,8 @@ func TestSnapLoad(t *testing.T) {
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	err = orch.CreateSnapshot(ctx, vmID)
+	snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
+	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -78,7 +80,7 @@ func TestSnapLoad(t *testing.T) {
 	err = orch.Offload(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM")
 
-	_, err = orch.LoadSnapshot(ctx, vmID)
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -119,13 +121,14 @@ func TestSnapLoadMultiple(t *testing.T) {
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	err = orch.CreateSnapshot(ctx, vmID)
+	snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
+	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
 	err = orch.Offload(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM")
 
-	_, err = orch.LoadSnapshot(ctx, vmID)
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -134,7 +137,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 	err = orch.Offload(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM")
 
-	_, err = orch.LoadSnapshot(ctx, vmID)
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -190,13 +193,14 @@ func TestParallelSnapLoad(t *testing.T) {
 			err = orch.PauseVM(ctx, vmID)
 			require.NoError(t, err, "Failed to pause VM, "+vmID)
 
-			err = orch.CreateSnapshot(ctx, vmID)
+			snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
+			err = orch.CreateSnapshot(ctx, vmID, snap)
 			require.NoError(t, err, "Failed to create snapshot of VM, "+vmID)
 
 			err = orch.Offload(ctx, vmID)
 			require.NoError(t, err, "Failed to offload VM, "+vmID)
 
-			_, err = orch.LoadSnapshot(ctx, vmID)
+			_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 
 			_, err = orch.ResumeVM(ctx, vmID)
@@ -274,7 +278,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				err := orch.CreateSnapshot(ctx, vmID)
+				snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
+				err := orch.CreateSnapshot(ctx, vmID, snap)
 				require.NoError(t, err, "Failed to create snapshot of VM, "+vmID)
 			}(i)
 		}
@@ -302,7 +307,8 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
-				_, err := orch.LoadSnapshot(ctx, vmID)
+				snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
+				_, _, err := orch.LoadSnapshot(ctx, vmID, snap)
 				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 			}(i)
 		}

@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vhive-serverless/vhive/snapshotting"
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
@@ -75,7 +76,8 @@ func TestPauseSnapResume(t *testing.T) {
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	err = orch.CreateSnapshot(ctx, vmID)
+	snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
+	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)

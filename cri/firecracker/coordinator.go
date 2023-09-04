@@ -25,6 +25,7 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"github.com/vhive-serverless/vhive/snapshotting"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -40,7 +41,7 @@ type coordinator struct {
 	nextID uint64
 
 	activeInstances     map[string]*funcInstance
-	idleInstances       map[string][]*funcInstance
+	snapshotManager     *snapshotting.SnapshotManager
 	withoutOrchestrator bool
 }
 
@@ -56,7 +57,6 @@ func withoutOrchestrator() coordinatorOption {
 func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorOption) *coordinator {
 	c := &coordinator{
 		activeInstances: make(map[string]*funcInstance),
-		idleInstances:   make(map[string][]*funcInstance),
 		orch:            orch,
 	}
 
@@ -64,38 +64,13 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorO
 		opt(c)
 	}
 
+	snapshotsDir := "/fccd/test/snapshots"
+	if !c.withoutOrchestrator {
+		snapshotsDir = orch.GetSnapshotsDir()
+	}
+	c.snapshotManager = snapshotting.NewSnapshotManager(snapshotsDir)
+
 	return c
-}
-
-func (c *coordinator) getIdleInstance(image string) *funcInstance {
-	c.Lock()
-	defer c.Unlock()
-
-	idles, ok := c.idleInstances[image]
-	if !ok {
-		c.idleInstances[image] = []*funcInstance{}
-		return nil
-	}
-
-	if len(idles) != 0 {
-		fi := idles[0]
-		c.idleInstances[image] = idles[1:]
-		return fi
-	}
-
-	return nil
-}
-
-func (c *coordinator) setIdleInstance(fi *funcInstance) {
-	c.Lock()
-	defer c.Unlock()
-
-	_, ok := c.idleInstances[fi.Image]
-	if !ok {
-		c.idleInstances[fi.Image] = []*funcInstance{}
-	}
-
-	c.idleInstances[fi.Image] = append(c.idleInstances[fi.Image], fi)
 }
 
 func (c *coordinator) startVM(ctx context.Context, image string) (*funcInstance, error) {
@@ -103,9 +78,11 @@ func (c *coordinator) startVM(ctx context.Context, image string) (*funcInstance,
 }
 
 func (c *coordinator) startVMWithEnvironment(ctx context.Context, image string, environment []string) (*funcInstance, error) {
-	if fi := c.getIdleInstance(image); c.orch != nil && c.orch.GetSnapshotsEnabled() && fi != nil {
-		err := c.orchLoadInstance(ctx, fi)
-		return fi, err
+	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
+		// Check if snapshot is available
+		if snap, err := c.snapshotManager.AcquireSnapshot(image); err == nil {
+			return c.orchLoadInstance(ctx, snap)
+		}
 	}
 
 	return c.orchStartVM(ctx, image, environment)
@@ -134,7 +111,6 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 func (c *coordinator) isActive(containerID string) bool {
 	c.Lock()
 	defer c.Unlock()
-
 	_, ok := c.activeInstances[containerID]
 	return ok
 }
@@ -185,28 +161,43 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string, envVariable
 	return fi, err
 }
 
-func (c *coordinator) orchLoadInstance(ctx context.Context, fi *funcInstance) error {
-	fi.Logger.Debug("found idle instance to load")
+func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.Snapshot) (*funcInstance, error) {
+	logger := log.WithFields(
+		log.Fields{
+			"vmID":  snap.GetId(),
+			"image": snap.GetImage(),
+		},
+	)
+
+	logger.Debug("found idle instance to load")
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	if _, err := c.orch.LoadSnapshot(ctxTimeout, fi.VmID); err != nil {
-		fi.Logger.WithError(err).Error("failed to load VM")
-		return err
+	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, snap.GetId(), snap)
+	if err != nil {
+		logger.WithError(err).Error("failed to load VM")
+		return nil, err
 	}
 
-	if _, err := c.orch.ResumeVM(ctxTimeout, fi.VmID); err != nil {
-		fi.Logger.WithError(err).Error("failed to load VM")
-		return err
+	if _, err := c.orch.ResumeVM(ctxTimeout, snap.GetId()); err != nil {
+		logger.WithError(err).Error("failed to load VM")
+		return nil, err
 	}
 
-	fi.Logger.Debug("successfully loaded idle instance")
-	return nil
+	fi := newFuncInstance(snap.GetId(), snap.GetImage(), resp)
+	logger.Debug("successfully loaded idle instance")
+	return fi, nil
 }
 
 func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) error {
 	var err error
+
+	snap, err := c.snapshotManager.InitSnapshot(fi.VmID, fi.Image)
+	if err != nil {
+		fi.Logger.WithError(err).Error("failed to initialize snapshot")
+		return nil
+	}
 
 	fi.OnceCreateSnapInstance.Do(
 		func() {
@@ -221,7 +212,7 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 				return
 			}
 
-			err = c.orch.CreateSnapshot(ctxTimeout, fi.VmID)
+			err = c.orch.CreateSnapshot(ctxTimeout, fi.VmID, snap)
 			if err != nil {
 				fi.Logger.WithError(err).Error("failed to create snapshot")
 				return
@@ -229,7 +220,12 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 		},
 	)
 
-	return err
+	if err := c.snapshotManager.CommitSnapshot(fi.VmID); err != nil {
+		fi.Logger.WithError(err).Error("failed to commit snapshot")
+		return err
+	}
+
+	return nil
 }
 
 func (c *coordinator) orchOffloadInstance(ctx context.Context, fi *funcInstance) error {
@@ -245,8 +241,6 @@ func (c *coordinator) orchOffloadInstance(ctx context.Context, fi *funcInstance)
 	if err := c.orch.Offload(ctxTimeout, fi.VmID); err != nil {
 		fi.Logger.WithError(err).Error("failed to offload instance")
 	}
-
-	c.setIdleInstance(fi)
 
 	return nil
 }
