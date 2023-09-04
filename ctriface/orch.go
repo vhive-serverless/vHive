@@ -199,6 +199,11 @@ func (o *Orchestrator) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, error
 	return o.memoryManager.GetUPFLatencyStats(vmID)
 }
 
+// GetSnapshotsDir Returns the orchestrator's snapshot directory
+func (o *Orchestrator) GetSnapshotsDir() string {
+	return o.snapshotsDir
+}
+
 func (o *Orchestrator) getSnapshotFile(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "snap_file")
 }

@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"github.com/vhive-serverless/vhive/snapshotting"
 	"os"
 	"os/exec"
 	"strings"
@@ -392,7 +393,7 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metr
 }
 
 // CreateSnapshot Creates a snapshot of a VM
-func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) error {
+func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received CreateSnapshot")
 
@@ -400,8 +401,8 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) error {
 
 	req := &proto.CreateSnapshotRequest{
 		VMID:             vmID,
-		SnapshotFilePath: o.getSnapshotFile(vmID),
-		MemFilePath:      o.getMemoryFile(vmID),
+		SnapshotFilePath: snap.GetSnapshotFilePath(),
+		MemFilePath:      snap.GetMemFilePath(),
 	}
 
 	if _, err := o.fcClient.CreateSnapshot(ctx, req); err != nil {
@@ -413,7 +414,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) error {
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (*metrics.Metric, error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (*StartVMResponse, *metrics.Metric, error) {
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
@@ -424,18 +425,26 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (*metrics.
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
 
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		if _, ok := err.(*misc.NonExistErr); ok {
+			logger.Panic("LoadSnapshot: VM does not exist")
+		}
+		logger.Panic("LoadSnapshot: GetVM() failed for an unknown reason")
+	}
+
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 
 	req := &proto.LoadSnapshotRequest{
 		VMID:             vmID,
-		SnapshotFilePath: o.getSnapshotFile(vmID),
-		MemFilePath:      o.getMemoryFile(vmID),
+		SnapshotFilePath: snap.GetSnapshotFilePath(),
+		MemFilePath:      snap.GetMemFilePath(),
 		EnableUserPF:     o.GetUPFEnabled(),
 	}
 
 	if o.GetUPFEnabled() {
 		if err := o.memoryManager.FetchState(vmID); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -461,10 +470,10 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string) (*metrics.
 
 	if loadErr != nil || activateErr != nil {
 		multierr := multierror.Of(loadErr, activateErr)
-		return nil, multierr
+		return nil, nil, multierr
 	}
 
-	return loadSnapshotMetric, nil
+	return &StartVMResponse{GuestIP: vm.Ni.PrimaryAddress}, loadSnapshotMetric, nil
 }
 
 // Offload Shuts down the VM but leaves shim and other resources running.
