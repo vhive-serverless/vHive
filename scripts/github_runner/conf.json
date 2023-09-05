@@ -13,7 +13,8 @@
     },
     "172.21.140.24": {
       "type": "integ",
-      "num": 2
+      "num": 2,
+      "restart": true
     }
   }
 }
