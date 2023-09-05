@@ -28,6 +28,8 @@
 
  join the cluster from worker, answer 'y' to master
 
+## Setup 
+### 1. Manual
 
 Execute the following below **as a non-root user with sudo rights** using **bash**:
 1. Run the node setup script:
