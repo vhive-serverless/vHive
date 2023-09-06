@@ -1,0 +1,11 @@
+apiVersion: "power.intel.com/v1"
+kind: PowerConfig
+metadata:
+  name: power-config
+spec:
+  # Add labels here for the Nodes you want the PowerNodeAgent to be applied to
+  powerNodeSelector:
+    feature.node.kubernetes.io/power-node: "true"
+  # Add wanted PowerProfiles here; valid entries are as follows: performance, balance-performance, balance-power
+  powerProfiles:
+    - "performance"
