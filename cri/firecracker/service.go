@@ -216,5 +216,5 @@ func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 
 	}
 
-	return "", errors.New("failed to provide non empty guest image in user container config")
+	return "", errors.New("failed to retrieve environment variable from user container config")
 }
