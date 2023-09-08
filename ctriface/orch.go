@@ -87,7 +87,6 @@ type Orchestrator struct {
 	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
-	hostIface        string
 
 	memoryManager *manager.MemoryManager
 }
@@ -97,15 +96,15 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	var err error
 
 	o := new(Orchestrator)
-	o.vmPool = misc.NewVMPool()
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
-	o.hostIface = hostIface
 
 	for _, opt := range opts {
 		opt(o)
 	}
+
+	o.vmPool = misc.NewVMPool(hostIface)
 
 	if _, err := os.Stat(o.snapshotsDir); err != nil {
 		if !os.IsNotExist(err) {

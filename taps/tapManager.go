@@ -55,13 +55,43 @@ func getPrimaryAddress(curTaps, bridgeID int) string {
 	return fmt.Sprintf("19%d.128.%d.%d", bridgeID, (curTaps+2)/256, (curTaps+2)%256)
 }
 
+// getHostIfaceName returns the default host network interface name.
+func getHostIfaceName() (string, error) {
+	out, err := exec.Command(
+		"route",
+	).Output()
+	if err != nil {
+		log.Warnf("Failed to fetch host net interfaces %v\n%s\n", err, out)
+		return "", err
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(out))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "default") {
+			return line[strings.LastIndex(line, " ")+1:], nil
+		}
+	}
+	return "", errors.New("failed to fetch host net interface")
+}
+
 // NewTapManager Creates a new tap manager
-func NewTapManager() *TapManager {
+func NewTapManager(hostIfaceName string) (*TapManager, error) {
 	tm := new(TapManager)
 
 	tm.numBridges = NumBridges
 	tm.TapCountsPerBridge = make([]int64, NumBridges)
 	tm.createdTaps = make(map[string]*NetworkInterface)
+
+	tm.hostIfaceName = hostIfaceName
+	if tm.hostIfaceName == "" {
+		hostIface, err := getHostIfaceName()
+		if err != nil {
+			return nil, err
+		} else {
+			tm.hostIfaceName = hostIface
+		}
+	}
 
 	log.Info("Registering bridges for tap manager")
 
@@ -72,7 +102,7 @@ func NewTapManager() *TapManager {
 		createBridge(brName, gatewayAddr)
 	}
 
-	return tm
+	return tm, nil
 }
 
 // Creates the bridge, add a gateway to it, and enables it
@@ -108,25 +138,6 @@ func createBridge(bridgeName, gatewayAddr string) {
 
 // setupForwardRules sets up forwarding rules to enable internet access inside the vm
 func setupForwardRules(tapName, hostIface string) error {
-	// Fetch host default interface if not specified
-	if hostIface == "" {
-		out, err := exec.Command(
-			"route",
-		).Output()
-		if err != nil {
-			log.Warnf("Failed to fetch host net interfaces %v\n%s\n", err, out)
-			return err
-		}
-		scanner := bufio.NewScanner(bytes.NewReader(out))
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.Contains(line, "default") {
-				hostIface = line[strings.LastIndex(line, " ")+1:]
-			}
-		}
-	}
-
-
 	conn := nftables.Conn{}
 
 	// 1. nft add table ip filter
@@ -214,7 +225,7 @@ func setupForwardRules(tapName, hostIface string) error {
 }
 
 // AddTap Creates a new tap and returns the corresponding network interface
-func (tm *TapManager) AddTap(tapName, hostIface string) (*NetworkInterface, error) {
+func (tm *TapManager) AddTap(tapName string) (*NetworkInterface, error) {
 	tm.Lock()
 
 	if ni, ok := tm.createdTaps[tapName]; ok {
@@ -233,7 +244,7 @@ func (tm *TapManager) AddTap(tapName, hostIface string) (*NetworkInterface, erro
 				tm.Lock()
 				tm.createdTaps[tapName] = ni
 				tm.Unlock()
-				err := setupForwardRules(tapName, hostIface)
+				err := setupForwardRules(tapName, tm.hostIfaceName)
 				if err != nil {
 					return nil, err
 				}
@@ -243,7 +254,7 @@ func (tm *TapManager) AddTap(tapName, hostIface string) (*NetworkInterface, erro
 		}
 	}
 	log.Error("No space for creating taps")
-	return nil, errors.New("No space for creating taps")
+	return nil, errors.New("no space for creating taps")
 }
 
 // Reconnects a single tap with the same network interface that it was

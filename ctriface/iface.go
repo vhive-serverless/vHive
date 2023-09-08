@@ -79,7 +79,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
 
-	vm, err := o.vmPool.Allocate(vmID, o.hostIface)
+	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
 		return nil, nil, err
@@ -504,7 +504,7 @@ func (o *Orchestrator) Offload(ctx context.Context, vmID string) error {
 		return err
 	}
 
-	if err := o.vmPool.RecreateTap(vmID, o.hostIface); err != nil {
+	if err := o.vmPool.RecreateTap(vmID); err != nil {
 		logger.Error("Failed to recreate tap upon offloading")
 		return err
 	}

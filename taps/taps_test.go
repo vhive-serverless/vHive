@@ -50,14 +50,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateCleanBridges(t *testing.T) {
-	tm := NewTapManager()
+	tm, _ := NewTapManager("")
 	tm.RemoveBridges()
 }
 
 func TestCreateRemoveTaps(t *testing.T) {
 	tapsNum := []int{100, 1100}
 
-	tm := NewTapManager()
+	tm, _ := NewTapManager("")
 	defer tm.RemoveBridges()
 
 	for _, n := range tapsNum {
@@ -66,7 +66,7 @@ func TestCreateRemoveTaps(t *testing.T) {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
-				_, _ = tm.AddTap(fmt.Sprintf("tap_%d", i), "")
+				_, _ = tm.AddTap(fmt.Sprintf("tap_%d", i))
 			}(i)
 		}
 		wg.Wait()
@@ -87,11 +87,11 @@ func TestCreateRemoveExtra(t *testing.T) {
 
 	tapsNum := 2001
 
-	tm := NewTapManager()
+	tm, _ := NewTapManager("")
 	defer tm.RemoveBridges()
 
 	for i := 0; i < tapsNum; i++ {
-		_, err := tm.AddTap(fmt.Sprintf("tap_%d", i), "")
+		_, err := tm.AddTap(fmt.Sprintf("tap_%d", i))
 		if i < tm.numBridges*TapsPerBridge {
 			require.NoError(t, err, "Failed to create tap")
 		} else {
