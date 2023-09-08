@@ -38,6 +38,7 @@ const (
 // TapManager A Tap Manager
 type TapManager struct {
 	sync.Mutex
+	hostIfaceName      string
 	numBridges         int
 	TapCountsPerBridge []int64
 	createdTaps        map[string]*NetworkInterface
