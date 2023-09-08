@@ -24,8 +24,11 @@ SUBDIRS:=ctriface taps misc profile
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
 EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go
-WITHUPF:=-upfTest
-WITHLAZY:=-lazyTest
+# User-level page faults are temporarily disabled (gh-807)
+# WITHUPF:=-upfTest
+# WITHLAZY:=-lazyTest
+WITHUPF:=
+WITHLAZY:=
 WITHSNAPSHOTS:=-snapshotsTest
 CTRDLOGDIR:=/tmp/ctrd-logs
 
