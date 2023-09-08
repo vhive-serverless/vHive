@@ -65,6 +65,11 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
+	if *isUPFEnabledTest {
+		log.Error("User-level page faults are temporarily disabled (gh-807)")
+		os.Exit(-1)
+	}
+
 	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
 	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
