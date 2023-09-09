@@ -132,8 +132,15 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 	var setupCmd string
 	switch runnerConf.Type {
 	case "cri":
+		log.Debugf("Adding redploy crontab task to %s@%s", deployerConf.HostUsername, host)
 		setupCmd = fmt.Sprintf("cd vhive && ./scripts/github_runner/setup_bare_metal_runner.sh %s %s %s", deployerConf.GhOrg,
 			deployerConf.GhPat, runnerConf.Sandbox)
+		var redeploySetupCmd string = fmt.Sprintf("echo '10 4 * * * root rm -rf ./runners/ && %s' >> etc/crontab", setupCmd)
+		out, err = client.Exec(redeploySetupCmd)
+		log.Debug(string(out))
+		if err != nil {
+			log.Fatalf("Failed to setup redeploy task on %s@%s: %s", deployerConf.HostUsername, host, err)
+		}
 	case "integ":
 		var restart string
 		if runnerConf.Restart {
