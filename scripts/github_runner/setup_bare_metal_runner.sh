@@ -36,6 +36,16 @@ GH_ORG=$1
 GH_PAT=$2
 SANDBOX=$3
 
+# clean the service file before proceeding
+pattern="/etc/systemd/system/actions.runner.vhive-serverless-vhive.*.service"
+if ls $pattern 1> /dev/null 2>&1; then
+  rm $pattern
+  echo "Deleted runner service file."
+else
+  echo "No service file, no need to clean"
+fi
+
+
 VHIVE_ROOT="$(git rev-parse --show-toplevel)"
 "$VHIVE_ROOT"/scripts/cloudlab/setup_node.sh "$SANDBOX"
 
