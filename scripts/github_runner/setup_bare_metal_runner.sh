@@ -37,6 +37,7 @@ GH_PAT=$2
 SANDBOX=$3
 
 VHIVE_ROOT="$(git rev-parse --show-toplevel)"
+rm /etc/systemd/system/actions.runner.vhive-serverless-vhive.*.service
 "$VHIVE_ROOT"/scripts/cloudlab/setup_node.sh "$SANDBOX"
 
 cd
