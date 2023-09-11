@@ -10,7 +10,7 @@ jobs:
     name: Spellcheck
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: rojopolis/spellcheck-github-actions@0.33.1
       name: Spellcheck
       with:
@@ -19,7 +19,7 @@ jobs:
     name: Commitlint
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v3
@@ -39,7 +39,7 @@ jobs:
     name: LinkCheck
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: gaurav-nelson/github-action-markdown-link-check@v1
         with:
           use-quiet-mode: 'yes'
