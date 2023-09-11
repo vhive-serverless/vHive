@@ -40,7 +40,7 @@ jobs:
         python-version: '3.x'
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Build setup scripts
       run: pushd scripts && go build -o setup_tool && popd
@@ -84,7 +84,7 @@ jobs:
         sudo apt install git -y
         
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         lfs: true
 
