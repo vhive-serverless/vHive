@@ -391,12 +391,12 @@ func (f *Function) RemoveInstanceAsync() {
 
 	logger.Debug("Removing instance (async)")
 
-	go func() {
-		err := orch.StopSingleVM(context.Background(), f.vmID)
+	go func(vmID string) {
+		err := orch.StopSingleVM(context.Background(), vmID)
 		if err != nil {
 			log.Warn(err)
 		}
-	}()
+	}(f.vmID)
 }
 
 // RemoveInstance Stops an instance (VM) of the function.
