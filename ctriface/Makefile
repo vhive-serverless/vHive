@@ -51,6 +51,15 @@ test-man:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_lazy_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_lazy_man_travis.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(WITHUPF) $(WITHLAZY)
 	./../scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_remote_snap_create_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_remote_snap_create_man_travis.err &
+	# Creates a remote snapshot.
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestRemoteSnapCreate
+	# Cleans up the node.
+	./../scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_remote_snap_load_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_remote_snap_load_man_travis.err &
+	# Loads the remote snapshot.
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestRemoteSnapLoad
+	./../scripts/clean_fcctr.sh
 
 test-skip:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_noupf_man_skip.out 2>$(CTRDLOGDIR)/ctriface_log_noupf_man_skip.err &
