@@ -38,6 +38,10 @@ import (
 	"github.com/vhive-serverless/vhive/snapshotting"
 )
 
+const (
+	remoteSnapshotsDir = "/tmp/vhive/remote-snapshots"
+)
+
 func TestSnapLoad(t *testing.T) {
 	// Need to clean up manually after this test because StopVM does not
 	// work for stopping machines which are loaded from snapshots yet
@@ -390,5 +394,103 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 		vmGroup.Wait()
 	}
 
+	orch.Cleanup()
+}
+
+func TestRemoteSnapCreate(t *testing.T) {
+	// Needs to be cleaned up manually.
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
+	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+
+	log.SetOutput(os.Stdout)
+
+	log.SetLevel(log.InfoLevel)
+
+	testTimeout := 120 * time.Second
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+	defer cancel()
+
+	vmID := "37"
+	revision := "myrev-37"
+
+	err := os.MkdirAll(remoteSnapshotsDir, 0755)
+	require.NoError(t, err, "Failed to create remote snapshots directory")
+
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
+
+	_, _, err = orch.StartVM(ctx, vmID, testImageName)
+	require.NoError(t, err, "Failed to start VM")
+
+	err = orch.PauseVM(ctx, vmID)
+	require.NoError(t, err, "Failed to pause VM")
+
+	snap := snapshotting.NewSnapshot(revision, remoteSnapshotsDir, testImageName)
+	_ = snap.Cleanup()
+	err = snap.CreateSnapDir()
+	require.NoError(t, err, "Failed to create remote snapshots directory")
+
+	err = orch.CreateSnapshot(ctx, vmID, snap)
+	require.NoError(t, err, "Failed to create snapshot of VM")
+
+	_, err = orch.ResumeVM(ctx, vmID)
+	require.NoError(t, err, "Failed to resume VM")
+
+	err = orch.StopSingleVM(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM")
+
+	orch.Cleanup()
+}
+
+func TestRemoteSnapLoad(t *testing.T) {
+	// Needs to be cleaned up manually.
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
+	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+
+	log.SetOutput(os.Stdout)
+
+	log.SetLevel(log.InfoLevel)
+
+	testTimeout := 120 * time.Second
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+	defer cancel()
+
+	vmID := "37"
+	revision := "myrev-37"
+
+	_, err := os.Stat(remoteSnapshotsDir)
+	require.NoError(t, err, "Failed to stat remote snapshots directory")
+
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
+	)
+
+	snap := snapshotting.NewSnapshot(revision, remoteSnapshotsDir, testImageName)
+
+	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
+	require.NoError(t, err, "Failed to load remote snapshot of VM")
+
+	_, err = orch.ResumeVM(ctx, vmID)
+	require.NoError(t, err, "Failed to resume VM")
+
+	err = orch.StopSingleVM(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM")
+
+	_ = snap.Cleanup()
 	orch.Cleanup()
 }
