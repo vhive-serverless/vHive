@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/vhive-serverless/vhive/ctriface"
 	"math/rand"
 	"net"
 	"os"
@@ -355,7 +356,10 @@ func (f *Function) AddInstance() *metrics.Metric {
 	defer cancel()
 
 	if f.isSnapshotReady {
-		metr = f.LoadInstance()
+		var resp *ctriface.StartVMResponse
+		
+		resp, metr = f.LoadInstance()
+		f.guestIP = resp.GuestIP
 	} else {
 		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
 		if err != nil {
@@ -481,7 +485,7 @@ func (f *Function) OffloadInstance() {
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
 // The tap, the shim and the vmID remain the same
-func (f *Function) LoadInstance() *metrics.Metric {
+func (f *Function) LoadInstance() (*ctriface.StartVMResponse, *metrics.Metric) {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Loading instance")
@@ -490,7 +494,7 @@ func (f *Function) LoadInstance() *metrics.Metric {
 	defer cancel()
 
 	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName)
-	_, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap)
+	resp, loadMetr, err := orch.LoadSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -504,7 +508,7 @@ func (f *Function) LoadInstance() *metrics.Metric {
 		loadMetr.MetricMap[k] = v
 	}
 
-	return loadMetr
+	return resp, loadMetr
 }
 
 // GetStatServed Returns the served counter value
