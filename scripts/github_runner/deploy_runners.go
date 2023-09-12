@@ -70,7 +70,7 @@ func main() {
 				}
 			  }
 			`)
-		logLvl = flag.String("loglvl", "info", "Debug level: 'info' or 'debug'")
+		logLvl = flag.String("loglvl", "debug", "Debug level: 'info' or 'debug'")
 	)
 	flag.Parse()
 	log.SetOutput(os.Stdout)
