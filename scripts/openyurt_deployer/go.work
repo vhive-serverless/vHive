@@ -1,0 +1,9 @@
+go 1.19
+
+use(
+.
+./configs
+./logs
+./node
+./template
+)
