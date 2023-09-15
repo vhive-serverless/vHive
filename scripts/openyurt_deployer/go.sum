@@ -13,6 +13,10 @@ github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/vhive-serverless/vHive/scripts/configs v0.0.0-20231018022901-6a0c478d2c9f h1:2Cyd5RJaZ0Pdyk7Az338/PKeofj7RLZjD5rSAO+wqvk=
+github.com/vhive-serverless/vHive/scripts/configs v0.0.0-20231018022901-6a0c478d2c9f/go.mod h1:nJSon4Eng7PdZ4HJX9dnZ7H4qxVm/r5zseFPfom7Jto=
+github.com/vhive-serverless/vHive/scripts/utils v0.0.0-20231018022901-6a0c478d2c9f h1:3KArl/h4PpkhAhlpPAMarh9hrj6AWYfnhkoXZCS2AWw=
+github.com/vhive-serverless/vHive/scripts/utils v0.0.0-20231018022901-6a0c478d2c9f/go.mod h1:xyjKlPn6JqSQtzKOCu8L4DW4rQcNmhxK9f97cOPo0Sg=
 golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b/go.mod h1:T9bdIzuCu7OtxOm1hfPfRQxPLYneinmdGuTeoZ9dtd4=
 golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a/go.mod h1:P+XmwS30IXTQdn5tA2iutPOUgjI07+tq3H3K9MVA1s8=
 golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 h1:kUhD7nTDoI3fVd9G4ORWrbV5NY0liEs/Jg2pv5f+bBA=

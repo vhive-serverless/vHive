@@ -31,6 +31,7 @@ import (
 	cluster "github.com/vhive-serverless/vHive/scripts/cluster"
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
 	gpu "github.com/vhive-serverless/vHive/scripts/gpu"
+	oy "github.com/vhive-serverless/vHive/scripts/openyurt_deployer"
 	setup "github.com/vhive-serverless/vHive/scripts/setup"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
@@ -93,6 +94,7 @@ func main() {
 		"create_docker_image",
 		"create_devmapper",
 		"clean_fcctr",
+		"setup_openyurt",
 	}
 
 	// Check vHive repo
@@ -227,6 +229,9 @@ func main() {
 	case "clean_fcctr":
 		utils.InfoPrintf("Clean fcctr\n")
 		err = setup.CleanFcctr()
+	case "setup_openyurt":
+		utils.InfoPrintf("Setup openyurt\n")
+		err = oy.SetupOpenyurt()
 	default:
 		utils.FatalPrintf("Invalid subcommand --> %s! Available subcommands list: \n", subCmd)
 		for _, subCmd := range availableCmds {
