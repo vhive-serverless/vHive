@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/sfreiberg/simplessh"
+	"github.com/vhive-serverless/vHive/scripts/utils"
 	"github.com/vhive-serverless/vhive/scripts/openyurt_deployer/configs"
-	"github.com/vhive-serverless/vhive/scripts/openyurt_deployer/logs"
 )
 
 type NodeConfig struct {
@@ -28,20 +28,20 @@ func (node *Node) ExecShellCmd(cmd string, pars ...any) (string, error) {
 	shellCmd := fmt.Sprintf(cmd, pars...)
 	out, err := node.Client.Exec(shellCmd)
 	if err != nil {
-		logs.WarnPrintf("node: [%s] failed to exec: \n%s\nerror:%s\n", node.Name, shellCmd, out)
+		utils.WarnPrintf("node: [%s] failed to exec: \n%s\nerror:%s\n", node.Name, shellCmd, out)
 	}
 	return strings.TrimSuffix(string(out), "\n"), err
 }
 
 func (node *Node) OnlyExecByMaster() {
 	if node.NodeRole != "master" {
-		logs.FatalPrintf("This function can only be executed by master node!\n")
+		utils.FatalPrintf("This function can only be executed by master node!\n")
 	}
 }
 
 func (node *Node) OnlyExecByWorker() {
 	if node.NodeRole == "master" {
-		logs.FatalPrintf("This function can only be executed by worker node!\n")
+		utils.FatalPrintf("This function can only be executed by worker node!\n")
 	}
 }
 
