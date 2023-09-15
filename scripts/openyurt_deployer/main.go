@@ -2,14 +2,16 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"os"
+	"strings"
+
+	"github.com/vhive-serverless/vHive/scripts/utils"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/scripts/openyurt_deployer/configs"
-	"github.com/vhive-serverless/vhive/scripts/openyurt_deployer/logs"
 	"github.com/vhive-serverless/vhive/scripts/openyurt_deployer/node"
 )
 
@@ -28,12 +30,19 @@ func initNodeList(nodesInfo NodesInfo) []node.Node {
 	cloudNames := nodesInfo.Workers.Cloud
 	edgeNames := nodesInfo.Workers.Edge
 	nodeList := []node.Node{}
+
+	// Load configs from configs/setup.json
+	configs.System.LoadConfig()
+	utils.SuccessPrintf(configs.System.GoDownloadUrlTemplate)
+	configs.Knative.LoadConfig()
+	configs.Kube.LoadConfig()
+
 	masterNode := node.Node{Name: masterName, Client: SetupSSHConn(masterName), NodeRole: "master", Configs: &node.NodeConfig{
 		System:  configs.System,
 		Kube:    configs.Kube,
 		Knative: configs.Knative,
 		Yurt:    configs.Yurt,
-		Demo:	 configs.Demo}}
+		Demo:    configs.Demo}}
 	nodeList = append(nodeList, masterNode)
 	for _, name := range cloudNames {
 		nodeList = append(nodeList, node.Node{Name: name, Client: SetupSSHConn(name), NodeRole: "cloud", Configs: &node.NodeConfig{
@@ -41,7 +50,7 @@ func initNodeList(nodesInfo NodesInfo) []node.Node {
 			Kube:    configs.Kube,
 			Knative: configs.Knative,
 			Yurt:    configs.Yurt,
-			Demo: 	 configs.Demo}})
+			Demo:    configs.Demo}})
 	}
 
 	for _, name := range edgeNames {
@@ -57,7 +66,7 @@ func initNodeList(nodesInfo NodesInfo) []node.Node {
 
 func main() {
 	if len(os.Args) != 2 {
-		logs.PrintGeneralUsage()
+		utils.InfoPrintf("Usage: %s  <operation: deploy | clean | demo-c | demo-e | demo-clear | demo-print> [Parameters...]\n", os.Args[0])
 		os.Exit(-1)
 	}
 
@@ -104,14 +113,14 @@ func main() {
 	case "demo-print":
 		printDemo(*deployerConf)
 	default:
-		logs.PrintGeneralUsage()
+		utils.InfoPrintf("Usage: %s  <operation: deploy | clean | demo-c | demo-e | demo-clear | demo-print> [Parameters...]\n", os.Args[0])
 		os.Exit(-1)
 	}
 
 }
 
 func cleanNodes(deployerConfFile string) {
-	logs.SuccessPrintf("Start cleaning on nodes")
+	utils.SuccessPrintf("Start cleaning on nodes")
 	log.Debugf("Opening openyurt deployer configuration JSON: %s", deployerConfFile)
 	deployerConfJSON, err := os.ReadFile(deployerConfFile)
 	if err != nil {
@@ -131,25 +140,25 @@ func cleanNodes(deployerConfFile string) {
 
 	for _, node := range nodeList {
 		node.SystemInit()
-		logs.SuccessPrintf("Init system environment on node:%s success!\n", node.Name)
+		utils.SuccessPrintf("Init system environment on node:%s success!\n", node.Name)
 	}
 
 	for _, worker := range workerNodes {
 		// Deactivate node autonomous mode FOR WOKRER NODES
-		logs.WaitPrintf("Deactivating the worker node %s autonomous mode", worker.Configs.System.NodeHostName)
+		utils.WaitPrintf("Deactivating the worker node %s autonomous mode", worker.Configs.System.NodeHostName)
 		_, err = masterNode.ExecShellCmd("kubectl annotate node %s node.beta.openyurt.io/autonomy-", worker.Configs.System.NodeHostName)
-		logs.CheckErrorWithTagAndMsg(err, "Failed to deactivate the node autonomous mode!\n")
+		utils.CheckErrorWithTagAndMsg(err, "Failed to deactivate the node autonomous mode!\n")
 
 		worker.YurtWorkerClean()
 	}
 
 	_, err = masterNode.ExecShellCmd("helm uninstall yurt-app-manager -n kube-system")
-	logs.CheckErrorWithTagAndMsg(err, "Failed to helm uninstall yurt app manager!\n")
-	logs.SuccessPrintf("Helm uninstall!\n")
+	utils.CheckErrorWithTagAndMsg(err, "Failed to helm uninstall yurt app manager!\n")
+	utils.SuccessPrintf("Helm uninstall!\n")
 
 	_, err = masterNode.ExecShellCmd("helm uninstall openyurt -n kube-system")
-	logs.CheckErrorWithTagAndMsg(err, "Failed to helm uninstall openyurt!\n")
-	logs.SuccessPrintf("Helm uninstall!\n")
+	utils.CheckErrorWithTagAndMsg(err, "Failed to helm uninstall openyurt!\n")
+	utils.SuccessPrintf("Helm uninstall!\n")
 
 	for _, node := range nodeList {
 		node.KubeClean()
@@ -178,57 +187,69 @@ func deployNodes(deployerConfFile string) {
 	// init system, all nodes are the same
 	for _, node := range nodeList {
 		node.SystemInit()
-		logs.SuccessPrintf("Init system environment on node:%s success!\n", node.Name)
+		utils.SuccessPrintf("Init system environment on node:%s success!\n", node.Name)
 	}
 
 	// init kube cluster
-	logs.InfoPrintf("Start to init kube cluster!\n")
+	utils.InfoPrintf("Start to init kube cluster!\n")
 	addr, port, token, hash := masterNode.KubeMasterInit()
-	logs.SuccessPrintf("Master init success, join the cluster with following command:\n sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s\n",
+	utils.SuccessPrintf("Master init success, join the cluster with following command:\n sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s\n",
 		addr, port, token, hash)
 	for _, worker := range workerNodes {
 		worker.KubeWorkerJoin(addr, port, token, hash)
-		logs.InfoPrintf("worker %s joined cluster!\n", worker.Name)
+		utils.InfoPrintf("worker %s joined cluster!\n", worker.Name)
 	}
 	nodesName := masterNode.GetAllNodes()
-	logs.InfoPrintf("All nodes within the cluster: [")
+	utils.InfoPrintf("All nodes within the cluster: [")
 	for _, name := range nodesName {
-		fmt.Printf(name)
+		utils.InfoPrintf(name)
 	}
-	fmt.Printf("]\n")
+	utils.InfoPrintf("]\n")
 
-	// init yurt cluster
-	logs.SuccessPrintf("Start to init yurt cluster!\n")
-	masterNode.YurtMasterInit()
-	for _, worker := range workerNodes {
-		worker.YurtWorkerJoin(addr, port, token)
-		logs.InfoPrintf("worker %s joined yurt cluster!\n", worker.Configs.System.NodeHostName)
+	if promptUser("Continue to init yurt cluster? (yes/no)") {
+		// init yurt cluster
+		utils.SuccessPrintf("Start to init yurt cluster!\n")
+		masterNode.YurtMasterInit()
+		for _, worker := range workerNodes {
+			// worker.YurtWorkerJoin(addr, port, token)
+			utils.InfoPrintf("worker %s joined yurt cluster!\n", worker.Configs.System.NodeHostName)
+		}
+		utils.SuccessPrintf("All nodes joined yurt cluster, start to expand\n")
+		for _, worker := range workerNodes {
+			masterNode.YurtMasterExpand(&worker)
+			utils.InfoPrintf("Master has expanded to worker:%s\n", worker.Configs.System.NodeHostName)
+		}
+		utils.SuccessPrintf("Master has expaned to all nodes!\n")
+	} else {
+		return
 	}
-	logs.SuccessPrintf("All nodes joined yurt cluster, start to expand\n")
-	for _, worker := range workerNodes {
-		masterNode.YurtMasterExpand(&worker)
-		logs.InfoPrintf("Master has expanded to worker:%s\n", worker.Configs.System.NodeHostName)
+
+	if promptUser("Continue to init knative? (yes/no)") {
+		// init knative
+		utils.SuccessPrintf("Start to init knative\n")
+		masterNode.InstallKnativeServing()
+		masterNode.InstallKnativeEventing()
+		utils.SuccessPrintf("Knative has been installed!\n")
+	} else {
+		return
 	}
-	logs.SuccessPrintf("Master has expaned to all nodes!\n")
 
-	// // init knative
-	logs.SuccessPrintf("Start to init knative\n")
-	masterNode.InstallKnativeServing()
-	masterNode.InstallKnativeEventing()
-	logs.SuccessPrintf("Knative has been installed!\n")
-
-	// init demo environment
-	masterNode.BuildDemo(workerNodes)
-
-	logs.SuccessPrintf(">>>>>>>>>>>>>>>>OpenYurt Cluster Deployment Finished!<<<<<<<<<<<<<<<\n")
-
+	if promptUser("Continue to init demo? (yes/no)") {
+		// init demo environment
+		masterNode.BuildDemo(workerNodes)
+	} else {
+		return
+	}
+	utils.SuccessPrintf(">>>>>>>>>>>>>>>>OpenYurt Cluster Deployment Finished!<<<<<<<<<<<<<<<\n")
 
 }
 
-func demo(deployerConfFile string, isCloud bool){
+func demo(deployerConfFile string, isCloud bool) {
 	demoEnv := "Cloud"
-	if !isCloud { demoEnv = "Edge" }	
-	logs.SuccessPrintf(">>>>>>>>>>>>>>>>Entering openyurt demo for [%s Node Pool]<<<<<<<<<<<<<<<\n", demoEnv)
+	if !isCloud {
+		demoEnv = "Edge"
+	}
+	utils.SuccessPrintf(">>>>>>>>>>>>>>>>Entering openyurt demo for [%s Node Pool]<<<<<<<<<<<<<<<\n", demoEnv)
 	deployerConfJSON, err := os.ReadFile(deployerConfFile)
 	if err != nil {
 		log.Fatalf("Failed to open configuration file :%s", err)
@@ -244,13 +265,13 @@ func demo(deployerConfFile string, isCloud bool){
 	masterNode := nodeList[0]
 	workerNodes := nodeList[1:]
 	// run demo, should only be executed after deployment
-	logs.SuccessPrintf("Start to init demo\n")
+	utils.SuccessPrintf("Start to init demo\n")
 	masterNode.Demo(isCloud)
-	logs.SuccessPrintf("Demo finished!\n")
+	utils.SuccessPrintf("Demo finished!\n")
 	masterNode.PrintDemoInfo(workerNodes, isCloud)
 }
 
-func printDemo(deployerConfFile string){
+func printDemo(deployerConfFile string) {
 
 	deployerConfJSON, err := os.ReadFile(deployerConfFile)
 	if err != nil {
@@ -270,10 +291,9 @@ func printDemo(deployerConfFile string){
 	masterNode.PrintDemoInfo(workerNodes, false)
 }
 
-
 func delDemo(deployerConfFile string) {
 
-	logs.SuccessPrintf("Clean the demo files")
+	utils.SuccessPrintf("Clean the demo files")
 
 	deployerConfJSON, err := os.ReadFile(deployerConfFile)
 	if err != nil {
@@ -289,6 +309,13 @@ func delDemo(deployerConfFile string) {
 	nodeList := initNodeList(nodesInfo)
 	masterNode := nodeList[0]
 	masterNode.DeleteDemo(nodeList)
-	logs.SuccessPrintf("Delete the demo success!\n")
+	utils.SuccessPrintf("Delete the demo success!\n")
 }
 
+func promptUser(prompt string) bool {
+	utils.InfoPrintf("%s\n", prompt)
+	reader := bufio.NewReader(os.Stdin)
+	userInput, _ := reader.ReadString('\n')
+	userInput = strings.TrimSpace(userInput)
+	return strings.ToLower(userInput) == "yes" || strings.ToLower(userInput) == "y"
+}

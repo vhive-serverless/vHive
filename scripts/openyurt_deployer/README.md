@@ -103,6 +103,7 @@ Or delete the services deployed on nodepool by:
 ./openyurt_deployer demo-clear
 ```
 
+The demo code will also show information about node pool after deployment.
 
 ### 4.1 Invoke the Services (Optional)
 You can try to invoke the services created by `demo-c` or `demo-e` on master node.
