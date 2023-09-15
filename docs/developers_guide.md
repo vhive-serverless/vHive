@@ -194,7 +194,7 @@ of performance analysis:
 
 * [Distributed setup.](./quickstart_guide.md)
 Allows analysis of the end-to-end performance based on the statistics provided by
-the [invoker client](../examples/README.md).
+the invoker client.
 
 * [Single-node setup.](../bench_test.go)
 A test that is integrated with vHive-CRI orchestrator via a programmatic interface
