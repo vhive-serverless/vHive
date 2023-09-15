@@ -1,0 +1,11 @@
+{
+    "master": "user@master",
+    "workers": {
+        "cloud": [
+            "user@cloud-0"
+        ],
+        "edge": [
+            "user@edge-0"
+        ]
+    }
+}
