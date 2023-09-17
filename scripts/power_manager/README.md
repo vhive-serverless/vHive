@@ -32,5 +32,9 @@
 Execute the following below **as a non-root user with sudo rights** using **bash**:
 1. Run the node setup script:
     ```bash
-    ./scripts/power_manager/setup_poer_manager.sh;
+    ./scripts/power_manager/setup_power_manager.sh;
     
+2. Clean Up
+   ```bash
+   ./scripts/github_runner/clean_cri_runner.sh
+   ```

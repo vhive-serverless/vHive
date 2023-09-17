@@ -10,5 +10,3 @@ spec:
   # Add wanted PowerProfiles here; valid entries are as follows: performance, balance-performance, balance-power
   powerProfiles:
     - "performance"
-    - "balance-power"
-    - "balance-performance"
