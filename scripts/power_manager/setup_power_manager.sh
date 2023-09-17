@@ -22,37 +22,42 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
 # Install K8 Power Manager
 git clone https://github.com/intel/kubernetes-power-manager $HOME/kubernetes-power-manager
-cd $HOME/kubernetes-power-manager
 
 # Set up the necessary Namespace, Service Account, and RBAC rules for the Kubernetes Power Manager
-kubectl apply -f config/rbac/namespace.yaml
-kubectl apply -f config/rbac/rbac.yaml
+kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/namespace.yaml
+kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/rbac.yaml
 
-# Generate the CRD templates, create the Custom Resource Definitions, and install the CRDs
+# Install go1.20
+sudo rm -rf /usr/local/go
+sudo apt update
+wget https://go.dev/dl/go1.20.2.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.20.2.linux-amd64.tar.gz
+export GOROOT=/usr/local/go
+export GOPATH=$HOME
+export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+
+# Install docker
+sudo apt install docker.io
+
+# Generate the CRD templates, create the Custom Resource Definitions, and install the CRDs and Built Docker images locally
+cd $HOME/kubernetes-power-manager
 make
-
-# Built Docker images locally
-make images
+sudo docker pull intel/power-operator
+sudo docker pull intel/power-node-agent:latest
 
 # Apply Power Manager Controller
-kubectl apply -f config/manager/manager.yaml
+kubectl apply -f $HOME/kubernetes-power-manager/config/manager/manager.yaml
 
 # Apply PowerConfig -> create the power-node-agent DaemonSet that manages the Power Node Agent pods.
-kubectl apply -f ${PWD}/powerconfig.yaml
+kubectl apply -f $HOME/vhive/scripts/power_manager/powerconfig.yaml
 
 # Apply Profile. U can modify the spec in the shared-profile.yaml file
-kubectl apply -f ${PWD}/shared-profile.yaml
+kubectl apply -f $HOME/vhive/scripts/power_manager/shared-profile.yaml
 
 # Apply the shared PowerWorkload. All CPUs (except reservedCPUs specified in this yaml file) will be tuned ti the specified frequency in shared-profile.yaml
-kubectl apply -f ${PWD}/shared-workload.yaml
+kubectl apply -f $HOME/vhive/scripts/power_manager/shared-workload.yaml
 
 kubectl get powerprofiles -n intel-power
 kubectl get powerworkloads -n intel-power
-
-
-
-
