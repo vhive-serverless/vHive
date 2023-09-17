@@ -6,6 +6,7 @@ use (
 	./cluster
 	./configs
 	./gpu
+	./power_manager
 	./setup
 	./stargz
 	./utils

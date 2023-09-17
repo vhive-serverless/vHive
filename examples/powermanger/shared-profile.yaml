@@ -1,0 +1,26 @@
+apiVersion: power.intel.com/v1
+kind: PowerProfile
+metadata:
+  name: shared-node1
+  namespace: intel-power
+spec:
+  name: "shared-node1"
+  max: 1600
+  min: 1300
+  shared: true 
+  governor: "powersave"
+
+
+kubectl apply -f - <<EOF
+apiVersion: power.intel.com/v1
+kind: PowerProfile
+metadata:
+  name: shared-node2
+  namespace: intel-power
+spec:
+  name: "shared-node2"
+  max: 2500
+  min: 2500
+  shared: true 
+  governor: "powersave"
+EOF

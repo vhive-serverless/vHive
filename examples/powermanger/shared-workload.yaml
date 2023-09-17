@@ -1,0 +1,42 @@
+apiVersion: "power.intel.com/v1"
+kind: PowerWorkload
+metadata:
+  name: shared-node1-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload
+  namespace: intel-power
+spec:
+  name: "shared-node1-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload"
+  allCores: true
+  powerNodeSelector:
+    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
+  powerProfile: "shared-node1"
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: "power.intel.com/v1"
+kind: PowerWorkload
+metadata:
+  name: shared-node-2-node-2.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload
+  namespace: intel-power
+spec:
+  name: "shared-node2-node-2.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload"
+  allCores: true
+  powerNodeSelector:
+    kubernetes.io/hostname: node-2.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
+  powerProfile: "shared-node2"
+
+
+kubectl apply -f - <<EOF
+apiVersion: power.intel.com/v1
+kind: PowerNode
+metadata:
+  name: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
+  namespace: intel-power
+spec:
+  nodeName: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
+  powerProfiles:
+    shared-node1: 1500000 || 1500000 ||
+  powerWorkloads:
+    shared-node1: shared-node1 ||
+  sharedPool: shared-node1 || 1500000 || 1500000 || 2-19
+  unaffectedCores: 0-1
+EOF
