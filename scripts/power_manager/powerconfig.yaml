@@ -5,7 +5,7 @@ metadata:
 spec:
   # Add labels here for the Nodes you want the PowerNodeAgent to be applied to
   powerNodeSelector:
-    "kubernetes.io/arch": "amd64"
+    kubernetes.io/arch: amd64
   # Add wanted PowerProfiles here; valid entries are as follows: performance, balance-performance, balance-power
   powerProfiles:
     - "performance"
