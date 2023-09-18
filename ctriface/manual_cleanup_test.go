@@ -30,11 +30,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vhive-serverless/vhive/snapshotting"
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"github.com/vhive-serverless/vhive/snapshotting"
 )
 
 func TestSnapLoad(t *testing.T) {

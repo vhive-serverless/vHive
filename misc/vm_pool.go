@@ -55,7 +55,7 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	vm := NewVM(vmID)
 
 	var err error
-	vm.Ni, err = p.tapManager.AddTap(vmID+"_tap")
+	vm.Ni, err = p.tapManager.AddTap(vmID + "_tap")
 	if err != nil {
 		logger.Warn("Ni allocation failed")
 		return nil, err
@@ -105,7 +105,7 @@ func (p *VMPool) RecreateTap(vmID string) error {
 		return err
 	}
 
-	_, err := p.tapManager.AddTap(vmID+"_tap")
+	_, err := p.tapManager.AddTap(vmID + "_tap")
 	if err != nil {
 		logger.Error("Failed to add tap")
 		return err

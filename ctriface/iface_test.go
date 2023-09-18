@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+// # Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,11 +30,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vhive-serverless/vhive/snapshotting"
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"github.com/vhive-serverless/vhive/snapshotting"
 )
 
 // TODO: Make it impossible to use lazy mode without UPF
@@ -42,7 +42,7 @@ var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
 	//nolint:deadcode,unused,varcheck
-	isWithCache  = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 )
 
 func TestPauseSnapResume(t *testing.T) {
