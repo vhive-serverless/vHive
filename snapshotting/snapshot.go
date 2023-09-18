@@ -25,10 +25,11 @@ package snapshotting
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // Snapshot identified by revision
@@ -119,7 +120,7 @@ func (snp *Snapshot) LoadSnapInfo(infoPath string) error {
 		return errors.Wrapf(err, "failed to decode snapinfo")
 	}
 
-	return  nil
+	return nil
 }
 
 func (snp *Snapshot) Cleanup() error {

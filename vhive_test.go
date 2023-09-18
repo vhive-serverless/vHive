@@ -31,9 +31,9 @@ import (
 	"testing"
 
 	ctrdlog "github.com/containerd/containerd/log"
-	ctriface "github.com/vhive-serverless/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	ctriface "github.com/vhive-serverless/vhive/ctriface"
 )
 
 const (

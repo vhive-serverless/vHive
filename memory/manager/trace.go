@@ -91,6 +91,7 @@ func (t *Trace) WriteTrace() {
 }
 
 // readTrace Reads all the records from a CSV file
+//
 //nolint:deadcode,unused
 func (t *Trace) readTrace() {
 	f, err := os.Open(t.traceFileName)
@@ -111,6 +112,7 @@ func (t *Trace) readTrace() {
 }
 
 // readRecord Parses a record from a line
+//
 //nolint:deadcode,unused
 func readRecord(line []string) Record {
 	offset, err := strconv.ParseUint(line[0], 16, 64)

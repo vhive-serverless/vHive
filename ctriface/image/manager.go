@@ -25,14 +25,15 @@ package image
 
 import (
 	"context"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/remotes/docker"
-	log "github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/remotes/docker"
+	log "github.com/sirupsen/logrus"
 )
 
 // ImageState is used for synchronization to avoid pulling the same image multiple times concurrently.
@@ -51,7 +52,7 @@ func NewImageState() *ImageState {
 // ImageManager manages the images that have been pulled to the node.
 type ImageManager struct {
 	sync.Mutex
-	snapshotter  string // image snapshotter
+	snapshotter  string                      // image snapshotter
 	cachedImages map[string]containerd.Image // Cached container images
 	imageStates  map[string]*ImageState
 	client       *containerd.Client
@@ -146,7 +147,7 @@ func getImageURL(image string) string {
 
 // Checks whether a URL has a .local domain
 func isLocalDomain(s string) (bool, error) {
-	if ! strings.Contains(s, "://") {
+	if !strings.Contains(s, "://") {
 		s = "dummy://" + s
 	}
 

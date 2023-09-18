@@ -25,8 +25,8 @@ package firecracker
 import (
 	"sync"
 
-	"github.com/vhive-serverless/vhive/ctriface"
 	log "github.com/sirupsen/logrus"
+	"github.com/vhive-serverless/vhive/ctriface"
 )
 
 type funcInstance struct {

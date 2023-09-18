@@ -37,11 +37,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vhive-serverless/vhive/metrics"
-	"github.com/vhive-serverless/vhive/profile"
 	"github.com/montanaflynn/stats"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"github.com/vhive-serverless/vhive/metrics"
+	"github.com/vhive-serverless/vhive/profile"
 )
 
 var (
@@ -411,7 +411,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 	return pmuMetric.MetricMap
 }
 
-// loadVMs load requests to VMs every second and records completed requests and exection time
+// loadVMs load requests to VMs every second and records completed requests and execution time
 func loadVMs(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageName string,
 	isSyncOffload bool, isProfile *int32, totalTime, realRequests *int64) {
 	defer vmGroup.Done()
@@ -574,7 +574,7 @@ func dumpMetrics(t *testing.T, metrics []map[string]float64, outfile string) {
 	writer := csv.NewWriter(f)
 
 	err = writer.Write(headers)
-	require.NoError(t, err, "Failed writting file")
+	require.NoError(t, err, "Failed writing file")
 	writer.Flush()
 
 	for _, metric := range metrics {
@@ -589,7 +589,7 @@ func dumpMetrics(t *testing.T, metrics []map[string]float64, outfile string) {
 			}
 		}
 		err = writer.Write(data)
-		require.NoError(t, err, "Failed writting file")
+		require.NoError(t, err, "Failed writing file")
 		writer.Flush()
 	}
 }
