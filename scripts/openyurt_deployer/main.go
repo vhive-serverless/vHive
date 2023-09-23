@@ -115,16 +115,35 @@ func cleanNodes(deployerConfFile string) {
 	}
 
 	nodeList := initNodeList(nodesInfo)
+	masterNode := nodeList[0]
 	workerNodes := nodeList[1:]
 
-	for _,worker := range workerNodes {
+	for _, node := range nodeList {
+		node.SystemInit()
+		logs.SuccessPrintf("Init system environment on node:%s success!\n", node.Name)
+	}
+
+	for _, worker := range workerNodes {
+		// Deactivate node autonomous mode FOR WOKRER NODES
+		logs.WaitPrintf("Deactivating the worker node %s autonomous mode", worker.Configs.System.NodeHostName)
+		_, err = masterNode.ExecShellCmd("kubectl annotate node %s node.beta.openyurt.io/autonomy-", worker.Configs.System.NodeHostName)
+		logs.CheckErrorWithTagAndMsg(err, "Failed to deactivate the node autonomous mode!\n")
+
 		worker.YurtWorkerClean()
 	}
+
+	_, err = masterNode.ExecShellCmd("helm uninstall yurt-app-manager -n kube-system")
+	logs.CheckErrorWithTagAndMsg(err, "Failed to helm uninstall yurt app manager!\n")
+	logs.SuccessPrintf("Helm uninstall!\n")
+
+	_, err = masterNode.ExecShellCmd("helm uninstall openyurt -n kube-system")
+	logs.CheckErrorWithTagAndMsg(err, "Failed to helm uninstall openyurt!\n")
+	logs.SuccessPrintf("Helm uninstall!\n")
 
 	for _, node := range nodeList {
 		node.KubeClean()
 	}
-	
+
 }
 
 func deployNodes(deployerConfFile string) {
@@ -161,7 +180,7 @@ func deployNodes(deployerConfFile string) {
 		logs.InfoPrintf("worker %s joined cluster!\n", worker.Name)
 	}
 	nodesName := masterNode.GetAllNodes()
-	logs.InfoPrintf("All nodes withing the cluster: [")
+	logs.InfoPrintf("All nodes within the cluster: [")
 	for _, name := range nodesName {
 		fmt.Printf(name)
 	}
@@ -188,5 +207,10 @@ func deployNodes(deployerConfFile string) {
 	logs.SuccessPrintf("Knative has been installed!\n")
 
 	logs.SuccessPrintf(">>>>>>>>>>>>>>>>OpenYurt Cluster Deployment Finished!<<<<<<<<<<<<<<<\n")
+
+	// // init demo
+	logs.SuccessPrintf("Start to init demo\n")
+	masterNode.BuildDemo(workerNodes)
+	logs.SuccessPrintf("Demo has been installed!\n")
 
 }
