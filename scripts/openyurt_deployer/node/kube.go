@@ -8,7 +8,7 @@ import (
 )
 
 // Initialize the master node of Kubernetes cluster
-func (node *Node) KubeMasterInit() (string,string,string,string) {
+func (node *Node) KubeMasterInit() (string, string, string, string) {
 
 	// Initialize
 	var err error
@@ -62,26 +62,33 @@ func (node *Node) KubeMasterInit() (string,string,string,string) {
 	shellOut, err = node.ExecShellCmd("sed -n '/.*sha256:.*/p' < %s/masterNodeInfo | sed -n 's/.*\\(sha256:\\S*\\).*/\\1/p'", node.Configs.System.TmpDir)
 	logs.CheckErrorWithTagAndMsg(err, "Failed to extract master node information from logs!\n")
 	node.Configs.Kube.ApiserverTokenHash = shellOut
-	
+
 	return node.Configs.Kube.ApiserverAdvertiseAddress,
-		   node.Configs.Kube.ApiserverPort,
-		   node.Configs.Kube.ApiserverToken,
-		   node.Configs.Kube.ApiserverTokenHash
+		node.Configs.Kube.ApiserverPort,
+		node.Configs.Kube.ApiserverToken,
+		node.Configs.Kube.ApiserverTokenHash
 
 }
 
-func (node *Node) KubeClean(){
+func (node *Node) KubeClean() {
 	logs.InfoPrintf("Cleaning Kube in node: %s\n", node.Name)
 	var err error
-	if node.NodeRole == "master"{
+	if node.NodeRole == "master" {
+		// kubectl cordon {workerNodeName}
+		// kubectl drain {NodeName} --delete-local-data --force --ignore-daemonsets
+		// kubectl delete node {NodeName}
+
 		logs.WaitPrintf("Reseting kube cluster and rm .kube file")
-		_, err = node.ExecShellCmd("sudo kubeadm reset -f && rm -rf $HOME/.kube")
+		// TODO: delete master last, need to check defer can work or not
+		defer node.ExecShellCmd("sudo kubeadm reset -f && rm -rf $HOME/.kube  && rm -rf /etc/cni/net.d")
+		// The reset process does not clean CNI configuration. To do so, you must remove /etc/cni/net.d
 	} else {
+
 		logs.WaitPrintf("Reseting kube cluster")
-		_, err = node.ExecShellCmd("sudo kubeadm reset -f")
+		_, err = node.ExecShellCmd("sudo kubeadm reset -f && rm -rf /etc/cni/net.d")
 	}
 	logs.CheckErrorWithTagAndMsg(err, "Failed to clean kube cluster!\n")
-		
+
 }
 
 // Join worker node to Kubernetes cluster
@@ -102,7 +109,7 @@ func (node *Node) check_kube_environment() {
 
 func (node *Node) GetAllNodes() []string {
 	logs.WaitPrintf("Get all nodes...")
-	if node.NodeRole != "master"{
+	if node.NodeRole != "master" {
 		logs.ErrorPrintf("GetAllNodes can only be executed on master node!\n")
 		return []string{}
 	}
@@ -111,4 +118,3 @@ func (node *Node) GetAllNodes() []string {
 	nodeNames := strings.Split(out, "\n")
 	return nodeNames
 }
-
