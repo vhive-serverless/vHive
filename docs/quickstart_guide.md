@@ -320,13 +320,17 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
 **On the master node**, execute the following instructions below using **bash**:
 
 1. Clone vSwarm repo:
+
     ```bash
-    git clone --depth=1 https://github.com/vhive-serverless/vSwarm ../vswarm
+    git clone --depth=1 --branch=v1.0 https://github.com/vhive-serverless/vSwarm ../vswarm
+    cd ../vswarm
     ```
-2. Optionally, configure the types and the number of functions to deploy in `../vswarm/tools/deployer/functions.json`.
+
+    **Note:** all the following commands in this section should be executed from the `vswarm` directory. To return to the `vhive` directory, run `cd -`.
+2. Optionally, configure the types and the number of functions to deploy in `tools/deployer/functions.json`.
 3. Run the deployer client:
     ```bash
-    source /etc/profile && pushd ../vswarm/tools/deployer && go build && popd && ../vswarm/tools/deployer/deployer
+    source /etc/profile && pushd ./tools/deployer && go build && popd && ./tools/deployer/deployer
     ```
     > **BEWARE:**
     >
@@ -345,7 +349,7 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
 
 1. Run the invoker client:
     ```bash
-    pushd ../vswarm/tools/invoker && go build && popd && ../vswarm/tools/invoker/invoker
+    pushd ./tools/invoker && go build && popd && ./tools/invoker/invoker
     ```
 
     > **Note:**
