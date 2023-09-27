@@ -50,39 +50,33 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func testSnapshotManager(t *testing.T, mgr *snapshotting.SnapshotManager, vmId, imageName string) {
+func testSnapshotManager(t *testing.T, mgr *snapshotting.SnapshotManager, revision, imageName string) {
 	// Create snapshot
-	snap, err := mgr.InitSnapshot(vmId, imageName)
-	require.NoError(t, err, fmt.Sprintf("Failed to create snapshot for %s", vmId))
-	_, err = mgr.InitSnapshot(vmId, imageName)
-	require.Error(t, err, fmt.Sprintf("Init should fail when a snapshot has already been created for %s", vmId))
+	snap, err := mgr.InitSnapshot(revision, imageName)
+	require.NoError(t, err, fmt.Sprintf("Failed to create snapshot for %s", revision))
+	_, err = mgr.InitSnapshot(revision, imageName)
+	require.Error(t, err, fmt.Sprintf("Init should fail when a snapshot has already been created for %s", revision))
 
 	err = mgr.CommitSnapshot(snap.GetId())
-	require.NoError(t, err, fmt.Sprintf("Failed to commit snapshot for %s", vmId))
+	require.NoError(t, err, fmt.Sprintf("Failed to commit snapshot for %s", revision))
 	err = mgr.CommitSnapshot(snap.GetId())
-	require.Error(t, err, fmt.Sprintf("Commit should fail when no snapshots are created for %s", vmId))
+	require.Error(t, err, fmt.Sprintf("Commit should fail when no snapshots are created for %s", revision))
 
 	// Use snapshot
-	snp, err := mgr.AcquireSnapshot(imageName)
+	_, err = mgr.AcquireSnapshot(snap.GetId())
 	require.NoError(t, err, fmt.Sprintf("Failed to acquire snapshot for %s", imageName))
-	_, err = mgr.AcquireSnapshot(imageName)
+	_, err = mgr.AcquireSnapshot("non-existing-revision")
 	require.Error(t, err, fmt.Sprintf("Acquire should fail when no snapshots are available for %s", imageName))
-
-	// Release snapshot
-	err = mgr.ReleaseSnapshot(snp.GetId())
-	require.NoError(t, err, fmt.Sprintf("Failed to release snapshot for %s", imageName))
-	err = mgr.ReleaseSnapshot(snp.GetId())
-	require.Error(t, err, fmt.Sprintf("Release should fail when there are no active snapshots for %s", vmId))
 }
 
 func TestSnapshotManagerSingle(t *testing.T) {
 	// Create snapshot manager
 	mgr := snapshotting.NewSnapshotManager(snapshotsDir)
 
-	vmId := "uvm1" // Snap id = vmId
+	revision := "myrevision-1" // Snap id = revision
 	imageName := "testImage"
 
-	testSnapshotManager(t, mgr, vmId, imageName)
+	testSnapshotManager(t, mgr, revision, imageName)
 }
 
 func TestSnapshotManagerConcurrent(t *testing.T) {
@@ -94,12 +88,12 @@ func TestSnapshotManagerConcurrent(t *testing.T) {
 	wg.Add(concurrency)
 
 	for i := 0; i < concurrency; i++ {
-		vmId := fmt.Sprintf("uvm%d", i)
+		revision := fmt.Sprintf("myrev-%d", i)
 		imageName := fmt.Sprintf("testImage-%d", i)
 		go func(vmId, imageName string) {
 			defer wg.Done()
 			testSnapshotManager(t, mgr, vmId, imageName)
-		}(vmId, imageName)
+		}(revision, imageName)
 	}
 	wg.Wait()
 }

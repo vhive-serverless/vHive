@@ -2,7 +2,7 @@
 
 # MIT License
 #
-# Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+# Copyright (c) 2023 Georgiy Lebedev, Dmitrii Ustiugov, Plamen Petrov and vHive team
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@ sudo apt-get -y install \
     software-properties-common \
     iproute2 \
     nftables \
-    git-lfs >> /dev/null
+    rsync >> /dev/null
 
 # stack size, # of open files, # of pids
 sudo sh -c "echo \"* soft nofile 1000000\" >> /etc/security/limits.conf"

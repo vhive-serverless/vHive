@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Dmitrii Ustiugov, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -55,11 +55,12 @@ var isTestMode bool // set with a call to NewFuncPool
 // FuncPool Pool of functions
 type FuncPool struct {
 	sync.Mutex
-	funcMap        map[string]*Function
-	saveMemoryMode bool
-	servedTh       uint64
-	pinnedFuncNum  int
-	stats          *Stats
+	funcMap         map[string]*Function
+	saveMemoryMode  bool
+	servedTh        uint64
+	pinnedFuncNum   int
+	stats           *Stats
+	snapshotManager *snapshotting.SnapshotManager
 }
 
 // NewFuncPool Initializes a pool of functions. Functions can only be added
@@ -71,6 +72,7 @@ func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int, testMo
 	p.servedTh = servedTh
 	p.pinnedFuncNum = pinnedFuncNum
 	p.stats = NewStats()
+	p.snapshotManager = snapshotting.NewSnapshotManager("/fccd/snapshots")
 
 	if !testModeOn {
 		heartbeat := time.NewTicker(60 * time.Second)
@@ -106,7 +108,7 @@ func (p *FuncPool) getFunction(fID, imageName string) *Function {
 		}
 
 		logger.Debugf("Created function, pinned=%t, shut down after %d requests", isToPin, p.servedTh)
-		p.funcMap[fID] = NewFunction(fID, imageName, p.stats, p.servedTh, isToPin)
+		p.funcMap[fID] = NewFunction(fID, imageName, p.stats, p.servedTh, isToPin, p.snapshotManager)
 
 		if err := p.stats.CreateStats(fID); err != nil {
 			logger.Panic("GetFunction: Function exists")
@@ -180,12 +182,13 @@ type Function struct {
 	funcClient             *hpb.GreeterClient
 	conn                   *grpc.ClientConn
 	guestIP                string
+	snapshotManager        *snapshotting.SnapshotManager
 }
 
 // NewFunction Initializes a function
 // Note: for numerical fIDs, [0, hotFunctionsNum) and [hotFunctionsNum; hotFunctionsNum+warmFunctionsNum)
 // are functions that are pinned in memory (stopping or offloading by the daemon is not allowed)
-func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin bool) *Function {
+func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin bool, snapshotManager *snapshotting.SnapshotManager) *Function {
 	f := new(Function)
 	f.fID = fID
 	f.imageName = imageName
@@ -193,6 +196,7 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 	f.isPinnedInMem = isToPin
 	f.stats = Stats
 	f.OnceCreateSnapInstance = new(sync.Once)
+	f.snapshotManager = snapshotManager
 
 	// Normal distribution with stddev=servedTh/2, mean=servedTh
 	thresh := int64(rand.NormFloat64()*float64(servedTh/2) + float64(servedTh))
@@ -358,8 +362,10 @@ func (f *Function) AddInstance() *metrics.Metric {
 	if f.isSnapshotReady {
 		var resp *ctriface.StartVMResponse
 
-		resp, metr = f.LoadInstance(f.vmID)
+		resp, metr = f.LoadInstance(f.getVMID())
 		f.guestIP = resp.GuestIP
+		f.vmID = f.getVMID()
+		f.lastInstanceID++
 	} else {
 		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
 		if err != nil {
@@ -415,16 +421,11 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 
 	f.OnceAddInstance = new(sync.Once)
 
-	if orch.GetSnapshotsEnabled() {
-		f.OffloadInstance()
-		r = "Successfully offloaded instance " + f.vmID
+	if isSync {
+		err = orch.StopSingleVM(context.Background(), f.vmID)
 	} else {
-		if isSync {
-			err = orch.StopSingleVM(context.Background(), f.vmID)
-		} else {
-			f.RemoveInstanceAsync()
-			r = "Successfully removed (async) instance " + f.vmID
-		}
+		f.RemoveInstanceAsync()
+		r = "Successfully removed (async) instance " + f.vmID
 	}
 
 	return r, err
@@ -455,7 +456,11 @@ func (f *Function) CreateInstanceSnapshot() {
 		log.Panic(err)
 	}
 
-	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName)
+	snap, err := f.snapshotManager.InitSnapshot(f.fID, f.imageName)
+	if err != nil {
+		log.Panic(err)
+	}
+
 	err = orch.CreateSnapshot(ctx, f.vmID, snap)
 	if err != nil {
 		log.Panic(err)
@@ -465,22 +470,11 @@ func (f *Function) CreateInstanceSnapshot() {
 	if err != nil {
 		log.Panic(err)
 	}
-}
 
-// OffloadInstance Offloads the instance
-func (f *Function) OffloadInstance() {
-	logger := log.WithFields(log.Fields{"fID": f.fID})
-
-	logger.Debug("Offloading instance")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
-
-	err := orch.Offload(ctx, f.vmID)
+	err = f.snapshotManager.CommitSnapshot(f.fID)
 	if err != nil {
 		log.Panic(err)
 	}
-	f.conn.Close()
 }
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
@@ -493,7 +487,11 @@ func (f *Function) LoadInstance(vmID string) (*ctriface.StartVMResponse, *metric
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
-	snap := snapshotting.NewSnapshot(f.vmID, "/fccd/snapshots", f.imageName)
+	snap, err := f.snapshotManager.AcquireSnapshot(f.fID)
+	if err != nil {
+		log.Panic(err)
+	}
+
 	resp, loadMetr, err := orch.LoadSnapshot(ctx, vmID, snap)
 	if err != nil {
 		log.Panic(err)

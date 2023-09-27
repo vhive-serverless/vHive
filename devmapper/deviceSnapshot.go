@@ -23,12 +23,13 @@
 package devmapper
 
 import (
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/pkg/errors"
 )
 
 // DeviceSnapshot represents a device mapper snapshot
@@ -122,4 +123,8 @@ func removeTrailingSlash(path string) string {
 	} else {
 		return path
 	}
+}
+
+func (dsnp *DeviceSnapshot) GetDevicePath() string {
+	return dsnp.path
 }

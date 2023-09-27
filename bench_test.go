@@ -51,13 +51,13 @@ func TestBenchParallelServe(t *testing.T) {
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
-		isSyncOffload bool = true
-		serveMetrics       = make([]*metrics.Metric, *parallelNum)
-		upfMetrics         = make([]*metrics.Metric, *parallelNum)
-		images             = getAllImages()
-		parallel           = *parallelNum
-		vmID               = 0
-		concurrency        = 2
+		isSyncOffload = true
+		serveMetrics  = make([]*metrics.Metric, *parallelNum)
+		upfMetrics    = make([]*metrics.Metric, *parallelNum)
+		images        = getAllImages()
+		parallel      = *parallelNum
+		vmID          = 0
+		concurrency   = 2
 	)
 
 	imageName, isPresent := images[*funcName]
@@ -127,9 +127,9 @@ func TestBenchWarmServe(t *testing.T) {
 	var (
 		servedTh          uint64
 		pinnedFuncNum     int
-		isSyncOffload     bool = true
-		images                 = getAllImages()
-		vmID                   = 0
+		isSyncOffload     = true
+		images            = getAllImages()
+		vmID              = 0
 		memManagerMetrics []*metrics.Metric
 	)
 
@@ -192,9 +192,9 @@ func TestBenchServe(t *testing.T) {
 	var (
 		servedTh          uint64
 		pinnedFuncNum     int
-		isSyncOffload     bool = true
-		images                 = getAllImages()
-		vmID                   = 0
+		isSyncOffload     = true
+		images            = getAllImages()
+		vmID              = 0
 		memManagerMetrics []*metrics.Metric
 	)
 

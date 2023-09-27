@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,8 @@ package firecracker
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/vhive-serverless/vhive/snapshotting"
 	"strconv"
 	"sync"
@@ -73,19 +75,19 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorO
 	return c
 }
 
-func (c *coordinator) startVM(ctx context.Context, image string) (*funcInstance, error) {
-	return c.startVMWithEnvironment(ctx, image, []string{})
+func (c *coordinator) startVM(ctx context.Context, image, revision string) (*funcInstance, error) {
+	return c.startVMWithEnvironment(ctx, image, revision, []string{})
 }
 
-func (c *coordinator) startVMWithEnvironment(ctx context.Context, image string, environment []string) (*funcInstance, error) {
+func (c *coordinator) startVMWithEnvironment(ctx context.Context, image, revision string, environment []string) (*funcInstance, error) {
 	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
 		// Check if snapshot is available
-		if snap, err := c.snapshotManager.AcquireSnapshot(image); err == nil {
+		if snap, err := c.snapshotManager.AcquireSnapshot(revision); err == nil {
 			return c.orchLoadInstance(ctx, snap)
 		}
 	}
 
-	return c.orchStartVM(ctx, image, environment)
+	return c.orchStartVM(ctx, image, revision, environment)
 }
 
 func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
@@ -100,8 +102,11 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		return nil
 	}
 
-	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
-		return c.orchOffloadInstance(ctx, fi)
+	if c.orch != nil && c.orch.GetSnapshotsEnabled() && !fi.SnapBooted {
+		err := c.orchCreateSnapshot(ctx, fi)
+		if err != nil {
+			log.Printf("Err creating snapshot %s\n", err)
+		}
 	}
 
 	return c.orchStopVM(ctx, fi)
@@ -130,12 +135,13 @@ func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
 	return nil
 }
 
-func (c *coordinator) orchStartVM(ctx context.Context, image string, envVariables []string) (*funcInstance, error) {
-	vmID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, envVariables []string) (*funcInstance, error) {
+	vmID := c.getVMID()
 	logger := log.WithFields(
 		log.Fields{
-			"vmID":  vmID,
-			"image": image,
+			"vmID":     vmID,
+			"image":    image,
+			"revision": revision,
 		},
 	)
 
@@ -156,90 +162,75 @@ func (c *coordinator) orchStartVM(ctx context.Context, image string, envVariable
 		}
 	}
 
-	fi := newFuncInstance(vmID, image, resp)
+	fi := newFuncInstance(vmID, image, revision, false, resp)
 	logger.Debug("successfully created fresh instance")
 	return fi, err
 }
 
 func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.Snapshot) (*funcInstance, error) {
+	vmID := c.getVMID()
 	logger := log.WithFields(
 		log.Fields{
-			"vmID":  snap.GetId(),
+			"vmID":  vmID,
 			"image": snap.GetImage(),
 		},
 	)
 
-	logger.Debug("found idle instance to load")
+	logger.Debug("loading instance from snapshot")
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, snap.GetId(), snap)
+	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, vmID, snap)
 	if err != nil {
 		logger.WithError(err).Error("failed to load VM")
 		return nil, err
 	}
 
-	if _, err := c.orch.ResumeVM(ctxTimeout, snap.GetId()); err != nil {
+	if _, err := c.orch.ResumeVM(ctxTimeout, vmID); err != nil {
 		logger.WithError(err).Error("failed to load VM")
 		return nil, err
 	}
 
-	fi := newFuncInstance(snap.GetId(), snap.GetImage(), resp)
-	logger.Debug("successfully loaded idle instance")
+	fi := newFuncInstance(vmID, snap.GetImage(), snap.GetId(), true, resp)
+	logger.Debug("successfully loaded instance from snapshot")
 	return fi, nil
 }
 
 func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) error {
 	var err error
 
-	snap, err := c.snapshotManager.InitSnapshot(fi.VmID, fi.Image)
+	snap, err := c.snapshotManager.InitSnapshot(fi.Revision, fi.Image)
 	if err != nil {
 		fi.Logger.WithError(err).Error("failed to initialize snapshot")
 		return nil
 	}
 
-	fi.OnceCreateSnapInstance.Do(
-		func() {
-			ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
-			defer cancel()
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
+	defer cancel()
 
-			fi.Logger.Debug("creating instance snapshot on first time offloading")
+	fi.Logger.Debug("creating instance snapshot before stopping")
 
-			err = c.orch.PauseVM(ctxTimeout, fi.VmID)
-			if err != nil {
-				fi.Logger.WithError(err).Error("failed to pause VM")
-				return
-			}
+	err = c.orch.PauseVM(ctxTimeout, fi.VmID)
+	if err != nil {
+		fi.Logger.WithError(err).Error("failed to pause VM")
+		return err
+	}
 
-			err = c.orch.CreateSnapshot(ctxTimeout, fi.VmID, snap)
-			if err != nil {
-				fi.Logger.WithError(err).Error("failed to create snapshot")
-				return
-			}
-		},
-	)
+	err = c.orch.CreateSnapshot(ctxTimeout, fi.VmID, snap)
+	if err != nil {
+		fi.Logger.WithError(err).Error("failed to create snapshot")
+		return err
+	}
+
+	if _, err := c.orch.ResumeVM(ctx, fi.VmID); err != nil {
+		fi.Logger.WithError(err).Error("failed to resume VM")
+		return err
+	}
 
 	if err := c.snapshotManager.CommitSnapshot(fi.VmID); err != nil {
 		fi.Logger.WithError(err).Error("failed to commit snapshot")
 		return err
-	}
-
-	return nil
-}
-
-func (c *coordinator) orchOffloadInstance(ctx context.Context, fi *funcInstance) error {
-	fi.Logger.Debug("offloading instance")
-
-	if err := c.orchCreateSnapshot(ctx, fi); err != nil {
-		return err
-	}
-
-	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
-
-	if err := c.orch.Offload(ctxTimeout, fi.VmID); err != nil {
-		fi.Logger.WithError(err).Error("failed to offload instance")
 	}
 
 	return nil
@@ -256,4 +247,8 @@ func (c *coordinator) orchStopVM(ctx context.Context, fi *funcInstance) error {
 	}
 
 	return nil
+}
+
+func (c *coordinator) getVMID() string {
+	return fmt.Sprintf("%s-%s", strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1))), (uuid.New()).String()[:16])
 }

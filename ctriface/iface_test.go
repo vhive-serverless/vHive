@@ -1,6 +1,6 @@
 // MIT License
 //
-// # Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+// # Copyright (c) 2023 Georgiy Lebedev, Dmitrii Ustiugov, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -80,6 +80,7 @@ func TestPauseSnapResume(t *testing.T) {
 	)
 
 	vmID := "4"
+	revision := "myrev-4"
 
 	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
@@ -87,7 +88,10 @@ func TestPauseSnapResume(t *testing.T) {
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
+	snap := snapshotting.NewSnapshot(revision, "/fccd/snapshots", testImageName)
+	err = snap.CreateSnapDir()
+	require.NoError(t, err, "Failed to create snapshots directory")
+
 	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
@@ -97,6 +101,7 @@ func TestPauseSnapResume(t *testing.T) {
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
 
+	_ = snap.Cleanup()
 	orch.Cleanup()
 }
 
@@ -190,6 +195,8 @@ func TestStartStopParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
+	vmIDBase := 7
+
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
@@ -204,7 +211,7 @@ func TestStartStopParallel(t *testing.T) {
 
 	{
 		var vmGroup sync.WaitGroup
-		for i := 0; i < vmNum; i++ {
+		for i := vmIDBase; i < vmNum; i++ {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
@@ -218,7 +225,7 @@ func TestStartStopParallel(t *testing.T) {
 
 	{
 		var vmGroup sync.WaitGroup
-		for i := 0; i < vmNum; i++ {
+		for i := vmIDBase; i < vmNum; i++ {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
@@ -249,6 +256,8 @@ func TestPauseResumeParallel(t *testing.T) {
 	defer cancel()
 
 	vmNum := 10
+	vmIDBase := 17
+
 	orch := NewOrchestrator(
 		"devmapper",
 		"",
@@ -263,7 +272,7 @@ func TestPauseResumeParallel(t *testing.T) {
 
 	{
 		var vmGroup sync.WaitGroup
-		for i := 0; i < vmNum; i++ {
+		for i := vmIDBase; i < vmNum; i++ {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
@@ -277,7 +286,7 @@ func TestPauseResumeParallel(t *testing.T) {
 
 	{
 		var vmGroup sync.WaitGroup
-		for i := 0; i < vmNum; i++ {
+		for i := vmIDBase; i < vmNum; i++ {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
@@ -291,7 +300,7 @@ func TestPauseResumeParallel(t *testing.T) {
 
 	{
 		var vmGroup sync.WaitGroup
-		for i := 0; i < vmNum; i++ {
+		for i := vmIDBase; i < vmNum; i++ {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()
@@ -305,7 +314,7 @@ func TestPauseResumeParallel(t *testing.T) {
 
 	{
 		var vmGroup sync.WaitGroup
-		for i := 0; i < vmNum; i++ {
+		for i := vmIDBase; i < vmNum; i++ {
 			vmGroup.Add(1)
 			go func(i int) {
 				defer vmGroup.Done()

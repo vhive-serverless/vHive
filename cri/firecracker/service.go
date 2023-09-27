@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov, Nathaniel Tornow and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Plamen Petrov, Nathaniel Tornow and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@ const (
 	guestIPEnv        = "GUEST_ADDR"
 	guestPortEnv      = "GUEST_PORT"
 	guestImageEnv     = "GUEST_IMAGE"
+	revisionEnv       = "K_REVISION"
 )
 
 type FirecrackerService struct {
@@ -110,8 +111,14 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
+	revision, err := getEnvVal(revisionEnv, config)
+	if err != nil {
+		log.WithError(err).Error()
+		return nil, err
+	}
+
 	environment := cri.ToStringArray(config.GetEnvs())
-	funcInst, err := fs.coordinator.startVMWithEnvironment(context.Background(), guestImage, environment)
+	funcInst, err := fs.coordinator.startVMWithEnvironment(context.Background(), guestImage, revision, environment)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")
 		return nil, err

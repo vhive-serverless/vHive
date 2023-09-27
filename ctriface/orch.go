@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@
 package ctriface
 
 import (
+	"github.com/vhive-serverless/vhive/devmapper"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -80,6 +81,7 @@ type Orchestrator struct {
 	snapshotter  string
 	client       *containerd.Client
 	fcClient     *fcclient.Client
+	devMapper    *devmapper.DeviceMapper
 	imageManager *image.ImageManager
 	// store *skv.KVStore
 	snapshotsEnabled bool
@@ -87,6 +89,7 @@ type Orchestrator struct {
 	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
+	netPoolSize      int
 
 	memoryManager *manager.MemoryManager
 }
@@ -99,12 +102,13 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
+	o.netPoolSize = 10
 
 	for _, opt := range opts {
 		opt(o)
 	}
 
-	o.vmPool = misc.NewVMPool(hostIface)
+	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize)
 
 	if _, err := os.Stat(o.snapshotsDir); err != nil {
 		if !os.IsNotExist(err) {
@@ -137,6 +141,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 	log.Info("Created firecracker client")
 
+	o.devMapper = devmapper.NewDeviceMapper(o.client)
 	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
 
 	return o
@@ -157,7 +162,7 @@ func (o *Orchestrator) setupCloseHandler() {
 // Cleanup Removes the bridges created by the VM pool's tap manager
 // Cleans up snapshots directory
 func (o *Orchestrator) Cleanup() {
-	o.vmPool.RemoveBridges()
+	o.vmPool.CleanupNetwork()
 	if err := os.RemoveAll(o.snapshotsDir); err != nil {
 		log.Panic("failed to delete snapshots dir", err)
 	}

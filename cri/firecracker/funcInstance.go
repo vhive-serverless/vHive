@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,32 +23,33 @@
 package firecracker
 
 import (
-	"sync"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/ctriface"
 )
 
 type funcInstance struct {
-	VmID                   string
-	Image                  string
-	Logger                 *log.Entry
-	OnceCreateSnapInstance *sync.Once
-	StartVMResponse        *ctriface.StartVMResponse
+	VmID            string
+	Image           string
+	Revision        string
+	Logger          *log.Entry
+	SnapBooted      bool
+	StartVMResponse *ctriface.StartVMResponse
 }
 
-func newFuncInstance(vmID, image string, startVMResponse *ctriface.StartVMResponse) *funcInstance {
+func newFuncInstance(vmID, image, revision string, snapBooted bool, startVMResponse *ctriface.StartVMResponse) *funcInstance {
 	f := &funcInstance{
-		VmID:                   vmID,
-		Image:                  image,
-		OnceCreateSnapInstance: new(sync.Once),
-		StartVMResponse:        startVMResponse,
+		VmID:            vmID,
+		Image:           image,
+		Revision:        revision,
+		SnapBooted:      snapBooted,
+		StartVMResponse: startVMResponse,
 	}
 
 	f.Logger = log.WithFields(
 		log.Fields{
-			"vmID":  vmID,
-			"image": image,
+			"vmID":     vmID,
+			"image":    image,
+			"revision": revision,
 		},
 	)
 

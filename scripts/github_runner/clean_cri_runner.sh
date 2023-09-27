@@ -2,7 +2,7 @@
 
 # MIT License
 #
-# Copyright (c) 2020 Shyam Jesalpura and EASE lab
+# Copyright (c) 2023 Georgiy Lebedev, Shyam Jesalpura and vHive team
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -99,6 +99,9 @@ if [ "$SANDBOX" == "gvisor" ]; then
 fi
 
 if [ "$SANDBOX" == "firecracker" ]; then
+    echo Cleaning snapshots
+    sudo rm -rf /fccd/snapshots/*
+  
     echo Creating a fresh devmapper
     $PWD/../create_devmapper.sh
 fi

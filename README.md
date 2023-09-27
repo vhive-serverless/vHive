@@ -125,7 +125,9 @@ The software is maintained at the [EASE lab](https://easelab.inf.ed.ac.uk/) in t
 
 ### Maintainers
 
-* High-level architecture, issues and discussions on GitHub, roadmap: Dmitrii Ustiugov ([GitHub](https://github.com/ustiugov),
-[twitter](https://twitter.com/DmitriiUstiugov), [web page](https://ustiugov.github.io));
-* Integration with firecracker-containerd [Plamen Petrov](https://github.com/plamenmpetrov);
+* High-level architecture, issues and discussions on GitHub, roadmap: Dmitrii
+  Ustiugov ([GitHub](https://github.com/ustiugov),
+  [twitter](https://twitter.com/DmitriiUstiugov), [web page](https://ustiugov.github.io));
+* Integration with firecracker-containerd [Georgiy Lebedev](https://github.com/curiousgeorgiy) and
+  [Plamen Petrov](https://github.com/plamenmpetrov);
 * Integration with Knative: [Shyam Jesalpura](https://github.com/shyamjesal)

@@ -4,9 +4,19 @@
 
 ### Added
 - Added support for [NVIDIA GPU](https://docs.nvidia.com/datacenter/cloud-native/kubernetes/install-k8s.html) in stock-only setup, with [setup script](./scripts/gpu/setup_nvidia_gpu.sh) and [example](./configs/gpu/gpu-function.yaml) Knative deployment 
+- Upgraded the Firecracker version.  [Vanilla Firecracker snapshots](./docs/snapshots.md) are
+  supported with local snapshot storage. Remote snapshot support is added but unstable (GH-823).
+- Added a new `netPoolSize` option to configure the amount of network devices in the Firecracker VM network pool (`10`
+  by default), which can be used to keep the network initialization off the cold start path of Firecracker VMs.
 ### Changed
+
 - Changed [system setup script](./scripts/setup_system.sh). NVIDIA helm is now one of the vHive dependencies.
+- Disabled the UPF feature for Firecracker snapshots (GH-807), but it is still available in the
+  [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
 ### Fixed
+
+- Removed the limitation on the number of functions instances that can be restored from a single Firecracker snapshot
+  (previously it was limited to `1`).
 
 
 ## v1.5

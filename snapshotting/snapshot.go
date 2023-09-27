@@ -36,6 +36,7 @@ import (
 // Only capitalized fields are serialised / deserialised
 type Snapshot struct {
 	id                string
+	ready             bool
 	ContainerSnapName string
 	snapDir           string
 	Image             string
@@ -44,6 +45,7 @@ type Snapshot struct {
 func NewSnapshot(id, baseFolder, image string) *Snapshot {
 	s := &Snapshot{
 		id:                id,
+		ready:             false,
 		snapDir:           filepath.Join(baseFolder, id),
 		ContainerSnapName: fmt.Sprintf("%s%s", id, time.Now().Format("20060102150405")),
 		Image:             image,

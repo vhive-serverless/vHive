@@ -164,14 +164,17 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     sudo screen -dmS vhive bash -c "./vhive > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)"
     # OR
     sudo screen -dmS vhive bash -c "./vhive -snapshots > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)"
-    # OR
-    sudo screen -dmS vhive bash -c "./vhive -snapshots -upf > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)"
     ```
     > **Note:**
     >
     > By default, the microVMs are booted, `-snapshots` enables snapshots after the 2nd invocation of each function.
-    >
-    > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP) technique that we described in our ASPLOS'21 paper ([extended abstract][ext-abstract], [full paper](papers/REAP_ASPLOS21.pdf)).
+   >
+   > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP)
+   technique that we described in our ASPLOS'21
+   paper ([extended abstract][ext-abstract], [full paper](papers/REAP_ASPLOS21.pdf)).
+   > This feature is currently disabled due to the Firecracker version upgrade but WIP (see GH-807). It is available in
+   the  
+   > [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
 
 ### 3. Configure Master Node
 **On the master node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
@@ -292,19 +295,27 @@ Execute the following below **as a non-root user with sudo rights** using **bash
 ```
 
 ### 3. Using a Script
+
 This script stops the existing cluster if any, cleans up and then starts a fresh single-node cluster.
 
 ```bash
-export GITHUB_VHIVE_ARGS="[-dbg] [-snapshots] [-upf]" # specify if to enable debug logs; cold starts: snapshots, REAP snapshots (optional)
+# specify if to enable debug logs; cold starts: snapshots, REAP snapshots
+export GITHUB_VHIVE_ARGS="[-dbg] [-snapshots]"
 scripts/cloudlab/start_onenode_vhive_cluster.sh
 ```
 
+> **Note:**
+>
+> See note in [II.2.5](./quickstart_guide.md#2-setup-worker-nodes) for details about snapshots.
+
 ## IV. Deploying and Invoking Functions in vHive
+
 This section is only for synchronous (i.e., Knative Serving) functions. Please refer to
 [Adding Benchmarks to vHive/Knative and Stock Knative][kn-benchmark]
 for benchmarking asynchronous (i.e., Knative Eventing) case and more details about both.
 
 ### 1. Deploy Functions
+
 **On the master node**, execute the following instructions below using **bash**:
 
 1. Optionally, configure the types and the number of functions to deploy in `examples/deployer/functions.json`.
