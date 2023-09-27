@@ -31,9 +31,9 @@ import (
 )
 
 type vHiveMetadata struct {
-	WorkflowId string `json:"WorkflowId"`
-	InvocationId string `json:"InvocationId"`
-	InvokedOn time.Time `json:"InvokedOn"`
+	WorkflowId   string    `json:"WorkflowId"`
+	InvocationId string    `json:"InvocationId"`
+	InvokedOn    time.Time `json:"InvokedOn"`
 }
 
 func GetWorkflowId(d []byte) string {
@@ -65,17 +65,16 @@ func MakeVHiveMetadata(WorkflowId, InvocationId string, InvokedOn time.Time) []b
 
 func marshalVHiveMetadata(vhm vHiveMetadata) []byte {
 	d, err := json.Marshal(struct {
-		WorkflowId string `json:"WorkflowId"`
+		WorkflowId   string `json:"WorkflowId"`
 		InvocationId string `json:"InvocationId"`
-		InvokedOn string `json:"InvokedOn"`
+		InvokedOn    string `json:"InvokedOn"`
 	}{
-		WorkflowId: vhm.WorkflowId,
+		WorkflowId:   vhm.WorkflowId,
 		InvocationId: vhm.InvocationId,
-		InvokedOn: vhm.InvokedOn.Format(ctrdlog.RFC3339NanoFixed),
+		InvokedOn:    vhm.InvokedOn.Format(ctrdlog.RFC3339NanoFixed),
 	})
 	if err != nil {
 		logrus.Fatal("failed to marshal vHiveMetadata", err)
 	}
 	return d
 }
-

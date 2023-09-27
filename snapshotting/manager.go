@@ -27,28 +27,24 @@ import (
 	"github.com/pkg/errors"
 	"os"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
-// SnapshotManager manages snapshots stored on the node. Each snapshot can only be used by a single VM at
-// a time and thus is always in one of three states: creating, active or idle.
+// SnapshotManager manages snapshots stored on the node.
 type SnapshotManager struct {
 	sync.Mutex
-	// Snapshots currently in use by a function (identified by the id of the VM using the snapshot)
-	activeSnapshots map[string]*Snapshot
-	// Snapshots currently being created (identified by the id of the VM the snapshot is being created for)
-	creatingSnapshots map[string]*Snapshot
-	// Offloaded snapshots available for reuse by new VMs (identified by the image name of the snapshot)
-	idleSnapshots map[string][]*Snapshot
-	baseFolder    string
+	// Stored snapshots (identified by the function instance revision, which is provided by the `K_REVISION` environment
+	// variable of knative).
+	snapshots  map[string]*Snapshot
+	baseFolder string
 }
 
 // Snapshot identified by VM id
 
 func NewSnapshotManager(baseFolder string) *SnapshotManager {
 	manager := new(SnapshotManager)
-	manager.activeSnapshots = make(map[string]*Snapshot)
-	manager.creatingSnapshots = make(map[string]*Snapshot)
-	manager.idleSnapshots = make(map[string][]*Snapshot)
+	manager.snapshots = make(map[string]*Snapshot)
 	manager.baseFolder = baseFolder
 
 	// Clean & init basefolder
@@ -58,88 +54,68 @@ func NewSnapshotManager(baseFolder string) *SnapshotManager {
 	return manager
 }
 
-// AcquireSnapshot returns an idle snapshot if one is available for the given image
-func (mgr *SnapshotManager) AcquireSnapshot(image string) (*Snapshot, error) {
+// AcquireSnapshot returns a snapshot for the specified revision if it is available.
+func (mgr *SnapshotManager) AcquireSnapshot(revision string) (*Snapshot, error) {
 	mgr.Lock()
 	defer mgr.Unlock()
 
 	// Check if idle snapshot is available for the given image
-	idles, ok := mgr.idleSnapshots[image]
+	snap, ok := mgr.snapshots[revision]
 	if !ok {
-		mgr.idleSnapshots[image] = []*Snapshot{}
-		return nil, errors.New(fmt.Sprintf("There is no snapshot available for image %s", image))
+		return nil, errors.New(fmt.Sprintf("Get: Snapshot for revision %s does not exist", revision))
 	}
 
-	// Return snapshot for supplied image
-	if len(idles) != 0 {
-		snp := idles[0]
-		mgr.idleSnapshots[image] = idles[1:]
-		mgr.activeSnapshots[snp.GetId()] = snp
-		return snp, nil
+	// Snapshot registered in manager but creation not finished yet
+	if !snap.ready {
+		return nil, errors.New("Snapshot is not yet usable")
 	}
-	return nil, errors.New(fmt.Sprintf("There is no snapshot available fo rimage %s", image))
+
+	// Return snapshot for supplied revision
+	return mgr.snapshots[revision], nil
 }
 
-// ReleaseSnapshot releases the snapshot in use by the given VM for offloading so that it can get used to handle a new
-// VM creation.
-func (mgr *SnapshotManager) ReleaseSnapshot(vmID string) error {
-	mgr.Lock()
-	defer mgr.Unlock()
-
-	snap, present := mgr.activeSnapshots[vmID]
-	if !present {
-		return errors.New(fmt.Sprintf("Get: Snapshot for container %s does not exist", vmID))
-	}
-
-	// Move snapshot from active to idle state
-	delete(mgr.activeSnapshots, vmID)
-	mgr.idleSnapshots[snap.Image] = append(mgr.idleSnapshots[snap.Image], snap)
-
-	return nil
-}
-
-// InitSnapshot initializes a snapshot by initializing a new snapshot and moving it to the creating state. CommitSnapshot
-// must be run to finalize the snapshot creation and make the snapshot available for use
-func (mgr *SnapshotManager) InitSnapshot(vmID, image string) (*Snapshot, error) {
+// InitSnapshot initializes a snapshot by adding its metadata to the SnapshotManager. Once the snapshot has
+// been created, CommitSnapshot must be run to finalize the snapshot creation and make the snapshot available for use.
+func (mgr *SnapshotManager) InitSnapshot(revision, image string) (*Snapshot, error) {
 	mgr.Lock()
 
-	if _, present := mgr.creatingSnapshots[vmID]; present {
+	logger := log.WithFields(log.Fields{"revision": revision, "image": image})
+	logger.Debug("Initializing snapshot corresponding to revision and image")
+
+	if _, present := mgr.snapshots[revision]; present {
 		mgr.Unlock()
-		return nil, errors.New(fmt.Sprintf("Add: Snapshot for vm %s already exists", vmID))
+		return nil, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists", revision))
 	}
 
 	// Create snapshot object and move into creating state
-	snap := NewSnapshot(vmID, mgr.baseFolder, image)
-	mgr.creatingSnapshots[snap.GetId()] = snap
+	snap := NewSnapshot(revision, mgr.baseFolder, image)
+	mgr.snapshots[snap.GetId()] = snap
 	mgr.Unlock()
 
 	// Create directory to store snapshot data
 	err := snap.CreateSnapDir()
 	if err != nil {
-		return nil, errors.Wrapf(err, "creating snapDir for snapshots %s", vmID)
+		return nil, errors.Wrapf(err, "creating snapDir for snapshots %s", revision)
 	}
 
 	return snap, nil
 }
 
-// CommitSnapshot finalizes the snapshot creation and makes it available for use by moving it into the idle state.
-func (mgr *SnapshotManager) CommitSnapshot(vmID string) error {
+// CommitSnapshot finalizes the snapshot creation and makes it available for use.
+func (mgr *SnapshotManager) CommitSnapshot(revision string) error {
 	mgr.Lock()
 	defer mgr.Unlock()
 
-	// Move snapshot from creating to idle state
-	snap, ok := mgr.creatingSnapshots[vmID]
+	snap, ok := mgr.snapshots[revision]
 	if !ok {
-		return errors.New(fmt.Sprintf("There has no snapshot been created with vmID %s", vmID))
-	}
-	delete(mgr.creatingSnapshots, vmID)
-
-	_, ok = mgr.idleSnapshots[snap.Image]
-	if !ok {
-		mgr.idleSnapshots[snap.Image] = []*Snapshot{}
+		return errors.New(fmt.Sprintf("Snapshot for revision %s to commit does not exist", revision))
 	}
 
-	mgr.idleSnapshots[snap.Image] = append(mgr.idleSnapshots[snap.Image], snap)
+	if snap.ready {
+		return errors.New(fmt.Sprintf("Snapshot for revision %s has already been committed", revision))
+	}
+
+	snap.ready = true
 
 	return nil
 }

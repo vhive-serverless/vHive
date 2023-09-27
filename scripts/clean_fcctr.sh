@@ -2,7 +2,7 @@
 
 # MIT License
 #
-# Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+# Copyright (c) 2023 Georgiy Lebedev, Dmitrii Ustiugov, Plamen Petrov and vHive team
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,9 +29,9 @@ sudo pkill -9 firec
 sudo pkill -9 containerd
 
 echo Resetting nftables
-nft flush table ip filter
-nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }"
-nft "add rule ip filter FORWARD ct state related,established counter accept"
+sudo nft flush table ip filter
+sudo nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }"
+sudo nft "add rule ip filter FORWARD ct state related,established counter accept"
 
 echo Deleting veth* devices created by CNI
 cat /proc/net/dev | grep veth | cut -d" " -f1| cut -d":" -f1 | while read in; do sudo ip link delete "$in"; done
@@ -71,11 +71,14 @@ echo Cleaning /run/firecracker-containerd/*
 sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
     /run/firecracker-containerd/io.containerd.runtime.v1.linux \
     /run/firecracker-containerd/io.containerd.runtime.v2.task \
-    /run/containerd/s
+    /run/containerd/*
 
 echo Cleaning CNI state, e.g., allocated addresses
 sudo rm /var/lib/cni/networks/fcnet*/last_reserved_ip.0 || echo clean already
 sudo rm /var/lib/cni/networks/fcnet*/19* || echo clean already
+
+echo Cleaning snapshots
+sudo rm -rf /fccd/snapshots/*
 
 echo Creating a fresh devmapper
 source $DIR/create_devmapper.sh

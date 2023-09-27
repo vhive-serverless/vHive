@@ -85,6 +85,7 @@ conn
 consumerAddr
 consumerPort
 containerd
+containerd's
 Containerd
 containerPort
 coolDownTime
@@ -109,6 +110,7 @@ DCNs
 De
 debian
 deployer
+deterministically
 dev
 devmapper
 df
@@ -163,8 +165,10 @@ funcNames
 FunctionBench
 Fytraki
 Gavrielatos
+GDB
 GECCO
 GetGRPCServerWithUnaryInterceptor
+Georgiy
 GFM
 GH
 Ghoshal
@@ -257,6 +261,7 @@ latencies
 latSamples
 Lausanne
 ldquo
+Lebedev
 Letraset
 lfs
 Lim
@@ -289,6 +294,7 @@ microarchitectural
 Microarchitecture
 microbenchmark
 microbenchmarks
+microvm
 microVMs
 minio
 MinIO
@@ -313,6 +319,7 @@ Netrace
 NEURALWALKER
 neuroevolution
 NewServer
+nginx
 Nicopoulos
 Nvidia
 nvidia
@@ -357,6 +364,8 @@ pmu
 pmutool
 pn
 Pnevmatikatos
+poc
+PoC
 postfix
 PPoPP
 PPOPP
@@ -369,6 +378,7 @@ preconfigured
 Prefetch
 Prefetched
 Prefetching
+preloading
 priyank
 Priyank
 proc
@@ -401,11 +411,14 @@ rebasing
 repo
 Repos
 roadmap
+rootfs
 RPC
 rperf
 RPerf
 RPERF
+rsa
 rsquo
+rsync
 runc
 runtime
 runtimes
@@ -417,6 +430,7 @@ Scalability
 Scalable
 schall
 Schall
+SDK
 Seiculescu
 Sep
 serverfull
@@ -440,6 +454,7 @@ smi
 SMI
 sms
 SMT
+snapshotted
 snapshotting
 SoC
 SOCACHE
@@ -469,6 +484,7 @@ TestProfileIncrementConfiguration
 TestProfileSingleConfiguration
 TextFormatter
 th
+thinpool
 Timeseries
 timeseriesdb
 TimeseriesDB
@@ -528,6 +544,7 @@ vmIncrStep
 VMs
 Volos
 vSwarm
+vsock
 warmUpTime
 wc
 WDDD
@@ -535,6 +552,7 @@ webpage
 wget
 WIDX
 WIOSCA
+WIP
 WithBlock
 WithFields
 WithInsecure

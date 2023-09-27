@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Dmitrii Ustiugov, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,6 +63,7 @@ var (
 	pinnedFuncNum      *int
 	criSock            *string
 	hostIface          *string
+	netPoolSize        *int
 )
 
 func main() {
@@ -81,6 +82,7 @@ func main() {
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 	criSock = flag.String("criSock", "/etc/vhive-cri/vhive-cri.sock", "Socket address for CRI service")
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
+	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
 	flag.Parse()
 
@@ -139,6 +141,7 @@ func main() {
 			ctriface.WithUPF(*isUPFEnabled),
 			ctriface.WithMetricsMode(*isMetricsMode),
 			ctriface.WithLazyMode(*isLazyMode),
+			ctriface.WithNetPoolSize(*netPoolSize),
 		)
 		funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 		go setupFirecrackerCRI()

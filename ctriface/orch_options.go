@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,5 +70,11 @@ func WithLazyMode(isLazyMode bool) OrchestratorOption {
 func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.isMetricsMode = isMetricsMode
+	}
+}
+
+func WithNetPoolSize(netPoolSize int) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.netPoolSize = netPoolSize
 	}
 }

@@ -135,11 +135,14 @@ source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
 
 ## High-level features
 
-* vHive supports both the baseline Firecracker snapshots and our advanced
-Record-and-Prefetch (REAP) snapshots.
+* vHive supports both vanilla Firecracker snapshots. Our advanced
+  Record-and-Prefetch (REAP) snapshots feature for the latest Firecracker is currently disabled (see GH-807), but it is
+  available for its older version in
+  the [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
+  We are also working on supporting [remote Firecracker snapshots](./snapshots.md#remote-snapshots) (GH-823).
 
 * vHive integrates with Kubernetes and Knative via its built-in CRI support.
-Currently, only Knative Serving is supported.
+  Currently, only Knative Serving is supported.
 
 * vHive supports arbitrary distributed setup of a serverless cluster.
 
@@ -208,15 +211,18 @@ Here are some useful commands (there are plenty of Zipkin tutorials online):
 
 ## Dependencies and binaries
 
-* vHive uses Firecracker-Containerd binaries that are build using the `user_page_faults` branch
-of our [fork](https://github.com/vhive-serverless/firecracker-containerd) of the upstream repository.
-Currently, we are in the process of upstreaming VM snapshots support to the upstream repository.
+* vHive uses firecracker binaries that are built using the `firecracker-v1.4.1-vhive-integration` branch
+  of our [fork](https://github.com/vhive-serverless/firecracker-containerd) of the upstream repository (see
+  the official
+  firecracker-containerd [getting started guide](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/getting-started.md#clone-this-repository-and-build-the-components)
+  for details on the building process). Currently, we are in the process of upstreaming VM snapshots support to the
+  upstream repository.
 
-* Current Firecracker version is 0.24.0, Knative 1.9, Kubernetes 1.25.3, gVisor 20210622.0, and Istio 1.16.0.
-We plan to keep our code loosely up to date with the upstream Firecracker repository.
+* Current Firecracker version is 1.4.1, Knative 1.9, Kubernetes 1.25.3, gVisor 20210622.0, and Istio 1.16.0.
+  We plan to keep our code loosely up to date with the upstream Firecracker repository.
 
 * vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind)
-to speed up testing environment setup requiring Kubernetes.
+  to speed up testing environment setup requiring Kubernetes.
 
 * Current [eStargz](https://github.com/containerd/stargz-snapshotter) version is 0.13.0.
 

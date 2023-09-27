@@ -68,7 +68,7 @@ func readLines(path string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-func pullImages(images []string, sourceRepo string, destRepo string)  {
+func pullImages(images []string, sourceRepo string, destRepo string) {
 	for _, image := range images {
 		pullImage(image, sourceRepo, destRepo)
 	}

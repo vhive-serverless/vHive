@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Dmitrii Ustiugov, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,18 +25,18 @@ package misc
 import (
 	log "github.com/sirupsen/logrus"
 
-	"github.com/vhive-serverless/vhive/taps"
+	"github.com/vhive-serverless/vhive/networking"
 )
 
 // NewVMPool Initializes a pool of VMs
-func NewVMPool(hostIfaceName string) *VMPool {
+func NewVMPool(hostIfaceName string, netPoolSize int) *VMPool {
 	p := new(VMPool)
-	tapManager, err := taps.NewTapManager(hostIfaceName)
+	networkManager, err := networking.NewNetworkManager(hostIfaceName, netPoolSize)
 	if err != nil {
 		log.Println(err)
 	}
 
-	p.tapManager = tapManager
+	p.networkManager = networkManager
 
 	return p
 }
@@ -55,9 +55,9 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	vm := NewVM(vmID)
 
 	var err error
-	vm.Ni, err = p.tapManager.AddTap(vmID + "_tap")
+	vm.NetConfig, err = p.networkManager.CreateNetwork(vmID)
 	if err != nil {
-		logger.Warn("Ni allocation failed")
+		logger.Warn("VM network creation failed")
 		return nil, err
 	}
 
@@ -78,38 +78,12 @@ func (p *VMPool) Free(vmID string) error {
 		return nil
 	}
 
-	if err := p.tapManager.RemoveTap(vmID + "_tap"); err != nil {
-		logger.Error("Could not delete tap")
+	if err := p.networkManager.RemoveNetwork(vmID); err != nil {
+		logger.Error("Could not remove network")
 		return err
 	}
 
 	p.vmMap.Delete(vmID)
-
-	return nil
-}
-
-// RecreateTap Deletes and creates the tap for a VM
-func (p *VMPool) RecreateTap(vmID string) error {
-	logger := log.WithFields(log.Fields{"vmID": vmID})
-
-	logger.Debug("Recreating tap")
-
-	_, isPresent := p.vmMap.Load(vmID)
-	if !isPresent {
-		log.WithFields(log.Fields{"vmID": vmID}).Panic("RecreateTap: VM does not exist in the map")
-		return NonExistErr("RecreateTap: VM does not exist when recreating its tap")
-	}
-
-	if err := p.tapManager.RemoveTap(vmID + "_tap"); err != nil {
-		logger.Error("Failed to delete tap")
-		return err
-	}
-
-	_, err := p.tapManager.AddTap(vmID + "_tap")
-	if err != nil {
-		logger.Error("Failed to add tap")
-		return err
-	}
 
 	return nil
 }
@@ -136,7 +110,9 @@ func (p *VMPool) GetVM(vmID string) (*VM, error) {
 	return vm.(*VM), nil
 }
 
-// RemoveBridges Removes the bridges created by the tap manager
-func (p *VMPool) RemoveBridges() {
-	p.tapManager.RemoveBridges()
+// CleanupNetwork Removes the networks created by the network manager
+func (p *VMPool) CleanupNetwork() {
+	if err := p.networkManager.Cleanup(); err != nil {
+		log.Warn(err)
+	}
 }

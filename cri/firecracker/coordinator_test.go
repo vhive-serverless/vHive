@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,17 @@ package firecracker
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
 )
 
 var (
@@ -45,7 +50,8 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	containerID := "1"
-	fi, err := coord.startVM(context.Background(), containerID)
+	revision := "myrev-1"
+	fi, err := coord.startVM(context.Background(), testImageName, revision)
 	require.NoError(t, err, "could not start VM")
 
 	err = coord.insertActive(containerID, fi)
@@ -72,7 +78,8 @@ func TestParallelStartStop(t *testing.T) {
 			defer wg.Done()
 
 			containerID := strconv.Itoa(i)
-			fi, err := coord.startVM(context.Background(), containerID)
+			revision := fmt.Sprintf("myrev-%d", i)
+			fi, err := coord.startVM(context.Background(), testImageName, revision)
 			require.NoError(t, err, "could not start VM")
 
 			err = coord.insertActive(containerID, fi)

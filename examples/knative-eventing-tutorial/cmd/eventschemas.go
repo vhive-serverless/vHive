@@ -36,7 +36,3 @@ type TempEvent struct {
 type OverheatEvent struct {
 	Celsius int32 `json:"celsius,int32"`
 }
-
-
-
-

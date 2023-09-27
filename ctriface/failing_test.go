@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+// Copyright (c) 2023 Georgiy Lebedev, Dmitrii Ustiugov, Plamen Petrov and vHive team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -66,8 +66,8 @@ func TestStartSnapStop(t *testing.T) {
 	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	err = orch.Offload(ctx, vmID)
-	require.NoError(t, err, "Failed to offload VM")
+	err = orch.StopSingleVM(ctx, vmID)
+	require.NoError(t, err, "Failed to stop VM")
 
 	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
@@ -78,5 +78,6 @@ func TestStartSnapStop(t *testing.T) {
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
 
+	_ = snap.Cleanup()
 	orch.Cleanup()
 }

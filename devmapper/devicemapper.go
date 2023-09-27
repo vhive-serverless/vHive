@@ -79,6 +79,9 @@ func (dmpr *DeviceMapper) CreateDeviceSnapshotFromImage(ctx context.Context, sna
 
 // CreateDeviceSnapshot creates a new device mapper snapshot from the given parent snapshot.
 func (dmpr *DeviceMapper) CreateDeviceSnapshot(ctx context.Context, snapKey, parentKey string) error {
+	dmpr.Lock()
+	defer dmpr.Unlock()
+
 	// Create lease to avoid garbage collection
 	lease, err := dmpr.leaseManager.Create(ctx, leases.WithID(snapKey))
 	if err != nil {
@@ -95,11 +98,9 @@ func (dmpr *DeviceMapper) CreateDeviceSnapshot(ctx context.Context, snapKey, par
 	// Devmapper always only has a single mount /dev/mapper/fc-thinpool-snap-x
 	devSnapPath := mounts[0].Source
 
-	dmpr.Lock()
 	dsnp := NewDeviceSnapshot(devSnapPath)
 	dmpr.snapDevices[snapKey] = dsnp
 	dmpr.leases[snapKey] = &lease
-	dmpr.Unlock()
 	return nil
 }
 
@@ -187,7 +188,13 @@ func (dmpr *DeviceMapper) CreatePatch(ctx context.Context, patchPath, containerS
 		return err
 	}
 
-	imageSnap, err := dmpr.GetImageSnapshot(ctx, image)
+	imageSnapKey := fmt.Sprintf("%s-base-image", containerSnapKey)
+	if err := dmpr.CreateDeviceSnapshotFromImage(ctx, imageSnapKey, image); err != nil {
+		return err
+	}
+	defer func() { _ = dmpr.RemoveDeviceSnapshot(ctx, imageSnapKey) }()
+
+	imageSnap, err := dmpr.GetDeviceSnapshot(ctx, imageSnapKey)
 	if err != nil {
 		return err
 	}
