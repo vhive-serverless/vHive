@@ -6,9 +6,9 @@ To avoid bottlenecks, it is possible to use a local registry to store images. Th
 
 1. Create a txt file containing the images that need to be pulled to the local registry
 
-2. Pull the images to the local registry. For docker the following command can be used
+2. Pull the images to the local registry. For docker the following command can be used from [vSwarm](https://github.com/vhive-serverless/vSwarm):
 
-   `go run examples/registry/populate_registry.go -imageFile images.txt -source docker://docker.io`
+   `go run tools/registry/populate_registry.go -imageFile images.txt -source docker://docker.io`
 
 ## Using the local registry
 

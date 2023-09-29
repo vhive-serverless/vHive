@@ -6,6 +6,8 @@
 
 ### Changed
 
+- Removed the utils and examples from the vHive repo, moved to [vSwarm](https://github.com/vhive-serverless/vSwarm).
+
 ### Fixed
 
 ## v1.6
@@ -22,6 +24,7 @@
 - Disabled the UPF feature for Firecracker snapshots (GH-807), but it is still available in the
   [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
 - Update [quick start guide](./docs/quickstart_guide.md) to use refactored Go version [setup scripts](./scripts/setup.go) with a unified entry for easily setting up vHive and remove some legacy bash scripts under [scripts](./scripts/)
+
 ### Fixed
 
 - Removed the limitation on the number of functions instances that can be restored from a single Firecracker snapshot
@@ -93,7 +96,7 @@ Tracing is fully supported for Serving function composition, partially supported
 - Added documentation on vHive benchmarking methodology
 for arbitrary serverless deployments.
 - Added documentation for adding benchmarks to vHive.
-- Added Knative Eventing Tutorial: [documentation](./docs/knative/eventing.md) and [example](./examples/knative-eventing-tutorial).
+- Added Knative Eventing Tutorial: [documentation](./docs/knative/eventing.md) and [example](https://github.com/vhive-serverless/vSwarm/blob/main/tools/knative-eventing-tutorial).
 - Added a Go module for tracing using zipkin.
 - Improved CI troubleshooting: CRI test logs are now stored as GitHub artifacts.
 - Added [script](https://github.com/vhive-serverless/vHive/blob/main/docs/quickstart_guide.md#iii-setup-a-single-node-cluster) to (re)start vHive single node cluster in a push-button.
