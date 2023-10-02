@@ -13,6 +13,7 @@
 - Changed [system setup script](./scripts/setup_system.sh). NVIDIA helm is now one of the vHive dependencies.
 - Disabled the UPF feature for Firecracker snapshots (GH-807), but it is still available in the
   [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
+- Update [quick start guide](./docs/quickstart_guide.md) to use refactored Go version [setup scripts](./scripts/setup.go) with a unified entry for easily setting up vHive and remove some legacy bash scripts under [scripts](./scripts/)
 ### Fixed
 
 - Removed the limitation on the number of functions instances that can be restored from a single Firecracker snapshot
@@ -87,7 +88,7 @@ for arbitrary serverless deployments.
 - Added Knative Eventing Tutorial: [documentation](./docs/knative/eventing.md) and [example](./examples/knative-eventing-tutorial).
 - Added a Go module for tracing using zipkin.
 - Improved CI troubleshooting: CRI test logs are now stored as GitHub artifacts.
-- Added [script](./scripts/cloudlab/start_onenode_vhive_cluster.sh) to (re)start vHive single node cluster in a push-button.
+- Added [script](https://github.com/vhive-serverless/vHive/blob/main/docs/quickstart_guide.md#iii-setup-a-single-node-cluster) to (re)start vHive single node cluster in a push-button.
 - Added a linter for hyperlink checking in markdown files.
 
 ### Changed

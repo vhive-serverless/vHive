@@ -53,12 +53,6 @@ func SetupNode(sandbox string, useStargz string) error {
 		return err
 	}
 
-	// Install Golang
-	utils.InfoPrintf("Install Golang\n")
-	if err := setup.InstallGo(); err != nil {
-		return err
-	}
-
 	// Set up system
 	utils.InfoPrintf("Set up system\n")
 	if err := setup.SetupSystem(); err != nil {
