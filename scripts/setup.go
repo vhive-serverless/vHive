@@ -90,7 +90,6 @@ func main() {
 		"setup_firecracker_containerd",
 		"install_stock",
 		"install_pmutools",
-		"install_go",
 		"create_docker_image",
 		"create_devmapper",
 		"clean_fcctr",
@@ -219,9 +218,6 @@ func main() {
 	case "install_pmutools":
 		utils.InfoPrintf("Install pmutools\n")
 		err = setup.InstallPmuTools()
-	case "install_go":
-		utils.InfoPrintf("Install go\n")
-		err = setup.InstallGo()
 	case "create_docker_image":
 		utils.InfoPrintf("Create docker image\n")
 		err = setup.CreateDockerImage()

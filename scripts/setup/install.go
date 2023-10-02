@@ -27,33 +27,6 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-// Install Golang
-func InstallGo() error {
-	// Original Bash Scripts: scripts/install_go.sh
-
-	// Download Golang
-	utils.WaitPrintf("Downloading Golang(ver %s)", configs.System.GoVersion)
-	downloadedGoPath, err := utils.DownloadToTmpDir(configs.System.GoDownloadUrlTemplate, configs.System.GoVersion, configs.System.CurrentArch)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to download Golang(ver %s)!\n", configs.System.GoVersion) {
-		return err
-	}
-
-	// Extract Golang
-	utils.WaitPrintf("Extracting Golang")
-	_, err = utils.ExecShellCmd("sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf %s", downloadedGoPath)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to extract Golang!\n") {
-		return err
-	}
-
-	// Update PATH
-	utils.WaitPrintf("Updating PATH for Golang")
-	err = utils.AppendDirToPath("/usr/local/go/bin")
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to Update PATH for Golang!\n") {
-		return err
-	}
-	return nil
-}
-
 func InstallPmuTools() error {
 	// Original Bash Scripts: scripts/install_pmutools.sh
 

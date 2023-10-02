@@ -369,6 +369,8 @@ PoC
 postfix
 PPoPP
 PPOPP
+popd
+pushd
 Prabhu
 pragmas
 Pramod

@@ -4,31 +4,6 @@ See [here][github-toc] to learn where to find table of contents.
 
 To see how to setup a single node cluster with stock-only or gVisor, see [Developer's guide](developers_guide.md).
 
-## Table of Contents
-1. [Host platform requirements](#I-host-platform-requirements)
-    1. [Hardware](#1-hardware)
-    2. [Software](#2-software)
-    3. [CloudLab Deployment Notes](#3-cloudlab-deployment-notes)
-        1. [CloudLab Profile](#a-cloudlab-profile)
-        2. [Nodes to Rent](#b-nodes-to-rent)
-2. [Setup a Serverless (Knative) Cluster](#ii-setup-a-serverless-knative-cluster)
-    1. [Setup All Nodes](#1-setup-all-nodes)
-    2. [Setup Worker Nodes](#2-setup-worker-nodes)
-    3. [Configure Master Node](#3-configure-master-node)
-    4. [Configure Worker Nodes](#4-configure-worker-nodes)
-    5. [Finalise Master Node](#5-finalise-master-node)
-3. [Setup a Single-Node Cluster](#iii-setup-a-single-node-cluster)
-    1. [Manual](#1-manual)
-    2. [Clean Up](#2-clean-up)
-    3. [Using a Script](#3-using-a-script)
-4. [Deploying and Invoking Functions in vHive](#iv-deploying-and-invoking-functions-in-vhive)
-    1. [Deploy Functions](#1-deploy-functions)
-    2. [Invoke Functions](#2-invoke-functions)
-    3. [Delete Deployed Functions](#3-delete-deployed-functions)
-5. [Deploying eStargz-based Functions](#v-deploying-estargz-based-functions)
-    1. [Deploy and Invoke Functions](#1-deploy-and-invoke-functions)
-    2. [Delete Deployed Function](#2-delete-deployed-function)
-
 ## I. Host platform requirements
 ### 1. Hardware
 1. Two x64 servers in the same network.
@@ -42,9 +17,10 @@ To see how to setup a single node cluster with stock-only or gVisor, see [Develo
 1. Ubuntu/Debian with sudo access and `apt` package manager on the host (tested on Ubuntu 20.04).
     - Other OS-es require changes in our setup scripts, but should work in principle.
 2. Passwordless SSH. Copy the SSH keys that you use to authenticate on GitHub to all the nodes and
-type `eval "$(ssh-agent -s)" && ssh-add` to allow ssh authentication in the background.
+    type `eval "$(ssh-agent -s)" && ssh-add` to allow ssh authentication in the background.
 
 ### 3. CloudLab Deployment Notes
+
 We suggest renting nodes on [CloudLab][cloudlab] as their service is available to researchers world-wide.
 
 Please make sure that you are using a "bash" shell whenever you connect via ssh to your cluster nodes, otherwise running some of the following commands will prompt a **"Missing name for redirect"** error. If you chose to use CloudLab, this can be done by selecting the current user's profile (upper left corner on any CloudLab page once logged in) --> **Manage account** --> **Default Shell** --> select **"bash"** from the drop down menu --> **Save**. Sometimes the default shell preference gets overwritten therefore, once you connect to a cluster node, check what type of shell you have opened by running the following command:
@@ -67,21 +43,41 @@ We tested the following instructions by setting up a **2-node** cluster on Cloud
 
 SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be found [here][cloudlab-hw].
 
+### 4. Go Installation
+
+If you intend to build the setup scripts from source, you can refer to the [Go Installation Guide](https://go.dev/doc/install) for installing Go on your system. **We highly recommend you install Go with version `1.19`**
+
+Another option is to run `./scripts/install_go.sh; source /etc/profile`, this will install version `1.18`.
+
+- Confirm the installation:
+   ```bash
+   go version
+   ```
+
 ## II. Setup a Serverless (Knative) Cluster
 ### 1. Setup All Nodes
-**On each node (both master and workers)**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
+**On each node (both master and workers)**, make sure you have **Go (version 1.19 at least) installed on your system and added to `PATH` if you want to build the setup scripts from source**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
+
 1. Clone the vHive repository
     ```bash
     git clone --depth=1 https://github.com/vhive-serverless/vhive.git
+    ```
+2. Create a directory for vHive logs:
+
+    ```bash
+    mkdir -p /tmp/vhive-logs/
     ```
 2. Change your working directory to the root of the repository:
     ```bash
     cd vhive
     ```
-3. Create a directory for vHive logs:
+3. Get the setup scripts:
     ```bash
-    mkdir -p /tmp/vhive-logs
+    # Build from source
+    pushd scripts && go build -o setup_tool && popd
     ```
+    
+    **Note:** All setup logs will be generated and saved to your current working directory.
 3. Run the node setup script:
     > **Note - stargz deployments:**
     >
@@ -92,37 +88,38 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     > standard container registries.
     > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
     > flags as follows:
-    >   ```bash
-    >   ./scripts/cloudlab/setup_node.sh stock-only use-stargz > >(tee -a /tmp/vhive-logs/setup_node.stdout) 2> >(tee -a /tmp/vhive-logs/setup_node.stderr >&2)
-    >   ```
+    >
+    > ```bash
+    > ./scripts/setup_tool setup_node stock-only use-stargz
+    > ```
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
     > Therefore, the following steps from this guide must **not** be executed:
     > * `2.3 - Start firecracker-containerd in a background terminal named firecracker`,
     > * `2.4 - Build vHive host orchestrator`,
     > * `2.5 - Start vHive in a background terminal named vhive`.
-
+    
     For the standard setup, run the following script:
     ```bash
-    ./scripts/cloudlab/setup_node.sh > >(tee -a /tmp/vhive-logs/setup_node.stdout) 2> >(tee -a /tmp/vhive-logs/setup_node.stderr >&2)
+    ./scripts/setup_tool setup_node firecracker
     ```
     > **BEWARE:**
     >
-    > This script can print `Command failed` when creating the devmapper at the end. This can be safely ignored.
+    > This script can generate some error logs when creating the devmapper at the end. This can be safely ignored.
 
 
 ### 2. Setup Worker Nodes
 **On each worker node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
+
 1. Run the script that setups kubelet:
     > **IMPORTANT:**
     > If step `1.4 - Run the node setup script` was executed with the `stock-only` flag, execute the following instead:
     >   ```bash
-    >   ./scripts/cluster/setup_worker_kubelet.sh stock-only > >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
-    >
-
+    >   ./scripts/setup_tool setup_worker_kubelet stock-only
+    
     For the standard kubelet setup, run the following script:
     ```bash
-    ./scripts/cluster/setup_worker_kubelet.sh > >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
+    ./scripts/setup_tool setup_worker_kubelet firecracker
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
     sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
@@ -178,13 +175,14 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
 
 ### 3. Configure Master Node
 **On the master node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
+
 1. Start `containerd` in a background terminal named `containerd`:
     ```bash
     sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
     ```
 2. Run the script that creates the multinode cluster (without `stargz`):
     ```bash
-    ./scripts/cluster/create_multinode_cluster.sh > >(tee -a /tmp/vhive-logs/create_multinode_cluster.stdout) 2> >(tee -a /tmp/vhive-logs/create_multinode_cluster.stderr >&2)
+    ./scripts/setup_tool create_multinode_cluster firecracker
     ```
     > **BEWARE:**
     >
@@ -194,26 +192,29 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
     > ```
     > **Leave this hanging in the terminal as we will go back to this later.**
     >
-    > However, in the same terminal you will see a command in following format:
+    > However, in the current working directory, you will see a yaml file named `masterKey.yaml` in following format:
+    > ```yaml
+    > ApiserverAdvertiseAddress: <IP Address>
+    > ApiserverPort: <Port>
+    > ApiserverToken: <Token>
+    > ApiserverTokenHash: <Token Hash>
     > ```
-    > kubeadm join 128.110.154.221:6443 --token <token> \
-    >     --discovery-token-ca-cert-hash sha256:<hash>
-    > ```
-    > Please copy the both lines of this command.
-
+    > You will use this file during subsequent settings.
+    
     > **IMPORTANT:**
     > If you built the cluster using the `stock-only` flag, execute the following 
     > script instead:
-    >   ```bash
-    >   ./scripts/cluster/create_multinode_cluster.sh stock-only > >(tee -a /tmp/vhive-logs/create_multinode_cluster.stdout) 2> >(tee -a /tmp/vhive-logs/create_multinode_cluster.stderr >&2)
-    >   ```
+    >
+    > ```bash
+    > ./scripts/setup_tool create_multinode_cluster stock-only
+    > ```
 
 ### 4. Configure Worker Nodes
 **On each worker node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
 
 1. Add the current worker to the Kubernetes cluster, by executing the command you have copied in step (3.2) **using sudo**:
     ```bash
-    sudo kubeadm join IP:PORT --token <token> --discovery-token-ca-cert-hash sha256:<hash> > >(tee -a /tmp/vhive-logs/kubeadm_join.stdout) 2> >(tee -a /tmp/vhive-logs/kubeadm_join.stderr >&2)
+    sudo kubeadm join IP:PORT --token <Token> --discovery-token-ca-cert-hash <Token Hash> > >(tee -a /tmp/vhive-logs/kubeadm_join.stdout) 2> >(tee -a /tmp/vhive-logs/kubeadm_join.stderr >&2)
     ```
     > **Note:**
     >
@@ -245,13 +246,13 @@ In essence, you will execute the same commands for master and worker setups but 
 Execute the following below **as a non-root user with sudo rights** using **bash**:
 1. Run the node setup script:
     ```bash
-    ./scripts/cloudlab/setup_node.sh;
+    ./scripts/setup_tool setup_node firecracker
     ```
     > **Note:**
     > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
     > flags as follows:
     >   ```bash
-    >   ./scripts/cloudlab/setup_node.sh stock-only use-stargz
+    >   ./scripts/setup_tool setup_node stock-only use-stargz
     >   ```
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
@@ -280,13 +281,13 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     ```
 6. Run the single node cluster setup script:
     ```bash
-    ./scripts/cluster/create_one_node_cluster.sh
+    ./scripts/setup_tool create_one_node_cluster firecracker
     ```
     > **IMPORTANT:**
     > If you setup the node using the `stock-only` flag, execute the following 
     > script instead:
     >   ```bash
-    >   ./scripts/cluster/create_one_node_cluster.sh stock-only
+    >   ./scripts/setup_tool create_one_node_cluster stock-only
     >   ```
 
 ### 2. Clean Up
@@ -301,7 +302,7 @@ This script stops the existing cluster if any, cleans up and then starts a fresh
 ```bash
 # specify if to enable debug logs; cold starts: snapshots, REAP snapshots
 export GITHUB_VHIVE_ARGS="[-dbg] [-snapshots]"
-scripts/cloudlab/start_onenode_vhive_cluster.sh
+./scripts/setup_tool start_onenode_vhive_cluster firecracker
 ```
 
 > **Note:**
