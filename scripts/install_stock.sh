@@ -37,7 +37,7 @@ wget --continue --quiet https://github.com/opencontainers/runc/releases/download
 mv runc.amd64 runc
 sudo install -D -m0755 runc /usr/local/sbin/runc
 
-wget --continue --quiet https://storage.googleapis.com/gvisor/releases/release/20230911/x86_64/runsc
+wget --continue --quiet https://storage.googleapis.com/gvisor/releases/release/20210622/x86_64/runsc
 sudo chmod a+rx runsc
 sudo mv runsc /usr/local/bin
 
