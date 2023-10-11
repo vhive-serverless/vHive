@@ -18,9 +18,9 @@ require (
 	github.com/openzipkin/zipkin-go v0.2.5 // indirect
 	go.opentelemetry.io/contrib v0.20.0 // indirect
 	go.opentelemetry.io/otel/metric v0.20.0 // indirect
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
-	golang.org/x/text v0.3.4 // indirect
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
