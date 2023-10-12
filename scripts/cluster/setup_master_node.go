@@ -125,7 +125,7 @@ func InstallMetalLB() error {
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
 	}
-	_, err = utils.ExecShellCmd("kubectl -n metallb-system wait deploy controller --timeout=90s --for=condition=Available")
+	_, err = utils.ExecShellCmd("kubectl -n metallb-system wait deploy controller --timeout=180s --for=condition=Available")
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
 	}
