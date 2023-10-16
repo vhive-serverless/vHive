@@ -65,18 +65,19 @@ require (
 	golang.org/x/net v0.17.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.13.0
-	gonum.org/v1/gonum v0.13.0
-	gonum.org/v1/plot v0.13.0
+	gonum.org/v1/gonum v0.14.0
+	gonum.org/v1/plot v0.14.0
 	google.golang.org/grpc v1.47.0
 	k8s.io/cri-api v0.25.0
 )
 
 require (
-	git.sr.ht/~sbinet/gg v0.4.1 // indirect
+	git.sr.ht/~sbinet/gg v0.5.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Microsoft/hcsshim v0.9.8 // indirect
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b // indirect
 	github.com/blend/go-sdk v1.20211025.3 // indirect
+	github.com/campoy/embedmd v1.0.0 // indirect
 	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
@@ -103,7 +104,7 @@ require (
 	github.com/opencontainers/selinux v1.10.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/image v0.7.0 // indirect
+	golang.org/x/image v0.11.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
