@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## v1.6
+
+### Added
 - Added support for [NVIDIA GPU](https://docs.nvidia.com/datacenter/cloud-native/kubernetes/install-k8s.html) in stock-only setup, with [setup script](./scripts/gpu/setup_nvidia_gpu.sh) and [example](./configs/gpu/gpu-function.yaml) Knative deployment 
 - Upgraded the Firecracker version.  [Vanilla Firecracker snapshots](./docs/snapshots.md) are
   supported with local snapshot storage. Remote snapshot support is added but unstable (GH-823).
