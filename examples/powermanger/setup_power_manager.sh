@@ -57,7 +57,7 @@ kubectl apply -f $HOME/vhive/examples/powermanger/powerconfig.yaml
 kubectl apply -f $HOME/vhive/examples/powermanger/shared-profile.yaml
 
 # Apply the shared PowerWorkload. All CPUs (except reservedCPUs specified in this yaml file) will be tuned ti the specified frequency in shared-profile.yaml
-kubectl apply -f $HOME/vhive/examples/powermanger/power_manager/shared-workload.yaml
+kubectl apply -f $HOME/vhive/examples/powermanger/shared-workload.yaml
 
 kubectl get powerprofiles -n intel-power
 kubectl get powerworkloads -n intel-power
