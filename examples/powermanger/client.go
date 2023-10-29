@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -43,9 +44,9 @@ func main() {
 		if err != nil {
 			fmt.Printf(fmt.Sprintf("ERR :%+v", err))
 		}
-		fmt.Println(string(output))
+		resultString := strings.ReplaceAll(string(output), "\n", "")
 		// Parse the string to a float64
-		floatValue, err := strconv.ParseFloat(string(output), 64)
+		floatValue, err := strconv.ParseFloat(resultString, 64)
 		if err != nil {
 			fmt.Printf("Error converting to float: %v\n", err)
 			return
