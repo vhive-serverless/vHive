@@ -28,7 +28,7 @@ func setCPUFrequency(frequency int) error {
 		return err
 	}
 
-	fmt.Println(output)
+	fmt.Println(string(output))
 	return nil
 }
 
