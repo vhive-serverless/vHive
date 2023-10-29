@@ -1,4 +1,3 @@
-- <<EOF
 apiVersion: "power.intel.com/v1"
 kind: PowerConfig
 metadata:
@@ -11,36 +10,3 @@ spec:
   # Add wanted PowerProfiles here; valid entries are as follows: performance, balance-performance, balance-power
   powerProfiles:
     - "performance"
-EOF
-
-- <<EOF
-server:
-  ingress:
-    enabled: true
-    hosts:
-      - prometheus.example.com
-  service:
-    type: ClusterIP
-EOF
-
-
-- <<EOF
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: prometheus-ingress
-  annotations:
-    kubernetes.io/ingress.class: "nginx"  # Replace with your Ingress controller
-spec:
-  rules:
-    - host: prometheus.example.com  # Replace with your desired hostname
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: prometheus-server
-                port:
-                  number: 9090
-EOF
