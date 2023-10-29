@@ -42,7 +42,7 @@ func main() {
 		if err != nil {
 			fmt.Printf(fmt.Sprintf("ERR :%+v", err))
 		}
-		fmt.Println(output)
+		fmt.Println(string(output))
 
 		//if metricValue > thresholdHigh {
 		//	if err := setCPUFrequency(Low); err != nil {
