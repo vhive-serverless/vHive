@@ -5,9 +5,8 @@ metadata:
   namespace: intel-power
 spec:
   name: "shared"
-  max: 1500
-  min: 1000
-  epp: "power"
+  max: 1400
+  min: 1200
   shared: true
   # A shared PowerProfile must have the EPP value of 'power'
   governor: "powersave"
