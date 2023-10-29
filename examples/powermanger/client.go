@@ -32,7 +32,7 @@ func setCPUFrequency(frequency int) error {
 
 func main() {
 	// Define your Prometheus query and threshold values
-	command := "curl -sG 'http://127.0.0.1:9090/api/v1/query?' --data-urlencode 'query=(avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)' | jq -r '.data.result[1].value[1]'\n"
+	command := "curl -sG 'http://127.0.0.1:9090/api/v1/query?' --data-urlencode 'query=(avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)' | jq -r '.data.result[1].value[1]'"
 	//thresholdHigh := 80.0 // Mostly idle => decrease frequency
 	//thresholdLow := 20.0  // Mostly CPU bound => increase frequency
 
