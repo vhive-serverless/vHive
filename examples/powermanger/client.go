@@ -68,7 +68,7 @@ func fetchPrometheusMetric(prometheusURL, prometheusQuery string) (float64, erro
 
 func main() {
 	// Define your Prometheus query and threshold values
-	prometheusURL := "http://10.111.120.245:9090/api/v1/query"
+	prometheusURL := "http://127.0.0.1:9090/api/v1/query"
 	prometheusQuery := "(avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)"
 	thresholdHigh := 80.0 // Mostly idle => decrease frequency
 	thresholdLow := 20.0  // Mostly CPU bound => increase frequency
