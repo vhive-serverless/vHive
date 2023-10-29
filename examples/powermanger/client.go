@@ -17,16 +17,12 @@ const (
 )
 
 func setCPUFrequency(frequency int) error {
-	command := "kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  # Replace <NODE_NAME> with the Node you intend this PowerWorkload to be associated with\n  name: shared-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  # Replace <NODE_NAME> with the Node you intend this PowerWorkload to be associated with\n  name: \"shared-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    # The label must be as below, as this workload will be specific to the Node\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n powerProfile: \"%s\"\nEOF"
-
-	var modifiedCommand string
-	if frequency == High {
-		modifiedCommand = fmt.Sprintf(command, "performance")
-	} else {
-		modifiedCommand = fmt.Sprintf(command, "shared")
+	m := map[int]string{
+		High: "performance",
+		Low:  "shared",
 	}
-
-	cmd := exec.Command("bash", "-c", modifiedCommand)
+	command := fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  # Replace <NODE_NAME> with the Node you intend this PowerWorkload to be associated with\n  name: shared-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  # Replace <NODE_NAME> with the Node you intend this PowerWorkload to be associated with\n  name: \"shared-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    # The label must be as below, as this workload will be specific to the Node\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n powerProfile: \"%s\"\nEOF", m[frequency])
+	cmd := exec.Command("bash", "-c", command)
 
 	// Capture and check for any errors.
 	output, err := cmd.CombinedOutput()
