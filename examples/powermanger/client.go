@@ -18,6 +18,7 @@ func setCPUFrequency(frequency int) error {
 		High: "performance",
 		Low:  "shared",
 	}
+	fmt.Printf("applying %s profile...\n", m[frequency])
 	command := fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  # Replace <NODE_NAME> with the Node you intend this PowerWorkload to be associated with\n  name: shared-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  # Replace <NODE_NAME> with the Node you intend this PowerWorkload to be associated with\n  name: \"shared-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    # The label must be as below, as this workload will be specific to the Node\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n powerProfile: \"%s\"\nEOF", m[frequency])
 	cmd := exec.Command("bash", "-c", command)
 
@@ -34,35 +35,33 @@ func setCPUFrequency(frequency int) error {
 func main() {
 	// Define your Prometheus query and threshold values
 	command := "curl -sG 'http://127.0.0.1:9090/api/v1/query?' --data-urlencode 'query=(avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)' | jq -r '.data.result[1].value[1]'"
-	//thresholdHigh := 80.0 // Mostly idle => decrease frequency
-	//thresholdLow := 20.0  // Mostly CPU bound => increase frequency
+	thresholdHigh := 80.0 // Mostly idle => decrease frequency
+	thresholdLow := 20.0  // Mostly CPU bound => increase frequency
 
 	for {
 		cmd := exec.Command("bash", "-c", command)
-
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf(fmt.Sprintf("ERR :%+v", err))
 		}
+
 		resultString := strings.ReplaceAll(string(output), "\n", "")
-		// Parse the string to a float64
-		floatValue, err := strconv.ParseFloat(resultString, 64)
+		metricValue, err := strconv.ParseFloat(resultString, 64)
 		if err != nil {
 			fmt.Printf("Error converting to float: %v\n", err)
 			return
 		}
-		fmt.Println(floatValue)
 
-		//if metricValue > thresholdHigh {
-		//	if err := setCPUFrequency(Low); err != nil {
-		//		fmt.Println("Failed to set low CPU frequency:", err)
-		//	}
-		//} else if metricValue != 0 && metricValue < thresholdLow {
-		//	if err := setCPUFrequency(High); err != nil {
-		//		fmt.Println("Failed to set high CPU frequency:", err)
-		//	}
-		//}
-
+		fmt.Println(metricValue)
+		if metricValue > thresholdHigh {
+			if err := setCPUFrequency(Low); err != nil {
+				fmt.Println("Failed to set low CPU frequency:", err)
+			}
+		} else if metricValue != 0 && metricValue < thresholdLow {
+			if err := setCPUFrequency(High); err != nil {
+				fmt.Println("Failed to set high CPU frequency:", err)
+			}
+		}
 		time.Sleep(60 * time.Second) // Adjust the polling interval as needed
 	}
 }
