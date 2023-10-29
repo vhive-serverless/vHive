@@ -34,9 +34,14 @@
 Execute the following below **as a non-root user with sudo rights** using **bash**:
 1. Run the node setup script:
     ```bash
-    ./scripts/power_manager/setup_power_manager.sh;
+    ./examples/powermanger/setup_power_manager.sh;
+   
+   go run ./examples/powermanger/client.go
     
 2. Clean Up
    ```bash
    ./scripts/github_runner/clean_cri_runner.sh
    ```
+
+curl -G 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=(avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100)' | jq -r '.data.result[1].value[1]'
+curl -G 'http://10.111.120.245:9090/api/v1/label/__name__/values'
