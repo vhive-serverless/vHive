@@ -4,9 +4,4 @@ go 1.19
 
 replace github.com/vhive-serverless/vhive/examples/deployer => ../deployer
 
-require (
-)
-
-require (
-	github.com/prometheus/common v0.45.0 // indirect
-)
+require github.com/prometheus/common v0.45.0
