@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os/exec"
+	"strconv"
 	"time"
 )
 
@@ -43,6 +44,13 @@ func main() {
 			fmt.Printf(fmt.Sprintf("ERR :%+v", err))
 		}
 		fmt.Println(string(output))
+		// Parse the string to a float64
+		floatValue, err := strconv.ParseFloat(string(output), 64)
+		if err != nil {
+			fmt.Printf("Error converting to float: %v\n", err)
+			return
+		}
+		fmt.Println(floatValue)
 
 		//if metricValue > thresholdHigh {
 		//	if err := setCPUFrequency(Low); err != nil {
