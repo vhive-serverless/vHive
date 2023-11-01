@@ -30,9 +30,16 @@ We present how to set up a multi-node cluster, however, the same modifications c
    git clone --depth=1 https://github.com/vhive-serverless/vhive.git && cd vhive && mkdir -p /tmp/vhive-logs
    ```
 
+2. Build `setup_tool`
+
+    ```bash
+    ./scripts/install_go.sh; source /etc/profile
+    pushd scripts && go build -o setup_tool && popd && mv scripts/setup_tool .
+    ```
+
 3. Run the node setup script:
     ```bash
-    ./scripts/cloudlab/setup_node.sh > >(tee -a /tmp/vhive-logs/setup_node.stdout) 2> >(tee -a /tmp/vhive-logs/setup_node.stderr >&2)
+    ./setup_tool setup_node
     ```
     > **BEWARE:**
     >
@@ -42,7 +49,7 @@ We present how to set up a multi-node cluster, however, the same modifications c
 **On each worker node**, execute the following instructions **as a non-root user with sudo rights** using **bash**:
 1. Run the script that sets up the kubelet:
     ```bash
-    ./scripts/cluster/setup_worker_kubelet.sh > >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stdout) 2> >(tee -a /tmp/vhive-logs/setup_worker_kubelet.stderr >&2)
+    ./setup_tool setup_worker_kubelet
     ```
     
 2. Open a new `tmux session` in detached mode and start `containerd` in the detached session:
@@ -92,7 +99,7 @@ We present how to set up a multi-node cluster, however, the same modifications c
     
 2. Run the script that creates the multinode cluster:
     ```bash
-    ./scripts/cluster/create_multinode_cluster.sh > >(tee -a /tmp/vhive-logs/create_multinode_cluster.stdout) 2> >(tee -a /tmp/vhive-logs/create_multinode_cluster.stderr >&2)
+    ./setup_tool create_multinode_cluster firecracker
     ```
     
     > **BEWARE:**
