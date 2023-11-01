@@ -74,7 +74,7 @@ Another option is to run `./scripts/install_go.sh; source /etc/profile`, this wi
 3. Get the setup scripts:
     ```bash
     # Build from source
-    pushd scripts && go build -o setup_tool && popd
+    pushd scripts && go build -o setup_tool && popd && mv scripts/setup_tool .
     ```
     
     **Note:** All setup logs will be generated and saved to your current working directory.
@@ -90,7 +90,7 @@ Another option is to run `./scripts/install_go.sh; source /etc/profile`, this wi
     > flags as follows:
     >
     > ```bash
-    > ./scripts/setup_tool setup_node stock-only use-stargz
+    > ./setup_tool setup_node stock-only use-stargz
     > ```
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
@@ -101,7 +101,7 @@ Another option is to run `./scripts/install_go.sh; source /etc/profile`, this wi
     
     For the standard setup, run the following script:
     ```bash
-    ./scripts/setup_tool setup_node firecracker
+    ./setup_tool setup_node firecracker
     ```
     > **BEWARE:**
     >
@@ -115,11 +115,11 @@ Another option is to run `./scripts/install_go.sh; source /etc/profile`, this wi
     > **IMPORTANT:**
     > If step `1.4 - Run the node setup script` was executed with the `stock-only` flag, execute the following instead:
     >   ```bash
-    >   ./scripts/setup_tool setup_worker_kubelet stock-only
+    >   ./setup_tool setup_worker_kubelet stock-only
     
     For the standard kubelet setup, run the following script:
     ```bash
-    ./scripts/setup_tool setup_worker_kubelet firecracker
+    ./setup_tool setup_worker_kubelet firecracker
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
     sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
@@ -182,7 +182,7 @@ Another option is to run `./scripts/install_go.sh; source /etc/profile`, this wi
     ```
 2. Run the script that creates the multinode cluster (without `stargz`):
     ```bash
-    ./scripts/setup_tool create_multinode_cluster firecracker
+    ./setup_tool create_multinode_cluster firecracker
     ```
     > **BEWARE:**
     >
@@ -206,7 +206,7 @@ Another option is to run `./scripts/install_go.sh; source /etc/profile`, this wi
     > script instead:
     >
     > ```bash
-    > ./scripts/setup_tool create_multinode_cluster stock-only
+    > ./setup_tool create_multinode_cluster stock-only
     > ```
 
 ### 4. Configure Worker Nodes
@@ -246,13 +246,13 @@ In essence, you will execute the same commands for master and worker setups but 
 Execute the following below **as a non-root user with sudo rights** using **bash**:
 1. Run the node setup script:
     ```bash
-    ./scripts/setup_tool setup_node firecracker
+    ./setup_tool setup_node firecracker
     ```
     > **Note:**
     > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
     > flags as follows:
     >   ```bash
-    >   ./scripts/setup_tool setup_node stock-only use-stargz
+    >   ./setup_tool setup_node stock-only use-stargz
     >   ```
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
@@ -281,13 +281,13 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     ```
 6. Run the single node cluster setup script:
     ```bash
-    ./scripts/setup_tool create_one_node_cluster firecracker
+    ./setup_tool create_one_node_cluster firecracker
     ```
     > **IMPORTANT:**
     > If you setup the node using the `stock-only` flag, execute the following 
     > script instead:
     >   ```bash
-    >   ./scripts/setup_tool create_one_node_cluster stock-only
+    >   ./setup_tool create_one_node_cluster stock-only
     >   ```
 
 ### 2. Clean Up
@@ -302,7 +302,7 @@ This script stops the existing cluster if any, cleans up and then starts a fresh
 ```bash
 # specify if to enable debug logs; cold starts: snapshots, REAP snapshots
 export GITHUB_VHIVE_ARGS="[-dbg] [-snapshots]"
-./scripts/setup_tool start_onenode_vhive_cluster firecracker
+./setup_tool start_onenode_vhive_cluster firecracker
 ```
 
 > **Note:**

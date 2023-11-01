@@ -10,9 +10,12 @@ or in gVisor MicroVMs instead of Firecracker MicroVMs, use the following command
 ```bash
 git clone https://github.com/vhive-serverless/vhive
 cd vhive
-./scripts/cloudlab/setup_node.sh [stock-only|gvisor|firecracker]
+./scripts/install_go.sh; source /etc/profile # or install Go manually
+pushd scripts && go build -o setup_tool && popd && mv scripts/setup_tool .
+
+./setup_tool setup_node [stock-only|gvisor|firecracker]
 sudo containerd
-./scripts/cluster/create_one_node_cluster.sh [stock-only|gvisor|firecracker]
+./setup_tool create_one_node_cluster [stock-only|gvisor|firecracker]
 # wait for the containers to boot up using
 watch kubectl get pods -A
 # once all the containers are ready/complete, you may start Knative functions
@@ -49,7 +52,7 @@ and check out the vHive repository manually.
 # Enter the container
 docker exec -it <container name> bash
 # Inside the container, create a single-node cluster
-./scripts/cluster/create_one_node_cluster.sh [stock-only]
+./setup_tool create_one_node_cluster [stock-only]
 ```
 > **Notes:**
 >
@@ -112,13 +115,13 @@ Assuming you rented a node using the vHive CloudLab profile:
 1. Setup the node for the desired sandbox:
 
 ```bash
-./scripts/cloudlab/setup_node.sh <firecracker|gvisor>
+./setup_tool setup_node [firecracker|gvisor]
 ```
 
 2. Setup the CRI test environment for the desired sandbox:
 
 ```bash
-./scripts/github_runner/setup_cri_test_env.sh <firecracker|gvisor>
+./scripts/github_runner/setup_cri_test_env.sh [firecracker|gvisor]
 ```
 
 3. Run CRI tests:
@@ -130,7 +133,7 @@ source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
 4. Cleanup:
 
 ```bash
-./scripts/github_runner/clean_cri_runner.sh <firecracker|gvisor>
+./scripts/github_runner/clean_cri_runner.sh [firecracker|gvisor]
 ```
 
 ## High-level features
@@ -204,6 +207,7 @@ Knative function call requests can now be traced & visualized using [zipkin](htt
 Zipkin is a distributed tracing system featuring easy collection and lookup of tracing data.
 Here are some useful commands (there are plenty of Zipkin tutorials online):
 
+* Setup Zipkin with `./setup_tool setup_zipkin`
 * Once the zipkin container is running, start the dashboard using `istioctl dashboard zipkin`.
 * To access requests remotely, run `ssh -L 9411:127.0.0.1:9411 <Host_IP>` for port forwarding.
 * Go to your browser and enter [localhost:9411](http://localhost:9411) for the dashboard.
@@ -236,7 +240,7 @@ Knative functions can use GPU although only `stock-only` mode is supported.
 Follow the guide to [setup stock knative](#testing-stock-knative-setup-or-images). 
 
 ``` bash
-./scripts/cloudlab/setup_node.sh stock-only
+./setup_tool setup_node stock-only
 ```
 
 ### Install NVIDIA Driver and NVIDIA Container Toolkit 
@@ -247,7 +251,7 @@ You can use the script provided if the install of containerd is using our script
 The script has been tested on ubuntu20.04, with GPU including NVIDIA A100, V100 or P100.
 
 ``` bash
-./scripts/gpu/setup_nvidia_gpu.sh
+./setup_tool setup_nvidia_gpu
 ```
 
 
@@ -255,7 +259,7 @@ The script has been tested on ubuntu20.04, with GPU including NVIDIA A100, V100 
 
 ``` bash
 sudo screen -dmS containerd containerd; sleep 5;
-./scripts/cluster/create_one_node_cluster.sh stock-only
+./setup_tool create_one_node_cluster stock-only
 ```
 
 ### Install NVIDIA Device Plugin
