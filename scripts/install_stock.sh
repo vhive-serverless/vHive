@@ -48,7 +48,14 @@ containerd --version || echo "failed to build containerd"
 K8S_VERSION=1.23.5-00
 curl --silent --show-error https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
 sudo sh -c "echo 'deb http://apt.kubernetes.io/ kubernetes-xenial main' > /etc/apt/sources.list.d/kubernetes.list"
-sudo apt-get update >> /dev/null
+if sudo apt-get update | grep "Err"; then
+    echo "Google GPG server unreachable, Trying k8s mirror"
+    curl --silent --show-error https://dl.k8s.io/apt/doc/apt-key.gpg | sudo apt-key add -
+    sudo sh -c "echo 'deb http://apt.kubernetes.io/ kubernetes-xenial main' > /etc/apt/sources.list.d/kubernetes.list"
+    if sudo apt-get update | grep "Err"; then
+    echo "GPG server unreachable, check GPG server status" && exit 1
+    fi
+fi
 sudo apt-get -y install cri-tools ebtables ethtool kubeadm=$K8S_VERSION kubectl=$K8S_VERSION kubelet=$K8S_VERSION kubernetes-cni >> /dev/null
 
 # Install knative CLI
