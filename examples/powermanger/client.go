@@ -73,25 +73,25 @@ func main() {
 			}
 		}
 
-		// Run the turbostat command
-		cmd = exec.Command("bash", "-c", "sudo turbostat --Summary --quiet --show Busy%,Avg_MHz,PkgTmp,PkgWatt --interval 1")
-		output, err = cmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf("Error running the turbostat command: %v\n", err)
-		}
-		fmt.Println(string(output)) /////
-
-		// Parse and extract relevant metrics from the command output
-		lines := strings.Split(string(output), "\n")
-		// You may need to adjust the line index and parsing based on the actual output format
-		metricsLine := lines[2]
-		metrics := strings.Fields(metricsLine)
-		fmt.Printf(fmt.Sprintf("metrics collected=%v", metrics)) /////
-
-		// Write metrics to the CSV file
-		err = writer.Write(append([]string{time.Now().Format("2006-01-02 15:04:05")}, metrics...))
-		if err != nil {
-			fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
-		}
+		//// Run the turbostat command
+		//cmd = exec.Command("bash", "-c", "sudo turbostat --Summary --quiet --show Busy%,Avg_MHz,PkgTmp,PkgWatt --interval 1")
+		//output, err = cmd.CombinedOutput()
+		//if err != nil {
+		//	fmt.Printf("Error running the turbostat command: %v\n", err)
+		//}
+		//fmt.Println(string(output)) /////
+		//
+		//// Parse and extract relevant metrics from the command output
+		//lines := strings.Split(string(output), "\n")
+		//// You may need to adjust the line index and parsing based on the actual output format
+		//metricsLine := lines[2]
+		//metrics := strings.Fields(metricsLine)
+		//fmt.Printf(fmt.Sprintf("metrics collected=%v", metrics)) /////
+		//
+		//// Write metrics to the CSV file
+		//err = writer.Write(append([]string{time.Now().Format("2006-01-02 15:04:05")}, metrics...))
+		//if err != nil {
+		//	fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
+		//}
 	}
 }
