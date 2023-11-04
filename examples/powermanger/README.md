@@ -38,7 +38,7 @@ Execute the following below **as a non-root user with sudo rights** using **bash
    
    go run ./examples/powermanger/client.go
    
-   timeout 5s sudo turbostat --Summary --quiet --show Busy%,Avg_MHz,PkgTmp,PkgWatt > data.txt
+   timeout 5s sudo turbostat --Summary --quiet --show Busy%,Avg_MHz,PkgTmp,PkgWatt > data1.txt
  
 2. Clean Up
    ```bash

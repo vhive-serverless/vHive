@@ -45,8 +45,7 @@ func main() {
 	defer writer.Flush()
 
 	command := "curl -sG 'http://127.0.0.1:9090/api/v1/query?' --data-urlencode 'query=(avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)' | jq -r '.data.result[1].value[1]'"
-	thresholdHigh := 80.0 // Mostly idle => decrease frequency
-	thresholdLow := 20.0  // Mostly CPU bound => increase frequency
+	thresholdHigh := 95.0 // Mostly idle => decrease frequency
 
 	start := time.Now()
 	for time.Since(start) < (5 * time.Minute) {
@@ -67,7 +66,7 @@ func main() {
 			if err := setCPUFrequency(Low); err != nil {
 				fmt.Println("Failed to set low CPU frequency:", err)
 			}
-		} else if metricValue != 0 && metricValue < thresholdLow {
+		} else {
 			if err := setCPUFrequency(High); err != nil {
 				fmt.Println("Failed to set high CPU frequency:", err)
 			}
