@@ -59,7 +59,6 @@ func main() {
 		metricValue, err := strconv.ParseFloat(resultString, 64)
 		if err != nil {
 			fmt.Printf("Error converting to float: %v\n", err)
-			return
 		}
 
 		fmt.Println(metricValue)

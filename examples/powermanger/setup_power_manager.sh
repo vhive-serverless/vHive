@@ -38,7 +38,6 @@ export GOROOT=/usr/local/go
 export GOPATH=$HOME
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 # Install turbostat
-sudo apt update
 sudo apt-get install linux-tools-$(uname -r)
 
 
