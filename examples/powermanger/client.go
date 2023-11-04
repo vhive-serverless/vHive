@@ -49,7 +49,7 @@ func main() {
 	thresholdLow := 20.0  // Mostly CPU bound => increase frequency
 
 	start := time.Now()
-	for time.Since(start) > (5 * time.Minute) {
+	for time.Since(start) < (5 * time.Minute) {
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
