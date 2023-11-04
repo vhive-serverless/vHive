@@ -78,6 +78,8 @@ func main() {
 		if err != nil {
 			fmt.Printf("Error running the turbostat command: %v\n", err)
 		}
+		fmt.Println(string(output)) /////
+
 		// Parse and extract relevant metrics from the command output
 		lines := strings.Split(string(output), "\n")
 		// You may need to adjust the line index and parsing based on the actual output format
