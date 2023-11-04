@@ -55,7 +55,6 @@ func main() {
 			fmt.Printf(fmt.Sprintf("ERR :%+v", err))
 		}
 
-		fmt.Println(string(output)) /////
 		resultString := strings.ReplaceAll(string(output), "\n", "")
 		metricValue, err := strconv.ParseFloat(resultString, 64)
 		if err != nil {
@@ -84,6 +83,7 @@ func main() {
 		// You may need to adjust the line index and parsing based on the actual output format
 		metricsLine := lines[2]
 		metrics := strings.Fields(metricsLine)
+		fmt.Printf(fmt.Sprintf("metrics collected=%v", metrics)) /////
 
 		// Write metrics to the CSV file
 		err = writer.Write(append([]string{time.Now().Format("2006-01-02 15:04:05")}, metrics...))
