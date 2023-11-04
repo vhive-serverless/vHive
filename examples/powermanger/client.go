@@ -48,7 +48,8 @@ func main() {
 	thresholdHigh := 80.0 // Mostly idle => decrease frequency
 	thresholdLow := 20.0  // Mostly CPU bound => increase frequency
 
-	for {
+	start := time.Now()
+	for time.Since(start) > (5 * time.Minute) {
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -73,7 +74,7 @@ func main() {
 		}
 
 		// Run the turbostat command
-		cmd = exec.Command("sudo", "turbostat", "--Summary", "--quiet", "--show", "Busy%,Avg_MHz,PkgTmp,PkgWatt", "--interval", "1")
+		cmd = exec.Command("bash", "-c", "sudo turbostat sudo turbostat --Summary --quiet --show Busy%,Avg_MHz,PkgTmp,PkgWatt --interval 1")
 		output, err = cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf("Error running the turbostat command: %v\n", err)
@@ -92,7 +93,5 @@ func main() {
 		if err != nil {
 			fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
 		}
-
-		time.Sleep(time.Minute) // Adjust the polling interval as needed
 	}
 }
