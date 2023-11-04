@@ -30,7 +30,7 @@ func setCPUFrequency(frequency int) error {
 		return err
 	}
 
-	fmt.Println(string(output))
+	fmt.Println(string(output)) /////
 	return nil
 }
 
@@ -55,13 +55,14 @@ func main() {
 			fmt.Printf(fmt.Sprintf("ERR :%+v", err))
 		}
 
+		fmt.Println(string(output)) /////
 		resultString := strings.ReplaceAll(string(output), "\n", "")
 		metricValue, err := strconv.ParseFloat(resultString, 64)
 		if err != nil {
 			fmt.Printf("Error converting to float: %v\n", err)
 		}
 
-		fmt.Println(metricValue)
+		fmt.Println(metricValue) /////
 		if metricValue > thresholdHigh {
 			if err := setCPUFrequency(Low); err != nil {
 				fmt.Println("Failed to set low CPU frequency:", err)
