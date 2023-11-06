@@ -67,7 +67,6 @@ func (node *Node) InstallKnativeServing() {
 
 	// Configure Magic DNS
 	utils.WaitPrintf("Configuring Magic DNS")
-	// utils.InfoPrintf("DEBUG: %s", node.Configs.Knative.MagicDNSConfigPath)
 	_, err = node.ExecShellCmd("kubectl apply -f %s", node.Configs.Knative.MagicDNSConfigUrl)
 	utils.CheckErrorWithTagAndMsg(err, "Failed to configure Magic DNS!")
 

@@ -2,9 +2,11 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"os"
+	"strings"
 
 	"github.com/vhive-serverless/vHive/scripts/utils"
 
@@ -204,29 +206,40 @@ func deployNodes(deployerConfFile string) {
 	}
 	utils.InfoPrintf("]\n")
 
-	// init yurt cluster
-	utils.SuccessPrintf("Start to init yurt cluster!\n")
-	masterNode.YurtMasterInit()
-	for _, worker := range workerNodes {
-		worker.YurtWorkerJoin(addr, port, token)
-		utils.InfoPrintf("worker %s joined yurt cluster!\n", worker.Configs.System.NodeHostName)
+	if promptUser("Continue to init yurt cluster? (yes/no)") {
+		// init yurt cluster
+		utils.SuccessPrintf("Start to init yurt cluster!\n")
+		masterNode.YurtMasterInit()
+		for _, worker := range workerNodes {
+			// worker.YurtWorkerJoin(addr, port, token)
+			utils.InfoPrintf("worker %s joined yurt cluster!\n", worker.Configs.System.NodeHostName)
+		}
+		utils.SuccessPrintf("All nodes joined yurt cluster, start to expand\n")
+		for _, worker := range workerNodes {
+			masterNode.YurtMasterExpand(&worker)
+			utils.InfoPrintf("Master has expanded to worker:%s\n", worker.Configs.System.NodeHostName)
+		}
+		utils.SuccessPrintf("Master has expaned to all nodes!\n")
+	} else {
+		return
 	}
-	utils.SuccessPrintf("All nodes joined yurt cluster, start to expand\n")
-	for _, worker := range workerNodes {
-		masterNode.YurtMasterExpand(&worker)
-		utils.InfoPrintf("Master has expanded to worker:%s\n", worker.Configs.System.NodeHostName)
+
+	if promptUser("Continue to init knative? (yes/no)") {
+		// init knative
+		utils.SuccessPrintf("Start to init knative\n")
+		masterNode.InstallKnativeServing()
+		masterNode.InstallKnativeEventing()
+		utils.SuccessPrintf("Knative has been installed!\n")
+	} else {
+		return
 	}
-	utils.SuccessPrintf("Master has expaned to all nodes!\n")
 
-	// // init knative
-	utils.SuccessPrintf("Start to init knative\n")
-	masterNode.InstallKnativeServing()
-	masterNode.InstallKnativeEventing()
-	utils.SuccessPrintf("Knative has been installed!\n")
-
-	// init demo environment
-	masterNode.BuildDemo(workerNodes)
-
+	if promptUser("Continue to init demo? (yes/no)") {
+		// init demo environment
+		masterNode.BuildDemo(workerNodes)
+	} else {
+		return
+	}
 	utils.SuccessPrintf(">>>>>>>>>>>>>>>>OpenYurt Cluster Deployment Finished!<<<<<<<<<<<<<<<\n")
 
 }
@@ -297,4 +310,12 @@ func delDemo(deployerConfFile string) {
 	masterNode := nodeList[0]
 	masterNode.DeleteDemo(nodeList)
 	utils.SuccessPrintf("Delete the demo success!\n")
+}
+
+func promptUser(prompt string) bool {
+	utils.InfoPrintf("%s\n", prompt)
+	reader := bufio.NewReader(os.Stdin)
+	userInput, _ := reader.ReadString('\n')
+	userInput = strings.TrimSpace(userInput)
+	return strings.ToLower(userInput) == "yes" || strings.ToLower(userInput) == "y"
 }

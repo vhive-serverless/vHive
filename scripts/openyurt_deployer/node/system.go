@@ -350,7 +350,6 @@ func (node *Node) SystemInit() {
 		utils.CheckErrorWithTagAndMsg(err, "Failed to add the Kubernetes apt repository!\n")
 		// Install kubeadm, kubelet, kubectl via apt
 		utils.InfoPrintf("Installing kubeadm, kubelet, kubectl")
-		utils.InfoPrintf("DEBUG Installing ctl %s", node.Configs.System.KubeVersion)
 		err = node.InstallPackages("kubeadm=%s kubelet=%s kubectl=%s", node.Configs.System.KubeVersion, node.Configs.System.KubeVersion, node.Configs.System.KubeVersion)
 		utils.CheckErrorWithTagAndMsg(err, "Failed to install kubeadm, kubelet, kubectl!\n")
 		// Lock kubeadm, kubelet, kubectl version
