@@ -94,11 +94,11 @@ The demo code will also show information about node pool after deployment.
 The name for `demo-c` would be `helloworld-cloud`, while the name for `demo-e` would be `helloworld-edge`
 It will also show the services' `URL` so you can try to invoke it on the master node.
 
-You can check the nodepool information simply by:
+You can check the node pool information simply by:
 ```
 ./openyurt_deployer demo-print
 ```
-Or delete the services deployed on nodepool by:
+Or delete the services deployed on node pool by:
 ```
 ./openyurt_deployer demo-clear
 ```
