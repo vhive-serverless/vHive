@@ -26,7 +26,52 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [misc, profile, networking, snapshotting]
+        module: [misc, networking, snapshotting]
+    steps:
+
+    - name: Set up Go 1.19
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.19'
+        
+    - name: Set up Python 3.x
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v4
+
+    - name: Build setup scripts
+      run: pushd scripts && go build -o setup_tool && popd
+      
+    - name: Add rsync
+      run: |
+        sudo apt update
+        sudo apt install rsync -y
+
+    - name: Setup System
+      run: ./scripts/setup_tool setup_system
+
+    - name: Build
+      run: go build -race -v -a ./...
+
+    - name: Run tests in submodules
+      env:
+          MODULE: ${{ matrix.module }}
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      run: |
+        make -C $MODULE test
+        make -C $MODULE test-man
+  
+  profile-unit-test:
+    name: "Unit test: profile unit test"
+    runs-on: [self-hosted, profile]
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [profile]
     steps:
 
     - name: Set up Go 1.19
@@ -67,7 +112,7 @@ jobs:
       run: |
         make -C $MODULE test
         make -C $MODULE test-man
-  
+
   firecracker-containerd-interface-test:
     name: "Unit tests: Firecracker-containerd interface"
     runs-on: [self-hosted, integ]

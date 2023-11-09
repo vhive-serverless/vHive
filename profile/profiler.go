@@ -298,23 +298,24 @@ func (p *Profiler) parseMetric(lines []pmuLine) map[string]float64 {
 }
 
 func isPmuToolInstalled() bool {
-	cmd := exec.Command("/usr/local/pmu-tools/toplev", "--version")
-	b, err := cmd.Output()
+	_, err := os.Stat("/usr/local/pmu-tools/toplev")
 	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
 		log.Error(err)
 	}
 
-	return len(b) != 0
+	return true
 }
 
 func isPerfInstalled() bool {
-	cmd := exec.Command("perf", "--version")
-	b, err := cmd.Output()
+	_, err := exec.LookPath("perf")
 	if err != nil {
-		log.Error(err)
+		log.Errorf("perf is not installed or not found in PATH: %v", err)
+		return false
 	}
-
-	return len(b) != 0
+	return true
 }
 
 // CPUInfo contains sockets and processor to socket and core map
