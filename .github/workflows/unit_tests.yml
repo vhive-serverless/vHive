@@ -53,8 +53,8 @@ jobs:
     - name: Setup System
       run: ./scripts/setup_tool setup_system
 
-    - name: Install PMU tools
-      run: ./scripts/setup_tool install_pmutools
+    # - name: Install PMU tools
+    #   run: ./scripts/setup_tool install_pmutools
 
     - name: Build
       run: go build -race -v -a ./...
