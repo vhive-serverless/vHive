@@ -24,9 +24,31 @@
 
 set -e
 
-wget --continue --quiet https://golang.org/dl/go1.18.linux-amd64.tar.gz
+VHIVE_ROOT="$(git rev-parse --show-toplevel)"
 
-sudo tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz
+arch=`uname -m`
+
+case $arch in
+  'x86_64')
+    arch='amd64'
+    ;;
+  *)
+    echo "Unsupported architecture $arch"
+    exit 1
+    ;;
+esac
+
+sudo apt update; sudo apt install jq -y
+
+go_version=`cat $VHIVE_ROOT/configs/setup/system.json | jq '.GoVersion' | sed 's/"//g'`
+go_link=`cat $VHIVE_ROOT/configs/setup/system.json | jq '.GoDownloadUrlTemplate' | sed 's/"//g'`
+go_link=`echo $go_link | sed 's/%s/'$go_version'/' | sed 's/%s/'$arch'/'`
+
+echo Installing go version $go_version
+
+wget --continue --quiet $go_link
+
+sudo tar -C /usr/local -xzf ${go_link##*/}
 
 export PATH=$PATH:/usr/local/go/bin
 
