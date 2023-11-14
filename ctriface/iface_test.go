@@ -45,17 +45,6 @@ var (
 	isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 )
 
-func TestMain(m *testing.M) {
-	flag.Parse()
-
-	if *isUPFEnabled {
-		log.Error("User-level page faults are temporarily disabled (gh-807)")
-		os.Exit(-1)
-	}
-
-	os.Exit(m.Run())
-}
-
 func TestPauseSnapResume(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,

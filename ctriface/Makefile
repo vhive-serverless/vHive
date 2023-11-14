@@ -23,11 +23,8 @@
 EXTRAGOARGS:=-v -race -cover
 EXTRATESTFILES:=iface_test.go iface.go orch_options.go orch.go
 BENCHFILES:=bench_test.go iface.go orch_options.go orch.go
-# User-level page faults are temporarily disabled (gh-807)
-# WITHUPF:=-upf
-# WITHLAZY:=-lazy
-WITHUPF:=
-WITHLAZY:=
+WITHUPF:=-upf
+WITHLAZY:=-lazy
 GOBENCH:=-v -timeout 1500s
 CTRDLOGDIR:=/tmp/ctrd-logs
 

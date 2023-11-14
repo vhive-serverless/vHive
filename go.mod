@@ -39,7 +39,7 @@ replace (
 )
 
 replace (
-	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20230912063208-ad6383f05e45
+	github.com/firecracker-microvm/firecracker-containerd => github.com/char-1ee/firecracker-containerd v0.0.0-20231018191519-49cac5eea134
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
 )
 
