@@ -19,7 +19,7 @@ func setCPUFrequency(frequency int) error {
 		Low:  "shared",
 	}
 	fmt.Printf("applying %s profile...\n", m[frequency])
-	command := fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  name: shared-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  name: \"shared-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n  powerProfile: \"%s\"\nEOF", m[frequency])
+	command := fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  name: shared-node-4.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  name: \"shared-node-4.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    kubernetes.io/hostname: node-4.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n  powerProfile: \"%s\"\nEOF", m[frequency])
 	cmd := exec.Command("bash", "-c", command)
 
 	// Capture and check for any errors.
