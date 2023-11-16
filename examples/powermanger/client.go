@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -35,14 +33,14 @@ func setCPUFrequency(frequency int) error {
 }
 
 func main() {
-	file, err := os.Create("metrics.csv")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
+	//file, err := os.Create("metrics.csv")
+	//if err != nil {
+	//	panic(err)
+	//}
+	//defer file.Close()
+	//
+	//writer := csv.NewWriter(file)
+	//defer writer.Flush()
 
 	command := "curl -sG 'http://127.0.0.1:9090/api/v1/query?' --data-urlencode 'query=(avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)' | jq -r '.data.result[1].value[1]'"
 	thresholdHigh := 95.0 // Mostly idle => decrease frequency
