@@ -1,11 +1,11 @@
 apiVersion: "power.intel.com/v1"
 kind: PowerWorkload
 metadata:
-  name: shared-node-4.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload
+  name: shared-node-3.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload
   namespace: intel-power
 spec:
-  name: "shared-node-4.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload"
+  name: "shared-node-3.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload"
   allCores: true
   powerNodeSelector:
-    kubernetes.io/hostname: node-4.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
+    kubernetes.io/hostname: node-3.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
   powerProfile: "shared"
