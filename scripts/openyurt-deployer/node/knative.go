@@ -12,7 +12,6 @@ func (node *Node) InstallKnativeServing() {
 	var err error
 
 	node.CreateTmpDir()
-	defer node.CleanUpTmpDir()
 
 	// Install and configure MetalLB
 	utils.WaitPrintf("Installing and configuring MetalLB")

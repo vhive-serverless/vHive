@@ -14,7 +14,6 @@ func (node *Node) KubeMasterInit() (string, string, string, string) {
 	var err error
 	node.check_kube_environment()
 	node.CreateTmpDir()
-	defer node.CleanUpTmpDir()
 
 	// Pre-pull Image
 	utils.WaitPrintf("Pre-Pulling required images")
@@ -54,14 +53,20 @@ func (node *Node) KubeMasterInit() (string, string, string, string) {
 	// Extract master node information from logs
 	utils.WaitPrintf("Extracting master node information from logs")
 	shellOut, err := node.ExecShellCmd("sed -n '/.*kubeadm join.*/p' < %s/masterNodeInfo | sed -n 's/.*join \\(.*\\):\\(\\S*\\) --token \\(\\S*\\).*/\\1 \\2 \\3/p'", node.Configs.System.TmpDir)
+	utils.InfoPrintf("shellOut 2: %s\n", shellOut) //DEBUG
 	utils.CheckErrorWithMsg(err, "Failed to extract master node information from logs!\n")
 	splittedOut := strings.Split(shellOut, " ")
+	utils.InfoPrintf("spiltOut 3: %s\n", splittedOut) //DEBUG
 	node.Configs.Kube.ApiserverAdvertiseAddress = splittedOut[0]
 	node.Configs.Kube.ApiserverPort = splittedOut[1]
 	node.Configs.Kube.ApiserverToken = splittedOut[2]
 	shellOut, err = node.ExecShellCmd("sed -n '/.*sha256:.*/p' < %s/masterNodeInfo | sed -n 's/.*\\(sha256:\\S*\\).*/\\1/p'", node.Configs.System.TmpDir)
 	utils.CheckErrorWithTagAndMsg(err, "Failed to extract master node information from logs!\n")
 	node.Configs.Kube.ApiserverTokenHash = shellOut
+
+	shellData := fmt.Sprintf("echo '%s\n%s\n%s\n%s' > %s/masterNodeValues", node.Configs.Kube.ApiserverAdvertiseAddress, node.Configs.Kube.ApiserverPort, node.Configs.Kube.ApiserverToken, node.Configs.Kube.ApiserverTokenHash, node.Configs.System.TmpDir)
+	_, err = node.ExecShellCmd(shellData)
+	utils.CheckErrorWithTagAndMsg(err, "Failed to write master node information to file!\n")
 
 	return node.Configs.Kube.ApiserverAdvertiseAddress,
 		node.Configs.Kube.ApiserverPort,
