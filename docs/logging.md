@@ -3,6 +3,8 @@
 
 This guide describes how to collect and extract logs in an N-node vHive serverless cluster with Firecracker MicroVMs.
 
+Kubelet has its own logs, which can have different verbosity levels. This verbosity can be controlled by the `LogVerbosity` parameter in `configs/setup/system.json`. In addition, this parameter changes the sizes of per-container logs. By default, this parameter is set to 0 for performance reasons.
+
 There are a couple of ways to gather and extract logs for vHive to your local machine, whether it is on a single-node cluster or a multi node one.
 We will present one method to do it.
 Firstly, if you follow the steps from the [Quickstart guide], logs should already be generated in the `/tmp/vhive-logs` folder at different steps in the workflow.

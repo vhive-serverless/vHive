@@ -50,6 +50,7 @@ type SystemEnvironmentStruct struct {
 	PmuToolsRepoUrl                     string
 	ProtocVersion                       string
 	ProtocDownloadUrlTemplate           string
+	LogVerbosity                        int
 }
 
 // Current system environment
