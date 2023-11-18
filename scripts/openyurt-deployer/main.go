@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"strings"
 
 	"github.com/vhive-serverless/vHive/scripts/utils"
 
@@ -70,8 +71,8 @@ func main() {
 	// 	delDemo(*deployerConf)
 	// case "demo-print":
 	// 	printDemo(*deployerConf)
-	// case "deploy-yurt":
-	// 	deployOpenYurt(*deployerConf)
+	case "deploy-yurt":
+		deployOpenYurt(*deployerConf)
 	default:
 		utils.InfoPrintf("Usage: %s  <operation: deploy | clean | demo-c | demo-e | demo-clear | demo-print> [Parameters...]\n", os.Args[0])
 		os.Exit(-1)
@@ -182,6 +183,49 @@ func deployNodes(deployerConfFile string) {
 
 	// init demo environment
 	masterNode.BuildDemo(workerNodes)
+}
 
+func deployOpenYurt(deployerConfFile string) {
+
+	nodesInfo, err := readAndUnMarshall(deployerConfFile)
+	utils.CheckErrorWithMsg(err, "Failed to read and unmarshal deployer configuration JSON")
+	nodeList := initializeNodes(nodesInfo)
+	masterNode := nodeList[0]
+	workerNodes := nodeList[1:]
+
+	// init yurt cluster
+	utils.SuccessPrintf("Start to init yurt cluster!\n")
+	masterNode.YurtMasterInit()
+
+	utils.WaitPrintf("Extracting master node information from logs")
+	output, err := masterNode.ExecShellCmd("sed -n '1p;2p;3p;4p' %s/masterNodeValues", masterNode.Configs.System.TmpDir)
+	utils.CheckErrorWithMsg(err, "Failed to extract master node information from logs!\n")
+
+	// Process the content and assign it to variables
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != 4 {
+		utils.ErrorPrintf("Invalid file format")
+		return
+	}
+
+	addr := lines[0]
+	port := lines[1]
+	token := lines[2]
+
+	for _, worker := range workerNodes {
+		worker.YurtWorkerJoin(addr, port, token)
+		utils.InfoPrintf("worker %s joined yurt cluster!\n", worker.Configs.System.NodeHostName)
+	}
+	utils.SuccessPrintf("All nodes joined yurt cluster, start to expand\n")
+	for _, worker := range workerNodes {
+		masterNode.YurtMasterExpand(&worker)
+		utils.InfoPrintf("Master has expanded to worker:%s\n", worker.Configs.System.NodeHostName)
+	}
+	utils.SuccessPrintf("Master has expaned to all nodes!\n")
+
+	for _, node := range nodeList {
+		utils.InfoPrintf("node: %s\n", node.Name)
+		node.CleanUpTmpDir()
+	}
 	utils.SuccessPrintf(">>>>>>>>>>>>>>>>OpenYurt Cluster Deployment Finished!<<<<<<<<<<<<<<<\n")
 }
