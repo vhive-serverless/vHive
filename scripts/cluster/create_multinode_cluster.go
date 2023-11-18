@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
@@ -54,6 +55,12 @@ func CreateMultinodeCluster(stockContainerd string) error {
 		return err
 	}
 
+	if configs.System.LogVerbosity != 0 {
+		if err := IncreaseLogSizePerContainer(); err != nil {
+			return err
+		}
+	}
+
 	// Set up master node
 	utils.InfoPrintf("Set up master node\n")
 	if err := SetupMasterNode(stockContainerd); err != nil {
@@ -68,10 +75,10 @@ func CreateMultinodeCluster(stockContainerd string) error {
 func CreateMasterKubeletService() error {
 	utils.WaitPrintf("Creating kubelet service")
 	bashCmd := `sudo sh -c 'cat <<EOF > /etc/systemd/system/kubelet.service.d/0-containerd.conf
-[Service]                                                 
-Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+[Service]
+Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
 EOF'`
-	_, err := utils.ExecShellCmd(bashCmd)
+	_, err := utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity)
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
 		return err
 	}
@@ -87,7 +94,16 @@ EOF'`
 func DeployKubernetes() error {
 
 	utils.WaitPrintf("Deploying Kubernetes(version %s)", configs.Kube.K8sVersion)
-	shellCmd := fmt.Sprintf("sudo kubeadm init --kubernetes-version %s --pod-network-cidr=\"%s\" ", configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
+	masterNodeIp, iperr := utils.ExecShellCmd(`ip route | awk '{print $(NF)}' | awk '/^10\..*/'`)
+	if iperr != nil {
+		return iperr
+	}
+	shellCmd := fmt.Sprintf(`sudo kubeadm init --v=%d \
+--apiserver-advertise-address=%s \
+--cri-socket /run/containerd/containerd.sock \
+--kubernetes-version %s \
+--pod-network-cidr="%s" `,
+	configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
 	if len(configs.Kube.AlternativeImageRepo) > 0 {
 		shellCmd = fmt.Sprintf(shellCmd+"--image-repository %s ", configs.Kube.AlternativeImageRepo)
 	}
@@ -191,5 +207,21 @@ func WaitForWorkerNodes() error {
 		}
 	}
 	utils.SuccessPrintf("All nodes successfully joined!(user confirmed)\n")
+	return nil
+}
+
+// Increase log size per container
+func IncreaseLogSizePerContainer() error {
+	_, err := utils.ExecShellCmd(`sudo echo "containerLogMaxSize: 512Mi" > >(sudo tee -a /var/lib/kubelet/config.yaml >/dev/null)`)
+	if err != nil {
+		return err
+	}
+
+	_, err = utils.ExecShellCmd(`sudo systemctl restart kubelet`)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(15 * time.Second)
 	return nil
 }

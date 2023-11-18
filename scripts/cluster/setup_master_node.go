@@ -23,6 +23,7 @@
 package cluster
 
 import (
+	"os"
 	"path"
 
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
@@ -107,7 +108,11 @@ func SetupMasterNode(stockContainerd string) error {
 func InstallCalico() error {
 
 	utils.WaitPrintf("Installing pod network")
-	_, err := utils.ExecShellCmd("kubectl apply -f %s", configs.Kube.PodNetworkAddonConfigURL)
+	calicoYamlPath, err := utils.GetVHiveFilePath(path.Join("configs/calico", "canal.yaml"))
+	if err != nil {
+		return err
+	}
+	_, err = utils.ExecShellCmd("kubectl apply -f %s", calicoYamlPath)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install pod network!\n") {
 		return err
 	}
@@ -199,16 +204,39 @@ func InstallKnativeServingComponent(stockContainerd string) error {
 		if !utils.CheckErrorWithMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
-		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml", configs.Knative.KnativeVersion)
-		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
-			return err
+		
+		if _, err = os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-core.yaml"))); err != nil {
+			utils.WaitPrintf("Using stock version of knative.")
+			_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml", configs.Knative.KnativeVersion)
+			if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
+				return err
+			}
+		} else {
+			utils.WaitPrintf("Found local serving-core.yaml. Using it instead of stock version of knative.")
+			servingCorePath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-core.yaml"))
+			if err != nil {
+				return err
+			}
+			_, err = utils.ExecShellCmd("kubectl apply -f %s", servingCorePath)
+			if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
+				return err
+			}
 		}
 	} else {
-		_, err := utils.ExecShellCmd("kubectl apply -f %s/serving-crds.yaml", configs.Knative.NotStockOnlyKnativeServingYamlUrlPrefix)
+		servingCrdsPath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-crds-firecracker.yaml"))
+		if err != nil {
+			return err
+		}
+		_, err = utils.ExecShellCmd("kubectl apply -f %s", servingCrdsPath)
 		if !utils.CheckErrorWithMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
-		_, err = utils.ExecShellCmd("kubectl apply -f %s/serving-core.yaml", configs.Knative.NotStockOnlyKnativeServingYamlUrlPrefix)
+
+		servingCorePath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-core-firecracker.yaml"))
+		if err != nil {
+			return err
+		}
+		_, err = utils.ExecShellCmd("kubectl apply -f %s", servingCorePath)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
@@ -263,10 +291,23 @@ func ConfigureMagicDNS() error {
 // Deploy Istio pods
 func DeployIstioPods() error {
 	utils.WaitPrintf("Deploying istio pods")
-	_, err := utils.ExecShellCmd("kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v%s/net-istio.yaml", configs.Knative.KnativeVersion)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy istio pods!\n") {
-		return err
+	
+	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "net-istio.yaml"))); err != nil {
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v%s/net-istio.yaml", configs.Knative.KnativeVersion)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy istio pods!\n") {
+			return err
+		}
+	} else {
+		loaderIstioControllerPath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "net-istio.yaml"))
+		if err != nil {
+			return err
+		}
+		_, err = utils.ExecShellCmd("kubectl apply --filename %s", loaderIstioControllerPath)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy istio pods!\n") {
+			return err
+		}
 	}
+
 	return nil
 }
 
