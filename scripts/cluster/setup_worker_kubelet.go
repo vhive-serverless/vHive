@@ -23,6 +23,7 @@
 package cluster
 
 import (
+	configs "github.com/vhive-serverless/vHive/scripts/configs"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
@@ -51,9 +52,10 @@ func CreateWorkerKubeletService(criSock string) error {
 	}
 	bashCmd := "sudo sh -c 'cat <<EOF > /etc/systemd/system/kubelet.service.d/0-containerd.conf\n" +
 		"[Service]\n" +
-		`Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix://%s"` +
+		`Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix://%s"` +
 		"\nEOF'"
-	_, err = utils.ExecShellCmd(bashCmd, criSock)
+
+	_, err = utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity, criSock)
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
 		return err
 	}
