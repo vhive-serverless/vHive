@@ -87,7 +87,7 @@ EOF'`
 func DeployKubernetes() error {
 
 	utils.WaitPrintf("Deploying Kubernetes(version %s)", configs.Kube.K8sVersion)
-	shellCmd := fmt.Sprintf("sudo kubeadm init --kubernetes-version %s --pod-network-cidr=\"%s\" ", configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
+	shellCmd := fmt.Sprintf("sudo kubeadm init --kubernetes-version %s --ignore-preflight-errors=all --pod-network-cidr=\"%s\" ", configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
 	if len(configs.Kube.AlternativeImageRepo) > 0 {
 		shellCmd = fmt.Sprintf(shellCmd+"--image-repository %s ", configs.Kube.AlternativeImageRepo)
 	}
