@@ -1,0 +1,67 @@
+package template
+
+const (
+	YurtAppSetTemplate = `echo 'apiVersion: apps.openyurt.io/v1alpha1
+kind: YurtAppSet
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: openyurt-aes
+spec:
+  selector:
+    matchLabels:
+      app: openyurt-aes
+  workloadTemplate:
+    deploymentTemplate:
+      metadata:
+        labels:
+          app: openyurt-aes
+      spec:
+        template:
+          metadata:
+            labels:
+              app: openyurt-aes
+          spec:
+            containers:
+              - name: relay
+                image: docker.io/vhiveease/relay:latest
+                ports:
+                  - name: h2c
+                    containerPort: 50000
+                args:
+                  - --addr=0.0.0.0:50000
+                  - --function-endpoint-url=0.0.0.0
+                  - --function-endpoint-port=50051
+                  - --function-name=aes-python
+              - name: aes-python
+                image: docker.io/vhiveease/aes-python:latest
+                args:
+                  - --addr=0.0.0.0
+                  - --port=50051
+  topology:
+    pools:
+    - name: %s 
+      nodeSelectorTerm:
+        matchExpressions:
+        - key: apps.openyurt.io/nodepool
+          operator: In
+          values:
+          - %s 
+      replicas: 1
+    - name: %s 
+      nodeSelectorTerm:
+        matchExpressions:
+        - key: apps.openyurt.io/nodepool
+          operator: In
+          values:
+          - %s 
+      replicas: 1
+      tolerations:
+      - effect: NoSchedule
+        key: apps.openyurt.io/example
+        operator: Exists' >> %s`
+)
+
+func GetYurtAppSetTemplate() string {
+	return YurtAppSetTemplate
+}

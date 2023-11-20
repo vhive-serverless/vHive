@@ -63,14 +63,14 @@ func main() {
 		deployNodes(*deployerConf)
 	// case "clean":
 	// 	cleanNodes(*deployerConf)
-	// case "demo-e":
-	// 	demo(*deployerConf, false)
-	// case "demo-c":
-	// 	demo(*deployerConf, true)
-	// case "demo-clear":
-	// 	delDemo(*deployerConf)
-	// case "demo-print":
-	// 	printDemo(*deployerConf)
+	case "demo-e":
+		demo(*deployerConf, false)
+	case "demo-c":
+		demo(*deployerConf, true)
+	case "demo-clear":
+		delDemo(*deployerConf)
+	case "demo-print":
+		printDemo(*deployerConf)
 	case "deploy-yurt":
 		deployOpenYurt(*deployerConf)
 	default:
@@ -228,4 +228,48 @@ func deployOpenYurt(deployerConfFile string) {
 		node.CleanUpTmpDir()
 	}
 	utils.SuccessPrintf(">>>>>>>>>>>>>>>>OpenYurt Cluster Deployment Finished!<<<<<<<<<<<<<<<\n")
+}
+
+func demo(deployerConfFile string, isCloud bool) {
+	demoEnv := "Cloud"
+	if !isCloud {
+		demoEnv = "Edge"
+	}
+	utils.SuccessPrintf(">>>>>>>>>>>>>>>>Entering openyurt demo for [%s Node Pool]<<<<<<<<<<<<<<<\n", demoEnv)
+	nodesInfo, err := readAndUnMarshall(deployerConfFile)
+	utils.CheckErrorWithMsg(err, "Failed to read and unmarshal deployer configuration JSON")
+	nodeList := parseNodeInfo(nodesInfo)
+	masterNode := nodeList[0]
+	workerNodes := nodeList[1:]
+
+	// run demo, should only be executed after deployment
+	utils.SuccessPrintf("Start to init demo\n")
+	masterNode.Demo(isCloud)
+	utils.SuccessPrintf("Demo finished!\n")
+	masterNode.PrintDemoInfo(workerNodes, isCloud)
+}
+
+func printDemo(deployerConfFile string) {
+
+	nodesInfo, err := readAndUnMarshall(deployerConfFile)
+	utils.CheckErrorWithMsg(err, "Failed to read and unmarshal deployer configuration JSON")
+	nodeList := parseNodeInfo(nodesInfo)
+	masterNode := nodeList[0]
+	workerNodes := nodeList[1:]
+
+	masterNode.GetNodeHostName()
+	masterNode.PrintDemoInfo(workerNodes, true)
+	masterNode.PrintDemoInfo(workerNodes, false)
+}
+
+func delDemo(deployerConfFile string) {
+
+	utils.SuccessPrintf("Clean the demo files")
+	nodesInfo, err := readAndUnMarshall(deployerConfFile)
+	utils.CheckErrorWithMsg(err, "Failed to read and unmarshal deployer configuration JSON")
+	nodeList := parseNodeInfo(nodesInfo)
+	masterNode := nodeList[0]
+
+	masterNode.DeleteDemo(nodeList)
+	utils.SuccessPrintf("Delete the demo success!\n")
 }
