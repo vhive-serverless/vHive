@@ -1,0 +1,11 @@
+{
+    "master": "username@masterip",
+    "workers": {
+        "cloud": [
+            "username@cloudip"
+        ],
+        "edge": [
+            "username@edgeip"
+        ]
+    }
+}

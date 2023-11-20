@@ -8,7 +8,7 @@ on:
     - '**.md'
     - 'function-images/**'
   pull_request:
-    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support, openyurt ]
     paths-ignore:
     - 'docs/**'
     - '**.md'
