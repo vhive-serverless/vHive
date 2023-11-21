@@ -13,7 +13,9 @@ func SetupSSHConn(nodeName string) *simplessh.Client {
 	splits := strings.Split(nodeName, "@")
 	username := splits[0]
 	host := splits[1]
+	utils.InfoPrintf("Connecting to %s\n", splits[1])
 	client, err := simplessh.ConnectWithAgent(host, username)
+	utils.InfoPrintf("CClient info %s\n", client)
 	if err != nil {
 		utils.FatalPrintf("Failed to connect to: %s:%s\n", nodeName, err)
 	}

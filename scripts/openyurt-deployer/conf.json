@@ -1,11 +1,9 @@
 {
-    "master": "chua0990@ms0211.utah.cloudlab.us",
+    "master": "runner@127.0.0.1",
     "workers": {
         "cloud": [
-            "chua0990@ms0240.utah.cloudlab.us"
         ],
         "edge": [
-            "chua0990@ms0233.utah.cloudlab.us"
         ]
     }
 }

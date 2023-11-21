@@ -1,0 +1,73 @@
+name: Build and Test OpenYurt Deployer
+
+on:
+    push:
+      branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+      paths-ignore:
+      - 'docs/**'
+      - '**.md'
+    pull_request:
+      branches: [ main, legacy-firecracker-v0.24.0-with-upf-support, openyurt ]
+      paths-ignore:
+      - 'docs/**'
+      - '**.md'
+    workflow_dispatch:
+
+env:
+    GOOS: linux
+    GO111MODULE: on
+
+jobs:
+  build_openyurt:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Go 1.19
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.19'
+
+    - name: Check out the code
+      uses: actions/checkout@v4
+
+    - name: Build scripts
+      run: 
+        pushd scripts/openyurt-deployer && go build -o oy_deploy && popd
+
+    - name: Show scripts help info
+      run: 
+        ./scripts/openyurt-deployer/oy_deploy help
+
+    - name: Allow root login
+      run: |
+        echo "PermitRootLogin=yes" | sudo tee -a /etc/ssh/sshd_config
+
+    - name: Set up SSH and run deploy
+      run: | 
+        echo $USER
+
+        sudo apt-get update
+        sudo apt-get install -y openssh-server 
+        sudo service ssh start
+        eval "$(ssh-agent -s)"
+
+        ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+        cat > ~/.ssh/config <<EOF
+          Host host.example
+           User $USER
+           HostName 127.0.0.1
+           IdentityFile ~/.ssh/id_rsa
+        EOF
+
+        echo -n '' | cat - ~/.ssh/id_rsa.pub > ~/.ssh/authorized_keys
+       
+        sudo service ssh restart
+        service ssh status
+  
+        ssh-add ~/.ssh/id_rsa 
+
+        cat ~/.ssh/authorized_keys
+        chmod og-rw ~/.ssh
+
+        cd scripts/openyurt-deployer
+        ./oy_deploy deploy

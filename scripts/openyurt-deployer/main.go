@@ -73,6 +73,8 @@ func main() {
 	// 	printDemo(*deployerConf)
 	case "deploy-yurt":
 		deployOpenYurt(*deployerConf)
+	case "help":
+		utils.InfoPrintf("Usage: %s  <operation: deploy | clean | demo-c | demo-e | demo-clear | demo-print> [Parameters...]\n", os.Args[0])
 	default:
 		utils.InfoPrintf("Usage: %s  <operation: deploy | clean | demo-c | demo-e | demo-clear | demo-print> [Parameters...]\n", os.Args[0])
 		os.Exit(-1)
