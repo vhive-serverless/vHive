@@ -91,7 +91,6 @@ func main() {
 		return
 	}
 
-
 	if *isUPFEnabled && !*isSnapshotsEnabled {
 		log.Error("User-level page faults are not supported without snapshots")
 		return

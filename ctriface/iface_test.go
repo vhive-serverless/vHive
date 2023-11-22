@@ -45,6 +45,11 @@ var (
 	isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 )
 
+func TestMain(m *testing.M) {
+	flag.Parse()
+	os.Exit(m.Run())
+}
+
 func TestPauseSnapResume(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
