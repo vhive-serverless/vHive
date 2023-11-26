@@ -6,7 +6,7 @@ metadata:
 spec:
   # Add labels here for the Nodes you want the PowerNodeAgent to be applied to
   powerNodeSelector:
-    kubernetes.io/hostname: node-3.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
+    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
   # Add wanted PowerProfiles here; valid entries are as follows: performance, balance-performance, balance-power
   powerProfiles:
     - "performance"
