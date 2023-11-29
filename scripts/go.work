@@ -1,0 +1,14 @@
+go 1.19
+
+use (
+	.
+	./cloudlab
+	./cluster
+	./configs
+	./gpu
+	./power_manager
+	./setup
+	./stargz
+	./utils
+	./github_runner
+)
