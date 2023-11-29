@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -33,7 +35,15 @@ func setCPUFrequency(frequency int) error {
 }
 
 func main() {
-	// Define your Prometheus query and threshold values
+	file, err := os.Create("metrics.csv")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
 	command := "curl -sG 'http://127.0.0.1:9090/api/v1/query?' --data-urlencode 'query=(avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)' | jq -r '.data.result[1].value[1]'"
 	thresholdHigh := 80.0 // Mostly idle => decrease frequency
 	thresholdLow := 20.0  // Mostly CPU bound => increase frequency
@@ -62,6 +72,25 @@ func main() {
 				fmt.Println("Failed to set high CPU frequency:", err)
 			}
 		}
-		time.Sleep(60 * time.Second) // Adjust the polling interval as needed
+
+		// Run the turbostat command
+		cmd = exec.Command("sudo", "turbostat", "--Summary", "--quiet", "--show", "Busy%,Avg_MHz,PkgTmp,PkgWatt", "--interval", "1")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("Error running the turbostat command: %v\n", err)
+		}
+		// Parse and extract relevant metrics from the command output
+		lines := strings.Split(string(output), "\n")
+		// You may need to adjust the line index and parsing based on the actual output format
+		metricsLine := lines[2]
+		metrics := strings.Fields(metricsLine)
+
+		// Write metrics to the CSV file
+		err = writer.Write(append([]string{time.Now().Format("2006-01-02 15:04:05")}, metrics...))
+		if err != nil {
+			fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
+		}
+
+		time.Sleep(time.Minute) // Adjust the polling interval as needed
 	}
 }
