@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-func setPowerProfileToNode(nodeNum, freq string) error {
+func setPowerProfileToNode(freq int64) error {
 	// powerConfig
-	command := fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerConfig\nmetadata:\n  name: power-config\n  namespace: intel-power\nspec:\n powerNodeSelector:\n    kubernetes.io/hostname: node-%s.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n powerProfiles:\n    - \"performance\"\nEOF", nodeNum)
+	command := fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerConfig\nmetadata:\n  name: power-config\n  namespace: intel-power\nspec:\n powerNodeSelector:\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n powerProfiles:\n    - \"performance\"\nEOF")
 	cmd := exec.Command("bash", "-c", command)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -19,8 +19,8 @@ func setPowerProfileToNode(nodeNum, freq string) error {
 	}
 	fmt.Println(string(output))
 
-	// sharedProfile w freq
-	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerProfile\nmetadata:\n  name: shared\n  namespace: intel-power\nspec:\n  name: \"shared\"\n  max: %s\n  min: %s\n  shared: true\n  governor: \"powersave\"\nEOF", freq, freq)
+	// performanceProfile w freq
+	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerProfile\nmetadata:\n  name: performance\n  namespace: intel-power\nspec:\n  name: \"performance\"\n  max: %d\n  min: %d\n  shared: true\n  governor: \"performance\"\nEOF", freq, freq)
 	cmd = exec.Command("bash", "-c", command)
 
 	output, err = cmd.CombinedOutput()
@@ -30,7 +30,7 @@ func setPowerProfileToNode(nodeNum, freq string) error {
 	fmt.Println(string(output))
 
 	// apply to node
-	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  name: shared-node-%s.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  name: \"shared-node-%s.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    kubernetes.io/hostname: node-%s.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n  powerProfile: \"shared\"\nEOF", nodeNum, nodeNum, nodeNum)
+	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  name: performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  name: \"performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n  powerProfile: \"performance\"\nEOF")
 	cmd = exec.Command("bash", "-c", command)
 
 	output, err = cmd.CombinedOutput()
@@ -51,41 +51,44 @@ func main() {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	frequencies := []string{"1200", "1400", "1600", "1800", "2000", "2200", "2400", "2600", "2800", "3000", "3200", "3400"}
+	err = writer.Write(append([]string{"startTime", "endTime", "avgLatency"}))
+	if err != nil {
+		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
+	}
+	frequencies := []int64{1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800}
 	for i := 0; i < len(frequencies); i++ {
-		err := setPowerProfileToNode("1", frequencies[i])
+		err := setPowerProfileToNode(frequencies[i])
 		if err != nil {
 			fmt.Printf(fmt.Sprintf("ERR :%+v", err))
 		}
-		var totalTime time.Duration
-		var totalFreq float64
-		for sample := 0; sample < 10; sample++ {
-			// apply to node
-			url := ""
-			startTime := time.Now()
-			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"Example text for AES\"", url)
-			cmd := exec.Command("bash", "-c", command)
-			freq, err := cmd.CombinedOutput()
-			if err != nil {
-				fmt.Printf(fmt.Sprintf("ERR :%+v", err))
-			}
-			totalTime += time.Since(startTime)
 
-			freqValue, err := strconv.ParseFloat(string(freq), 64)
+		var totalTime time.Duration
+		i, startExp := float64(0), time.Now()
+		formattedStartTime := startExp.UTC().Format("2006-01-02 15:04:05 MST")
+		for time.Since(startExp) < 10*time.Second {
+			url := "auth-python.default.192.168.1.240.sslip.io"
+			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
+
+			startInvoke := time.Now()
+			cmd := exec.Command("bash", "-c", command)
+			_, err := cmd.CombinedOutput()
 			if err != nil {
-				fmt.Println("Error:", err)
+				fmt.Printf(fmt.Sprintf("ERR: %+v", err))
 				return
 			}
-			totalFreq += freqValue
+			elapsedTime := time.Since(startInvoke)
+			totalTime += elapsedTime
+			i += 1
 		}
-		averageLatency := totalTime / 10
-		averageFreq := totalFreq / 10
 
-		// Write metrics to the CSV file
-		err = writer.Write(append([]string{strconv.FormatFloat(averageFreq, 'f', -1, 64)}, averageLatency.String()))
+		averageLatency := totalTime.Seconds() / i
+		formattedEndTime := time.Now().UTC().Format("2006-01-02 15:04:05 MST")
+
+		err = writer.Write(append([]string{formattedStartTime, formattedEndTime, strconv.FormatFloat(averageLatency, 'f', -1, 64)}))
 		if err != nil {
 			fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
 		}
+
 		fmt.Println("done")
 	}
 }
