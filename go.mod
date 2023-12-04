@@ -64,7 +64,7 @@ require (
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/net v0.18.0
 	golang.org/x/sync v0.5.0
-	golang.org/x/sys v0.14.0
+	golang.org/x/sys v0.15.0
 	gonum.org/v1/gonum v0.14.0
 	gonum.org/v1/plot v0.14.0
 	google.golang.org/grpc v1.47.0
