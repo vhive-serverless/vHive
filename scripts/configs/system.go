@@ -41,6 +41,7 @@ type SystemEnvironmentStruct struct {
 	CniPluginsVersion                   string
 	CniPluginsDownloadUrlTemplate       string
 	KubeVersion                         string
+	KubeRepoUrl                         string
 	Dependencies                        string
 	TmpDir                              string
 	CurrentOS                           string

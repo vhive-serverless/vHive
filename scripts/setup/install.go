@@ -131,7 +131,7 @@ func InstallRunsc() error {
 // Install Kubernetes components
 func InstallKubernetes() error {
 	utils.WaitPrintf("Adding the Kubernetes apt repository")
-	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/apt/keyrings && sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://dl.k8s.io/apt/doc/apt-key.gpg && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main' | sudo tee /etc/apt/sources.list.d/kubernetes.list")
+	_, err := utils.ExecShellCmd("sudo mkdir -p -m 755 /etc/apt/keyrings && curl -fsSL %sRelease.key | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] %s /' | sudo tee /etc/apt/sources.list.d/kubernetes.list", configs.System.KubeRepoUrl, configs.System.KubeRepoUrl)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to add the Kubernetes apt repository!\n") {
 		return err
 	}
