@@ -74,7 +74,7 @@ func CreateMultinodeCluster(stockContainerd string) error {
 // Create kubelet service on master node
 func CreateMasterKubeletService() error {
 	utils.WaitPrintf("Creating kubelet service")
-	bashCmd := `sudo sh -c 'cat <<EOF > /etc/systemd/system/kubelet.service.d/0-containerd.conf
+	bashCmd := `sudo sh -c 'cat <<EOF > /usr/lib/systemd/system/kubelet.service.d/0-containerd.conf
 [Service]
 Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
 EOF'`
@@ -103,7 +103,7 @@ func DeployKubernetes() error {
 --cri-socket /run/containerd/containerd.sock \
 --kubernetes-version %s \
 --pod-network-cidr="%s" `,
-	configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
+		configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
 	if len(configs.Kube.AlternativeImageRepo) > 0 {
 		shellCmd = fmt.Sprintf(shellCmd+"--image-repository %s ", configs.Kube.AlternativeImageRepo)
 	}
