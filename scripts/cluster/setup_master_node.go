@@ -204,7 +204,7 @@ func InstallKnativeServingComponent(stockContainerd string) error {
 		if !utils.CheckErrorWithMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
-		
+
 		if _, err = os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-core.yaml"))); err != nil {
 			utils.WaitPrintf("Using stock version of knative.")
 			_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml", configs.Knative.KnativeVersion)
@@ -291,7 +291,7 @@ func ConfigureMagicDNS() error {
 // Deploy Istio pods
 func DeployIstioPods() error {
 	utils.WaitPrintf("Deploying istio pods")
-	
+
 	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "net-istio.yaml"))); err != nil {
 		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v%s/net-istio.yaml", configs.Knative.KnativeVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy istio pods!\n") {
