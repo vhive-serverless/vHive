@@ -351,6 +351,35 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 	return state.latencyMetrics, nil
 }
 
+func (m *MemoryManager) GetUPFSockPath(vmID string) (string, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Get the path of firecracker unix domain socket")
+
+	m.Lock()
+
+	state, ok := m.instances[vmID]
+	if !ok {
+		m.Unlock()
+		logger.Error("VM not registered with the memory manager")
+		return "", errors.New("VM not registered with the memory manager")
+	}
+
+	m.Unlock()
+
+	if state.isActive {
+		logger.Error("Cannot get stats while VM is active")
+		return "", errors.New("Cannot get stats while VM is active")
+	}
+
+	if !m.MetricsModeOn || !state.metricsModeOn {
+		logger.Error("Metrics mode is not on")
+		return "", errors.New("Metrics mode is not on")
+	}
+
+	return m.instances[vmID].SnapshotStateCfg.InstanceSockAddr, nil
+}
+
 func getLazyHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
 	header := []string{
 		"FuncName",

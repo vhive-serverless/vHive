@@ -64,6 +64,8 @@ type StartVMResponse struct {
 
 const (
 	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
+	fileBackend = "File"
+	uffdBackend = "Uffd"
 )
 
 // StartVM Boots a VM if it does not exist
@@ -104,7 +106,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 
 	tStart = time.Now()
 	conf := o.getVMConfig(vm)
-	_, err = o.fcClient.CreateVM(ctx, conf)
+	resp, err := o.fcClient.CreateVM(ctx, conf)
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to create the microVM in firecracker-containerd")
@@ -214,7 +216,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 			VMMStatePath:   o.getSnapshotFile(vmID),
 			WorkingSetPath: o.getWorkingSetFile(vmID),
 			// FIXME (gh-807)
-			//InstanceSockAddr: resp.UPFSockPath,
+			InstanceSockAddr: resp.GetSocketPath(),
 		}
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
@@ -497,7 +499,19 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf.MemFilePath = snap.GetMemFilePath()
 	conf.ContainerSnapshotPath = containerSnap.GetDevicePath()
 
+	if conf.MemBackend == nil {
+		conf.MemBackend = &proto.MemoryBackend{}
+	}
+	conf.MemBackend.BackendType = fileBackend
+	conf.MemBackend.BackendPath = snap.GetMemFilePath()
+
 	if o.GetUPFEnabled() {
+		conf.MemBackend.BackendType = uffdBackend
+		conf.MemBackend.BackendPath, err = o.memoryManager.GetUPFSockPath(vmID)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "failed to get UPF socket path for uffd backend")
+		}
+
 		if err := o.memoryManager.FetchState(vmID); err != nil {
 			return nil, nil, err
 		}
