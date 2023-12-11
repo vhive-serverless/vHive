@@ -64,8 +64,8 @@ type StartVMResponse struct {
 
 const (
 	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
-	fileBackend = "File"
-	uffdBackend = "Uffd"
+	fileBackend   = "File"
+	uffdBackend   = "Uffd"
 )
 
 // StartVM Boots a VM if it does not exist
@@ -208,14 +208,13 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		logger.Debug("Registering VM with the memory manager")
 
 		stateCfg := manager.SnapshotStateCfg{
-			VMID:           vmID,
-			GuestMemPath:   o.getMemoryFile(vmID),
-			BaseDir:        o.getVMBaseDir(vmID),
-			GuestMemSize:   int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsLazyMode:     o.isLazyMode,
-			VMMStatePath:   o.getSnapshotFile(vmID),
-			WorkingSetPath: o.getWorkingSetFile(vmID),
-			// FIXME (gh-807)
+			VMID:             vmID,
+			GuestMemPath:     o.getMemoryFile(vmID),
+			BaseDir:          o.getVMBaseDir(vmID),
+			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			IsLazyMode:       o.isLazyMode,
+			VMMStatePath:     o.getSnapshotFile(vmID),
+			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: resp.GetSocketPath(),
 		}
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
