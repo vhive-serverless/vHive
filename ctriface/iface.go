@@ -495,13 +495,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf := o.getVMConfig(vm)
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
-	conf.MemFilePath = snap.GetMemFilePath()
 	conf.ContainerSnapshotPath = containerSnap.GetDevicePath()
-
-	conf.MemBackend = &proto.MemoryBackend{
-		BackendType: fileBackend,
-		BackendPath: snap.GetMemFilePath(),
-	}
 
 	if o.GetUPFEnabled() {
 		conf.MemBackend.BackendType = uffdBackend
@@ -513,6 +507,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		if err := o.memoryManager.FetchState(vmID); err != nil {
 			return nil, nil, err
 		}
+	} else {
+		conf.MemFilePath = snap.GetMemFilePath()
 	}
 
 	tStart = time.Now()
