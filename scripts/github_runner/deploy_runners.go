@@ -69,9 +69,7 @@ func main() {
 				  "num": 2
 				}
 				"pc75.cloudlab.umass.edu": {
-				  "type": "integ",
-				  "num": 6,
-      			  "restart": true
+				  "type": "profile"
 				}
 			  }
 			}
@@ -124,7 +122,7 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 	}
 
 	log.Debugf("Cloning vHive repository on %s@%s", deployerConf.HostUsername, host)
-	out, err := client.Exec(fmt.Sprintf("rm -rf ./vhive ./runner && git clone --depth=1 https://github.com/%s/vhive", deployerConf.GhOrg))
+	out, err := client.Exec(fmt.Sprintf("rm -rf ./vhive ./actions-runner && git clone --depth=1 https://github.com/%s/vhive", deployerConf.GhOrg))
 	log.Debug(string(out))
 	if err != nil {
 		log.Fatalf("Failed to clone vHive repository on %s@%s: %s", deployerConf.HostUsername, host, err)
@@ -136,12 +134,6 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 		log.Debugf("Adding redeploy crontab task to %s@%s", deployerConf.HostUsername, host)
 		setupCmd = fmt.Sprintf("cd vhive && ./scripts/github_runner/setup_bare_metal_runner.sh %s %s %s", deployerConf.GhOrg,
 			deployerConf.GhPat, runnerConf.Sandbox)
-		var redeploySetupCmd string = fmt.Sprintf("echo '10 4 * * * root rm -rf ./runners/ && %s' >> /etc/crontab", setupCmd)
-		out, err = client.Exec(redeploySetupCmd)
-		log.Debug(string(out))
-		if err != nil {
-			log.Fatalf("Failed to setup redeploy task on %s@%s: %s", deployerConf.HostUsername, host, err)
-		}
 	case "integ":
 		var restart string
 		if runnerConf.Restart {
@@ -160,8 +152,10 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 
 		setupCmd = fmt.Sprintf("cd vhive && ./scripts/github_runner/setup_integ_runners.sh %d %s %s %s", runnerConf.Num,
 			deployerConf.GhOrg, deployerConf.GhPat, restart)
+	case "profile":
+		setupCmd = fmt.Sprintf("cd vhive && chmod +x ./scripts/github_runner/setup_profile_runner.sh && ./scripts/github_runner/setup_profile_runner.sh %s %s", deployerConf.GhOrg, deployerConf.GhPat)
 	default:
-		log.Fatalf("Invalid runner type: '%s', expected 'cri' or 'integ'", runnerConf.Type)
+		log.Fatalf("Invalid runner type: '%s', expected 'cri', 'integ' or 'profile'", runnerConf.Type)
 	}
 
 	log.Debugf("Setting up runner on %s@%s", deployerConf.HostUsername, host)
