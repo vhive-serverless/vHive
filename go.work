@@ -3,4 +3,5 @@ go 1.19
 use (
 	.
 	./scripts
+	./scripts/github_runner
 )

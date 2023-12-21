@@ -26,10 +26,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/sfreiberg/simplessh"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"sync"
+
+	"github.com/sfreiberg/simplessh"
+	log "github.com/sirupsen/logrus"
 )
 
 type RunnerConf struct {
@@ -98,7 +99,7 @@ func deployRunners(deployerConfFile string) {
 		log.Fatalf("Failed to open configuration file: %s", err)
 	}
 
-	log.Debugf("Unmarshaling deployer configuration JSON: %s", deployerConfJSON)
+	log.Debugf("Unmarshalling deployer configuration JSON: %s", deployerConfJSON)
 	var deployerConf DeployerConf
 	err = json.Unmarshal(deployerConfJSON, &deployerConf)
 	if err != nil {
@@ -132,10 +133,10 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 	var setupCmd string
 	switch runnerConf.Type {
 	case "cri":
-		log.Debugf("Adding redploy crontab task to %s@%s", deployerConf.HostUsername, host)
+		log.Debugf("Adding redeploy crontab task to %s@%s", deployerConf.HostUsername, host)
 		setupCmd = fmt.Sprintf("cd vhive && ./scripts/github_runner/setup_bare_metal_runner.sh %s %s %s", deployerConf.GhOrg,
 			deployerConf.GhPat, runnerConf.Sandbox)
-		var redeploySetupCmd string = fmt.Sprintf("echo '10 4 * * * root rm -rf ./runners/ && %s' >> etc/crontab", setupCmd)
+		var redeploySetupCmd string = fmt.Sprintf("echo '10 4 * * * root rm -rf ./runners/ && %s' >> /etc/crontab", setupCmd)
 		out, err = client.Exec(redeploySetupCmd)
 		log.Debug(string(out))
 		if err != nil {
