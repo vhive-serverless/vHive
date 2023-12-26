@@ -30,9 +30,7 @@ It support setting up a Kubernetes cluster using kubeadm and then deploy `OpenYu
 4. (Optional) Deploy Knative (vHive stock-only mode compatible)
 
 ## 3. Usage
-```bash
-./openyurt_deployer deploy # deploy openyurt on the cluster 
-```
+
 ```bash
 ./openyurt_deployer clean # clean the openyurt cluster and restore it to initial state 
 ```
@@ -56,9 +54,10 @@ It support setting up a Kubernetes cluster using kubeadm and then deploy `OpenYu
 
 ### 3.2 Run Script
 
+#### 3.2.1 To set up Kubernetes and Kubernetes cluster
 ```bash
 go build .
-./openyurt_deployer deploy
+./openyurt_deployer k8s
 ```
 If it gives out error like: 
 ```
@@ -74,6 +73,15 @@ eval `ssh-agent -s` && ssh-add ~/.ssh/id_rsa
 ```
 And try again
 
+#### 3.2.2 To set up Knative 
+```bash
+./openyurt_deployer knative
+```
+
+#### 3.2.2 To set up Open Yurt 
+```bash
+./openyurt_deployer openyurt
+```
 
 ## 4. Demo: Create `NodePool` And Deploy service on it
 **Referenced from [`OpenYurt`](https://openyurt.io/docs/user-manuals/workload/node-pool-management)*

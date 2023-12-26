@@ -2,7 +2,4 @@ go 1.19
 
 use(
 .
-./configs
-./node
-./template
 )

@@ -10,7 +10,7 @@
 	"RunscDownloadUrlTemplate": "https://storage.googleapis.com/gvisor/releases/release/%s/%s/runsc",
 	"CniPluginsVersion": "1.2.0",
 	"CniPluginsDownloadUrlTemplate": "https://github.com/containernetworking/plugins/releases/download/v%s/cni-plugins-linux-%s-v%s.tgz",
-	"KubeVersion": "1.25.9-1.1",
+	"KubeVersion": "1.25.9-00",
 	"KubeRepoUrl": "https://pkgs.k8s.io/core:/stable:/v1.25/deb/",
 	"PmuToolsRepoUrl": "https://github.com/vhive-serverless/pmu-tools",
 	"ProtocVersion": "3.19.4",
