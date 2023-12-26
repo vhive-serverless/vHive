@@ -1,0 +1,41 @@
+name: Build and Test OpenYurt Deployer
+
+on:
+    push:
+      branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+      paths-ignore:
+      - 'docs/**'
+      - '**.md'
+    pull_request:
+      branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+      paths-ignore:
+      - 'docs/**'
+      - '**.md'
+    workflow_dispatch:
+
+env:
+    GOOS: linux
+    GO111MODULE: on
+
+jobs:
+  openyurt-unit-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Go 1.19
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.19'
+
+    - name: Check out the code
+      uses: actions/checkout@v4
+
+    - name: Build scripts
+      run: 
+        pushd scripts/openyurt-deployer && go build -o oy_deploy && popd
+
+    - name: Run Unit Test on OpenYurt helper function 
+      run: | 
+        cd scripts/openyurt-deployer
+        chmod +x unit_test_workflow.sh
+        ./unit_test_workflow.sh

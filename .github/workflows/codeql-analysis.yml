@@ -16,7 +16,7 @@ on:
     branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support, openyurt ]
+    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
   workflow_dispatch:
   schedule:
     - cron: '40 13 * * 2'

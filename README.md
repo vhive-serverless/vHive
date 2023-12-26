@@ -31,6 +31,7 @@ including functions autoscaling and cold-start delay optimization with several s
 
 vHive has added support for the state-of-the-art extension [eStargz](https://github.com/containerd/stargz-snapshotter) to container layers and lazy pull support for container images.
 
+vHive has added support for [`OpenYurt`](https://openyurt.io/), an open platform that extends upstream Kubernetes to the edge. It will assist in node management for cloud and edge nodes and can be deployed with [`openyurt-deployer`](scripts/openyurt-deployer/README.md).
 
 ## vHive architecture
 
