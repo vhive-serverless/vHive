@@ -1,0 +1,15 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: helloworld-python-isCloud
+  namespace: default
+spec:
+  template:
+    spec:
+      nodeSelector:
+        apps.openyurt.io/nodepool: poolName
+      containers:
+        - image: docker.io/vhiveease/hello-isCloud:latest
+          ports:
+            - name: h2c
+              containerPort: 50000
