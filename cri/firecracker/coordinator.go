@@ -181,7 +181,7 @@ func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.S
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, vmID, snap)
+	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, vmID, vmID, snap)
 	if err != nil {
 		logger.WithError(err).Error("failed to load VM")
 		return nil, err

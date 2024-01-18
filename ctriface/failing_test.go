@@ -69,7 +69,7 @@ func TestStartSnapStop(t *testing.T) {
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, "", vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)

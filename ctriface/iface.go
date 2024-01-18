@@ -217,6 +217,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: resp.GetSocketPath(),
 		}
+		logger.Debugf("TEST: show socket path: %s", resp.GetSocketPath())
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
 			// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
@@ -448,7 +449,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, snapVmID string, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
@@ -496,27 +497,33 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
 	conf.ContainerSnapshotPath = containerSnap.GetDevicePath()
+	conf.MemBackend = &proto.MemoryBackend {
+		BackendType: fileBackend,
+		BackendPath: snap.GetMemFilePath(),
+	}
 
 	if o.GetUPFEnabled() {
+		logger.Debug("TEST: UPF is enabled")
 		conf.MemBackend.BackendType = uffdBackend
-		conf.MemBackend.BackendPath, err = o.memoryManager.GetUPFSockPath(vmID)
+		conf.MemBackend.BackendPath, err = o.memoryManager.GetUPFSockPath(snapVmID)
+		logger.Debugf("TEST: the upf socket: %s", conf.MemBackend.BackendPath)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "failed to get UPF socket path for uffd backend")
 		}
 
-		if err := o.memoryManager.FetchState(vmID); err != nil {
+		if err := o.memoryManager.FetchState(snapVmID); err != nil {
 			return nil, nil, err
 		}
-	} else {
-		conf.MemFilePath = snap.GetMemFilePath()
 	}
 
 	tStart = time.Now()
+	newUPFSockPath := ""
 
 	go func() {
 		defer close(loadDone)
 
-		if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
+		resp, loadErr := o.fcClient.CreateVM(ctx, conf)
+		if loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
 			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), containerSnap.GetDevicePath())
 			files, err := os.ReadDir(filepath.Dir(snap.GetSnapshotFilePath()))
@@ -542,9 +549,27 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 			}
 			logger.Error(snapFiles)
 		}
+		newUPFSockPath = resp.GetSocketPath()
 	}()
 
+	logger.Debug("TEST: CreatVM request sent")
 	if o.GetUPFEnabled() {
+		
+		logger.Debug("TEST: Registering VM with the memory manager")
+
+		stateCfg := manager.SnapshotStateCfg{
+			VMID:             vmID,
+			GuestMemPath:     o.getMemoryFile(vmID),
+			BaseDir:          o.getVMBaseDir(vmID),
+			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			IsLazyMode:       o.isLazyMode,
+			VMMStatePath:     o.getSnapshotFile(vmID),
+			WorkingSetPath:   o.getWorkingSetFile(vmID),
+			InstanceSockAddr: newUPFSockPath,
+		}
+		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
+			logger.Error(err, "failed to register new VM with memory manager")
+		}
 		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}

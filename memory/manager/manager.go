@@ -180,7 +180,7 @@ func (m *MemoryManager) FetchState(vmID string) error {
 	state, ok = m.instances[vmID]
 	if !ok {
 		m.Unlock()
-		logger.Error("VM not registered with the memory manager")
+		logger.Error("TEST(fetch state): VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
 
@@ -370,11 +370,6 @@ func (m *MemoryManager) GetUPFSockPath(vmID string) (string, error) {
 	if state.isActive {
 		logger.Error("Cannot get stats while VM is active")
 		return "", errors.New("Cannot get stats while VM is active")
-	}
-
-	if !m.MetricsModeOn || !state.metricsModeOn {
-		logger.Error("Metrics mode is not on")
-		return "", errors.New("Metrics mode is not on")
 	}
 
 	return m.instances[vmID].SnapshotStateCfg.InstanceSockAddr, nil
