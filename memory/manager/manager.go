@@ -129,6 +129,7 @@ func (m *MemoryManager) Activate(vmID string) error {
 
 	m.Lock()
 
+	logger.Debug("TEST: Activate: fetch snapstate by vmID for UFFD")
 	state, ok = m.instances[vmID]
 	if !ok {
 		m.Unlock()

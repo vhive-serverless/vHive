@@ -207,6 +207,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 	if o.GetUPFEnabled() {
 		logger.Debug("Registering VM with the memory manager")
 
+		logger.Debugf("TEST (startWithEnv): current vmID used to registerVM is %v", vmID)
 		stateCfg := manager.SnapshotStateCfg{
 			VMID:             vmID,
 			GuestMemPath:     o.getMemoryFile(vmID),
@@ -217,6 +218,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: resp.GetSocketPath(),
 		}
+		logger.Debugf("TEST: show to-reg snapStat: %+v", stateCfg)
 		logger.Debugf("TEST: show socket path: %s", resp.GetSocketPath())
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
@@ -570,6 +572,9 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snapVmID string, vmID s
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			logger.Error(err, "failed to register new VM with memory manager")
 		}
+
+
+
 		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}
