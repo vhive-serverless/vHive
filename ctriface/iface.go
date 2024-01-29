@@ -220,7 +220,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		}
 		logger.Debugf("TEST: show to-reg snapStat: %+v", stateCfg)
 		logger.Debugf("TEST: show socket path: %s", resp.GetSocketPath())
-		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
+		if err := o.memoryManager.RegisterVM(stateCfg, false, ""); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
 			// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
 		}
@@ -451,7 +451,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, snapVmID string, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, lastVmID string, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
@@ -507,13 +507,13 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snapVmID string, vmID s
 	if o.GetUPFEnabled() {
 		logger.Debug("TEST: UPF is enabled")
 		conf.MemBackend.BackendType = uffdBackend
-		conf.MemBackend.BackendPath, err = o.memoryManager.GetUPFSockPath(snapVmID)
+		conf.MemBackend.BackendPath, err = o.memoryManager.GetUPFSockPath(lastVmID, true)
 		logger.Debugf("TEST: the upf socket: %s", conf.MemBackend.BackendPath)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "failed to get UPF socket path for uffd backend")
 		}
 
-		if err := o.memoryManager.FetchState(snapVmID); err != nil {
+		if err := o.memoryManager.FetchState(lastVmID); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -569,10 +569,9 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snapVmID string, vmID s
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: newUPFSockPath,
 		}
-		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
+		if err := o.memoryManager.RegisterVM(stateCfg, true, vmID); err != nil {
 			logger.Error(err, "failed to register new VM with memory manager")
 		}
-
 
 
 		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {

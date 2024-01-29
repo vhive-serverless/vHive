@@ -53,6 +53,7 @@ type MemoryManager struct {
 	sync.Mutex
 	MemoryManagerCfg
 	instances map[string]*SnapshotState // Indexed by vmID
+	origins map[string]string
 }
 
 // NewMemoryManager Initializes a new memory manager
@@ -62,12 +63,13 @@ func NewMemoryManager(cfg MemoryManagerCfg) *MemoryManager {
 	m := new(MemoryManager)
 	m.instances = make(map[string]*SnapshotState)
 	m.MemoryManagerCfg = cfg
+	m.origins = make(map[string]string)
 
 	return m
 }
 
 // RegisterVM Registers a VM within the memory manager
-func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
+func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg, isSnapshotReady bool, originID string) error {
 	m.Lock()
 	defer m.Unlock()
 
@@ -86,6 +88,10 @@ func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
 	state := NewSnapshotState(cfg)
 
 	m.instances[vmID] = state
+	// if isSnapshotReady {
+	// 	logger.Debugf("TEST: register current vmID %s with originID %s", vmID, originID)
+	// 	m.origins[vmID] = originID
+	// }
 
 	return nil
 }
@@ -130,7 +136,17 @@ func (m *MemoryManager) Activate(vmID string) error {
 	m.Lock()
 
 	logger.Debug("TEST: Activate: fetch snapstate by vmID for UFFD")
+
+	// originID, ok := m.origins[vmID]
+
+	// if !ok {
+	// 	logger.Debug("TEST: not loaded from snapshot")
+	// }
+
+	// state, ok = m.instances[originID]
+
 	state, ok = m.instances[vmID]
+
 	if !ok {
 		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
@@ -177,6 +193,12 @@ func (m *MemoryManager) FetchState(vmID string) error {
 	)
 
 	m.Lock()
+
+	// originID, ok := m.origins[vmID]
+	// if !ok {
+	// 	logger.Debug("TEST: not loaded from snapshot")
+	// }
+	// state, ok = m.instances[originID]
 
 	state, ok = m.instances[vmID]
 	if !ok {
@@ -352,12 +374,23 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 	return state.latencyMetrics, nil
 }
 
-func (m *MemoryManager) GetUPFSockPath(vmID string) (string, error) {
+func (m *MemoryManager) GetUPFSockPath(vmID string, isSnapshotReady bool) (string, error) {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Get the path of firecracker unix domain socket")
 
 	m.Lock()
+
+	// id := ""
+	// if isSnapshotReady {
+	// 	logger.Debugf("TEST: to find originID by vmID %s", vmID)
+	// 	originID, ok := m.origins[vmID]
+	// 	if !ok {
+	// 		logger.Debug("TEST: not loaded from snapshot")
+	// 	}
+	// 	id = originID
+	// }
+	// state, ok := m.instances[id]
 
 	state, ok := m.instances[vmID]
 	if !ok {

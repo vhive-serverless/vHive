@@ -91,7 +91,7 @@ func TestSnapLoad(t *testing.T) {
 
 	vmID = "2"
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, "1", vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -152,7 +152,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	vmID = "4"
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, "3", vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -163,7 +163,7 @@ func TestSnapLoadMultiple(t *testing.T) {
 
 	vmID = "5"
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, "4", vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -234,10 +234,11 @@ func TestParallelSnapLoad(t *testing.T) {
 			err = orch.StopSingleVM(ctx, vmID)
 			require.NoError(t, err, "Failed to offload VM, "+vmID)
 
+			lastVmID := vmID
 			vmIDInt, _ := strconv.Atoi(vmID)
 			vmID = strconv.Itoa(vmIDInt + 1)
 
-			_, _, err = orch.LoadSnapshot(ctx, vmID, vmID, snap)
+			_, _, err = orch.LoadSnapshot(ctx, lastVmID, vmID, snap)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 
 			_, err = orch.ResumeVM(ctx, vmID)
@@ -357,9 +358,10 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
+				lastVmID := vmID
 				vmIDInt, _ := strconv.Atoi(vmID)
 				vmID = strconv.Itoa(vmIDInt + 1)
-				_, _, err := orch.LoadSnapshot(ctx, vmID, vmID, snap)
+				_, _, err := orch.LoadSnapshot(ctx, lastVmID, vmID, snap)
 				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 			}(i)
 		}
@@ -482,7 +484,7 @@ func TestRemoteSnapLoad(t *testing.T) {
 
 	snap := snapshotting.NewSnapshot(revision, remoteSnapshotsDir, testImageName)
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, "36", vmID, snap)
 	require.NoError(t, err, "Failed to load remote snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)

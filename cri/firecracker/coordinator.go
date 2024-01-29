@@ -181,6 +181,7 @@ func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.S
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
+	logger.Debug("FIXME: temp pass same lastVmID")
 	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, vmID, vmID, snap)
 	if err != nil {
 		logger.WithError(err).Error("failed to load VM")

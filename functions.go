@@ -361,11 +361,12 @@ func (f *Function) AddInstance() *metrics.Metric {
 
 	if f.isSnapshotReady {
 		var resp *ctriface.StartVMResponse
-
 		// resp, metr = f.LoadInstance(f.getVMID())
-		snapVmID := fmt.Sprintf("%s-%d", f.fID, f.lastInstanceID - 1)
+		
+		lastVmID := fmt.Sprintf("%s-%d", f.fID, f.lastInstanceID - 1)
 		currVmID := f.getVMID()
-		resp, metr = f.LoadInstance(snapVmID, currVmID)	
+		resp, metr = f.LoadInstance(lastVmID, currVmID)	
+
 		f.guestIP = resp.GuestIP
 		f.vmID = f.getVMID()
 		f.lastInstanceID++
@@ -482,7 +483,7 @@ func (f *Function) CreateInstanceSnapshot() {
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
 // The tap, the shim and the vmID remain the same
-func (f *Function) LoadInstance(snapVmID string, vmID string) (*ctriface.StartVMResponse, *metrics.Metric) {
+func (f *Function) LoadInstance(lastVmID string, vmID string) (*ctriface.StartVMResponse, *metrics.Metric) {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Loading instance")
@@ -495,7 +496,7 @@ func (f *Function) LoadInstance(snapVmID string, vmID string) (*ctriface.StartVM
 		log.Panic(err)
 	}
 
-	resp, loadMetr, err := orch.LoadSnapshot(ctx, snapVmID, vmID, snap)
+	resp, loadMetr, err := orch.LoadSnapshot(ctx, lastVmID, vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}
