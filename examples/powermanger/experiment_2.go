@@ -20,7 +20,6 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Println(string(output))
 
 	// performanceProfile w freq
 	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerProfile\nmetadata:\n  name: performance-node1\n  namespace: intel-power\nspec:\n  name: \"performance-node1\"\n  max: %d\n  min: %d\n  shared: true\n  governor: \"performance\"\nEOF", freq1, freq1)
@@ -36,7 +35,6 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Println(string(output))
 
 	// apply to node
 	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  name: performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  name: \"performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n  powerProfile: \"performance-node1\"\nEOF")
@@ -52,7 +50,6 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Println(string(output))
 	return nil
 }
 
@@ -96,7 +93,7 @@ func sleeping(wg *sync.WaitGroup, resultChan chan int64) {
 	return
 }
 
-func main() {
+func experiment2() {
 	file, err := os.Create("metrics.csv")
 	if err != nil {
 		panic(err)
@@ -110,13 +107,6 @@ func main() {
 	if err != nil {
 		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
 	}
-
-	// frequencies := [][]int64{{1200,1200},{1200,2400},{2400,2400}}
-	// for i := 0; i < len(frequencies); i++ {
-	// 	err := setPowerProfileToNodes(frequencies[i][0], frequencies[i][1])
-	// 	if err != nil {
-	// 		fmt.Printf(fmt.Sprintf("ERR1 :%+v", err))
-	// 	}
 
 	now := time.Now()
 	for time.Since(now) < (time.Minute*2) {
@@ -171,5 +161,4 @@ func main() {
 		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
 	}
 	fmt.Println("done")
-	// }
 }

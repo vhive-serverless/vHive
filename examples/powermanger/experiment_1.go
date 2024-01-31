@@ -17,7 +17,6 @@ func setPowerProfileToNode(freq int64) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Println(string(output))
 
 	// performanceProfile w freq
 	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerProfile\nmetadata:\n  name: performance\n  namespace: intel-power\nspec:\n  name: \"performance\"\n  max: %d\n  min: %d\n  shared: true\n  governor: \"performance\"\nEOF", freq, freq)
@@ -27,7 +26,6 @@ func setPowerProfileToNode(freq int64) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Println(string(output))
 
 	// apply to node
 	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  name: performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  name: \"performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n  powerProfile: \"performance\"\nEOF")
@@ -37,7 +35,6 @@ func setPowerProfileToNode(freq int64) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Println(string(output))
 	return nil
 }
 
