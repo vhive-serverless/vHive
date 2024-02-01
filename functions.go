@@ -25,7 +25,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/ctriface"
 	"math/rand"
 	"net"
 	"os"
@@ -34,6 +33,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/ctriface"
 
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc"
@@ -362,10 +363,10 @@ func (f *Function) AddInstance() *metrics.Metric {
 	if f.isSnapshotReady {
 		var resp *ctriface.StartVMResponse
 		// resp, metr = f.LoadInstance(f.getVMID())
-		
-		lastVmID := fmt.Sprintf("%s-%d", f.fID, f.lastInstanceID - 1)
+
+		originVmID := fmt.Sprintf("%s-%d", f.fID, f.lastInstanceID-1)
 		currVmID := f.getVMID()
-		resp, metr = f.LoadInstance(lastVmID, currVmID)	
+		resp, metr = f.LoadInstance(originVmID, currVmID)
 
 		f.guestIP = resp.GuestIP
 		f.vmID = f.getVMID()
@@ -483,7 +484,7 @@ func (f *Function) CreateInstanceSnapshot() {
 
 // LoadInstance Loads a new instance of the function from its snapshot and resumes it
 // The tap, the shim and the vmID remain the same
-func (f *Function) LoadInstance(lastVmID string, vmID string) (*ctriface.StartVMResponse, *metrics.Metric) {
+func (f *Function) LoadInstance(originVmID string, vmID string) (*ctriface.StartVMResponse, *metrics.Metric) {
 	logger := log.WithFields(log.Fields{"fID": f.fID})
 
 	logger.Debug("Loading instance")
@@ -496,7 +497,7 @@ func (f *Function) LoadInstance(lastVmID string, vmID string) (*ctriface.StartVM
 		log.Panic(err)
 	}
 
-	resp, loadMetr, err := orch.LoadSnapshot(ctx, lastVmID, vmID, snap)
+	resp, loadMetr, err := orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 	if err != nil {
 		log.Panic(err)
 	}

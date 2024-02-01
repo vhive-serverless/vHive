@@ -88,6 +88,7 @@ type Orchestrator struct {
 	isUPFEnabled     bool
 	isLazyMode       bool
 	snapshotsDir     string
+	uffdSockAddr	 string
 	isMetricsMode    bool
 	netPoolSize      int
 
@@ -121,8 +122,16 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 
 	if o.GetUPFEnabled() {
+		// o.uffdSockAddr = "/tmp/uffd.sock" 	// "/tmp/uffd/firecracker-containerd#3-0/uffd.sock"
+		_, err = os.Create("/tmp/uffd.sock")
+		
+		if err != nil {
+			log.Fatal("TEST: failed to create uffd sock", err)
+		}
+
 		managerCfg := manager.MemoryManagerCfg{
 			MetricsModeOn: o.isMetricsMode,
+			UffdSockAddr: o.uffdSockAddr,
 		}
 		o.memoryManager = manager.NewMemoryManager(managerCfg)
 	}
@@ -207,6 +216,11 @@ func (o *Orchestrator) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, error
 func (o *Orchestrator) GetSnapshotsDir() string {
 	return o.snapshotsDir
 }
+
+// TODO: /tmp/uffd/firecracker-containerd#3-0/uffd.sock
+func (o *Orchestrator) getUffdSockAddr(vmID string) string {
+	return filepath.Join(o.getVMBaseDir(vmID), "uffd.sock")
+} 
 
 func (o *Orchestrator) getSnapshotFile(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "snap_file")

@@ -26,12 +26,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/vhive-serverless/vhive/snapshotting"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/ctriface"
@@ -181,7 +182,6 @@ func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.S
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	logger.Debug("FIXME: temp pass same lastVmID")
 	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, vmID, vmID, snap)
 	if err != nil {
 		logger.WithError(err).Error("failed to load VM")

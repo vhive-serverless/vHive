@@ -24,7 +24,6 @@ package ctriface
 
 import (
 	"context"
-	"github.com/vhive-serverless/vhive/snapshotting"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,6 +31,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	log "github.com/sirupsen/logrus"
 
@@ -106,7 +107,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 
 	tStart = time.Now()
 	conf := o.getVMConfig(vm)
-	resp, err := o.fcClient.CreateVM(ctx, conf)
+	_, err = o.fcClient.CreateVM(ctx, conf)
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to create the microVM in firecracker-containerd")
@@ -216,11 +217,10 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 			IsLazyMode:       o.isLazyMode,
 			VMMStatePath:     o.getSnapshotFile(vmID),
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
-			InstanceSockAddr: resp.GetSocketPath(),
+			InstanceSockAddr: o.uffdSockAddr,
 		}
 		logger.Debugf("TEST: show to-reg snapStat: %+v", stateCfg)
-		logger.Debugf("TEST: show socket path: %s", resp.GetSocketPath())
-		if err := o.memoryManager.RegisterVM(stateCfg, false, ""); err != nil {
+		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
 			// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
 		}
@@ -451,7 +451,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, lastVmID string, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
@@ -499,7 +499,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, lastVmID string, vmID s
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
 	conf.ContainerSnapshotPath = containerSnap.GetDevicePath()
-	conf.MemBackend = &proto.MemoryBackend {
+	conf.MemBackend = &proto.MemoryBackend{
 		BackendType: fileBackend,
 		BackendPath: snap.GetMemFilePath(),
 	}
@@ -507,24 +507,23 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, lastVmID string, vmID s
 	if o.GetUPFEnabled() {
 		logger.Debug("TEST: UPF is enabled")
 		conf.MemBackend.BackendType = uffdBackend
-		conf.MemBackend.BackendPath, err = o.memoryManager.GetUPFSockPath(lastVmID, true)
+		conf.MemBackend.BackendPath = o.uffdSockAddr
 		logger.Debugf("TEST: the upf socket: %s", conf.MemBackend.BackendPath)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "failed to get UPF socket path for uffd backend")
 		}
 
-		if err := o.memoryManager.FetchState(lastVmID); err != nil {
+		if err := o.memoryManager.FetchState(originVmID); err != nil {
 			return nil, nil, err
 		}
 	}
 
 	tStart = time.Now()
-	newUPFSockPath := ""
 
 	go func() {
 		defer close(loadDone)
 
-		resp, loadErr := o.fcClient.CreateVM(ctx, conf)
+		_, loadErr := o.fcClient.CreateVM(ctx, conf)
 		if loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
 			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), containerSnap.GetDevicePath())
@@ -551,12 +550,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, lastVmID string, vmID s
 			}
 			logger.Error(snapFiles)
 		}
-		newUPFSockPath = resp.GetSocketPath()
 	}()
 
 	logger.Debug("TEST: CreatVM request sent")
 	if o.GetUPFEnabled() {
-		
+
 		logger.Debug("TEST: Registering VM with the memory manager")
 
 		stateCfg := manager.SnapshotStateCfg{
@@ -567,12 +565,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, lastVmID string, vmID s
 			IsLazyMode:       o.isLazyMode,
 			VMMStatePath:     o.getSnapshotFile(vmID),
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
-			InstanceSockAddr: newUPFSockPath,
+			InstanceSockAddr: o.uffdSockAddr,
 		}
-		if err := o.memoryManager.RegisterVM(stateCfg, true, vmID); err != nil {
+		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			logger.Error(err, "failed to register new VM with memory manager")
 		}
-
 
 		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)

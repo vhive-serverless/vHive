@@ -49,6 +49,14 @@ import (
 	"unsafe"
 )
 
+// TODO: for test logging
+type TestPageFault struct {
+	src    uint64
+	dst    uint64
+	mode   uint64
+	offset uint64
+}
+
 // SnapshotStateCfg Config to initialize SnapshotState
 type SnapshotStateCfg struct {
 	VMID string
@@ -140,6 +148,7 @@ func (s *SnapshotState) getUFFD() error {
 			time.Sleep(1 * time.Millisecond)
 			continue
 		}
+		log.Debugf("TEST: Dial uffd socket done: %s", s.InstanceSockAddr)
 
 		defer c.Close()
 
@@ -301,6 +310,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 				panic("Wrong number of events")
 			}
 
+			logger.Debugf("TEST: epoller found %d event", nevents)
 			for i := 0; i < nevents; i++ {
 				event := events[i]
 
@@ -374,14 +384,21 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		workingSetInstalled bool
 	)
 
+	// log.SetOutput(os.Stdout)
+	// log.SetLevel(log.DebugLevel)
+
+	log.Debugf("TEST: servePageFault(fd: %d, address: %d)", fd, address)
+
 	s.firstPageFaultOnce.Do(
 		func() {
 			s.startAddress = address
+			log.Debugf("TEST: first page fault address %d", address)
 
 			if s.isRecordReady && !s.IsLazyMode {
 				if s.metricsModeOn {
 					tStart = time.Now()
 				}
+				log.Debug("TEST: first page fault once installation")
 				s.installWorkingSetPages(fd)
 				if s.metricsModeOn {
 					s.currentMetric.MetricMap[installWSMetric] = metrics.ToUS(time.Since(tStart))
@@ -400,6 +417,13 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	src := uint64(uintptr(unsafe.Pointer(&s.guestMem[offset])))
 	dst := uint64(int64(address) & ^(int64(os.Getpagesize()) - 1))
 	mode := uint64(0)
+
+	testPF := TestPageFault{
+		src:    src,
+		dst:    dst,
+		mode:   mode,
+		offset: offset,
+	}
 
 	rec := Record{
 		offset: offset,
@@ -427,6 +451,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		tStart = time.Now()
 	}
 
+	log.Debugf("TEST: install happen for %v", testPF)
 	err := installRegion(fd, src, dst, mode, 1)
 
 	if s.metricsModeOn {

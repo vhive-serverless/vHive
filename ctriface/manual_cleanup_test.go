@@ -234,11 +234,11 @@ func TestParallelSnapLoad(t *testing.T) {
 			err = orch.StopSingleVM(ctx, vmID)
 			require.NoError(t, err, "Failed to offload VM, "+vmID)
 
-			lastVmID := vmID
+			originVmID := vmID
 			vmIDInt, _ := strconv.Atoi(vmID)
 			vmID = strconv.Itoa(vmIDInt + 1)
 
-			_, _, err = orch.LoadSnapshot(ctx, lastVmID, vmID, snap)
+			_, _, err = orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 			require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 
 			_, err = orch.ResumeVM(ctx, vmID)
@@ -358,10 +358,10 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i+vmIDBase)
 				snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
-				lastVmID := vmID
+				originVmID := vmID
 				vmIDInt, _ := strconv.Atoi(vmID)
 				vmID = strconv.Itoa(vmIDInt + 1)
-				_, _, err := orch.LoadSnapshot(ctx, lastVmID, vmID, snap)
+				_, _, err := orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 				require.NoError(t, err, "Failed to load snapshot of VM, "+vmID)
 			}(i)
 		}
