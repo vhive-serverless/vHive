@@ -6,13 +6,18 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"sync"
 	"time"
 
 )
 
+var (
+	SpinningURL = "spinning-go.default.192.168.1.240.sslip.io"
+	SleepingURL = "sleeping-go.default.192.168.1.240.sslip.io"
+	AesURL = "aes-python.default.192.168.1.240.sslip.io"
+	AuthURL = "auth-python.default.192.168.1.240.sslip.io"
+)
+
 func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
-	fmt.Printf("node1:%d, node2:%d\n", freq1, freq2)
 	// powerConfig
 	command := fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerConfig\nmetadata:\n  name: power-config\n  namespace: intel-power\nspec:\n powerNodeSelector:\n    kubernetes.io/os: linux\n powerProfiles:\n    - \"performance\"\nEOF")
 	cmd := exec.Command("bash", "-c", command)
@@ -53,47 +58,7 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	return nil
 }
 
-func spinning(wg *sync.WaitGroup, resultChan chan int64) {
-	defer wg.Done()
-
-	url := "aes-python.default.192.168.1.240.sslip.io"
-	command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
-
-	startInvoke := time.Now().UTC().UnixMilli()
-	cmd := exec.Command("bash", "-c", command)
-	_, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf(fmt.Sprintf("ERR2: %+v", err))
-		return
-	}
-	endInvoke := time.Now().UTC().UnixMilli()
-	latency := endInvoke-startInvoke
-	resultChan <- latency
-	fmt.Println(latency)
-	return
-}
-
-func sleeping(wg *sync.WaitGroup, resultChan chan int64) {
-	defer wg.Done()
-
-	url := "auth-python.default.192.168.1.240.sslip.io"
-	command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
-	
-	startInvoke := time.Now().UTC().UnixMilli()
-	cmd := exec.Command("bash", "-c", command)
-	_, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf(fmt.Sprintf("ERR2: %+v", err))
-		return
-	}
-	endInvoke := time.Now().UTC().UnixMilli()
-	latency := endInvoke-startInvoke
-	resultChan <- latency
-	fmt.Println(latency)
-	return
-}
-
-func experiment2() {
+func main2() {
 	file, err := os.Create("metrics.csv")
 	if err != nil {
 		panic(err)
@@ -116,9 +81,7 @@ func experiment2() {
 
 		startInvoke := time.Now().UTC().UnixMilli()
 		go func() {
-			url := "auth-python.default.192.168.1.240.sslip.io"
-			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
-			
+			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", AuthURL)
 			startInvoke := time.Now().UTC().UnixMilli()
 			cmd := exec.Command("bash", "-c", command)
 			_, err := cmd.CombinedOutput()
@@ -132,9 +95,7 @@ func experiment2() {
 		}()
 
 		go func() {
-			url := "aes-python.default.192.168.1.240.sslip.io"
-			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
-			
+			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", AesURL)
 			startInvoke := time.Now().UTC().UnixMilli()
 			cmd := exec.Command("bash", "-c", command)
 			_, err := cmd.CombinedOutput()

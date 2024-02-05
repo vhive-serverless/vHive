@@ -38,6 +38,13 @@ export GOROOT=/usr/local/go
 export GOPATH=$HOME
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 
+# Install docker
+curl -fsSL https://get.docker.com/ | sudo sh && \
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.12.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
+sudo mv /usr/local/bin/docker-compose /usr/bin/docker-compose && \
+sudo chmod +x /usr/bin/docker-compose && \
+export PATH=$PATH:/usr/local/go/bin && \
+export PATH=$PATH:$HOME/go/bin
 
 # Generate the CRD templates, create the Custom Resource Definitions, and install the CRDs and Built Docker images locally
 cd $HOME/kubernetes-power-manager
@@ -49,13 +56,13 @@ sudo docker pull intel/power-node-agent:latest
 kubectl apply -f $HOME/kubernetes-power-manager/config/manager/manager.yaml
 
 # Apply PowerConfig -> create the power-node-agent DaemonSet that manages the Power Node Agent pods.
-kubectl apply -f $HOME/vhive/examples/powermanger/powerconfig.yaml
+kubectl apply -f $HOME/vhive/power_manager/powerconfig.yaml
 
 # Apply Profile. U can modify the spec in the shared-profile.yaml file
-kubectl apply -f $HOME/vhive/examples/powermanger/shared-profile.yaml
+kubectl apply -f $HOME/vhive/power_manager/shared-profile.yaml
 
 # Apply the shared PowerWorkload. Al CPUs (except reservedCPUs specified in this yaml file) will be tuned ti the specified frequency in shared-profile.yaml
-kubectl apply -f $HOME/vhive/examples/powermanger/shared-workload.yaml
+kubectl apply -f $HOME/vhive/power_manager/shared-workload.yaml
 
 kubectl get powerprofiles -n intel-power
 kubectl get powerworkloads -n intel-power

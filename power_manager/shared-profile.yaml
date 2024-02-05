@@ -1,11 +1,11 @@
 apiVersion: power.intel.com/v1
 kind: PowerProfile
 metadata:
-  name: shared-node1
+  name: shared
   namespace: intel-power
 spec:
-  name: "shared-node1"
-  max: 1600
-  min: 1300
+  name: "shared"
+  max: 1200
+  min: 1200
   shared: true 
   governor: "powersave"
