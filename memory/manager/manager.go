@@ -54,6 +54,7 @@ type MemoryManager struct {
 	sync.Mutex
 	MemoryManagerCfg
 	instances map[string]*SnapshotState // Indexed by vmID
+	origins map[string]string // Track parent vm for vm loaded from snapshot
 }
 
 // NewMemoryManager Initializes a new memory manager
@@ -90,6 +91,31 @@ func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
 	return nil
 }
 
+// RegisterVMFromSnap Registers a VM that is loaded from snapshot within the memory manager
+func (m *MemoryManager) RegisterVMFromSnap(originVmID string, cfg SnapshotStateCfg) error {
+	m.Lock()
+	defer m.Unlock()
+
+	vmID := cfg.VMID
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Registering the VM that loaded snapshot with the memory manager")
+
+	if _, ok := m.instances[vmID]; ok {
+		logger.Error("VM already registered with the memory manager")
+		return errors.New("VM already registered with the memory manager")
+	}
+
+	cfg.metricsModeOn = m.MetricsModeOn
+	state := NewSnapshotState(cfg)
+	// state := m.instances[originVmID]
+
+	m.origins[vmID] = originVmID
+	m.instances[vmID] = state
+	return nil
+}
+
 // DeregisterVM Deregisters a VM from the memory manager
 func (m *MemoryManager) DeregisterVM(vmID string) error {
 	m.Lock()
@@ -111,6 +137,7 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 	}
 
 	delete(m.instances, vmID)
+	delete(m.origins, vmID)
 
 	return nil
 }

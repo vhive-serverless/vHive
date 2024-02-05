@@ -219,7 +219,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: o.uffdSockAddr,
 		}
-		logger.Debugf("TEST: show to-reg snapStat: %+v", stateCfg)
+		logger.Debugf("TEST: show snapStat to be registered: %+v", stateCfg)
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
 			// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
@@ -523,8 +523,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 	go func() {
 		defer close(loadDone)
 
-		_, loadErr := o.fcClient.CreateVM(ctx, conf)
-		if loadErr != nil {
+		if _, loadErr := o.fcClient.CreateVM(ctx, conf); loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
 			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), containerSnap.GetDevicePath())
 			files, err := os.ReadDir(filepath.Dir(snap.GetSnapshotFilePath()))
@@ -567,7 +566,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: o.uffdSockAddr,
 		}
-		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
+		if err := o.memoryManager.RegisterVMFromSnap(originVmID, stateCfg); err != nil {
 			logger.Error(err, "failed to register new VM with memory manager")
 		}
 

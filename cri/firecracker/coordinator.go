@@ -170,6 +170,7 @@ func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, e
 
 func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.Snapshot) (*funcInstance, error) {
 	vmID := c.getVMID()
+	originVmID := vmID
 	logger := log.WithFields(
 		log.Fields{
 			"vmID":  vmID,
@@ -182,7 +183,7 @@ func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.S
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, vmID, vmID, snap)
+	resp, _, err := c.orch.LoadSnapshot(ctxTimeout, originVmID, vmID, snap)
 	if err != nil {
 		logger.WithError(err).Error("failed to load VM")
 		return nil, err

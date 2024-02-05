@@ -90,8 +90,9 @@ func TestSnapLoad(t *testing.T) {
 	require.NoError(t, err, "Failed to offload VM")
 
 	vmID = "2"
+	originVmID := "1"
 
-	_, _, err = orch.LoadSnapshot(ctx, "1", vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)

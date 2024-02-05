@@ -288,7 +288,17 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 		logger.Fatalf("register_epoller: %v", err)
 	}
 
+	// TODO: config where the logger stream goes
 	logger.Debug("Starting polling loop")
+	fmt.Printf("Starting polling loop")
+
+	logFile, err := os.OpenFile("pg_happen.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+    if err != nil {
+        log.Fatalf("error opening file: %v", err)
+    }
+    defer logFile.Close()
+    log.SetOutput(logFile)
+    log.Println("This is a test log entry") 
 
 	defer syscall.Close(s.epfd)
 
