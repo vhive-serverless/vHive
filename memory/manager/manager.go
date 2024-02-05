@@ -55,6 +55,8 @@ type MemoryManager struct {
 	MemoryManagerCfg
 	instances map[string]*SnapshotState // Indexed by vmID
 	origins map[string]string // Track parent vm for vm loaded from snapshot
+
+	// TODO: snapshot and its children
 }
 
 // NewMemoryManager Initializes a new memory manager

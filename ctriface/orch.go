@@ -122,7 +122,6 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 
 	if o.GetUPFEnabled() {
-		// o.uffdSockAddr = "/tmp/uffd/firecracker-containerd#3-0/uffd.sock"
 		_, err = os.Create(o.uffdSockAddr)
 		if err != nil {
 			log.Fatal("TEST: failed to create uffd sock", err)

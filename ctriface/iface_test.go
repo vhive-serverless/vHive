@@ -72,7 +72,6 @@ func TestStartSnapStop(t *testing.T) {
 	orch := NewOrchestrator("devmapper", "", WithTestModeOn(true), WithUffdSockAddr(uffdSockAddr))
 
 	vmID := "2"
-	newVmID := "3"
 
 	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
@@ -87,15 +86,18 @@ func TestStartSnapStop(t *testing.T) {
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
 
-	_, _, err = orch.LoadSnapshot(ctx, vmID, newVmID, snap)
+	originVmID := vmID
+	vmID = "3"
+
+	_, _, err = orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
-	_, err = orch.ResumeVM(ctx, newVmID)
+	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
 	time.Sleep(30 * time.Second)
 
-	err = orch.StopSingleVM(ctx, newVmID)
+	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
 
 	_ = snap.Cleanup()

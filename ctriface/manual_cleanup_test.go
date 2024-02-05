@@ -151,9 +151,10 @@ func TestSnapLoadMultiple(t *testing.T) {
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM")
 
+	originVmID := vmID
 	vmID = "4"
 
-	_, _, err = orch.LoadSnapshot(ctx, "3", vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -162,9 +163,10 @@ func TestSnapLoadMultiple(t *testing.T) {
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM")
 
+	originVmID = vmID
 	vmID = "5"
 
-	_, _, err = orch.LoadSnapshot(ctx, "4", vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
@@ -469,8 +471,9 @@ func TestRemoteSnapLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	vmID := "37"
 	revision := "myrev-37"
+	originVmID := "37"
+	vmID := "38"
 
 	_, err := os.Stat(remoteSnapshotsDir)
 	require.NoError(t, err, "Failed to stat remote snapshots directory")
@@ -485,7 +488,7 @@ func TestRemoteSnapLoad(t *testing.T) {
 
 	snap := snapshotting.NewSnapshot(revision, remoteSnapshotsDir, testImageName)
 
-	_, _, err = orch.LoadSnapshot(ctx, "36", vmID, snap)
+	_, _, err = orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 	require.NoError(t, err, "Failed to load remote snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
