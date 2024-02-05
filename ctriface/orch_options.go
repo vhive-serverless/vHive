@@ -49,6 +49,13 @@ func WithUPF(isUPFEnabled bool) OrchestratorOption {
 	}
 }
 
+// WithUffdSockAddr Sets the socket path for Uffd communication
+func WithUffdSockAddr(uffdSockAddr string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.uffdSockAddr = uffdSockAddr
+	}
+}
+
 // WithSnapshotsDir Sets the directory where
 // snapshots should be stored
 func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {

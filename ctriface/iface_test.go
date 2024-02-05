@@ -68,7 +68,8 @@ func TestStartSnapStop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", "", WithTestModeOn(true))
+	uffdSockAddr := "/tmp/uffd.sock"
+	orch := NewOrchestrator("devmapper", "", WithTestModeOn(true), WithUffdSockAddr(uffdSockAddr))
 
 	vmID := "2"
 	newVmID := "3"
