@@ -58,7 +58,7 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	return nil
 }
 
-func main2() {
+func main() {
 	file, err := os.Create("metrics.csv")
 	if err != nil {
 		panic(err)
