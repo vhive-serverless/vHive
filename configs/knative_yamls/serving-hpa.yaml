@@ -28,8 +28,6 @@ spec:
       app: autoscaler-hpa
   template:
     metadata:
-      annotations:
-        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         app: autoscaler-hpa
         app.kubernetes.io/component: autoscaler-hpa
@@ -51,7 +49,7 @@ spec:
         - name: autoscaler-hpa
           # This is the Go import path for the binary that is containerized
           # and substituted here.
-          image: ghcr.io/vhive-serverless/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:1797f6c16f0c65b0255651f82e85399ba210cc353044177ad2af159fc20e2122
+          image: docker.io/lkondras/autoscaler-hpa-85c0b68178743d74ff7f663a72802ceb@sha256:0cc45033cca1dc71f3f94cac50fc82b12aa24509dbf372982fd8a5bec32586fb
           resources:
             requests:
               cpu: 30m
@@ -80,11 +78,27 @@ spec:
                 - ALL
             seccompProfile:
               type: RuntimeDefault
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: probes
+              scheme: HTTP
+            periodSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: probes
+              scheme: HTTP
+            periodSeconds: 5
+            failureThreshold: 5
           ports:
             - name: metrics
               containerPort: 9090
             - name: profiling
               containerPort: 8008
+            - name: probes
+              containerPort: 8080
 ---
 apiVersion: v1
 kind: Service

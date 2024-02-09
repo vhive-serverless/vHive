@@ -75,12 +75,12 @@ func CreateMultinodeCluster(stockContainerd string) error {
 func CreateMasterKubeletService() error {
 	utils.WaitPrintf("Creating kubelet service")
 	// Create service directory if not exist
-	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/sysconfig")
+	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/default")
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
 		return err
 	}
-	bashCmd := `sudo sh -c 'cat <<EOF > /etc/sysconfig/kubelet
-KUBELET_EXTRA_ARGS="--container-runtime=remote --v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+	bashCmd := `sudo sh -c 'cat <<EOF > /etc/default/kubelet
+KUBELET_EXTRA_ARGS="--v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
 EOF'`
 	_, err = utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity)
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
@@ -104,7 +104,7 @@ func DeployKubernetes() error {
 	}
 	shellCmd := fmt.Sprintf(`sudo kubeadm init --v=%d \
 --apiserver-advertise-address=%s \
---cri-socket /run/containerd/containerd.sock \
+--cri-socket unix:///run/containerd/containerd.sock \
 --kubernetes-version %s \
 --pod-network-cidr="%s" `,
 		configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)

@@ -25,21 +25,20 @@ package configs
 import "fmt"
 
 type KnativeConfigStruct struct {
-	KnativeVersion                          string
-	KnativeCLIRepoUrl                       string
-	KnativeCLIBranch                        string
-	NotStockOnlyKnativeServingYamlUrlPrefix string
-	IstioVersion                            string
-	IstioDownloadUrlTemplate                string
-	IstioOperatorConfigPath                 string
-	IstioZipkinVersion                      string
-	IstioZipkinDownloadUrlTemplate          string
-	MetalLBVersion                          string
-	LocalRegistryRepoVolumeSize             string
-	LocalRegistryVolumeConfigPath           string
-	LocalRegistryDockerRegistryConfigPath   string
-	LocalRegistryHostUpdateConfigPath       string
-	MagicDNSConfigPath                      string
+	KnativeVersion                        string
+	KnativeCLIRepoUrl                     string
+	KnativeCLIBranch                      string
+	IstioVersion                          string
+	IstioDownloadUrlTemplate              string
+	IstioOperatorConfigPath               string
+	IstioZipkinVersion                    string
+	IstioZipkinDownloadUrlTemplate        string
+	MetalLBVersion                        string
+	LocalRegistryRepoVolumeSize           string
+	LocalRegistryVolumeConfigPath         string
+	LocalRegistryDockerRegistryConfigPath string
+	LocalRegistryHostUpdateConfigPath     string
+	MagicDNSConfigPath                    string
 }
 
 var Knative = KnativeConfigStruct{}
