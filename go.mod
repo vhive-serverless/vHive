@@ -1,6 +1,6 @@
 module github.com/vhive-serverless/vhive
 
-go 1.19
+go 1.21
 
 // Copied from firecracker-containerd
 replace (
@@ -9,34 +9,7 @@ replace (
 	google.golang.org/grpc => google.golang.org/grpc v1.38.1
 )
 
-replace (
-	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20161114122254-48702e0da86b
-	k8s.io/api => k8s.io/api v0.16.6
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.16.6
-	k8s.io/apimachinery => k8s.io/apimachinery v0.16.7-beta.0
-	k8s.io/apiserver => k8s.io/apiserver v0.16.6
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.16.6
-	k8s.io/client-go => k8s.io/client-go v0.16.6
-	k8s.io/cloud-provider => k8s.io/cloud-provider v0.16.6
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.16.6
-	k8s.io/code-generator => k8s.io/code-generator v0.16.7-beta.0
-	k8s.io/component-base => k8s.io/component-base v0.16.6
-	k8s.io/cri-api => k8s.io/cri-api v0.16.16-rc.0
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.16.6
-	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.16.6
-	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.16.6
-	k8s.io/kube-proxy => k8s.io/kube-proxy v0.16.6
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.16.6
-	k8s.io/kubectl => k8s.io/kubectl v0.16.6
-	k8s.io/kubelet => k8s.io/kubelet v0.16.6
-	k8s.io/kubernetes => k8s.io/kubernetes v1.16.6
-	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.16.6
-	k8s.io/metrics => k8s.io/metrics v0.16.6
-	k8s.io/node-api => k8s.io/node-api v0.16.6
-	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.16.6
-	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.16.6
-	k8s.io/sample-controller => k8s.io/sample-controller v0.16.6
-)
+replace github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20161114122254-48702e0da86b
 
 replace (
 	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20230912063208-ad6383f05e45
@@ -50,14 +23,14 @@ require (
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.3
 	github.com/google/nftables v0.0.0-20210916140115-16a134723a96
 	github.com/google/uuid v1.6.0
 	github.com/montanaflynn/stats v0.7.1
 	github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.4
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
@@ -76,7 +49,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Microsoft/hcsshim v0.9.8 // indirect
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b // indirect
-	github.com/blend/go-sdk v1.20211025.3 // indirect
+	github.com/blend/go-sdk v1.1.1 // indirect
 	github.com/campoy/embedmd v1.0.0 // indirect
 	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
@@ -107,6 +80,6 @@ require (
 	golang.org/x/image v0.11.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

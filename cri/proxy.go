@@ -26,7 +26,7 @@ import (
 	"context"
 
 	log "github.com/sirupsen/logrus"
-	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	criapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 // RunPodSandbox creates and starts a pod-level sandbox. Runtimes must ensure

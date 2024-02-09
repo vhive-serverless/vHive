@@ -249,6 +249,12 @@ func InstallKnativeServingComponent(stockContainerd string) error {
 			return err
 		}
 	}
+
+	_, err := utils.ExecShellCmd("kubectl -n knative-serving wait deploy webhook --timeout=180s --for=condition=Available")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
+		return err
+	}
+
 	return nil
 }
 
@@ -301,7 +307,7 @@ func DeployIstioPods() error {
 	utils.WaitPrintf("Deploying istio pods")
 
 	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "net-istio.yaml"))); err != nil {
-		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v%s/net-istio.yaml", configs.Knative.KnativeVersion)
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative-extensions/net-istio/releases/download/knative-v%s/net-istio.yaml", configs.Knative.KnativeVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy istio pods!\n") {
 			return err
 		}
