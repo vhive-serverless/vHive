@@ -98,6 +98,7 @@ type SystemEnvironmentStruct struct {
 	PmuToolsRepoUrl                     string
 	ProtocVersion                       string
 	ProtocDownloadUrlTemplate           string
+	YqDownloadUrl                       string
 }
 
 type YurtEnvironment struct {
@@ -126,8 +127,8 @@ type VHiveConfigStruct struct {
 var Demo = DemoEnvironment{
 	CloudYamlFile:      "cloud.yaml",
 	EdgeYamlFile:       "edge.yaml",
-	CloudBenchYamlFile: "cloud-bench.yaml",
-	EdgeBenchYamlFile:  "edge-bench.yaml",
+	CloudBenchYamlFile: "cloudBench.yaml",
+	EdgeBenchYamlFile:  "edgeBench.yaml",
 	YurtAppSetYamlFile: "yurt.yaml",
 	CloudPoolName:      "cloud",
 	EdgePoolName:       "edge",
@@ -159,6 +160,7 @@ var System = SystemEnvironmentStruct{
 	CurrentDir:          "",
 	UserHomeDir:         "",
 	NodeHostName:        "",
+	YqDownloadUrl:       "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_%s",
 }
 
 var VHive = VHiveConfigStruct{

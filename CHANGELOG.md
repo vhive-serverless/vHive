@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added support for [`OpenYurt`](https://openyurt.io/), an open platform that extends upstream Kubernetes to run on edge node pools. More details on how to the `Knative-atop-OpenYurt` mode are described [here](scripts/openyurt-deployer/README.md).
+
+
 ### Changed
 
 - Removed the utils and examples from the vHive repo, moved to [vSwarm](https://github.com/vhive-serverless/vSwarm).
