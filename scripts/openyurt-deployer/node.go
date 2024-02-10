@@ -451,6 +451,12 @@ func (node *Node) SystemInit() {
 	default:
 		utils.FatalPrintf("Unsupported Linux distribution: %s\n", node.Configs.System.CurrentOS)
 	}
+
+	// Install yq for yaml parsing of template
+	utils.InfoPrintf("Downloading yq for yaml parsing of template")
+	yqUrl := fmt.Sprintf(node.Configs.System.YqDownloadUrl, node.Configs.System.CurrentArch)
+	_, err = node.ExecShellCmd(`sudo wget %s -O /usr/bin/yq && sudo chmod +x /usr/bin/yq`, yqUrl)
+	utils.CheckErrorWithMsg(err, "Failed to add yq!\n")
 }
 
 // Kubernetes related functions
@@ -633,19 +639,19 @@ func (node *Node) InstallKnativeServing() {
 	utils.CheckErrorWithMsg(err, "Failed to install Knative Serving component!")
 
 	// Install local cluster registry
-	utils.WaitPrintf("Installing local cluster registry")
-	_, err = node.ExecShellCmd("kubectl create namespace registry")
-	utils.CheckErrorWithMsg(err, "Failed to install local cluster registry!")
-	configFilePath, err := node.DownloadToTmpDir("%s", node.Configs.Knative.LocalRegistryVolumeConfigUrl)
-	utils.CheckErrorWithMsg(err, "Failed to install local cluster registry!")
-	_, err = node.ExecShellCmd("REPO_VOL_SIZE=%s envsubst < %s | kubectl create --filename -",
-		node.Configs.Knative.LocalRegistryRepoVolumeSize,
-		configFilePath)
-	utils.CheckErrorWithMsg(err, "Failed to install local cluster registry!")
-	_, err = node.ExecShellCmd("kubectl create -f %s && kubectl apply -f %s",
-		node.Configs.Knative.LocalRegistryDockerRegistryConfigUrl,
-		node.Configs.Knative.LocalRegistryHostUpdateConfigUrl)
-	utils.CheckErrorWithMsg(err, "Failed to install local cluster registry!")
+	// utils.WaitPrintf("Installing local cluster registry")
+	// _, err = node.ExecShellCmd("kubectl create namespace registry")
+	// utils.CheckErrorWithMsg(err, "Failed to install local cluster registry!")
+	// configFilePath, err := node.DownloadToTmpDir("%s", node.Configs.Knative.LocalRegistryVolumeConfigUrl)
+	// utils.CheckErrorWithMsg(err, "Failed to install local cluster registry!")
+	// _, err = node.ExecShellCmd("REPO_VOL_SIZE=%s envsubst < %s | kubectl create --filename -",
+	// 	node.Configs.Knative.LocalRegistryRepoVolumeSize,
+	// 	configFilePath)
+	// utils.CheckErrorWithMsg(err, "Failed to install local cluster registry!")
+	// _, err = node.ExecShellCmd("kubectl create -f %s && kubectl apply -f %s",
+	// 	node.Configs.Knative.LocalRegistryDockerRegistryConfigUrl,
+	// 	node.Configs.Knative.LocalRegistryHostUpdateConfigUrl)
+	// utils.CheckErrorWithMsg(err, "Failed to install local cluster registry!")
 
 	// Configure Magic DNS
 	utils.WaitPrintf("Configuring Magic DNS")
@@ -881,12 +887,12 @@ func (node *Node) YurtMasterExpand(worker *Node) {
 	} else {
 		utils.FatalPrintf("worker's role must be edge or cloud, but this node's role is %s", worker.NodeRole)
 	}
-	_, err = node.ExecShellCmd("kubectl label node %s openyurt.io/is-edge-worker=%s --overwrite", worker.Configs.System.NodeHostName, workerAsEdge)
+	_, err = node.ExecShellCmd("kubectl label node %s openyurt.io/is-edge-worker=%s", worker.Configs.System.NodeHostName, workerAsEdge)
 	utils.CheckErrorWithMsg(err, "Failed to label worker node!\n")
 
 	// Activate the node autonomous mode
 	utils.WaitPrintf("Activating the node autonomous mode")
-	_, err = node.ExecShellCmd("kubectl annotate node %s node.beta.openyurt.io/autonomy=true --overwrite", worker.Configs.System.NodeHostName)
+	_, err = node.ExecShellCmd("kubectl annotate node %s node.beta.openyurt.io/autonomy=true", worker.Configs.System.NodeHostName)
 	utils.CheckErrorWithMsg(err, "Failed to activate the node autonomous mode!\n")
 
 	// Wait for worker node to be Ready
@@ -906,18 +912,6 @@ func (node *Node) YurtMasterExpand(worker *Node) {
 			time.Sleep(time.Second)
 		}
 	}
-
-	// Restart pods in the worker node
-	utils.WaitPrintf("Restarting pods in the worker node")
-	shellOutput, err := node.ExecShellCmd(GetRestartPodsShell(), worker.Configs.System.NodeHostName)
-	utils.CheckErrorWithMsg(err, "Failed to restart pods in the worker node!\n")
-	podsToBeRestarted := strings.Split(shellOutput, "\n")
-	for _, pods := range podsToBeRestarted {
-		podsInfo := strings.Split(pods, " ")
-		utils.WaitPrintf("Restarting pod: %s => %s", podsInfo[0], podsInfo[1])
-		_, err = node.ExecShellCmd("kubectl -n %s delete pod %s", podsInfo[0], podsInfo[1])
-		utils.CheckErrorWithMsg(err, "Failed to restart pods in the worker node!\n")
-	}
 }
 
 // Join existing Kubernetes worker node to Openyurt cluster
@@ -932,22 +926,34 @@ func (node *Node) YurtWorkerJoin(addr string, port string, token string) {
 	utils.WaitPrintf("Setting up Yurthub")
 	_, err = node.ExecShellCmd(
 		"cat '%s' | sed -e 's|__kubernetes_master_address__|%s:%s|' -e 's|__bootstrap_token__|%s|' | sudo tee /etc/kubernetes/manifests/yurthub-ack.yaml",
-		yurtTempFilePath,
-		addr,
-		port,
-		token)
+		yurtTempFilePath, addr, port, token)
 	utils.CheckErrorWithMsg(err, "Failed to set up Yurthub!\n")
 
-	// Get kubele template from github
+	// Get kubelet template from github
 	kubletTempFilePath, _ := node.DownloadToTmpDir("https://raw.githubusercontent.com/vhive-serverless/vHive/openyurt/scripts/openyurt-deployer/configs/kubeTemplate.yaml")
 	// Configure Kubelet
 	utils.WaitPrintf("Configuring kubelet")
 	node.ExecShellCmd("sudo mkdir -p /var/lib/openyurt && cat '%s' | sudo tee /var/lib/openyurt/kubelet.conf", kubletTempFilePath)
 	utils.CheckErrorWithMsg(err, "Failed to configure kubelet!\n")
-	node.ExecShellCmd(`sudo sed -i "s|KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=\/etc\/kubernetes\/bootstrap-kubelet.conf\ --kubeconfig=\/etc\/kubernetes\/kubelet.conf|KUBELET_KUBECONFIG_ARGS=--kubeconfig=\/var\/lib\/openyurt\/kubelet.conf|g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf`)
+	node.ExecShellCmd(`sudo sed -i "s|KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=\/etc\/kubernetes\/bootstrap-kubelet.conf\ --kubeconfig=\/etc\/kubernetes\/kubelet.conf|KUBELET_KUBECONFIG_ARGS=--kubeconfig=\/var\/lib\/openyurt\/kubelet.conf|g" \
+    /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf`)
 	utils.CheckErrorWithMsg(err, "Failed to configure kubelet!\n")
 	node.ExecShellCmd("sudo systemctl daemon-reload && sudo systemctl restart kubelet")
 	utils.CheckErrorWithMsg(err, "Failed to configure kubelet!\n")
+}
+
+func (node *Node) YurtRestart(worker *Node) {
+	// Restart pods in the worker node
+	utils.WaitPrintf("Restarting pods in the worker node")
+	shellOutput, err := node.ExecShellCmd(GetRestartPodsShell(), worker.Configs.System.NodeHostName)
+	utils.CheckErrorWithMsg(err, "Failed to restart pods in the worker node!\n")
+	podsToBeRestarted := strings.Split(shellOutput, "\n")
+	for _, pods := range podsToBeRestarted {
+		podsInfo := strings.Split(pods, " ")
+		utils.WaitPrintf("Restarting pod: %s => %s", podsInfo[0], podsInfo[1])
+		_, err = node.ExecShellCmd("kubectl -n %s delete pod %s", podsInfo[0], podsInfo[1])
+		utils.CheckErrorWithMsg(err, "Failed to restart pods in the worker node!\n")
+	}
 }
 
 func (node *Node) YurtWorkerClean() {
@@ -960,7 +966,7 @@ func (node *Node) YurtWorkerClean() {
 	utils.CheckErrorWithMsg(err, "Failed to clean kubelet on node: %s", node.Name)
 }
 
-// Builds cloud and edge nodepools
+// Builds cloud and edge nodepools for node pool management
 func (masterNode *Node) BuildDemo(workerNodes []Node) {
 
 	masterNode.GetUserHomeDir()
@@ -970,41 +976,23 @@ func (masterNode *Node) BuildDemo(workerNodes []Node) {
 	cloudPoolName := masterNode.Configs.Demo.CloudPoolName
 	edgePoolName := masterNode.Configs.Demo.EdgePoolName
 
+	// copy cloudNP file over
+	cloudNPTmpFilePath, _ := masterNode.DownloadToTmpDir("https://raw.githubusercontent.com/vhive-serverless/vHive/openyurt/scripts/openyurt-deployer/configs/cloudNodePoolTemplate.yaml")
 	cloudFile := fmt.Sprintf("%s/%s", masterNode.Configs.System.UserHomeDir, masterNode.Configs.Demo.CloudYamlFile)
-	edgeFile := fmt.Sprintf("%s/%s", masterNode.Configs.System.UserHomeDir, masterNode.Configs.Demo.EdgeYamlFile)
-	// yurtFile :=  utils.InfoPrintf("%s/%s", masterNode.Configs.System.UserHomeDir, masterNode.Configs.Demo.YurtAppSetYamlFile)
-
 	// cloud.yaml
 	utils.WaitPrintf("Creating yaml files for cloud nodepool")
-	cloudNpcommand := fmt.Sprintf("yq  '.metadata.name = %s' configs/cloudNodePoolTemplate.yaml > %s ", cloudPoolName, cloudFile)
+	cloudNpcommand := fmt.Sprintf("yq  '.metadata.name = \"%s\"' %s > %s ", cloudPoolName, cloudNPTmpFilePath, cloudFile)
 	_, err = masterNode.ExecShellCmd(cloudNpcommand)
 	utils.CheckErrorWithTagAndMsg(err, "Failed to create yaml for cloud\n")
 
+	// Copy edgeNP file over
+	edgeNPTmpFilePath, _ := masterNode.DownloadToTmpDir("https://raw.githubusercontent.com/vhive-serverless/vHive/openyurt/scripts/openyurt-deployer/configs/edgeNodePoolTemplate.yaml")
+	edgeFile := fmt.Sprintf("%s/%s", masterNode.Configs.System.UserHomeDir, masterNode.Configs.Demo.EdgeYamlFile)
 	// edge.yaml
 	utils.WaitPrintf("Creating yaml files for edge nodepool")
-	edgeNpcommand := fmt.Sprintf("yq  '.metadata.name = %s' configs/edgeNodePoolTemplate.yaml > %s ", edgePoolName, edgeFile)
+	edgeNpcommand := fmt.Sprintf("yq  '.metadata.name = \"%s\"' %s > %s ", edgePoolName, edgeNPTmpFilePath, edgeFile)
 	_, err = masterNode.ExecShellCmd(edgeNpcommand)
 	utils.CheckErrorWithTagAndMsg(err, "Failed to create yaml for edge\n")
-
-	//label master as cloud TODO not just master, but all cloud nodes
-	utils.WaitPrintf("Labeling master")
-	_, err = masterNode.ExecShellCmd(`kubectl label node %s apps.openyurt.io/desired-nodepool=%s`, masterNode.Configs.System.NodeHostName, cloudPoolName)
-	utils.CheckErrorWithTagAndMsg(err, "Master Cloud label fail\n")
-
-	//label edge
-	utils.WaitPrintf("Labeling workers")
-	for _, worker := range workerNodes {
-		worker.GetNodeHostName()
-		var desiredNpName string
-		if worker.NodeRole == "cloud" {
-			desiredNpName = cloudPoolName
-		} else {
-			desiredNpName = edgePoolName
-		}
-		_, err = masterNode.ExecShellCmd("kubectl label node %s apps.openyurt.io/desired-nodepool=%s", worker.Configs.System.NodeHostName, desiredNpName)
-		utils.CheckErrorWithTagAndMsg(err, "worker label fail\n")
-	}
-	utils.SuccessPrintf("Label success\n")
 
 	utils.WaitPrintf("Apply cloud.yaml")
 	_, err = masterNode.ExecShellCmd("kubectl apply -f %s", cloudFile)
@@ -1015,6 +1003,7 @@ func (masterNode *Node) BuildDemo(workerNodes []Node) {
 	utils.CheckErrorWithTagAndMsg(err, "Failed to apply edge.yaml\n")
 }
 
+// Add benchmarking image
 func (masterNode *Node) Demo(isCloud bool) {
 
 	masterNode.GetUserHomeDir()
@@ -1025,23 +1014,29 @@ func (masterNode *Node) Demo(isCloud bool) {
 	edgePoolName := masterNode.Configs.Demo.EdgePoolName
 
 	utils.WaitPrintf("Creating benchmark's yaml file and apply it")
+	benchmarkFilePath, _ := masterNode.DownloadToTmpDir("https://raw.githubusercontent.com/vhive-serverless/vHive/openyurt/scripts/openyurt-deployer/configs/benchmarkTemplate.yaml")
 
 	if isCloud {
-		command := fmt.Sprintf(`yq '.metadata.name = \"helloworld-python-cloud\" | 
-			.spec.template.spec.nodeSelector.\"apps.openyurt.io/nodepool\" = %s | 
-			.spec.template.spec.containers[0].image = \"docker.io/vhiveease/hello-cloud:latest\" ' 
-			configs/benchmarkTemplate.yaml > %s`, cloudPoolName, masterNode.Configs.Demo.CloudBenchYamlFile)
+		cloudOutputFile := fmt.Sprintf("%s/%s", masterNode.Configs.System.UserHomeDir, masterNode.Configs.Demo.CloudBenchYamlFile)
+
+		command := fmt.Sprintf(`yq '.metadata.name = "helloworld-python-cloud" | 
+			.spec.template.spec.nodeSelector."apps.openyurt.io/nodepool" = "%s" | 
+			.spec.template.spec.containers[0].image = "docker.io/vhiveease/hello-cloud:latest"' %s > %s`,
+			cloudPoolName, benchmarkFilePath, cloudOutputFile)
 		_, err = masterNode.ExecShellCmd(command)
-		utils.CheckErrorWithMsg(err, "benchmark command fail.")
-		_, err = masterNode.ExecShellCmd("kubectl apply -f %s", masterNode.Configs.Demo.CloudBenchYamlFile)
+		utils.CheckErrorWithMsg(err, "cloud benchmark command fail.")
+
+		_, err = masterNode.ExecShellCmd("kubectl apply -f %s", cloudOutputFile)
 	} else {
-		command := fmt.Sprintf(`yq '.metadata.name = \"helloworld-python-edge\" | 
-			.spec.template.spec.nodeSelector.\"apps.openyurt.io/nodepool\" = %s | 
-			.spec.template.spec.containers[0].image = \"docker.io/vhiveease/hello-edge:latest\" ' 
-			configs/benchmarkTemplate.yaml > %s`, edgePoolName, masterNode.Configs.Demo.EdgeBenchYamlFile)
+		edgeOutputFile := fmt.Sprintf("%s/%s", masterNode.Configs.System.UserHomeDir, masterNode.Configs.Demo.EdgeBenchYamlFile)
+
+		command := fmt.Sprintf(`yq '.metadata.name = "helloworld-python-edge" | 
+			.spec.template.spec.nodeSelector."apps.openyurt.io/nodepool" = "%s" | 
+			.spec.template.spec.containers[0].image = "docker.io/vhiveease/hello-edge:latest"' %s > %s`,
+			edgePoolName, benchmarkFilePath, edgeOutputFile)
 		_, err = masterNode.ExecShellCmd(command)
-		utils.CheckErrorWithMsg(err, "benchmark command fail.")
-		_, err = masterNode.ExecShellCmd("kubectl apply -f %s", masterNode.Configs.Demo.EdgeBenchYamlFile)
+		utils.CheckErrorWithMsg(err, "edge benchmark command fail.")
+		_, err = masterNode.ExecShellCmd("kubectl apply -f %s", edgeOutputFile)
 	}
 	utils.CheckErrorWithTagAndMsg(err, "Failed to create benchmark's yaml file and apply it")
 

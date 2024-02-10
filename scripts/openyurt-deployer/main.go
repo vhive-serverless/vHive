@@ -83,7 +83,9 @@ func main() {
 		deployNodes(*deployerConf)
 	case "knative":
 		deployKnative(*deployerConf)
-	case "demo-deploy-on-edge":
+	case "demo": // this is to add node management properties
+		buildDemo(*deployerConf)
+	case "demo-deploy-on-edge": // to add benchmark
 		demo(*deployerConf, false)
 	case "demo-deploy-on-cloud":
 		demo(*deployerConf, true)
@@ -237,16 +239,25 @@ func deployOpenYurt(deployerConfFile string) {
 	port := lines[1]
 	token := lines[2]
 
-	for _, worker := range workerNodes {
-		worker.YurtWorkerJoin(addr, port, token)
-		utils.InfoPrintf("worker %s joined yurt cluster!\n", worker.Configs.System.NodeHostName)
-	}
-	utils.SuccessPrintf("All nodes joined yurt cluster, start to expand\n")
+	// 2.1 label your nodes
 	for _, worker := range workerNodes {
 		masterNode.YurtMasterExpand(&worker)
 		utils.InfoPrintf("Master has expanded to worker:%s\n", worker.Configs.System.NodeHostName)
 	}
 	utils.SuccessPrintf("Master has expaned to all nodes!\n")
+
+	// 2.2 Set up up Yurthub & 2.3 Configure Kubelet on Master
+	for _, worker := range workerNodes {
+		worker.YurtWorkerJoin(addr, port, token)
+		utils.InfoPrintf("worker %s joined yurt cluster!\n", worker.Configs.System.NodeHostName)
+	}
+	utils.SuccessPrintf("All nodes joined yurt cluster, start to expand\n")
+
+	// 2.4 Restart pods on edge
+	for _, worker := range workerNodes {
+		masterNode.YurtRestart(&worker)
+		utils.InfoPrintf("Master has expanded to worker:%s\n", worker.Configs.System.NodeHostName)
+	}
 
 	for _, node := range nodeList {
 		utils.InfoPrintf("node: %s\n", node.Name)
@@ -269,10 +280,24 @@ func demo(deployerConfFile string, isCloud bool) {
 	workerNodes := nodeList[1:]
 
 	// run demo, should only be executed after deployment
-	utils.SuccessPrintf("Start to init demo\n")
+	utils.SuccessPrintf("Start to build cloud and edge nodepools\n")
 	masterNode.Demo(isCloud)
 	utils.SuccessPrintf("Demo finished!\n")
 	masterNode.PrintDemoInfo(workerNodes, isCloud)
+}
+
+func buildDemo(deployerConfFile string) {
+
+	nodesInfo, err := readAndUnMarshall(deployerConfFile)
+	utils.CheckErrorWithMsg(err, "Failed to read and unmarshal deployer configuration JSON")
+	nodeList := initializeNodes(nodesInfo)
+	masterNode := nodeList[0]
+	workerNodes := nodeList[1:]
+
+	// run workload for node pool management
+	utils.SuccessPrintf("Run Build demo\n")
+	masterNode.BuildDemo(workerNodes)
+	utils.SuccessPrintf("Demo finished!\n")
 }
 
 func printDemo(deployerConfFile string) {

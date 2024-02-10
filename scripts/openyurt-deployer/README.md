@@ -1,25 +1,27 @@
 # Quick set-up `OpenYurt`
 
+![Architecture Diagram](/docs/figures/knative_atop_openyurt.png)
+
+Refer to [Serverless Functions atop of Cloud-Edge Deployment](https://docs.google.com/presentation/d/1QPwwvBhE1dZy430x_wDZPgsUYtlFNlteT9TPk3VbRsY/edit?usp=drive_link) tutorial to understand its application.
+
 ## 1.1 Introduction
 
-This program extends [`EasyOpenyurt`](https://github.com/flyinghorse0510/easy_openyurt) to automate the set up process of an `OpenYurt` cluster. 
-
-It support setting up a Kubernetes cluster using kubeadm and then deploy `OpenYurt` and Knative on it. It is compatible with vHive stock-only mode.
+`OpenYurt` extends Kubernetes from a single cluster to a federation of clusters, offers a seamless way to manage distributed nodes and applications efficiently. This guide outlines how to establish a Kubernetes cluster via kubeadm and then deploy `OpenYurt` and Knative on it, which is compatible with vHive stock-only mode.
 
 ## 1.2 About [`OpenYurt`](https://openyurt.io/docs/#:~:text=Furthermore%2C%20OpenYurt%20enhances%20node%20reliability,node%20heartbeats%20to%20the%20cloud.)
 
 ### Key Features
 
 #### 1. Powerful edge autonomy capability
-`OpenYurt` addresses this issue by implementing a per-node proxy (`YurtHub`) along with local storage to cache the state of the cloud apiserver. Consequently, when a node loses its connection, the cached states remain accessible to Kubelet, `KubeProxy`, and any user Pods.
+`OpenYurt` is designed to ensure that applications running at the edge of the network remain operational, even in poor connectivity conditions. `OpenYurt` addresses this issue by implementing a per-node proxy (`YurtHub`) along with local storage to cache the state of the cloud apiserver. Consequently, when a node loses its connection, the cached states remain accessible to Kubelet, `KubeProxy`, and any user Pods.
 
 #### 2. Cross `NodePool` network communication capability
 
-In an edge computing Kubernetes cluster, nodes are often distributed across various geographical regions. Consequently, when relying on a native Container Network Interface (CNI) solution, Pods within different `NodePools` may be unable to communicate using Pod IP, Service IP, or Node IP, particularly if each `NodePool` resides within its own isolated LAN. Raven offers a networking solution that enables `cross-NodePool` communication within an `OpenYurt` cluster.
+In an edge computing Kubernetes cluster, nodes are often distributed across various geographical regions. The edge nodes fell within same physical region are referred to as `Pools` in `OpenYurt`. Consequently, when relying on a native Container Network Interface (CNI) solution, Pods within different `NodePools` may be unable to communicate using Pod IP, Service IP, or Node IP, particularly if each `NodePool` resides within its own isolated LAN. `OpenYurt` introduces a gateway called `Raven`, which offers a networking solution that enables `cross-NodePool` communication within an `OpenYurt` cluster.
 
 #### 3. `Multi-NodePool` Management
 
-In order to manage applications and traffic in multiple node pools conveniently, `YurtAppSet` and `YurtAppDaemon` are introduced for managing workloads in `multi-nodepool`, and service topology capability for routing traffic in node pool.
+In order to manage applications and traffic in multiple node pools conveniently, `YurtAppSet` and `YurtAppDaemon` are introduced for managing workloads in `multi-nodepool`, and service topology capability (geographical location, network latency, etc.) for routing traffic in node pool.
 
 ## 2. Brief overview
 
@@ -104,6 +106,16 @@ go build .
 
 ## 4. Demo: Create `NodePool` And Deploy service on it
 **Referenced from [`OpenYurt`](https://openyurt.io/docs/user-manuals/workload/node-pool-management)*
+
+### 4.1 
+
+This will set up the node pool management
+```
+./openyurt_deployer demo
+```
+
+
+### 4.2 
 
 The demo would deploy a helloworld function to cloud node pool or edge node pool
 
