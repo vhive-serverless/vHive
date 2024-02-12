@@ -74,11 +74,15 @@ func CreateMultinodeCluster(stockContainerd string) error {
 // Create kubelet service on master node
 func CreateMasterKubeletService() error {
 	utils.WaitPrintf("Creating kubelet service")
-	bashCmd := `sudo sh -c 'cat <<EOF > /usr/lib/systemd/system/kubelet.service.d/0-containerd.conf
-[Service]
-Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+	// Create service directory if not exist
+	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/sysconfig")
+	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
+		return err
+	}
+	bashCmd := `sudo sh -c 'cat <<EOF > /etc/sysconfig/kubelet
+KUBELET_EXTRA_ARGS="--container-runtime=remote --v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
 EOF'`
-	_, err := utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity)
+	_, err = utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity)
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
 		return err
 	}
