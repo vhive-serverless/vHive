@@ -88,7 +88,7 @@ func SetupFirecrackerContainerd() error {
 	if !utils.CheckErrorWithMsg(err, "Failed to download kernel image!\n") {
 		return err
 	}
-	err = utils.CopyToDir(kernelImgPath, "/var/lib/firecracker-containerd/runtime/", true)
+	err = utils.CopyToDir(kernelImgPath, "/var/lib/firecracker-containerd/runtime/hello-vmlinux.bin", true)
 	if !utils.CheckErrorWithMsg(err, "Failed to copy kernel image!\n") {
 		return err
 	}
