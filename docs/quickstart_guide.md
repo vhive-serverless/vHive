@@ -45,9 +45,12 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
 
 ### 4. Go Installation
 
-If you intend to build the setup scripts from source, you need to install go by running `./scripts/install_go.sh; source /etc/profile`.
+If you intend to build the setup scripts from source, you need to install go by running: (This will install version `1.19.10`. You can configure the version to install in `configs/setup/system.json` as `GoVersion`)
+```bash
+./scripts/install_go.sh; source /etc/profile
+```
 
-This will install version `1.19.10`. You can configure the version to install in `configs/setup/system.json` as `GoVersion`.
+Another option is to install using official instructions: [https://golang.org/doc/install](https://golang.org/doc/install).
 
 - Confirm the installation:
    ```bash
@@ -73,7 +76,6 @@ This will install version `1.19.10`. You can configure the version to install in
     ```
 3. Get the setup scripts:
     ```bash
-    # Build from source
     pushd scripts && go build -o setup_tool && popd && mv scripts/setup_tool .
     ```
     
@@ -192,14 +194,7 @@ This will install version `1.19.10`. You can configure the version to install in
     > ```
     > **Leave this hanging in the terminal as we will go back to this later.**
     >
-    > However, in the current working directory, you will see a yaml file named `masterKey.yaml` in following format:
-    > ```yaml
-    > ApiserverAdvertiseAddress: <IP Address>
-    > ApiserverPort: <Port>
-    > ApiserverToken: <Token>
-    > ApiserverTokenHash: <Token Hash>
-    > ```
-    > You will use this file during subsequent settings.
+    > This step will print the command to join the cluster, run it on each worker node.
     
     > **IMPORTANT:**
     > If you built the cluster using the `stock-only` flag, execute the following 
@@ -322,15 +317,15 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
 1. Clone vSwarm repo:
 
     ```bash
-    git clone --depth=1 --branch=v1.0 https://github.com/vhive-serverless/vSwarm ../vswarm
-    cd ../vswarm
+    git clone --depth=1 --branch=v1.0 https://github.com/vhive-serverless/vSwarm ~/vswarm
+    cd ~/vswarm
     ```
 
     **Note:** all the following commands in this section should be executed from the `vswarm` directory. To return to the `vhive` directory, run `cd -`.
 2. Optionally, configure the types and the number of functions to deploy in `tools/deployer/functions.json`.
 3. Run the deployer client:
     ```bash
-    source /etc/profile && pushd ./tools/deployer && go build && popd && ./tools/deployer/deployer
+    source /etc/profile && pushd ./tools/deployer && go build && popd && ./tools/deployer/deployer -funcPath ~/vhive/configs/knative_workloads
     ```
     > **BEWARE:**
     >
@@ -349,7 +344,7 @@ for benchmarking asynchronous (i.e., Knative Eventing) case and more details abo
 
 1. Run the invoker client:
     ```bash
-    pushd ./tools/invoker && go build && popd && ./tools/invoker/invoker
+    pushd ./tools/invoker && go mod tidy && go build && popd && ./tools/invoker/invoker
     ```
 
     > **Note:**

@@ -178,7 +178,8 @@ func ExtractMasterNodeInfo() error {
 		return err
 	}
 
-	utils.SuccessPrintf("Master node key information has been written to %s/masterKey.yaml! Check for details.\n", configs.System.CurrentDir)
+	utils.SuccessPrintf("Join cluster from worker nodes with command: sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s\n",
+		configs.Kube.ApiserverAdvertiseAddress, configs.Kube.ApiserverPort, configs.Kube.ApiserverToken, configs.Kube.ApiserverTokenHash)
 
 	return nil
 }
