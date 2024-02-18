@@ -58,8 +58,9 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	return nil
 }
 
-func invoke(n int, url string, ch chan [][]string) {
+func invoke(n int, url string, ch chan [][]string, wg *sync.WaitGroup) {
 	var data [][]string
+	defer wg.Done()
 	for i := 0; i < n; i++ {
 		go func() {
 			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
@@ -106,21 +107,18 @@ func main() {
 
 	ch1 := make(chan [][]string)
 	ch2 := make(chan [][]string)
+	wg1 := sync.WaitGroup{}
+	wg2 := sync.WaitGroup{}
 
 	now := time.Now()
 	for time.Since(now) < (time.Second * 10) {
-		var wg sync.WaitGroup
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			invoke(5, SleepingURL, ch1)
-		}()
-		go func() {
-			defer wg.Done()
-			invoke(5, SpinningURL, ch2)
-		}()
-		wg.Wait()
+		wg1.Add(1)
+		wg2.Add(1)
+		go invoke(5, SleepingURL, ch1, &wg1)
+		go invoke(5, SpinningURL, ch2, &wg2)
 	}
+	wg1.Wait()
+	wg2.Wait()
 
 	for records := range ch1 {
 		for _, record := range records {
