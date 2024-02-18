@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -57,8 +58,7 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	return nil
 }
 
-func invoke(n int, url string, ch chan [][]string) {
-	data := make([][]string, 0)
+func invoke(n int, url string, ch chan<- []string) {
 	for i := 0; i < n; i++ {
 		go func() {
 			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
@@ -72,10 +72,29 @@ func invoke(n int, url string, ch chan [][]string) {
 			endInvoke := time.Now().UTC().UnixMilli()
 			latency := endInvoke - startInvoke
 			record := []string{strconv.FormatInt(startInvoke, 10), strconv.FormatInt(endInvoke, 10), strconv.FormatInt(latency, 10)}
-			data = append(data, record)
+			ch <- record
 		}()
 	}
-	ch <- data
+}
+
+func writeToCSV(filename string, ch <-chan []string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	file, err := os.Create(filename)
+	if err != nil {
+		fmt.Printf("Error creating file: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	for record := range ch {
+		if err := writer.Write(record); err != nil {
+			fmt.Printf("Error writing to CSV file: %v\n", err)
+		}
+	}
 }
 
 func main() {
@@ -103,28 +122,26 @@ func main() {
 		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
 	}
 
+	ch1 := make(chan []string)
+	ch2 := make(chan []string)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go writeToCSV("metrics1.csv", ch1, &wg)
+	wg.Add(1)
+	go writeToCSV("metrics2.csv", ch2, &wg)
+
 	now := time.Now()
 	for time.Since(now) < (time.Second * 10) {
-		ch1 := make(chan [][]string)
-		ch2 := make(chan [][]string)
+		
 		go invoke(5, SleepingURL, ch1)
 		go invoke(5, SpinningURL, ch2)
 
-		for records := range ch1 {
-			for _, record := range records {
-				if err := writer1.Write(record); err != nil {
-					fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
-				}
-			}
-		}
-		for records := range ch2 {
-			for _, record := range records {
-				if err := writer2.Write(record); err != nil {
-					fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
-				}
-			}
-		}
+		time.Sleep(1 * time.Second) // Wait for 1 second before invoking again
 	}
+
+	close(ch1)
+	close(ch2)
+	wg.Wait()
 
 	err = writer1.Write(append([]string{"-", "-", "-"}))
 	if err != nil {
