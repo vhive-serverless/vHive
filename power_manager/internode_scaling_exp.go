@@ -58,8 +58,11 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	return nil
 }
 
-func invoke(n int, url string, ch chan [][]string, wg *sync.WaitGroup) {
+func invoke(n int, url string, ch chan [][]string, mainWg *sync.WaitGroup) {
+	defer mainWg.Done()
 	var data [][]string
+	wg := sync.WaitGroup{}
+	wg.Add(n)
 	for i := 0; i < n; i++ {
 		defer wg.Done()
 		go func() {
@@ -77,6 +80,7 @@ func invoke(n int, url string, ch chan [][]string, wg *sync.WaitGroup) {
 			data = append(data, record)
 		}()
 	}
+	wg.Wait()
 	ch <- data
 }
 
@@ -107,18 +111,15 @@ func main() {
 
 	ch1 := make(chan [][]string)
 	ch2 := make(chan [][]string)
-	wg1 := sync.WaitGroup{}
-	wg2 := sync.WaitGroup{}
+	mainWg := sync.WaitGroup{}
 
 	now := time.Now()
 	for time.Since(now) < (time.Second * 10) {
-		wg1.Add(5)
-		wg2.Add(5)
-		go invoke(5, SleepingURL, ch1, &wg1)
-		go invoke(5, SpinningURL, ch2, &wg2)
+		mainWg.Add(2)
+		go invoke(5, SleepingURL, ch1, &mainWg)
+		go invoke(5, SpinningURL, ch2, &mainWg)
 	}
-	wg1.Wait()
-	wg2.Wait()
+	mainWg.Wait()
 
 	for records := range ch1 {
 		for _, record := range records {
