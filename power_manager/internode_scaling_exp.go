@@ -108,7 +108,7 @@ func main() {
 	ch2 := make(chan [][]string)
 
 	now := time.Now()
-	for time.Since(now) < (time.Minute * 2) {
+	for time.Since(now) < (time.Second * 10) {
 		var wg sync.WaitGroup
 		wg.Add(2)
 		go func() {
