@@ -131,7 +131,7 @@ func main() {
 	go writeToCSV("metrics2.csv", ch2, &wg)
 
 	now := time.Now()
-	for time.Since(now) < (time.Second * 10) {
+	for time.Since(now) < (time.Minute * 1) {
 		
 		go invoke(5, SleepingURL, ch1)
 		go invoke(5, SpinningURL, ch2)
