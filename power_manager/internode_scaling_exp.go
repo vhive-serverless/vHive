@@ -79,31 +79,33 @@ func invoke(n int, url string, ch chan [][]string) {
 	ch <- data
 }
 
-func writeToFile(filename string, ch chan [][]string) {
-	file, err := os.Create(filename)
+func main() {
+	file1, err := os.Create("metrics1.csv")
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	for records := range ch {
-		for _, record := range records {
-			if err := writer.Write(record); err != nil {
-				fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
-			}
-		}
+	defer file1.Close()
+	writer1 := csv.NewWriter(file1)
+	defer writer1.Flush()
+	err = writer1.Write(append([]string{"startTime", "endTime", "sleepingLatency"}))
+	if err != nil {
+		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
 	}
-}
 
-func main() {
+	file2, err := os.Create("metrics2.csv")
+	if err != nil {
+		panic(err)
+	}
+	defer file2.Close()
+	writer2 := csv.NewWriter(file2)
+	defer writer2.Flush()
+	err = writer2.Write(append([]string{"startTime", "endTime", "spinningLatency"}))
+	if err != nil {
+		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
+	}
+
 	ch1 := make(chan [][]string)
 	ch2 := make(chan [][]string)
-
-	go writeToFile("metrics1.csv", ch1)
-	go writeToFile("metrics2.csv", ch2)
 
 	now := time.Now()
 	for time.Since(now) < (time.Minute * 2) {
@@ -120,7 +122,32 @@ func main() {
 		wg.Wait()
 	}
 
+	for records := range ch1 {
+		for _, record := range records {
+			if err := writer1.Write(record); err != nil {
+				fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
+			}
+		}
+	}
+
+	for records := range ch2 {
+		for _, record := range records {
+			if err := writer2.Write(record); err != nil {
+				fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
+			}
+		}
+	}
+
 	close(ch1)
 	close(ch2)
+
+	err = writer1.Write(append([]string{"-", "-", "-"}))
+	if err != nil {
+		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
+	}
+	err = writer2.Write(append([]string{"-", "-", "-"}))
+	if err != nil {
+		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
+	}
 	fmt.Println("done")
 }
