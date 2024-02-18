@@ -58,7 +58,8 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	return nil
 }
 
-func invoke(n int, url string, writer *csv.Writer) {
+func invoke(n int, url string, ch chan [][]string) {
+	var data [][]string
 	for i := 0; i < n; i++ {
 		go func() {
 			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
@@ -71,58 +72,55 @@ func invoke(n int, url string, writer *csv.Writer) {
 			}
 			endInvoke := time.Now().UTC().UnixMilli()
 			latency := endInvoke - startInvoke
-			err = writer.Write(append([]string{strconv.FormatInt(startInvoke, 10), strconv.FormatInt(endInvoke, 10), strconv.FormatInt(latency, 10)}))
-			if err != nil {
+			record := []string{strconv.FormatInt(startInvoke, 10), strconv.FormatInt(endInvoke, 10), strconv.FormatInt(latency, 10)}
+			data = append(data, record)
+		}()
+	}
+	ch <- data
+}
+
+func writeToFile(filename string, ch chan [][]string) {
+	file, err := os.Create(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	for records := range ch {
+		for _, record := range records {
+			if err := writer.Write(record); err != nil {
 				fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
 			}
-		}()
+		}
 	}
 }
 
 func main() {
-	file1, err := os.Create("metrics1.csv")
-	if err != nil {
-		panic(err)
-	}
-	defer file1.Close()
-	writer1 := csv.NewWriter(file1)
-	defer writer1.Flush()
-	err = writer1.Write(append([]string{"startTime", "endTime", "sleepingLatency"}))
-	if err != nil {
-		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
-	}
+	ch1 := make(chan [][]string)
+	ch2 := make(chan [][]string)
 
-	file2, err := os.Create("metrics2.csv")
-	if err != nil {
-		panic(err)
-	}
-	defer file2.Close()
-	writer2 := csv.NewWriter(file2)
-	defer writer2.Flush()
-	err = writer2.Write(append([]string{"startTime", "endTime", "spinningLatency"}))
-	if err != nil {
-		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
-	}
+	go writeToFile("metrics1.csv", ch1)
+	go writeToFile("metrics2.csv", ch2)
 
 	now := time.Now()
-	var wg sync.WaitGroup
 	for time.Since(now) < (time.Minute * 2) {
-		wg.Add(1)
+		var wg sync.WaitGroup
+		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			invoke(5, SleepingURL, writer1)
-			invoke(5, SpinningURL, writer2)
+			invoke(5, SleepingURL, ch1)
 		}()
+		go func() {
+			defer wg.Done()
+			invoke(5, SpinningURL, ch2)
+		}()
+		wg.Wait()
 	}
-	wg.Wait()
 
-	err = writer1.Write(append([]string{"-", "-", "-"}))
-	if err != nil {
-		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
-	}
-	err = writer2.Write(append([]string{"-", "-", "-"}))
-	if err != nil {
-		fmt.Printf("Error writing metrics to the CSV file: %v\n", err)
-	}
+	close(ch1)
+	close(ch2)
 	fmt.Println("done")
 }
