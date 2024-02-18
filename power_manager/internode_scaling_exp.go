@@ -110,7 +110,7 @@ func main() {
 	go writeToCSV(writer, ch, &wg)
 
 	now := time.Now()
-	for time.Since(now) < (time.Minute * 1) {
+	for time.Since(now) < (time.Minute * 2) {
 		go invoke(5, SleepingURL, ch, false)
 		go invoke(5, SpinningURL, ch, true)
 
