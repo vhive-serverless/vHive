@@ -104,10 +104,16 @@ func main() {
 	}
 
 	now := time.Now()
+	var wg sync.WaitGroup
 	for time.Since(now) < (time.Minute * 2) {
-		go invoke(5, SleepingURL, writer1)
-		go invoke(5, SpinningURL, writer2)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			invoke(5, SleepingURL, writer1)
+			invoke(5, SpinningURL, writer2)
+		}()
 	}
+	wg.Wait()
 
 	err = writer1.Write(append([]string{"-", "-", "-"}))
 	if err != nil {
