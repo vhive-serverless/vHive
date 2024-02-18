@@ -112,8 +112,8 @@ func main() {
 
 	now := time.Now()
 	for time.Since(now) < (time.Second * 10) {
-		wg1.Add(1)
-		wg2.Add(1)
+		wg1.Add(5)
+		wg2.Add(5)
 		go invoke(5, SleepingURL, ch1, &wg1)
 		go invoke(5, SpinningURL, ch2, &wg2)
 	}
