@@ -60,8 +60,8 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 
 func invoke(n int, url string, ch chan [][]string, wg *sync.WaitGroup) {
 	var data [][]string
-	defer wg.Done()
 	for i := 0; i < n; i++ {
+		defer wg.Done()
 		go func() {
 			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
 			startInvoke := time.Now().UTC().UnixMilli()
