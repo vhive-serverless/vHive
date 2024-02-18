@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -58,9 +57,7 @@ func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
 	return nil
 }
 
-func invoke(n int, url string, ch chan [][]string, mainWg *sync.WaitGroup) {
-	defer mainWg.Done()
-
+func invoke(n int, url string, ch chan [][]string) {
 	data := make([][]string, 0)
 	for i := 0; i < n; i++ {
 		go func() {
@@ -110,11 +107,8 @@ func main() {
 	for time.Since(now) < (time.Second * 10) {
 		ch1 := make(chan [][]string)
 		ch2 := make(chan [][]string)
-		mainWg := sync.WaitGroup{}
-		mainWg.Add(2)
-		go invoke(5, SleepingURL, ch1, &mainWg)
-		go invoke(5, SpinningURL, ch2, &mainWg)
-		mainWg.Wait()
+		go invoke(5, SleepingURL, ch1)
+		go invoke(5, SpinningURL, ch2)
 
 		for records := range ch1 {
 			for _, record := range records {
