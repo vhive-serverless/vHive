@@ -62,7 +62,7 @@ func invoke(n int, url string, ch chan [][]string, mainWg *sync.WaitGroup) {
 	defer mainWg.Done()
 
 	wg := sync.WaitGroup{}
-	data := make([][]string, n)
+	data := make([][]string, 0)
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func() {
@@ -78,7 +78,7 @@ func invoke(n int, url string, ch chan [][]string, mainWg *sync.WaitGroup) {
 			endInvoke := time.Now().UTC().UnixMilli()
 			latency := endInvoke - startInvoke
 			record := []string{strconv.FormatInt(startInvoke, 10), strconv.FormatInt(endInvoke, 10), strconv.FormatInt(latency, 10)}
-			data[i] = record
+			data = append(data, record)
 		}()
 	}
 	wg.Wait()
