@@ -41,9 +41,9 @@ func CreateMultinodeCluster(stockContainerd string, rawHaReplicaCount string) er
 		return err
 	}
 
-	if err := CreateMasterKubeletService(); err != nil {
+	/*if err := CreateMasterKubeletService(); err != nil {
 		return err
-	}
+	}*/
 
 	if err := DeployKubernetes(haReplicaCount); err != nil {
 		return err
@@ -104,16 +104,11 @@ EOF'`
 // Deploy Kubernetes
 func DeployKubernetes(haReplicaCount int) error {
 	utils.WaitPrintf("Deploying Kubernetes(version %s)", configs.Kube.K8sVersion)
-	masterNodeIp, iperr := utils.GetNodeIP()
-	if iperr != nil {
-		return iperr
-	}
 
 	command := fmt.Sprintf(`sudo kubeadm init --v=%d \
---apiserver-advertise-address=%s \
---cri-socket unix:///run/containerd/containerd.sock \
+--cri-socket /run/containerd/containerd.sock \
 --kubernetes-version %s \
---pod-network-cidr="%s" `, configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
+--pod-network-cidr="%s" `, configs.System.LogVerbosity, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
 
 	if haReplicaCount > 0 {
 		command += fmt.Sprintf(`\
@@ -199,17 +194,29 @@ func ExtractMasterNodeInfo() error {
 		configs.Kube.ApiserverAdvertiseAddress,
 		configs.Kube.ApiserverPort,
 		configs.Kube.ApiserverToken,
-		configs.Kube.ApiserverDiscoveryToken)
+		configs.Kube.ApiserverDiscoveryToken,
+		configs.Kube.ApiserverCertificateKey)
 	_, err = masterKeyYamlFile.WriteString(masterKeyYaml)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create masterKey.yaml with master node information!\n") {
 		return err
 	}
 
-	utils.SuccessPrintf("Join cluster from worker nodes as a new control plane node with command: sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s --control-plane --certificate-key %s\n",
-		configs.Kube.ApiserverAdvertiseAddress, configs.Kube.ApiserverPort, configs.Kube.ApiserverToken, configs.Kube.ApiserverDiscoveryToken, configs.Kube.ApiserverCertificateKey)
+	utils.SuccessPrintf("Join cluster from worker nodes as a new control plane node with command: "+
+		"sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s --control-plane --certificate-key %s\n",
+		configs.Kube.ApiserverAdvertiseAddress,
+		configs.Kube.ApiserverPort,
+		configs.Kube.ApiserverToken,
+		configs.Kube.ApiserverDiscoveryToken,
+		configs.Kube.ApiserverCertificateKey,
+	)
 
-	utils.SuccessPrintf("Join cluster from worker nodes with command: sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s\n",
-		configs.Kube.ApiserverAdvertiseAddress, configs.Kube.ApiserverPort, configs.Kube.ApiserverToken, configs.Kube.ApiserverDiscoveryToken)
+	utils.SuccessPrintf("Join cluster from worker nodes with command: "+
+		"sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s\n",
+		configs.Kube.ApiserverAdvertiseAddress,
+		configs.Kube.ApiserverPort,
+		configs.Kube.ApiserverToken,
+		configs.Kube.ApiserverDiscoveryToken,
+	)
 
 	return nil
 }
