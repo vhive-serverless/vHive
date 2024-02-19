@@ -8,6 +8,6 @@
 	"ApiserverDiscoveryToken": "",
 	"ApiserverCertificateKey": "",
 	"CPHAEndpoint": "10.0.1.254",
-	"CPHAPort": "8443",
+	"CPHAPort": "6443",
 	"CalicoVersion": "3.27.3"
 }
