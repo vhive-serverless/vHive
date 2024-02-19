@@ -28,7 +28,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func SetupNode(sandbox string, useStargz string) error {
+func SetupNode(haMode string, sandbox string, useStargz string) error {
 	if sandbox == "" {
 		sandbox = "firecracker"
 	}
@@ -55,7 +55,7 @@ func SetupNode(sandbox string, useStargz string) error {
 
 	// Set up system
 	utils.InfoPrintf("Set up system\n")
-	if err := setup.SetupSystem(); err != nil {
+	if err := setup.SetupSystem(haMode); err != nil {
 		return err
 	}
 

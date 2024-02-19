@@ -25,6 +25,7 @@ package cluster
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,14 +33,19 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func CreateMultinodeCluster(stockContainerd string) error {
+func CreateMultinodeCluster(stockContainerd string, rawHaReplicaCount string) error {
 	// Original Bash Scripts: scripts/cluster/create_multinode_cluster.sh
+
+	haReplicaCount, err := strconv.Atoi(rawHaReplicaCount)
+	if err != nil {
+		return err
+	}
 
 	if err := CreateMasterKubeletService(); err != nil {
 		return err
 	}
 
-	if err := DeployKubernetes(); err != nil {
+	if err := DeployKubernetes(haReplicaCount); err != nil {
 		return err
 	}
 
@@ -96,19 +102,28 @@ EOF'`
 }
 
 // Deploy Kubernetes
-func DeployKubernetes() error {
-
+func DeployKubernetes(haReplicaCount int) error {
 	utils.WaitPrintf("Deploying Kubernetes(version %s)", configs.Kube.K8sVersion)
 	masterNodeIp, iperr := utils.GetNodeIP()
 	if iperr != nil {
 		return iperr
 	}
-	shellCmd := fmt.Sprintf(`sudo kubeadm init --v=%d \
+
+	command := `sudo kubeadm init --v=%d \
 --apiserver-advertise-address=%s \
 --cri-socket unix:///run/containerd/containerd.sock \
 --kubernetes-version %s \
---pod-network-cidr="%s" `,
-		configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
+--pod-network-cidr="%s" `
+	args := []any{configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr}
+
+	if haReplicaCount > 0 {
+		command += ` \
+--control-plane-endpoint "%s:%s" \
+--upload-certs`
+		args = append(args, configs.Kube.CPHAEndpoint, configs.Kube.CPHAPort)
+	}
+
+	shellCmd := fmt.Sprintf(command, args)
 	if len(configs.Kube.AlternativeImageRepo) > 0 {
 		shellCmd = fmt.Sprintf(shellCmd+"--image-repository %s ", configs.Kube.AlternativeImageRepo)
 	}
@@ -142,24 +157,37 @@ func KubectlForNonRoot() error {
 func ExtractMasterNodeInfo() error {
 	// Extract master node information from logs
 	utils.WaitPrintf("Extracting master node information from logs")
+
+	// API Server address, port, token
 	shellOut, err := utils.ExecShellCmd("sed -n '/.*kubeadm join.*/p' < %s/masterNodeInfo | sed -n 's/.*join \\(.*\\):\\(\\S*\\) --token \\(\\S*\\).*/\\1 \\2 \\3/p'", configs.System.TmpDir)
-	if !utils.CheckErrorWithMsg(err, "Failed to extract master node information from logs!\n") {
+	if !utils.CheckErrorWithMsg(err, "Failed to extract API Server address, port, and token from logs!\n") {
 		return err
 	}
 	splittedOut := strings.Split(shellOut, " ")
 	configs.Kube.ApiserverAdvertiseAddress = splittedOut[0]
 	configs.Kube.ApiserverPort = splittedOut[1]
 	configs.Kube.ApiserverToken = splittedOut[2]
+
+	// API Server discovery token
 	shellOut, err = utils.ExecShellCmd("sed -n '/.*sha256:.*/p' < %s/masterNodeInfo | sed -n 's/.*\\(sha256:\\S*\\).*/\\1/p'", configs.System.TmpDir)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to extract master node information from logs!\n") {
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to extract API Server discovery token from logs!\n") {
 		return err
 	}
-	configs.Kube.ApiserverTokenHash = shellOut
+	configs.Kube.ApiserverDiscoveryToken = shellOut
+
+	// API Server certificate key
+	shellOut, err = utils.ExecShellCmd("sed -n 's/^.*--certificate-key //p' < %s/masterNodeInfo", configs.System.TmpDir)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to extract API Server certificate key from logs!\n") {
+		return err
+	}
+	configs.Kube.ApiserverCertificateKey = shellOut
+
 	masterKeyYamlTemplate :=
 		"ApiserverAdvertiseAddress: %s\n" +
 			"ApiserverPort: %s\n" +
 			"ApiserverToken: %s\n" +
-			"ApiserverTokenHash: %s"
+			"ApiserverDiscoveryToken: %s\n" +
+			"ApiserverCertificateKey: %s"
 
 	// Create masterKey.yaml with master node information
 	utils.WaitPrintf("Creating masterKey.yaml with master node information")
@@ -173,14 +201,17 @@ func ExtractMasterNodeInfo() error {
 		configs.Kube.ApiserverAdvertiseAddress,
 		configs.Kube.ApiserverPort,
 		configs.Kube.ApiserverToken,
-		configs.Kube.ApiserverTokenHash)
+		configs.Kube.ApiserverDiscoveryToken)
 	_, err = masterKeyYamlFile.WriteString(masterKeyYaml)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create masterKey.yaml with master node information!\n") {
 		return err
 	}
 
+	utils.SuccessPrintf("Join cluster from worker nodes as a new control plane node with command: sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s --control-plane --certificate-key %s\n",
+		configs.Kube.ApiserverAdvertiseAddress, configs.Kube.ApiserverPort, configs.Kube.ApiserverToken, configs.Kube.ApiserverDiscoveryToken, configs.Kube.ApiserverCertificateKey)
+
 	utils.SuccessPrintf("Join cluster from worker nodes with command: sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s\n",
-		configs.Kube.ApiserverAdvertiseAddress, configs.Kube.ApiserverPort, configs.Kube.ApiserverToken, configs.Kube.ApiserverTokenHash)
+		configs.Kube.ApiserverAdvertiseAddress, configs.Kube.ApiserverPort, configs.Kube.ApiserverToken, configs.Kube.ApiserverDiscoveryToken)
 
 	return nil
 }

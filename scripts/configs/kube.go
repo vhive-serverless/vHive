@@ -29,7 +29,10 @@ type KubeConfigStruct struct {
 	PodNetworkCidr            string
 	ApiserverPort             string
 	ApiserverToken            string
-	ApiserverTokenHash        string
+	ApiserverDiscoveryToken   string
+	ApiserverCertificateKey   string
+	CPHAEndpoint              string
+	CPHAPort                  string
 	CalicoVersion             string
 }
 

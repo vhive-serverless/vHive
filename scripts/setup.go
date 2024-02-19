@@ -144,12 +144,17 @@ func main() {
 	// Original scripts from `scripts/cluster` directory
 	case "create_multinode_cluster":
 		if setupFlags.NArg() < 2 {
-			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
+			utils.FatalPrintf("Missing parameters: %s <stock-containerd> [control_plane_replicas]\n", subCmd)
 			utils.CleanEnvironment()
 			os.Exit(1)
 		}
 		utils.InfoPrintf("Create multinode cluster\n")
-		err = cluster.CreateMultinodeCluster(setupFlags.Args()[1])
+
+		if setupFlags.NArg() == 3 {
+			err = cluster.CreateMultinodeCluster(setupFlags.Args()[1], setupFlags.Args()[2])
+		} else {
+			err = cluster.CreateMultinodeCluster(setupFlags.Args()[1], "1")
+		}
 	case "create_one_node_cluster":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
@@ -188,18 +193,17 @@ func main() {
 		err = cluster.SetupWorkerKubelet(setupFlags.Args()[1])
 		// Original scripts from `scripts/cloudlab` directory
 	case "setup_node":
-		if setupFlags.NArg() < 2 {
-			utils.FatalPrintf("Missing parameters: %s <sandbox> [use-stargz]\n", subCmd)
+		if setupFlags.NArg() < 3 {
+			utils.FatalPrintf("Missing parameters: %s <ha_mode> <sandbox> [use-stargz]\n", subCmd)
 			utils.CleanEnvironment()
 			os.Exit(1)
 		}
 		utils.InfoPrintf("Set up node\n")
-		if setupFlags.NArg() >= 3 {
-			err = cloudlab.SetupNode(setupFlags.Args()[1], setupFlags.Args()[2])
+		if setupFlags.NArg() >= 4 {
+			err = cloudlab.SetupNode(setupFlags.Args()[1], setupFlags.Args()[2], setupFlags.Args()[3])
 		} else {
-			err = cloudlab.SetupNode(setupFlags.Args()[1], "")
+			err = cloudlab.SetupNode(setupFlags.Args()[1], setupFlags.Args()[2], "")
 		}
-
 	case "start_onenode_vhive_cluster":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <sandbox>\n", subCmd)
@@ -218,7 +222,7 @@ func main() {
 		err = setup.SetupZipkin()
 	case "setup_system":
 		utils.InfoPrintf("Set up system\n")
-		err = setup.SetupSystem()
+		err = setup.SetupSystem("REGULAR")
 	case "setup_gvisor_containerd":
 		utils.InfoPrintf("Set up gvisor_containerd\n")
 		err = setup.SetupGvisorContainerd()
