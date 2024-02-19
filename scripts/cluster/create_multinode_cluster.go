@@ -109,21 +109,19 @@ func DeployKubernetes(haReplicaCount int) error {
 		return iperr
 	}
 
-	command := `sudo kubeadm init --v=%d \
+	command := fmt.Sprintf(`sudo kubeadm init --v=%d \
 --apiserver-advertise-address=%s \
 --cri-socket unix:///run/containerd/containerd.sock \
 --kubernetes-version %s \
---pod-network-cidr="%s" `
-	args := []any{configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr}
+--pod-network-cidr="%s" `, configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
 
 	if haReplicaCount > 0 {
-		command += ` \
+		command += fmt.Sprintf(`\
 --control-plane-endpoint "%s:%s" \
---upload-certs`
-		args = append(args, configs.Kube.CPHAEndpoint, configs.Kube.CPHAPort)
+--upload-certs`, configs.Kube.CPHAEndpoint, configs.Kube.CPHAPort)
 	}
 
-	shellCmd := fmt.Sprintf(command, args)
+	shellCmd := command
 	if len(configs.Kube.AlternativeImageRepo) > 0 {
 		shellCmd = fmt.Sprintf(shellCmd+"--image-repository %s ", configs.Kube.AlternativeImageRepo)
 	}
