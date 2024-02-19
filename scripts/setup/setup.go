@@ -301,18 +301,18 @@ func SetupSystem(haMode string) error {
 			return err
 		}
 
-		err = utils.CopyToDir(path.Join(k8s_ha_path, "check_apiserver.yaml"), "/etc/keepalived/check_apiserver.sh", true)
+		err = utils.CopyToDir(path.Join(k8s_ha_path, "check_apiserver.sh"), "/etc/keepalived/check_apiserver.sh", true)
 		if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/keepalived/check_apiserver.sh!\n") {
 			return err
 		}
 
 		if haMode == "MASTER" {
-			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_master.yaml"), "/etc/keepalived/keepalived.conf", true)
+			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_master.conf"), "/etc/keepalived/keepalived.conf", true)
 			if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/keepalived/keepalived.conf!\n") {
 				return err
 			}
 		} else {
-			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_backup.yaml"), "/etc/keepalived/keepalived.conf", true)
+			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_backup.conf"), "/etc/keepalived/keepalived.conf", true)
 			if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/keepalived/keepalived.conf!\n") {
 				return err
 			}
