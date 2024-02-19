@@ -5,6 +5,9 @@
 	"PodNetworkCidr": "192.168.0.0/16",
 	"ApiserverPort": "6443",
 	"ApiserverToken": "",
-	"ApiserverTokenHash": "",
-	"CalicoVersion": "3.27.2"
+	"ApiserverDiscoveryToken": "",
+	"ApiserverCertificateKey": "",
+	"CPHAEndpoint": "10.0.1.254",
+	"CPHAPort": "8443",
+	"CalicoVersion": "3.27.2",
 }
