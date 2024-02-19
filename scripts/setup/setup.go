@@ -306,13 +306,18 @@ func SetupSystem(haMode string) error {
 			return err
 		}
 
+		_, err = utils.ExecVHiveBashScript("configs/k8s_ha/substitute_interface.sh")
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to create HA load balancer !\n") {
+			return err
+		}
+
 		if haMode == "MASTER" {
-			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_master.conf"), "/etc/keepalived/keepalived.conf", true)
+			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_master.conff"), "/etc/keepalived/keepalived.conf", true)
 			if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/keepalived/keepalived.conf!\n") {
 				return err
 			}
 		} else {
-			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_backup.conf"), "/etc/keepalived/keepalived.conf", true)
+			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_backup.conff"), "/etc/keepalived/keepalived.conf", true)
 			if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/keepalived/keepalived.conf!\n") {
 				return err
 			}
