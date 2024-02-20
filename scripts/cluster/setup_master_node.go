@@ -113,14 +113,25 @@ func SetupMasterNode(stockContainerd string) error {
 
 // Install Calico network add-on
 func InstallCalico() error {
-
 	utils.WaitPrintf("Installing pod network")
-	calicoYamlPath, err := utils.GetVHiveFilePath(path.Join("configs/calico", "canal.yaml"))
-	if err != nil {
+
+	_, err := utils.ExecShellCmd("wget -nc https://raw.githubusercontent.com/projectcalico/calico/v%s/manifests/calico.yaml -P %s",
+		configs.Kube.CalicoVersion, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico")))
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to download stock version of Calico!\n") {
 		return err
 	}
-	_, err = utils.ExecShellCmd("kubectl apply -f %s", calicoYamlPath)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install pod network!\n") {
+
+	_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
+	.spec.template.spec.containers[].name == "calico-node") |
+	.spec.template.spec.containers[].env) += {"name": "IP_AUTODETECTION_METHOD", "value": "skip-interface=br.*"}' %s`,
+		path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico!\n") {
+		return err
+	}
+
+	utils.SuccessPrintf("All nodes are ready!\n")
+	_, err = utils.ExecShellCmd(`kubectl apply -f %s`, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to apply Calico!\n") {
 		return err
 	}
 
@@ -129,7 +140,6 @@ func InstallCalico() error {
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to wait for all nodes to be ready!\n") {
 		return err
 	}
-	utils.SuccessPrintf("All nodes are ready!\n")
 
 	return nil
 }
@@ -137,11 +147,13 @@ func InstallCalico() error {
 // Install and configure MetalLB
 func InstallMetalLB() error {
 	utils.WaitPrintf("Installing and configuring MetalLB")
-	_, err := utils.ExecShellCmd(`kubectl get configmap kube-proxy -n kube-system -o yaml | sed -e "s/strictARP: false/strictARP: true/" | kubectl apply -f - -n kube-system`)
+	_, err := utils.ExecShellCmd(`kubectl get configmap kube-proxy -n kube-system -o yaml |
+	sed -e "s/strictARP: false/strictARP: true/" | kubectl apply -f - -n kube-system`)
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
 	}
-	_, err = utils.ExecShellCmd("kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v%s/config/manifests/metallb-native.yaml", configs.Knative.MetalLBVersion)
+	_, err = utils.ExecShellCmd("kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v%s/config/manifests/metallb-native.yaml",
+		configs.Knative.MetalLBVersion)
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
 	}
@@ -213,17 +225,15 @@ func InstallIstio() error {
 
 // Change queue-proxy image to accept Firecracker as a runtime
 func PatchKnativeForFirecracker() error {
-	utils.InstallYQ()
-
 	utils.WaitPrintf("Patching Knative for Firecracker")
-	_, err := utils.ExecShellCmd("wget -nc https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml -P %s", configs.Knative.KnativeVersion,
-		path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls")))
+	_, err := utils.ExecShellCmd("wget -nc https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml -P %s",
+		configs.Knative.KnativeVersion, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls")))
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to download stock version of Knative!\n") {
 		return err
 	}
 
-	_, err = utils.ExecShellCmd(`yq -i '(( select ( .metadata.labels."app.kubernetes.io/component" == "queue-proxy" ) | .spec.image ),
-	( select ( .metadata.name == "config-deployment" ) | .data.queue-sidecar-image )) = "%s"' %s`,
+	_, err = utils.ExecShellCmd(`yq -i '((select (.metadata.labels."app.kubernetes.io/component" == "queue-proxy") | .spec.image),
+	(select (.metadata.name == "config-deployment") | .data.queue-sidecar-image)) = "%s"' %s`,
 		configs.Knative.QueueProxyImage, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-core.yaml")))
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Knative for Firecracker!\n") {
 		return err
@@ -238,17 +248,15 @@ func InstallKnativeServingComponent() error {
 
 	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-crds.yaml"))); err == nil {
 		utils.WaitPrintf("Found local serving-crds.yaml. Using it instead of stock version of knative.")
-		servingCrdsPath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-crds.yaml"))
-		if err != nil {
-			return err
-		}
+		servingCrdsPath := path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-crds.yaml"))
 		_, err = utils.ExecShellCmd("kubectl apply -f %s", servingCrdsPath)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
 	} else {
 		utils.WaitPrintf("Using stock version of knative's crds.")
-		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-crds.yaml", configs.Knative.KnativeVersion)
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-crds.yaml",
+			configs.Knative.KnativeVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
@@ -256,17 +264,15 @@ func InstallKnativeServingComponent() error {
 
 	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-core.yaml"))); err == nil {
 		utils.WaitPrintf("Found local serving-core.yaml. Using it instead of stock version of knative.")
-		servingCorePath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-core.yaml"))
-		if err != nil {
-			return err
-		}
+		servingCorePath := path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-core.yaml"))
 		_, err = utils.ExecShellCmd("kubectl apply -f %s", servingCorePath)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
 	} else {
 		utils.WaitPrintf("Using stock version of knative's core.")
-		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml", configs.Knative.KnativeVersion)
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml",
+			configs.Knative.KnativeVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
@@ -324,7 +330,8 @@ func ConfigureMagicDNS() error {
 		}
 	} else {
 		utils.WaitPrintf("Using stock version of knative's magic DNS.")
-		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-default-domain.yaml", configs.Knative.KnativeVersion)
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-default-domain.yaml",
+			configs.Knative.KnativeVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
@@ -338,7 +345,8 @@ func DeployIstioPods() error {
 	utils.WaitPrintf("Deploying istio pods")
 
 	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "net-istio.yaml"))); err != nil {
-		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative-extensions/net-istio/releases/download/knative-v%s/net-istio.yaml", configs.Knative.KnativeVersion)
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative-extensions/net-istio/releases/download/knative-v%s/net-istio.yaml",
+			configs.Knative.KnativeVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy istio pods!\n") {
 			return err
 		}

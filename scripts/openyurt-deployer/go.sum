@@ -16,6 +16,8 @@ github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVs
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/vhive-serverless/vHive/scripts/cluster v0.0.0-20231114022852-400a49d284cb h1:kwWArZ5hXQ1pgMfmcTwpXYZa3mejoWm0YFkNDyZt0MA=
+github.com/vhive-serverless/vHive/scripts/cluster v0.0.0-20231114022852-400a49d284cb/go.mod h1:LXlnB1M9429B4JFcd9wNez6CrTLBRlKrWepOVbUCJgo=
 github.com/vhive-serverless/vHive/scripts/configs v0.0.0-20231114022852-400a49d284cb h1:JoudbjIOvkLiDY7WjaQosP0IKipHnlxFOCIeICQrtRQ=
 github.com/vhive-serverless/vHive/scripts/configs v0.0.0-20231114022852-400a49d284cb/go.mod h1:nJSon4Eng7PdZ4HJX9dnZ7H4qxVm/r5zseFPfom7Jto=
 github.com/vhive-serverless/vHive/scripts/utils v0.0.0-20231114022852-400a49d284cb h1:SmFLKJc4wAhr61ige8hoLiLWDKAI2uewBQUNejI63Hs=

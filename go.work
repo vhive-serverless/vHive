@@ -4,4 +4,5 @@ use (
 	.
 	./scripts
 	./scripts/github_runner
+	./scripts/openyurt-deployer
 )
