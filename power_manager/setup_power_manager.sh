@@ -29,22 +29,9 @@ git clone https://github.com/intel/kubernetes-power-manager $HOME/kubernetes-pow
 kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/namespace.yaml
 kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/rbac.yaml
 
-# Install go1.20
-sudo rm -rf /usr/local/go
-sudo apt update
-wget https://go.dev/dl/go1.20.2.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.20.2.linux-amd64.tar.gz
-export GOROOT=/usr/local/go
-export GOPATH=$HOME
-export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
-
 # Install docker
-curl -fsSL https://get.docker.com/ | sudo sh && \
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.12.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
-sudo mv /usr/local/bin/docker-compose /usr/bin/docker-compose && \
-sudo chmod +x /usr/bin/docker-compose && \
-export PATH=$PATH:/usr/local/go/bin && \
-export PATH=$PATH:$HOME/go/bin
+sudo apt update
+sudo apt install docker.io
 
 # Generate the CRD templates, create the Custom Resource Definitions, and install the CRDs and Built Docker images locally
 cd $HOME/kubernetes-power-manager

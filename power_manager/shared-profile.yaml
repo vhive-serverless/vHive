@@ -8,4 +8,4 @@ spec:
   max: 1200
   min: 1200
   shared: true 
-  governor: "powersave"
+  governor: "performance"
