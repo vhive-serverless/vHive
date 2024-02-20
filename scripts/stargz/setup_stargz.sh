@@ -4,7 +4,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$( cd $DIR && cd ../.. && pwd)"
 BINS=$ROOT/bin
 CONFIGS=$ROOT/configs/stargz
-STARGZ_VERSION=v0.13.0
+STARGZ_VERSION=v0.15.1
 
 # Get stargz snapshotter tar
 wget --continue --quiet https://github.com/containerd/stargz-snapshotter/releases/download/${STARGZ_VERSION}/stargz-snapshotter-${STARGZ_VERSION}-linux-amd64.tar.gz
