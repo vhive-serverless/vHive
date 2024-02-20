@@ -23,8 +23,8 @@ jobs:
   stargz-container-test:
     name: Test running stargz-based image using kn
     env:
-      KIND_VERSION: v0.14.0
-      K8S_VERSION: v1.23
+      KIND_VERSION: v0.22.0
+      K8S_VERSION: v1.29
       YAML_DIR: workloads/container
     runs-on: ubuntu-20.04
     strategy:
@@ -42,10 +42,10 @@ jobs:
       - name: Checkout LFS objects
         run: git lfs checkout
 
-      - name: Set up Go 1.19
+      - name: Set up Go 1.22
         uses: actions/setup-go@v5
         with:
-          go-version: '1.19'
+          go-version: '1.22'
 
       - name: Build setup scripts
         run: pushd scripts && go build -o setup_tool && popd

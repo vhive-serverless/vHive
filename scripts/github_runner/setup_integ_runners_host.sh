@@ -54,7 +54,7 @@ $PWD/../install_go.sh
 
 # install kind from ease-lab/kind
 rm -rf /tmp/kind/
-git clone -b custom_docker_params_for_vHive_v0.12.0 https://github.com/ease-lab/kind /tmp/kind/
+git clone -b custom_docker_params_for_vHive_v0.17.0 https://github.com/ease-lab/kind /tmp/kind/
 cd /tmp/kind
 source /etc/profile && go build
 sudo mv kind /usr/local/bin/

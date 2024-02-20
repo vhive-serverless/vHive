@@ -3,7 +3,7 @@
 set -eo pipefail
 set -u
 
-KNATIVE_VERSION=${KNATIVE_VERSION:-1.4.0}
+KNATIVE_VERSION=${KNATIVE_VERSION:-1.13.0}
 
 wget -q https://github.com/knative/client/releases/download/knative-v${KNATIVE_VERSION}/kn-linux-amd64
 mv kn-linux-amd64 kn && chmod +x kn
