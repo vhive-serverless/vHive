@@ -61,7 +61,7 @@ func main() {
 		}
 
 		for j := 0; j < 1000; j++ {
-			url := "aes-python.default.192.168.1.240.sslip.io"
+			url := "auth-python.default.192.168.1.240.sslip.io"
 			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
 
 			startInvoke := time.Now().UTC().UnixMilli()
