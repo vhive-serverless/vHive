@@ -181,6 +181,7 @@ func main() {
 		// Original scripts from `scripts/cloudlab` directory
 	case "setup_node":
 		if setupFlags.NArg() < 3 {
+			// ha_mode - REGULAR (do not install load balancers), MASTER, BACKUP (with load balancers)
 			utils.FatalPrintf("Missing parameters: %s <ha_mode> <sandbox> [use-stargz]\n", subCmd)
 			utils.CleanEnvironment()
 			os.Exit(1)

@@ -253,7 +253,7 @@ func PrepareEnvironment() error {
 func CleanEnvironment() error {
 	// Define task List
 	cleanTaskList := []func() error{
-		//CleanUpTmpDir,
+		CleanUpTmpDir,
 	}
 	// Execute task
 	for _, task := range cleanTaskList {
