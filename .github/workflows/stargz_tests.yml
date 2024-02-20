@@ -70,7 +70,7 @@ jobs:
           kubectl patch configmap -n knative-serving config-autoscaler -p "{\"data\": {\"allow-zero-initial-scale\": \"true\"}}"
 
       - name: Setup stock-only node
-        run: ./scripts/setup_tool setup_node stock-only use-stargz
+        run: ./scripts/setup_tool setup_node REGULAR stock-only use-stargz
 
       - name: Check containerd service is running
         run: sudo screen -list | grep "containerd"
