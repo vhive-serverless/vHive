@@ -164,3 +164,10 @@ func TurnOffAutomaticUpgrade() error {
 		return nil
 	}
 }
+
+func InstallYQ() {
+	InfoPrintf("Downloading yq for yaml parsing of template")
+	yqUrl := fmt.Sprintf(configs.System.YqDownloadUrlTemplate, configs.System.CurrentArch)
+	_, err := ExecShellCmd(`sudo wget %s -O /usr/bin/yq && sudo chmod +x /usr/bin/yq`, yqUrl)
+	CheckErrorWithMsg(err, "Failed to add yq!\n")
+}

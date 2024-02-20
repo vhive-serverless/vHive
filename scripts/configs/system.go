@@ -52,6 +52,7 @@ type SystemEnvironmentStruct struct {
 	ProtocVersion                       string
 	ProtocDownloadUrlTemplate           string
 	LogVerbosity                        int
+	YqDownloadUrlTemplate               string
 }
 
 // Current system environment

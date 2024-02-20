@@ -12,5 +12,5 @@
 	"LocalRegistryVolumeConfigPath": "configs/registry/repository-volume.yaml",
 	"LocalRegistryDockerRegistryConfigPath": "configs/registry/docker-registry.yaml",
 	"LocalRegistryHostUpdateConfigPath": "configs/registry/repository-update-hosts.yaml",
-	"MagicDNSConfigPath": "configs/knative_yamls/serving-default-domain.yaml"
+	"QueueProxyImage": "ghcr.io/vhive-serverless/queue-39be6f1d08a095bd076a71d288d295b6@sha256:74235b42c179471b45fa16f2d89d35e020e5a02674a6fe462c34ddcea924d27c"
 }
