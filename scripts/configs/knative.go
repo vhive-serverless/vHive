@@ -38,7 +38,7 @@ type KnativeConfigStruct struct {
 	LocalRegistryVolumeConfigPath         string
 	LocalRegistryDockerRegistryConfigPath string
 	LocalRegistryHostUpdateConfigPath     string
-	MagicDNSConfigPath                    string
+	QueueProxyImage                       string
 }
 
 var Knative = KnativeConfigStruct{}

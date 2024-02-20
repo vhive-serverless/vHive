@@ -48,7 +48,14 @@ func SetupMasterNode(stockContainerd string) error {
 		return err
 	}
 
-	err = InstallKnativeServingComponent(stockContainerd)
+	if stockContainerd == "firecracker" {
+		err = PatchKnativeForFirecracker()
+		if err != nil {
+			return err
+		}
+	}
+
+	err = InstallKnativeServingComponent()
 	if err != nil {
 		return err
 	}
@@ -204,47 +211,62 @@ func InstallIstio() error {
 	return nil
 }
 
-// Install Knative Serving component
-func InstallKnativeServingComponent(stockContainerd string) error {
-	utils.WaitPrintf("Installing Knative Serving component (%s mode)", stockContainerd)
-	if stockContainerd == "stock-only" {
-		_, err := utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-crds.yaml", configs.Knative.KnativeVersion)
-		if !utils.CheckErrorWithMsg(err, "Failed to install Knative Serving component!\n") {
-			return err
-		}
+// Change queue-proxy image to accept Firecracker as a runtime
+func PatchKnativeForFirecracker() error {
+	utils.InstallYQ()
 
-		if _, err = os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-core.yaml"))); err != nil {
-			utils.WaitPrintf("Using stock version of knative.")
-			_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml", configs.Knative.KnativeVersion)
-			if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
-				return err
-			}
-		} else {
-			utils.WaitPrintf("Found local serving-core.yaml. Using it instead of stock version of knative.")
-			servingCorePath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-core.yaml"))
-			if err != nil {
-				return err
-			}
-			_, err = utils.ExecShellCmd("kubectl apply -f %s", servingCorePath)
-			if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
-				return err
-			}
-		}
-	} else {
-		servingCrdsPath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-crds-firecracker.yaml"))
+	utils.WaitPrintf("Patching Knative for Firecracker")
+	_, err := utils.ExecShellCmd("wget -nc https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml -P %s", configs.Knative.KnativeVersion,
+		path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls")))
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to download stock version of Knative!\n") {
+		return err
+	}
+
+	_, err = utils.ExecShellCmd(`yq -i '(( select ( .metadata.labels."app.kubernetes.io/component" == "queue-proxy" ) | .spec.image ),
+	( select ( .metadata.name == "config-deployment" ) | .data.queue-sidecar-image )) = "%s"' %s`,
+		configs.Knative.QueueProxyImage, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-core.yaml")))
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Knative for Firecracker!\n") {
+		return err
+	}
+
+	return nil
+}
+
+// Install Knative Serving component
+func InstallKnativeServingComponent() error {
+	utils.WaitPrintf("Installing Knative Serving component")
+
+	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-crds.yaml"))); err == nil {
+		utils.WaitPrintf("Found local serving-crds.yaml. Using it instead of stock version of knative.")
+		servingCrdsPath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-crds.yaml"))
 		if err != nil {
 			return err
 		}
 		_, err = utils.ExecShellCmd("kubectl apply -f %s", servingCrdsPath)
-		if !utils.CheckErrorWithMsg(err, "Failed to install Knative Serving component!\n") {
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
+	} else {
+		utils.WaitPrintf("Using stock version of knative's crds.")
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-crds.yaml", configs.Knative.KnativeVersion)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
+			return err
+		}
+	}
 
-		servingCorePath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-core-firecracker.yaml"))
+	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-core.yaml"))); err == nil {
+		utils.WaitPrintf("Found local serving-core.yaml. Using it instead of stock version of knative.")
+		servingCorePath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-core.yaml"))
 		if err != nil {
 			return err
 		}
 		_, err = utils.ExecShellCmd("kubectl apply -f %s", servingCorePath)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
+			return err
+		}
+	} else {
+		utils.WaitPrintf("Using stock version of knative's core.")
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml", configs.Knative.KnativeVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 			return err
 		}
@@ -290,15 +312,24 @@ func InstallLocalClusterRegistry() error {
 
 // Configure Magic DNS
 func ConfigureMagicDNS() error {
-	utils.WaitPrintf("Configuring Magic DNS")
-	magicDNSConfigPath, err := utils.GetVHiveFilePath(configs.Knative.MagicDNSConfigPath)
-	if !utils.CheckErrorWithMsg(err, "Failed to find Magic DNS config!\n") {
-		return err
+	if _, err := os.Stat(path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/knative_yamls", "serving-default-domain.yaml"))); err == nil {
+		utils.WaitPrintf("Found local serving-default-domain.yaml. Using it instead of stock version of knative.")
+		servingDNSPath, err := utils.GetVHiveFilePath(path.Join("configs/knative_yamls", "serving-default-domain.yaml"))
+		if err != nil {
+			return err
+		}
+		_, err = utils.ExecShellCmd("kubectl apply -f %s", servingDNSPath)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
+			return err
+		}
+	} else {
+		utils.WaitPrintf("Using stock version of knative's magic DNS.")
+		_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/serving/releases/download/knative-v%s/serving-default-domain.yaml", configs.Knative.KnativeVersion)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
+			return err
+		}
 	}
-	_, err = utils.ExecShellCmd("kubectl apply -f %s", magicDNSConfigPath)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure Magic DNS!\n") {
-		return err
-	}
+
 	return nil
 }
 
