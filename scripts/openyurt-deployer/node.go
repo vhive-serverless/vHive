@@ -29,6 +29,8 @@ import (
 	"time"
 
 	"github.com/sfreiberg/simplessh"
+	"github.com/vhive-serverless/vHive/scripts/cluster"
+	"github.com/vhive-serverless/vHive/scripts/configs"
 	"github.com/vhive-serverless/vHive/scripts/utils"
 )
 
@@ -500,9 +502,8 @@ func (node *Node) KubeMasterInit() (string, string, string, string) {
 	utils.CheckErrorWithMsg(err, "Failed to make kubectl work for non-root user!\n")
 
 	// Install Calico network add-on
-	utils.WaitPrintf("Installing pod network")
-	_, err = node.ExecShellCmd("kubectl apply -f %s", node.Configs.Kube.PodNetworkAddonConfigURL)
-	utils.CheckErrorWithMsg(err, "Failed to install pod network!\n")
+	configs.Kube.CalicoVersion = node.Configs.Kube.CalicoVersion // TODO: @jchua99, pls fix
+	cluster.InstallCalico()
 
 	// Extract master node information from logs
 	utils.WaitPrintf("Extracting master node information from logs")

@@ -63,10 +63,10 @@ type KubeConfigStruct struct {
 	AlternativeImageRepo      string
 	ApiserverAdvertiseAddress string
 	PodNetworkCidr            string
-	PodNetworkAddonConfigURL  string
 	ApiserverPort             string
 	ApiserverToken            string
 	ApiserverTokenHash        string
+	CalicoVersion             string
 }
 
 type SystemEnvironmentStruct struct {

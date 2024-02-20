@@ -105,5 +105,7 @@ func SetupNode(sandbox string, useStargz string) error {
 		}
 	}
 
+	utils.InstallYQ()
+
 	return nil
 }

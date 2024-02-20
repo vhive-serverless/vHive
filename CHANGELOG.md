@@ -10,6 +10,8 @@
 ### Changed
 
 - Removed the utils and examples from the vHive repo, moved to [vSwarm](https://github.com/vhive-serverless/vSwarm).
+- Bumped Go to 1.21, Kubernetes to v1.29, Knative to v1.13, Istio to 1.20.2, MetalLB to 0.14.3, Calico to 3.27.2.
+- Made the automatic patching of the knative-serving and calico manifests instead of storing the patched manifests in the repo.
 
 ### Fixed
 
