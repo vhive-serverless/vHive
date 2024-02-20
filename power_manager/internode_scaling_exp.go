@@ -111,8 +111,8 @@ func main() {
 
 	now := time.Now()
 	for time.Since(now) < (time.Minute *3) {
-		go invoke(5, SleepingURL, ch, false)
-		go invoke(5, SpinningURL, ch, true)
+		go invoke(5, AuthURL, ch, false)
+		go invoke(5, AesURL, ch, true)
 
 		time.Sleep(1 * time.Second) // Wait for 1 second before invoking again
 	}
