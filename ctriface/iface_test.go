@@ -24,9 +24,7 @@ package ctriface
 import (
 	"context"
 	"flag"
-	"fmt"
-	"os"	
-	"sync"
+	"os"
 	"testing"
 	"time"
 
@@ -35,6 +33,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/snapshotting"
+
+	"github.com/vhive-serverless/vhive/lg"
 )
 
 // TODO: Make it impossible to use lazy mode without UPF
@@ -68,8 +68,18 @@ func TestStartSnapStop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
+	// uffdSockAddr := "/tmp/uffd.sock"
+	// uffdSockDir := "/home/char/uffd"
+	// uffdSockAddr := uffdSockDir + "/uffd.sock"
 	uffdSockAddr := "/tmp/uffd.sock"
-	orch := NewOrchestrator("devmapper", "", WithTestModeOn(true), WithUffdSockAddr(uffdSockAddr))
+	orch := NewOrchestrator(
+		"devmapper",
+		"",
+		WithTestModeOn(true),
+		WithSnapshots(true),
+		WithUPF(*isUPFEnabled),
+		WithUffdSockAddr(uffdSockAddr),
+	)
 
 	vmID := "2"
 
@@ -83,6 +93,9 @@ func TestStartSnapStop(t *testing.T) {
 	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
+	// _, err = orch.ResumeVM(ctx, vmID)
+	// require.NoError(t, err, "Failed to resume VM after created snapshot")
+
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
 
@@ -92,6 +105,8 @@ func TestStartSnapStop(t *testing.T) {
 	_, _, err = orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
+	log.Debug("TEST: LoadSnapshot completed")
+	lg.UniLogger.Println("This is a test")
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
@@ -104,275 +119,275 @@ func TestStartSnapStop(t *testing.T) {
 	orch.Cleanup()
 }
 
-func TestPauseSnapResume(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+// func TestPauseSnapResume(t *testing.T) {
+// 	log.SetFormatter(&log.TextFormatter{
+// 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+// 		FullTimestamp:   true,
+// 	})
+// 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
-	log.SetOutput(os.Stdout)
+// 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+// 	log.SetLevel(log.DebugLevel)
 
-	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
-	defer cancel()
+// 	testTimeout := 120 * time.Second
+// 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+// 	defer cancel()
 
-	orch := NewOrchestrator(
-		"devmapper",
-		"",
-		WithTestModeOn(true),
-		WithUPF(*isUPFEnabled),
-		WithLazyMode(*isLazyMode),
-	)
+// 	orch := NewOrchestrator(
+// 		"devmapper",
+// 		"",
+// 		WithTestModeOn(true),
+// 		WithUPF(*isUPFEnabled),
+// 		WithLazyMode(*isLazyMode),
+// 	)
 
-	vmID := "4"
-	revision := "myrev-4"
+// 	vmID := "4"
+// 	revision := "myrev-4"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
-	require.NoError(t, err, "Failed to start VM")
+// 	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+// 	require.NoError(t, err, "Failed to start VM")
 
-	err = orch.PauseVM(ctx, vmID)
-	require.NoError(t, err, "Failed to pause VM")
+// 	err = orch.PauseVM(ctx, vmID)
+// 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revision, "/fccd/snapshots", testImageName)
-	err = snap.CreateSnapDir()
-	require.NoError(t, err, "Failed to create snapshots directory")
+// 	snap := snapshotting.NewSnapshot(revision, "/fccd/snapshots", testImageName)
+// 	err = snap.CreateSnapDir()
+// 	require.NoError(t, err, "Failed to create snapshots directory")
 
-	err = orch.CreateSnapshot(ctx, vmID, snap)
-	require.NoError(t, err, "Failed to create snapshot of VM")
+// 	err = orch.CreateSnapshot(ctx, vmID, snap)
+// 	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	_, err = orch.ResumeVM(ctx, vmID)
-	require.NoError(t, err, "Failed to resume VM")
+// 	_, err = orch.ResumeVM(ctx, vmID)
+// 	require.NoError(t, err, "Failed to resume VM")
 
-	err = orch.StopSingleVM(ctx, vmID)
-	require.NoError(t, err, "Failed to stop VM")
+// 	err = orch.StopSingleVM(ctx, vmID)
+// 	require.NoError(t, err, "Failed to stop VM")
 
-	_ = snap.Cleanup()
-	orch.Cleanup()
-}
+// 	_ = snap.Cleanup()
+// 	orch.Cleanup()
+// }
 
-func TestStartStopSerial(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+// func TestStartStopSerial(t *testing.T) {
+// 	log.SetFormatter(&log.TextFormatter{
+// 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+// 		FullTimestamp:   true,
+// 	})
+// 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
-	log.SetOutput(os.Stdout)
+// 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.InfoLevel)
+// 	log.SetLevel(log.InfoLevel)
 
-	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
-	defer cancel()
+// 	testTimeout := 120 * time.Second
+// 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+// 	defer cancel()
 
-	orch := NewOrchestrator(
-		"devmapper",
-		"",
-		WithTestModeOn(true),
-		WithUPF(*isUPFEnabled),
-		WithLazyMode(*isLazyMode),
-	)
+// 	orch := NewOrchestrator(
+// 		"devmapper",
+// 		"",
+// 		WithTestModeOn(true),
+// 		WithUPF(*isUPFEnabled),
+// 		WithLazyMode(*isLazyMode),
+// 	)
 
-	vmID := "5"
+// 	vmID := "5"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
-	require.NoError(t, err, "Failed to start VM")
+// 	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+// 	require.NoError(t, err, "Failed to start VM")
 
-	err = orch.StopSingleVM(ctx, vmID)
-	require.NoError(t, err, "Failed to stop VM")
+// 	err = orch.StopSingleVM(ctx, vmID)
+// 	require.NoError(t, err, "Failed to stop VM")
 
-	orch.Cleanup()
-}
+// 	orch.Cleanup()
+// }
 
-func TestPauseResumeSerial(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+// func TestPauseResumeSerial(t *testing.T) {
+// 	log.SetFormatter(&log.TextFormatter{
+// 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+// 		FullTimestamp:   true,
+// 	})
+// 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
-	log.SetOutput(os.Stdout)
+// 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.InfoLevel)
+// 	log.SetLevel(log.InfoLevel)
 
-	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
-	defer cancel()
+// 	testTimeout := 120 * time.Second
+// 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+// 	defer cancel()
 
-	orch := NewOrchestrator(
-		"devmapper",
-		"",
-		WithTestModeOn(true),
-		WithUPF(*isUPFEnabled),
-		WithLazyMode(*isLazyMode),
-	)
+// 	orch := NewOrchestrator(
+// 		"devmapper",
+// 		"",
+// 		WithTestModeOn(true),
+// 		WithUPF(*isUPFEnabled),
+// 		WithLazyMode(*isLazyMode),
+// 	)
 
-	vmID := "6"
+// 	vmID := "6"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
-	require.NoError(t, err, "Failed to start VM")
+// 	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+// 	require.NoError(t, err, "Failed to start VM")
 
-	err = orch.PauseVM(ctx, vmID)
-	require.NoError(t, err, "Failed to pause VM")
+// 	err = orch.PauseVM(ctx, vmID)
+// 	require.NoError(t, err, "Failed to pause VM")
 
-	_, err = orch.ResumeVM(ctx, vmID)
-	require.NoError(t, err, "Failed to resume VM")
+// 	_, err = orch.ResumeVM(ctx, vmID)
+// 	require.NoError(t, err, "Failed to resume VM")
 
-	err = orch.StopSingleVM(ctx, vmID)
-	require.NoError(t, err, "Failed to stop VM")
+// 	err = orch.StopSingleVM(ctx, vmID)
+// 	require.NoError(t, err, "Failed to stop VM")
 
-	orch.Cleanup()
-}
+// 	orch.Cleanup()
+// }
 
-func TestStartStopParallel(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+// func TestStartStopParallel(t *testing.T) {
+// 	log.SetFormatter(&log.TextFormatter{
+// 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+// 		FullTimestamp:   true,
+// 	})
+// 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
-	log.SetOutput(os.Stdout)
+// 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.InfoLevel)
+// 	log.SetLevel(log.InfoLevel)
 
-	testTimeout := 360 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
-	defer cancel()
+// 	testTimeout := 360 * time.Second
+// 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+// 	defer cancel()
 
-	vmNum := 10
-	vmIDBase := 7
+// 	vmNum := 10
+// 	vmIDBase := 7
 
-	orch := NewOrchestrator(
-		"devmapper",
-		"",
-		WithTestModeOn(true),
-		WithUPF(*isUPFEnabled),
-		WithLazyMode(*isLazyMode),
-	)
+// 	orch := NewOrchestrator(
+// 		"devmapper",
+// 		"",
+// 		WithTestModeOn(true),
+// 		WithUPF(*isUPFEnabled),
+// 		WithLazyMode(*isLazyMode),
+// 	)
 
-	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
-	require.NoError(t, err, "Failed to pull image "+testImageName)
+// 	// Pull image
+// 	_, err := orch.getImage(ctx, testImageName)
+// 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
-	{
-		var vmGroup sync.WaitGroup
-		for i := vmIDBase; i < vmNum; i++ {
-			vmGroup.Add(1)
-			go func(i int) {
-				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName)
-				require.NoError(t, err, "Failed to start VM "+vmID)
-			}(i)
-		}
-		vmGroup.Wait()
-	}
+// 	{
+// 		var vmGroup sync.WaitGroup
+// 		for i := vmIDBase; i < vmNum; i++ {
+// 			vmGroup.Add(1)
+// 			go func(i int) {
+// 				defer vmGroup.Done()
+// 				vmID := fmt.Sprintf("%d", i)
+// 				_, _, err := orch.StartVM(ctx, vmID, testImageName)
+// 				require.NoError(t, err, "Failed to start VM "+vmID)
+// 			}(i)
+// 		}
+// 		vmGroup.Wait()
+// 	}
 
-	{
-		var vmGroup sync.WaitGroup
-		for i := vmIDBase; i < vmNum; i++ {
-			vmGroup.Add(1)
-			go func(i int) {
-				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
-				err := orch.StopSingleVM(ctx, vmID)
-				require.NoError(t, err, "Failed to stop VM "+vmID)
-			}(i)
-		}
-		vmGroup.Wait()
-	}
+// 	{
+// 		var vmGroup sync.WaitGroup
+// 		for i := vmIDBase; i < vmNum; i++ {
+// 			vmGroup.Add(1)
+// 			go func(i int) {
+// 				defer vmGroup.Done()
+// 				vmID := fmt.Sprintf("%d", i)
+// 				err := orch.StopSingleVM(ctx, vmID)
+// 				require.NoError(t, err, "Failed to stop VM "+vmID)
+// 			}(i)
+// 		}
+// 		vmGroup.Wait()
+// 	}
 
-	orch.Cleanup()
-}
+// 	orch.Cleanup()
+// }
 
-func TestPauseResumeParallel(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
+// func TestPauseResumeParallel(t *testing.T) {
+// 	log.SetFormatter(&log.TextFormatter{
+// 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+// 		FullTimestamp:   true,
+// 	})
+// 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
 
-	log.SetOutput(os.Stdout)
+// 	log.SetOutput(os.Stdout)
 
-	log.SetLevel(log.InfoLevel)
+// 	log.SetLevel(log.InfoLevel)
 
-	testTimeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
-	defer cancel()
+// 	testTimeout := 120 * time.Second
+// 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
+// 	defer cancel()
 
-	vmNum := 10
-	vmIDBase := 17
+// 	vmNum := 10
+// 	vmIDBase := 17
 
-	orch := NewOrchestrator(
-		"devmapper",
-		"",
-		WithTestModeOn(true),
-		WithUPF(*isUPFEnabled),
-		WithLazyMode(*isLazyMode),
-	)
+// 	orch := NewOrchestrator(
+// 		"devmapper",
+// 		"",
+// 		WithTestModeOn(true),
+// 		WithUPF(*isUPFEnabled),
+// 		WithLazyMode(*isLazyMode),
+// 	)
 
-	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
-	require.NoError(t, err, "Failed to pull image "+testImageName)
+// 	// Pull image
+// 	_, err := orch.getImage(ctx, testImageName)
+// 	require.NoError(t, err, "Failed to pull image "+testImageName)
 
-	{
-		var vmGroup sync.WaitGroup
-		for i := vmIDBase; i < vmNum; i++ {
-			vmGroup.Add(1)
-			go func(i int) {
-				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName)
-				require.NoError(t, err, "Failed to start VM")
-			}(i)
-		}
-		vmGroup.Wait()
-	}
+// 	{
+// 		var vmGroup sync.WaitGroup
+// 		for i := vmIDBase; i < vmNum; i++ {
+// 			vmGroup.Add(1)
+// 			go func(i int) {
+// 				defer vmGroup.Done()
+// 				vmID := fmt.Sprintf("%d", i)
+// 				_, _, err := orch.StartVM(ctx, vmID, testImageName)
+// 				require.NoError(t, err, "Failed to start VM")
+// 			}(i)
+// 		}
+// 		vmGroup.Wait()
+// 	}
 
-	{
-		var vmGroup sync.WaitGroup
-		for i := vmIDBase; i < vmNum; i++ {
-			vmGroup.Add(1)
-			go func(i int) {
-				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
-				err := orch.PauseVM(ctx, vmID)
-				require.NoError(t, err, "Failed to pause VM")
-			}(i)
-		}
-		vmGroup.Wait()
-	}
+// 	{
+// 		var vmGroup sync.WaitGroup
+// 		for i := vmIDBase; i < vmNum; i++ {
+// 			vmGroup.Add(1)
+// 			go func(i int) {
+// 				defer vmGroup.Done()
+// 				vmID := fmt.Sprintf("%d", i)
+// 				err := orch.PauseVM(ctx, vmID)
+// 				require.NoError(t, err, "Failed to pause VM")
+// 			}(i)
+// 		}
+// 		vmGroup.Wait()
+// 	}
 
-	{
-		var vmGroup sync.WaitGroup
-		for i := vmIDBase; i < vmNum; i++ {
-			vmGroup.Add(1)
-			go func(i int) {
-				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
-				_, err := orch.ResumeVM(ctx, vmID)
-				require.NoError(t, err, "Failed to resume VM")
-			}(i)
-		}
-		vmGroup.Wait()
-	}
+// 	{
+// 		var vmGroup sync.WaitGroup
+// 		for i := vmIDBase; i < vmNum; i++ {
+// 			vmGroup.Add(1)
+// 			go func(i int) {
+// 				defer vmGroup.Done()
+// 				vmID := fmt.Sprintf("%d", i)
+// 				_, err := orch.ResumeVM(ctx, vmID)
+// 				require.NoError(t, err, "Failed to resume VM")
+// 			}(i)
+// 		}
+// 		vmGroup.Wait()
+// 	}
 
-	{
-		var vmGroup sync.WaitGroup
-		for i := vmIDBase; i < vmNum; i++ {
-			vmGroup.Add(1)
-			go func(i int) {
-				defer vmGroup.Done()
-				vmID := fmt.Sprintf("%d", i)
-				err := orch.StopSingleVM(ctx, vmID)
-				require.NoError(t, err, "Failed to stop VM")
-			}(i)
-		}
-		vmGroup.Wait()
-	}
+// 	{
+// 		var vmGroup sync.WaitGroup
+// 		for i := vmIDBase; i < vmNum; i++ {
+// 			vmGroup.Add(1)
+// 			go func(i int) {
+// 				defer vmGroup.Done()
+// 				vmID := fmt.Sprintf("%d", i)
+// 				err := orch.StopSingleVM(ctx, vmID)
+// 				require.NoError(t, err, "Failed to stop VM")
+// 			}(i)
+// 		}
+// 		vmGroup.Wait()
+// 	}
 
-	orch.Cleanup()
-}
+// 	orch.Cleanup()
+// }

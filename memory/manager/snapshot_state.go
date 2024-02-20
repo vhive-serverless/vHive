@@ -44,6 +44,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	"github.com/vhive-serverless/vhive/lg"
 	"github.com/vhive-serverless/vhive/metrics"
 
 	"unsafe"
@@ -290,15 +291,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	// TODO: config where the logger stream goes
 	logger.Debug("Starting polling loop")
-	fmt.Printf("Starting polling loop")
-
-	logFile, err := os.OpenFile("pg_happen.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-    if err != nil {
-        log.Fatalf("error opening file: %v", err)
-    }
-    defer logFile.Close()
-    log.SetOutput(logFile)
-    log.Println("This is a test log entry") 
+	lg.UniLogger.Println("Starting polling loop")
 
 	defer syscall.Close(s.epfd)
 

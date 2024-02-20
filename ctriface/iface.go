@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -523,6 +524,9 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 	go func() {
 		defer close(loadDone)
 
+		confStr, _ := json.Marshal(conf)
+		logger.Debugf("TEST: CreateVM request: %s", confStr)
+
 		if _, loadErr := o.fcClient.CreateVM(ctx, conf); loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
 			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), containerSnap.GetDevicePath())
@@ -552,9 +556,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 	}()
 
 	logger.Debug("TEST: CreatVM request sent")
+	<-loadDone
+
 	if o.GetUPFEnabled() {
 
-		logger.Debug("TEST: Registering VM with the memory manager")
+		logger.Debug("TEST: Registering VM with snap with the memory manager")
 
 		stateCfg := manager.SnapshotStateCfg{
 			VMID:             vmID,
@@ -570,12 +576,13 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 			logger.Error(err, "failed to register new VM with memory manager")
 		}
 
+		logger.Debug("TEST: activate VM in mm")
 		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}
 	}
 
-	<-loadDone
+	// <-loadDone
 
 	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))
 

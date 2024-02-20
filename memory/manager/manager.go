@@ -46,7 +46,7 @@ const (
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
 	MetricsModeOn bool
-	UffdSockAddr string	// it could not be appropriate to put sock here
+	UffdSockAddr  string // it could not be appropriate to put sock here
 }
 
 // MemoryManager Serves page faults coming from VMs
@@ -54,9 +54,7 @@ type MemoryManager struct {
 	sync.Mutex
 	MemoryManagerCfg
 	instances map[string]*SnapshotState // Indexed by vmID
-	origins map[string]string // Track parent vm for vm loaded from snapshot
-
-	// TODO: snapshot and its children
+	origins   map[string]string         // Track parent vm for vm loaded from snapshot
 }
 
 // NewMemoryManager Initializes a new memory manager
@@ -65,8 +63,9 @@ func NewMemoryManager(cfg MemoryManagerCfg) *MemoryManager {
 
 	m := new(MemoryManager)
 	m.instances = make(map[string]*SnapshotState)
+	m.origins = make(map[string]string)
 	m.MemoryManagerCfg = cfg
-	
+
 	return m
 }
 
@@ -397,7 +396,7 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 	return state.latencyMetrics, nil
 }
 
-// Deprecated 
+// Deprecated
 // func (m *MemoryManager) GetUPFSockPath(vmID string, isSnapshotReady bool) (string, error) {
 // 	logger := log.WithFields(log.Fields{"vmID": vmID})
 

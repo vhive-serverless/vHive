@@ -23,7 +23,6 @@
 package ctriface
 
 import (
-	"github.com/vhive-serverless/vhive/devmapper"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -31,6 +30,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/devmapper"
 
 	log "github.com/sirupsen/logrus"
 
@@ -88,7 +89,7 @@ type Orchestrator struct {
 	isUPFEnabled     bool
 	isLazyMode       bool
 	snapshotsDir     string
-	uffdSockAddr	 string
+	uffdSockAddr     string
 	isMetricsMode    bool
 	netPoolSize      int
 
@@ -122,14 +123,15 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 
 	if o.GetUPFEnabled() {
-		_, err = os.Create(o.uffdSockAddr)
+		file, err := os.Create(o.uffdSockAddr)
 		if err != nil {
-			log.Fatal("TEST: failed to create uffd sock", err)
+			log.Fatalf("Failed to create socket file: %v", err)
 		}
-
+		defer file.Close()
+		
 		managerCfg := manager.MemoryManagerCfg{
 			MetricsModeOn: o.isMetricsMode,
-			UffdSockAddr: o.uffdSockAddr,
+			UffdSockAddr:  o.uffdSockAddr,
 		}
 		o.memoryManager = manager.NewMemoryManager(managerCfg)
 	}
@@ -218,7 +220,7 @@ func (o *Orchestrator) GetSnapshotsDir() string {
 // TODO: /tmp/uffd/firecracker-containerd#3-0/uffd.sock
 func (o *Orchestrator) getUffdSockAddr(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "uffd.sock")
-} 
+}
 
 func (o *Orchestrator) getSnapshotFile(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "snap_file")
