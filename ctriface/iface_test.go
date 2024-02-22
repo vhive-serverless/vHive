@@ -68,7 +68,6 @@ func TestStartSnapStop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	// uffdSockAddr := "/tmp/uffd.sock"
 	// uffdSockDir := "/home/char/uffd"
 	// uffdSockAddr := uffdSockDir + "/uffd.sock"
 	uffdSockAddr := "/tmp/uffd.sock"

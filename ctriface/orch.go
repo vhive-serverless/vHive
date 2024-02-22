@@ -128,12 +128,13 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 			log.Fatalf("Failed to create socket file: %v", err)
 		}
 		defer file.Close()
-		
+
 		managerCfg := manager.MemoryManagerCfg{
 			MetricsModeOn: o.isMetricsMode,
 			UffdSockAddr:  o.uffdSockAddr,
 		}
 		o.memoryManager = manager.NewMemoryManager(managerCfg)
+		go o.memoryManager.ListenUffdSocket(o.uffdSockAddr)
 	}
 
 	log.Info("Creating containerd client")

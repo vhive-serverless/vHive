@@ -26,6 +26,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"sync"
@@ -53,8 +54,10 @@ type MemoryManagerCfg struct {
 type MemoryManager struct {
 	sync.Mutex
 	MemoryManagerCfg
-	instances map[string]*SnapshotState // Indexed by vmID
-	origins   map[string]string         // Track parent vm for vm loaded from snapshot
+	instances         map[string]*SnapshotState // Indexed by vmID
+	origins           map[string]string         // Track parent vm for vm loaded from snapshot
+	startEpollingCh   chan struct{}
+	startEpollingOnce sync.Once
 }
 
 // NewMemoryManager Initializes a new memory manager
@@ -64,7 +67,9 @@ func NewMemoryManager(cfg MemoryManagerCfg) *MemoryManager {
 	m := new(MemoryManager)
 	m.instances = make(map[string]*SnapshotState)
 	m.origins = make(map[string]string)
+	m.startEpollingCh = make(chan struct{}, 1)
 	m.MemoryManagerCfg = cfg
+	m.startEpollingOnce = sync.Once{}
 
 	return m
 }
@@ -182,21 +187,29 @@ func (m *MemoryManager) Activate(vmID string) error {
 		return errors.New("VM already active")
 	}
 
-	if err := state.mapGuestMemory(); err != nil {
-		logger.Error("Failed to map guest memory")
-		return err
+	select {
+	case <-m.startEpollingCh:
+		if err := state.mapGuestMemory(); err != nil {
+			logger.Error("Failed to map guest memory")
+			return err
+		}
+
+		if err := state.getUFFD(); err != nil {
+			logger.Error("Failed to get uffd")
+			return err
+		}
+
+		state.setupStateOnActivate()
+
+		go state.pollUserPageFaults(readyCh)
+
+		<-readyCh
+
+	case <-time.After(100 * time.Second):
+		return errors.New("Uffd connection to firecracker timeout")
+	default:
+		return errors.New("Failed to start epoller")
 	}
-
-	if err := state.getUFFD(); err != nil {
-		logger.Error("Failed to get uffd")
-		return err
-	}
-
-	state.setupStateOnActivate()
-
-	go state.pollUserPageFaults(readyCh)
-
-	<-readyCh
 
 	return nil
 }
@@ -394,6 +407,39 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 	}
 
 	return state.latencyMetrics, nil
+}
+
+func (m *MemoryManager) ListenUffdSocket(uffdSockAddr string) error {
+	log.Debug("Start listening to uffd socket")
+
+	m.startEpollingOnce.Do(func() {
+		m.startEpollingCh = make(chan struct{})
+	})
+
+	ln, err := net.Listen("unix", uffdSockAddr)
+	if err != nil {
+		log.Errorf("Failed to listen on uffd socket: %v", err)
+		return errors.New("Failed to listen on uffd socket")
+	}
+	defer ln.Close()
+
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			log.Printf("Failed to accept connection on uffd socket: %v", err)
+			continue
+		}
+		go func(conn net.Conn) {
+			defer conn.Close()
+			if err := ln.Close(); err != nil {
+				log.Printf("Failed to close uffd socket listener: %v", err)
+			}
+			close(m.startEpollingCh)
+		}(conn)
+		break
+	}
+
+	return nil
 }
 
 // Deprecated
