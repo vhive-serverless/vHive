@@ -220,6 +220,15 @@ Another option is to install using official instructions: [https://golang.org/do
     > * The Kubelet was informed of the new secure connection details.
     > ```
 
+    > **Note:**
+    > 
+    > In case of failure
+    > ```
+    > error execution phase preflight: couldn't validate the identity of the API Server: Get "https://10.0.0.1:6443/api/v1/namespaces/kube-public/configmaps/cluster-info?timeout=10s": dial tcp 10.0.0.1:6443: connect: connection refused
+    > ```
+    > 
+    > Check the configuration of the firewall and make sure that traffic for the port `6443` is allowed.
+
 ### 5. Finalise Master Node
 **On the master node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
 
