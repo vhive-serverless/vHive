@@ -116,6 +116,14 @@ func InstallCalico() error {
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install pod network!\n") {
 		return err
 	}
+
+	utils.WaitPrintf("Waiting for all nodes to be ready")
+	_, err = utils.ExecShellCmd("kubectl wait --for=condition=Ready nodes --all --timeout=600s")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to wait for all nodes to be ready!\n") {
+		return err
+	}
+	utils.SuccessPrintf("All nodes are ready!\n")
+
 	return nil
 }
 
@@ -130,7 +138,7 @@ func InstallMetalLB() error {
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
 	}
-	_, err = utils.ExecShellCmd("kubectl -n metallb-system wait deploy controller --timeout=180s --for=condition=Available")
+	_, err = utils.ExecShellCmd("kubectl -n metallb-system wait deploy controller --timeout=600s --for=condition=Available")
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
 	}
