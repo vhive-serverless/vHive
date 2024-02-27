@@ -13,7 +13,7 @@ cd vhive
 ./scripts/install_go.sh; source /etc/profile # or install Go manually
 pushd scripts && go build -o setup_tool && popd && mv scripts/setup_tool .
 
-./setup_tool setup_node [stock-only|gvisor|firecracker]
+./setup_tool setup_node REGULAR [stock-only|gvisor|firecracker]
 sudo containerd
 ./setup_tool create_one_node_cluster [stock-only|gvisor|firecracker]
 # wait for the containers to boot up using
@@ -115,7 +115,7 @@ Assuming you rented a node using the vHive CloudLab profile:
 1. Setup the node for the desired sandbox:
 
 ```bash
-./setup_tool setup_node [firecracker|gvisor]
+./setup_tool setup_node REGULAR [firecracker|gvisor]
 ```
 
 2. Setup the CRI test environment for the desired sandbox:
@@ -240,7 +240,7 @@ Knative functions can use GPU although only `stock-only` mode is supported.
 Follow the guide to [setup stock knative](#testing-stock-knative-setup-or-images). 
 
 ``` bash
-./setup_tool setup_node stock-only
+./setup_tool setup_node REGULAR stock-only
 ```
 
 ### Install NVIDIA Driver and NVIDIA Container Toolkit 

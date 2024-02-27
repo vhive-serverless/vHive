@@ -197,7 +197,7 @@ func ExtractMasterNodeInfo() error {
 		return err
 	}
 
-	utils.SuccessPrintf("Join cluster from worker nodes as a new control plane node with command: "+
+	utils.SuccessPrintf("Join cluster as a new control plane node with command: "+
 		"sudo kubeadm join %s:%s --token %s --discovery-token-ca-cert-hash %s --control-plane --certificate-key %s\n",
 		configs.Kube.ApiserverAdvertiseAddress,
 		configs.Kube.ApiserverPort,

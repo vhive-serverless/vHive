@@ -92,7 +92,7 @@ Another option is to install using official instructions: [https://golang.org/do
     > flags as follows:
     >
     > ```bash
-    > ./setup_tool setup_node stock-only use-stargz
+    > ./setup_tool setup_node REGULAR stock-only use-stargz
     > ```
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
@@ -103,7 +103,7 @@ Another option is to install using official instructions: [https://golang.org/do
     
     For the standard setup, run the following script:
     ```bash
-    ./setup_tool setup_node firecracker
+    ./setup_tool setup_node REGULAR firecracker
     ```
     > **BEWARE:**
     >
@@ -250,13 +250,13 @@ In essence, you will execute the same commands for master and worker setups but 
 Execute the following below **as a non-root user with sudo rights** using **bash**:
 1. Run the node setup script:
     ```bash
-    ./setup_tool setup_node firecracker
+    ./setup_tool setup_node REGULAR firecracker
     ```
     > **Note:**
     > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
     > flags as follows:
     >   ```bash
-    >   ./setup_tool setup_node stock-only use-stargz
+    >   ./setup_tool setup_node REGULAR stock-only use-stargz
     >   ```
     > **IMPORTANT**
     > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
