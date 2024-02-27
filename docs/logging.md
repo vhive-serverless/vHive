@@ -41,7 +41,7 @@ We present how to set up a multi-node cluster, however, the same modifications c
 
 3. Run the node setup script:
     ```bash
-    ./setup_tool setup_node
+    ./setup_tool setup_node REGULAR
     ```
     > **BEWARE:**
     >
