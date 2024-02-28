@@ -149,7 +149,7 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 }
 
 // Activate Creates an epoller to serve page faults for the VM
-func (m *MemoryManager) Activate(vmID string) error {
+func (m *MemoryManager) Activate(vmID string, conn *net.UnixConn) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Activating instance in the memory manager")
@@ -163,14 +163,6 @@ func (m *MemoryManager) Activate(vmID string) error {
 	m.Lock()
 
 	logger.Debug("TEST: Activate: fetch snapstate by vmID for UFFD")
-
-	// originID, ok := m.origins[vmID]
-
-	// if !ok {
-	// 	logger.Debug("TEST: not loaded from snapshot")
-	// }
-
-	// state, ok = m.instances[originID]
 
 	state, ok = m.instances[vmID]
 
@@ -187,29 +179,21 @@ func (m *MemoryManager) Activate(vmID string) error {
 		return errors.New("VM already active")
 	}
 
-	select {
-	case <-m.startEpollingCh:
-		if err := state.mapGuestMemory(); err != nil {
-			logger.Error("Failed to map guest memory")
-			return err
-		}
-
-		if err := state.getUFFD(); err != nil {
-			logger.Error("Failed to get uffd")
-			return err
-		}
-
-		state.setupStateOnActivate()
-
-		go state.pollUserPageFaults(readyCh)
-
-		<-readyCh
-
-	case <-time.After(100 * time.Second):
-		return errors.New("Uffd connection to firecracker timeout")
-	default:
-		return errors.New("Failed to start epoller")
+	if err := state.mapGuestMemory(); err != nil {
+		logger.Error("Failed to map guest memory")
+		return err
 	}
+
+	if err := state.getUFFD(conn); err != nil {
+		logger.Error("Failed to get uffd")
+		return err
+	}
+
+	state.setupStateOnActivate()
+
+	go state.pollUserPageFaults(readyCh)
+
+	<-readyCh
 
 	return nil
 }
@@ -228,12 +212,6 @@ func (m *MemoryManager) FetchState(vmID string) error {
 	)
 
 	m.Lock()
-
-	// originID, ok := m.origins[vmID]
-	// if !ok {
-	// 	logger.Debug("TEST: not loaded from snapshot")
-	// }
-	// state, ok = m.instances[originID]
 
 	state, ok = m.instances[vmID]
 	if !ok {
@@ -407,39 +385,6 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 	}
 
 	return state.latencyMetrics, nil
-}
-
-func (m *MemoryManager) ListenUffdSocket(uffdSockAddr string) error {
-	log.Debug("Start listening to uffd socket")
-
-	m.startEpollingOnce.Do(func() {
-		m.startEpollingCh = make(chan struct{})
-	})
-
-	ln, err := net.Listen("unix", uffdSockAddr)
-	if err != nil {
-		log.Errorf("Failed to listen on uffd socket: %v", err)
-		return errors.New("Failed to listen on uffd socket")
-	}
-	defer ln.Close()
-
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			log.Printf("Failed to accept connection on uffd socket: %v", err)
-			continue
-		}
-		go func(conn net.Conn) {
-			defer conn.Close()
-			if err := ln.Close(); err != nil {
-				log.Printf("Failed to close uffd socket listener: %v", err)
-			}
-			close(m.startEpollingCh)
-		}(conn)
-		break
-	}
-
-	return nil
 }
 
 // Deprecated

@@ -123,18 +123,21 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 
 	if o.GetUPFEnabled() {
-		file, err := os.Create(o.uffdSockAddr)
-		if err != nil {
-			log.Fatalf("Failed to create socket file: %v", err)
-		}
-		defer file.Close()
+		// file, err := os.Create(o.uffdSockAddr)
+		// if err != nil {
+		// 	log.Fatalf("Failed to create socket file: %v", err)
+		// }
+		// defer file.Close()
+		// lg.UniLogger.Println("TEST: created the uffd sock addr")
 
 		managerCfg := manager.MemoryManagerCfg{
 			MetricsModeOn: o.isMetricsMode,
 			UffdSockAddr:  o.uffdSockAddr,
 		}
 		o.memoryManager = manager.NewMemoryManager(managerCfg)
-		go o.memoryManager.ListenUffdSocket(o.uffdSockAddr)
+
+		// lg.UniLogger.Println("TEST: created a new memory manager. Start listen uffd socket")
+		// go o.memoryManager.ListenUffdSocket(o.uffdSockAddr)
 	}
 
 	log.Info("Creating containerd client")

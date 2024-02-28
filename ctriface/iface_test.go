@@ -33,8 +33,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/snapshotting"
-
-	"github.com/vhive-serverless/vhive/lg"
 )
 
 // TODO: Make it impossible to use lazy mode without UPF
@@ -82,38 +80,41 @@ func TestStartSnapStop(t *testing.T) {
 
 	vmID := "2"
 
+	log.Debug("STEP: StartVM")
 	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
 
+	log.Debug("STEP: PauseVM")
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
+	log.Debug("STEP: NewSnapshot and CreateSnapshot")
 	snap := snapshotting.NewSnapshot(vmID, "/fccd/snapshots", testImageName)
 	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
-	// _, err = orch.ResumeVM(ctx, vmID)
-	// require.NoError(t, err, "Failed to resume VM after created snapshot")
-
+	log.Debug("STEP: StopSingleVM")
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
 
 	originVmID := vmID
 	vmID = "3"
 
+	log.Debug("STEP: LoadSnapshot")
 	_, _, err = orch.LoadSnapshot(ctx, originVmID, vmID, snap)
 	require.NoError(t, err, "Failed to load snapshot of VM")
 
-	log.Debug("TEST: LoadSnapshot completed")
-	lg.UniLogger.Println("This is a test")
+	log.Debug("STEP: ResumeVM")
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
 
 	time.Sleep(30 * time.Second)
 
+	log.Debug("STEP: StopeSingleVM")
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")
 
+	log.Debug("STEP: Cleanup")
 	_ = snap.Cleanup()
 	orch.Cleanup()
 }

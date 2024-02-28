@@ -25,6 +25,7 @@ package ctriface
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -505,6 +506,9 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		BackendPath: snap.GetMemFilePath(),
 	}
 
+	var sendfdConn *net.UnixConn
+	uffdListenerCh := make(chan struct{}, 1)
+
 	if o.GetUPFEnabled() {
 		logger.Debug("TEST: UPF is enabled")
 		conf.MemBackend.BackendType = uffdBackend
@@ -517,6 +521,44 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		if err := o.memoryManager.FetchState(originVmID); err != nil {
 			return nil, nil, err
 		}
+
+		logger.Debug("TEST: start listening to uffd socket")
+		if _, err := os.Stat(conf.MemBackend.BackendPath); err == nil {
+			os.Remove(conf.MemBackend.BackendPath)
+		}
+
+		// connChan := make(chan *net.UnixConn, 1)	
+		errChan := make(chan error, 1) 	
+		go func() {
+			listener, err := net.Listen("unix", conf.MemBackend.BackendPath)
+			if err != nil {
+				errChan <- errors.Wrapf(err, "failed to listen to uffd socket")
+				return
+				// return nil, nil, errors.Wrapf(err, "failed to listen to uffd socket")
+			}
+			defer listener.Close()
+		
+			logger.Debug("Listening ...")
+			conn, err := listener.Accept()
+			if err != nil {
+				errChan <- errors.Wrapf(err, "failed to accept connection")
+        		return
+				// return nil, nil, errors.Wrapf(err, "failed to accept connection")
+			}
+
+			sendfdConn, _ = conn.(*net.UnixConn)	
+			close(uffdListenerCh)
+			
+			// connChan <- sendfdConn
+		}()
+
+		// select {
+		// case sendfdConn = <-connChan:
+		// 	logger.Debug("Connection accepted and type-asserted to *net.UnixConn")
+		// case err := <-errChan:
+		// 	logger.Errorf("Error occurred: %v\n", err)
+		// }
+		time.Sleep(10 * time.Second)
 	}
 
 	tStart = time.Now()
@@ -556,11 +598,14 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 	}()
 
 	logger.Debug("TEST: CreatVM request sent")
+
 	<-loadDone
 
 	if o.GetUPFEnabled() {
 
 		logger.Debug("TEST: Registering VM with snap with the memory manager")
+
+		<-uffdListenerCh
 
 		stateCfg := manager.SnapshotStateCfg{
 			VMID:             vmID,
@@ -577,7 +622,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		}
 
 		logger.Debug("TEST: activate VM in mm")
-		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
+		if activateErr = o.memoryManager.Activate(vmID, sendfdConn); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}
 	}

@@ -28,7 +28,6 @@ package manager
 import "C"
 
 import (
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -134,37 +133,45 @@ func (s *SnapshotState) setupStateOnActivate() {
 	}
 }
 
-func (s *SnapshotState) getUFFD() error {
-	var d net.Dialer
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+func (s *SnapshotState) getUFFD(sendfdConn *net.UnixConn) error {
+	// var d net.Dialer
+	// ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	// defer cancel()
 
-	for {
-		c, err := d.DialContext(ctx, "unix", s.InstanceSockAddr)
-		if err != nil {
-			if ctx.Err() != nil {
-				log.Error("Failed to dial within the context timeout")
-				return err
-			}
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
-		log.Debugf("TEST: Dial uffd socket done: %s", s.InstanceSockAddr)
+	// for {
+	// 	c, err := d.DialContext(ctx, "unix", s.InstanceSockAddr)
+	// 	if err != nil {
+	// 		if ctx.Err() != nil {
+	// 			log.Error("Failed to dial within the context timeout")
+	// 			return err
+	// 		}
+	// 		time.Sleep(1 * time.Millisecond)
+	// 		continue
+	// 	}
 
-		defer c.Close()
+	// 	defer c.Close()
 
-		sendfdConn := c.(*net.UnixConn)
+	// 	sendfdConn := c.(*net.UnixConn)
 
-		fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
-		if err != nil {
-			log.Error("Failed to receive the uffd")
-			return err
-		}
+	// 	fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
+	// 	if err != nil {
+	// 		log.Error("Failed to receive the uffd")
+	// 		return err
+	// 	}
 
-		s.userFaultFD = fs[0]
+	// 	s.userFaultFD = fs[0]
 
-		return nil
+	// 	return nil
+	// }
+
+	fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
+	if err != nil {
+		log.Error("Failed to receive the uffd")
+		return err
 	}
+
+	s.userFaultFD = fs[0]
+	return nil
 }
 
 func (s *SnapshotState) processMetrics() {
