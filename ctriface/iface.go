@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/vhive-serverless/vhive/snapshotting"
+	"golang.org/x/sys/unix"
 
 	log "github.com/sirupsen/logrus"
 
@@ -63,6 +64,13 @@ import (
 type StartVMResponse struct {
 	// GuestIP is the IP of the guest MicroVM
 	GuestIP string
+}
+
+type GuestRegionUffdMapping struct {
+	BaseHostVirtAddr uint64 `json:"base_host_virt_addr"`
+	Size             uint64 `json:"size"`
+	Offset           uint64 `json:"offset"`
+	PageSizeKiB      uint64 `json:"page_size_kib"`
 }
 
 const (
@@ -506,9 +514,6 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		BackendPath: snap.GetMemFilePath(),
 	}
 
-	var sendfdConn *net.UnixConn
-	uffdListenerCh := make(chan struct{}, 1)
-
 	if o.GetUPFEnabled() {
 		logger.Debug("TEST: UPF is enabled")
 		conf.MemBackend.BackendType = uffdBackend
@@ -522,31 +527,9 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 			return nil, nil, err
 		}
 
-		logger.Debug("TEST: start listening to uffd socket")
-		if _, err := os.Stat(conf.MemBackend.BackendPath); err == nil {
-			os.Remove(conf.MemBackend.BackendPath)
-		}
+		// ===========================
 
-		go func() {
-			listener, err := net.Listen("unix", conf.MemBackend.BackendPath)
-			if err != nil {
-				logger.Error("failed to listen to uffd socket")
-				return
-			}
-			defer listener.Close()
-
-			logger.Debug("Listening ...")
-			conn, err := listener.Accept()
-			if err != nil {
-				logger.Error("failed to accept connection to uffd socket")
-				return
-			}
-
-			sendfdConn, _ = conn.(*net.UnixConn)
-			close(uffdListenerCh)
-		}()
-
-		time.Sleep(10 * time.Second) // TODO: sleep for 10 seconds to wait for the uffd socket to be ready
+		// ===========================
 	}
 
 	tStart = time.Now()
@@ -590,11 +573,76 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 	<-loadDone
 
 	if o.GetUPFEnabled() {
+		logger.Debug("TEST: start listening to uffd socket")
+		if _, err := os.Stat(conf.MemBackend.BackendPath); err == nil {
+			os.Remove(conf.MemBackend.BackendPath)
+		}
 
-		logger.Debug("TEST: Registering VM with snap with the memory manager")
+		var sendfdConn *net.UnixConn
+		uffdListenerCh := make(chan struct{}, 1)
+		var userfaultFD *os.File
+		var baseHostVirtAddr uint64
+
+		go func() {
+			defer close(uffdListenerCh)
+			listener, err := net.Listen("unix", conf.MemBackend.BackendPath) // TODO: find a better Listener API
+			if err != nil {
+				logger.Error("failed to listen to uffd socket")
+				return
+			}
+			defer listener.Close()
+
+			logger.Debug("Listening ...")
+			conn, err := listener.Accept() // blocking
+			if err != nil {
+				logger.Error("failed to accept connection to uffd socket")
+				return
+			}
+
+			sendfdConn, _ = conn.(*net.UnixConn)
+			
+			// Parse mapping and fd
+			buff := make([]byte, 256) // set a maximum buffer size
+			oobBuff := make([]byte, unix.CmsgSpace(4))
+			n, oobn, _, _, err := sendfdConn.ReadMsgUnix(buff, oobBuff)
+			if err != nil {
+				logger.Error("failed to reading from uffd socket")
+				return
+			}
+			buff = buff[:n]
+
+			var fd int
+			if oobn > 0 {
+				scms, err := unix.ParseSocketControlMessage(oobBuff[:oobn])
+				if err != nil {
+					logger.Error("failed to parse socket control message")
+					return
+				}
+				for _, scm := range scms {
+					fds, err := unix.ParseUnixRights(&scm)
+					if err != nil {
+						logger.Error("failed to parse unix rights")
+						return
+					}
+					if len(fds) > 0 {
+						fd = fds[0] // Assuming only one fd is sent.
+						break
+					}
+				}
+			}
+			userfaultFD = os.NewFile(uintptr(fd), "userfaultfd")
+
+			var mapping []GuestRegionUffdMapping
+			if err := json.Unmarshal(buff, &mapping); err != nil {
+				logger.Error("failed to unmarshal data")
+				return
+			}
+			baseHostVirtAddr = mapping[0].BaseHostVirtAddr
+		}()
 
 		<-uffdListenerCh
 
+		logger.Debug("TEST: Registering VM with snap with the memory manager")
 		stateCfg := manager.SnapshotStateCfg{
 			VMID:             vmID,
 			GuestMemPath:     o.getMemoryFile(vmID),
@@ -609,8 +657,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 			logger.Error(err, "failed to register new VM with memory manager")
 		}
 
-		logger.Debug("TEST: activate VM in mm")
-		if activateErr = o.memoryManager.Activate(originVmID, sendfdConn); activateErr != nil {
+		logger.Debug("TEST: activate VM in mm") // TODO: pass too many params in Activate
+		if activateErr = o.memoryManager.Activate(originVmID, userfaultFD, baseHostVirtAddr); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}
 	}

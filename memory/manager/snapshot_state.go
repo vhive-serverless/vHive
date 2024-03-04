@@ -29,10 +29,8 @@ import "C"
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -140,42 +138,42 @@ type GuestRegionUffdMapping struct {
 	PageSizeKiB      uint64 `json:"page_size_kib"`
 }
 
-func (s *SnapshotState) getUFFD(sendfdConn *net.UnixConn) error {
-	buff := make([]byte, 256) // set a maximum buffer size
-	oobBuff := make([]byte, unix.CmsgSpace(4))
+func (s *SnapshotState) getUFFD() error {
+	// buff := make([]byte, 256) // set a maximum buffer size
+	// oobBuff := make([]byte, unix.CmsgSpace(4))
 
-	n, oobn, _, _, err := sendfdConn.ReadMsgUnix(buff, oobBuff)
-	if err != nil {
-		return fmt.Errorf("error reading message: %w", err)
-	}
-	buff = buff[:n]
+	// n, oobn, _, _, err := sendfdConn.ReadMsgUnix(buff, oobBuff)
+	// if err != nil {
+	// 	return fmt.Errorf("error reading message: %w", err)
+	// }
+	// buff = buff[:n]
 
-	var fd int
-	if oobn > 0 {
-		scms, err := unix.ParseSocketControlMessage(oobBuff[:oobn])
-		if err != nil {
-			return fmt.Errorf("error parsing socket control message: %w", err)
-		}
-		for _, scm := range scms {
-			fds, err := unix.ParseUnixRights(&scm)
-			if err != nil {
-				return fmt.Errorf("error parsing unix rights: %w", err)
-			}
-			if len(fds) > 0 {
-				fd = fds[0] // Assuming only one fd is sent.
-				break
-			}
-		}
-	}
-	userfaultFD := os.NewFile(uintptr(fd), "userfaultfd")
+	// var fd int
+	// if oobn > 0 {
+	// 	scms, err := unix.ParseSocketControlMessage(oobBuff[:oobn])
+	// 	if err != nil {
+	// 		return fmt.Errorf("error parsing socket control message: %w", err)
+	// 	}
+	// 	for _, scm := range scms {
+	// 		fds, err := unix.ParseUnixRights(&scm)
+	// 		if err != nil {
+	// 			return fmt.Errorf("error parsing unix rights: %w", err)
+	// 		}
+	// 		if len(fds) > 0 {
+	// 			fd = fds[0] // Assuming only one fd is sent.
+	// 			break
+	// 		}
+	// 	}
+	// }
+	// userfaultFD := os.NewFile(uintptr(fd), "userfaultfd")
 
-	var mapping []GuestRegionUffdMapping
-	if err := json.Unmarshal(buff, &mapping); err != nil {
-		return fmt.Errorf("error unmarshaling data: %w", err)
-	}
+	// var mapping []GuestRegionUffdMapping
+	// if err := json.Unmarshal(buff, &mapping); err != nil {
+	// 	return fmt.Errorf("error unmarshaling data: %w", err)
+	// }
 
-	s.startAddress = mapping[0].BaseHostVirtAddr
-	s.userFaultFD = userfaultFD
+	// s.startAddress = baseHostVirtAddr
+	// s.userFaultFD = userfaultFD
 	return nil
 }
 

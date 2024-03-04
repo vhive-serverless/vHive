@@ -26,7 +26,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"strconv"
 	"sync"
@@ -149,7 +148,7 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 }
 
 // Activate Creates an epoller to serve page faults for the VM
-func (m *MemoryManager) Activate(vmID string, conn *net.UnixConn) error {
+func (m *MemoryManager) Activate(vmID string, uffd *os.File, baseHostVirtAddr uint64) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Activating instance in the memory manager")
@@ -184,10 +183,13 @@ func (m *MemoryManager) Activate(vmID string, conn *net.UnixConn) error {
 		return err
 	}
 
-	if err := state.getUFFD(conn); err != nil {
-		logger.Error("Failed to get uffd")
-		return err
-	}
+	// if err := state.getUFFD(); err != nil {
+	// 	logger.Error("Failed to get uffd")
+	// 	return err
+	// }
+
+	state.startAddress = baseHostVirtAddr
+	state.userFaultFD = uffd
 
 	state.setupStateOnActivate()
 
