@@ -527,38 +527,26 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 			os.Remove(conf.MemBackend.BackendPath)
 		}
 
-		// connChan := make(chan *net.UnixConn, 1)	
-		errChan := make(chan error, 1) 	
 		go func() {
 			listener, err := net.Listen("unix", conf.MemBackend.BackendPath)
 			if err != nil {
-				errChan <- errors.Wrapf(err, "failed to listen to uffd socket")
+				logger.Error("failed to listen to uffd socket")
 				return
-				// return nil, nil, errors.Wrapf(err, "failed to listen to uffd socket")
 			}
 			defer listener.Close()
-		
+
 			logger.Debug("Listening ...")
 			conn, err := listener.Accept()
 			if err != nil {
-				errChan <- errors.Wrapf(err, "failed to accept connection")
-        		return
-				// return nil, nil, errors.Wrapf(err, "failed to accept connection")
+				logger.Error("failed to accept connection to uffd socket")
+				return
 			}
 
-			sendfdConn, _ = conn.(*net.UnixConn)	
+			sendfdConn, _ = conn.(*net.UnixConn)
 			close(uffdListenerCh)
-			
-			// connChan <- sendfdConn
 		}()
 
-		// select {
-		// case sendfdConn = <-connChan:
-		// 	logger.Debug("Connection accepted and type-asserted to *net.UnixConn")
-		// case err := <-errChan:
-		// 	logger.Errorf("Error occurred: %v\n", err)
-		// }
-		time.Sleep(10 * time.Second)
+		time.Sleep(10 * time.Second) // TODO: sleep for 10 seconds to wait for the uffd socket to be ready
 	}
 
 	tStart = time.Now()
@@ -622,7 +610,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		}
 
 		logger.Debug("TEST: activate VM in mm")
-		if activateErr = o.memoryManager.Activate(vmID, sendfdConn); activateErr != nil {
+		if activateErr = o.memoryManager.Activate(originVmID, sendfdConn); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}
 	}

@@ -29,6 +29,7 @@ import "C"
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -39,7 +40,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ftrvxmtrx/fd"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
@@ -133,44 +133,49 @@ func (s *SnapshotState) setupStateOnActivate() {
 	}
 }
 
+type GuestRegionUffdMapping struct {
+	BaseHostVirtAddr uint64 `json:"base_host_virt_addr"`
+	Size             uint64 `json:"size"`
+	Offset           uint64 `json:"offset"`
+	PageSizeKiB      uint64 `json:"page_size_kib"`
+}
+
 func (s *SnapshotState) getUFFD(sendfdConn *net.UnixConn) error {
-	// var d net.Dialer
-	// ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	// defer cancel()
+	buff := make([]byte, 256) // set a maximum buffer size
+	oobBuff := make([]byte, unix.CmsgSpace(4))
 
-	// for {
-	// 	c, err := d.DialContext(ctx, "unix", s.InstanceSockAddr)
-	// 	if err != nil {
-	// 		if ctx.Err() != nil {
-	// 			log.Error("Failed to dial within the context timeout")
-	// 			return err
-	// 		}
-	// 		time.Sleep(1 * time.Millisecond)
-	// 		continue
-	// 	}
-
-	// 	defer c.Close()
-
-	// 	sendfdConn := c.(*net.UnixConn)
-
-	// 	fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
-	// 	if err != nil {
-	// 		log.Error("Failed to receive the uffd")
-	// 		return err
-	// 	}
-
-	// 	s.userFaultFD = fs[0]
-
-	// 	return nil
-	// }
-
-	fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
+	n, oobn, _, _, err := sendfdConn.ReadMsgUnix(buff, oobBuff)
 	if err != nil {
-		log.Error("Failed to receive the uffd")
-		return err
+		return fmt.Errorf("error reading message: %w", err)
+	}
+	buff = buff[:n]
+
+	var fd int
+	if oobn > 0 {
+		scms, err := unix.ParseSocketControlMessage(oobBuff[:oobn])
+		if err != nil {
+			return fmt.Errorf("error parsing socket control message: %w", err)
+		}
+		for _, scm := range scms {
+			fds, err := unix.ParseUnixRights(&scm)
+			if err != nil {
+				return fmt.Errorf("error parsing unix rights: %w", err)
+			}
+			if len(fds) > 0 {
+				fd = fds[0] // Assuming only one fd is sent.
+				break
+			}
+		}
+	}
+	userfaultFD := os.NewFile(uintptr(fd), "userfaultfd")
+
+	var mapping []GuestRegionUffdMapping
+	if err := json.Unmarshal(buff, &mapping); err != nil {
+		return fmt.Errorf("error unmarshaling data: %w", err)
 	}
 
-	s.userFaultFD = fs[0]
+	s.startAddress = mapping[0].BaseHostVirtAddr
+	s.userFaultFD = userfaultFD
 	return nil
 }
 
@@ -401,7 +406,6 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 
 	s.firstPageFaultOnce.Do(
 		func() {
-			s.startAddress = address
 			log.Debugf("TEST: first page fault address %d", address)
 
 			if s.isRecordReady && !s.IsLazyMode {
