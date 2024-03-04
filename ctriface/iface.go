@@ -24,7 +24,8 @@ package ctriface
 
 import (
 	"context"
-	"github.com/vhive-serverless/vhive/snapshotting"
+	"encoding/json"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,6 +33,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/snapshotting"
+	"golang.org/x/sys/unix"
 
 	log "github.com/sirupsen/logrus"
 
@@ -62,8 +66,17 @@ type StartVMResponse struct {
 	GuestIP string
 }
 
+type GuestRegionUffdMapping struct {
+	BaseHostVirtAddr uint64 `json:"base_host_virt_addr"`
+	Size             uint64 `json:"size"`
+	Offset           uint64 `json:"offset"`
+	PageSizeKiB      uint64 `json:"page_size_kib"`
+}
+
 const (
 	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
+	fileBackend   = "File"
+	uffdBackend   = "Uffd"
 )
 
 // StartVM Boots a VM if it does not exist
@@ -205,17 +218,18 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 	if o.GetUPFEnabled() {
 		logger.Debug("Registering VM with the memory manager")
 
+		logger.Debugf("TEST (startWithEnv): current vmID used to registerVM is %v", vmID)
 		stateCfg := manager.SnapshotStateCfg{
-			VMID:           vmID,
-			GuestMemPath:   o.getMemoryFile(vmID),
-			BaseDir:        o.getVMBaseDir(vmID),
-			GuestMemSize:   int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsLazyMode:     o.isLazyMode,
-			VMMStatePath:   o.getSnapshotFile(vmID),
-			WorkingSetPath: o.getWorkingSetFile(vmID),
-			// FIXME (gh-807)
-			//InstanceSockAddr: resp.UPFSockPath,
+			VMID:             vmID,
+			GuestMemPath:     o.getMemoryFile(vmID),
+			BaseDir:          o.getVMBaseDir(vmID),
+			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			IsLazyMode:       o.isLazyMode,
+			VMMStatePath:     o.getSnapshotFile(vmID),
+			WorkingSetPath:   o.getWorkingSetFile(vmID),
+			InstanceSockAddr: o.uffdSockAddr,
 		}
+		logger.Debugf("TEST: show snapStat to be registered: %+v", stateCfg)
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
 			// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
@@ -447,7 +461,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
@@ -494,13 +508,28 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf := o.getVMConfig(vm)
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
-	conf.MemFilePath = snap.GetMemFilePath()
 	conf.ContainerSnapshotPath = containerSnap.GetDevicePath()
+	conf.MemBackend = &proto.MemoryBackend{
+		BackendType: fileBackend,
+		BackendPath: snap.GetMemFilePath(),
+	}
 
 	if o.GetUPFEnabled() {
-		if err := o.memoryManager.FetchState(vmID); err != nil {
+		logger.Debug("TEST: UPF is enabled")
+		conf.MemBackend.BackendType = uffdBackend
+		conf.MemBackend.BackendPath = o.uffdSockAddr
+		logger.Debugf("TEST: the upf socket: %s", conf.MemBackend.BackendPath)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "failed to get UPF socket path for uffd backend")
+		}
+
+		if err := o.memoryManager.FetchState(originVmID); err != nil {
 			return nil, nil, err
 		}
+
+		// ===========================
+
+		// ===========================
 	}
 
 	tStart = time.Now()
@@ -508,7 +537,10 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	go func() {
 		defer close(loadDone)
 
-		if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
+		confStr, _ := json.Marshal(conf)
+		logger.Debugf("TEST: CreateVM request: %s", confStr)
+
+		if _, loadErr := o.fcClient.CreateVM(ctx, conf); loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
 			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), containerSnap.GetDevicePath())
 			files, err := os.ReadDir(filepath.Dir(snap.GetSnapshotFilePath()))
@@ -536,13 +568,102 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		}
 	}()
 
+	logger.Debug("TEST: CreatVM request sent")
+
+	<-loadDone
+
 	if o.GetUPFEnabled() {
-		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
+		logger.Debug("TEST: start listening to uffd socket")
+		if _, err := os.Stat(conf.MemBackend.BackendPath); err == nil {
+			os.Remove(conf.MemBackend.BackendPath)
+		}
+
+		var sendfdConn *net.UnixConn
+		uffdListenerCh := make(chan struct{}, 1)
+		var userfaultFD *os.File
+		var baseHostVirtAddr uint64
+
+		go func() {
+			defer close(uffdListenerCh)
+			listener, err := net.Listen("unix", conf.MemBackend.BackendPath) // TODO: find a better Listener API
+			if err != nil {
+				logger.Error("failed to listen to uffd socket")
+				return
+			}
+			defer listener.Close()
+
+			logger.Debug("Listening ...")
+			conn, err := listener.Accept() // blocking
+			if err != nil {
+				logger.Error("failed to accept connection to uffd socket")
+				return
+			}
+
+			sendfdConn, _ = conn.(*net.UnixConn)
+			
+			// Parse mapping and fd
+			buff := make([]byte, 256) // set a maximum buffer size
+			oobBuff := make([]byte, unix.CmsgSpace(4))
+			n, oobn, _, _, err := sendfdConn.ReadMsgUnix(buff, oobBuff)
+			if err != nil {
+				logger.Error("failed to reading from uffd socket")
+				return
+			}
+			buff = buff[:n]
+
+			var fd int
+			if oobn > 0 {
+				scms, err := unix.ParseSocketControlMessage(oobBuff[:oobn])
+				if err != nil {
+					logger.Error("failed to parse socket control message")
+					return
+				}
+				for _, scm := range scms {
+					fds, err := unix.ParseUnixRights(&scm)
+					if err != nil {
+						logger.Error("failed to parse unix rights")
+						return
+					}
+					if len(fds) > 0 {
+						fd = fds[0] // Assuming only one fd is sent.
+						break
+					}
+				}
+			}
+			userfaultFD = os.NewFile(uintptr(fd), "userfaultfd")
+
+			var mapping []GuestRegionUffdMapping
+			if err := json.Unmarshal(buff, &mapping); err != nil {
+				logger.Error("failed to unmarshal data")
+				return
+			}
+			baseHostVirtAddr = mapping[0].BaseHostVirtAddr
+		}()
+
+		<-uffdListenerCh
+
+		logger.Debug("TEST: Registering VM with snap with the memory manager")
+		stateCfg := manager.SnapshotStateCfg{
+			VMID:             vmID,
+			GuestMemPath:     o.getMemoryFile(vmID),
+			BaseDir:          o.getVMBaseDir(vmID),
+			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			IsLazyMode:       o.isLazyMode,
+			VMMStatePath:     o.getSnapshotFile(vmID),
+			WorkingSetPath:   o.getWorkingSetFile(vmID),
+			InstanceSockAddr: o.uffdSockAddr,
+		}
+		if err := o.memoryManager.RegisterVMFromSnap(originVmID, stateCfg); err != nil {
+			logger.Error(err, "failed to register new VM with memory manager")
+		}
+
+		logger.Debug("TEST: activate VM in mm") // TODO: pass too many params in Activate
+		if activateErr = o.memoryManager.Activate(originVmID, userfaultFD, baseHostVirtAddr); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}
 	}
 
-	<-loadDone
+	// <-loadDone
 
 	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))
 

@@ -23,13 +23,16 @@
 EXTRAGOARGS:=-v -race -cover
 EXTRATESTFILES:=iface_test.go iface.go orch_options.go orch.go
 BENCHFILES:=bench_test.go iface.go orch_options.go orch.go
-# User-level page faults are temporarily disabled (gh-807)
-# WITHUPF:=-upf
-# WITHLAZY:=-lazy
-WITHUPF:=
-WITHLAZY:=
+WITHUPF:=-upf
+WITHLAZY:=-lazy
 GOBENCH:=-v -timeout 1500s
 CTRDLOGDIR:=/tmp/ctrd-logs
+
+debug:
+	./../scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(WITHUPF)
+	./../scripts/clean_fcctr.sh
 
 test:
 	./../scripts/clean_fcctr.sh

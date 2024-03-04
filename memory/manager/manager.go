@@ -46,13 +46,17 @@ const (
 // MemoryManagerCfg Global config of the manager
 type MemoryManagerCfg struct {
 	MetricsModeOn bool
+	UffdSockAddr  string // it could not be appropriate to put sock here
 }
 
 // MemoryManager Serves page faults coming from VMs
 type MemoryManager struct {
 	sync.Mutex
 	MemoryManagerCfg
-	instances map[string]*SnapshotState // Indexed by vmID
+	instances         map[string]*SnapshotState // Indexed by vmID
+	origins           map[string]string         // Track parent vm for vm loaded from snapshot
+	startEpollingCh   chan struct{}
+	startEpollingOnce sync.Once
 }
 
 // NewMemoryManager Initializes a new memory manager
@@ -61,7 +65,10 @@ func NewMemoryManager(cfg MemoryManagerCfg) *MemoryManager {
 
 	m := new(MemoryManager)
 	m.instances = make(map[string]*SnapshotState)
+	m.origins = make(map[string]string)
+	m.startEpollingCh = make(chan struct{}, 1)
 	m.MemoryManagerCfg = cfg
+	m.startEpollingOnce = sync.Once{}
 
 	return m
 }
@@ -86,7 +93,31 @@ func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
 	state := NewSnapshotState(cfg)
 
 	m.instances[vmID] = state
+	return nil
+}
 
+// RegisterVMFromSnap Registers a VM that is loaded from snapshot within the memory manager
+func (m *MemoryManager) RegisterVMFromSnap(originVmID string, cfg SnapshotStateCfg) error {
+	m.Lock()
+	defer m.Unlock()
+
+	vmID := cfg.VMID
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+	logger.Debug("Registering the VM that loaded snapshot with the memory manager")
+
+	if _, ok := m.instances[vmID]; ok {
+		logger.Error("VM already registered with the memory manager")
+		return errors.New("VM already registered with the memory manager")
+	}
+
+	cfg.metricsModeOn = m.MetricsModeOn
+	state := NewSnapshotState(cfg)
+	// state := m.instances[originVmID]
+
+	m.origins[vmID] = originVmID
+	m.instances[vmID] = state
 	return nil
 }
 
@@ -111,12 +142,13 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 	}
 
 	delete(m.instances, vmID)
+	delete(m.origins, vmID)
 
 	return nil
 }
 
 // Activate Creates an epoller to serve page faults for the VM
-func (m *MemoryManager) Activate(vmID string) error {
+func (m *MemoryManager) Activate(vmID string, uffd *os.File, baseHostVirtAddr uint64) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Activating instance in the memory manager")
@@ -129,7 +161,10 @@ func (m *MemoryManager) Activate(vmID string) error {
 
 	m.Lock()
 
+	logger.Debug("TEST: Activate: fetch snapstate by vmID for UFFD")
+
 	state, ok = m.instances[vmID]
+
 	if !ok {
 		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
@@ -148,10 +183,13 @@ func (m *MemoryManager) Activate(vmID string) error {
 		return err
 	}
 
-	if err := state.getUFFD(); err != nil {
-		logger.Error("Failed to get uffd")
-		return err
-	}
+	// if err := state.getUFFD(); err != nil {
+	// 	logger.Error("Failed to get uffd")
+	// 	return err
+	// }
+
+	state.startAddress = baseHostVirtAddr
+	state.userFaultFD = uffd
 
 	state.setupStateOnActivate()
 
@@ -180,7 +218,7 @@ func (m *MemoryManager) FetchState(vmID string) error {
 	state, ok = m.instances[vmID]
 	if !ok {
 		m.Unlock()
-		logger.Error("VM not registered with the memory manager")
+		logger.Error("TEST(fetch state): VM not registered with the memory manager")
 		return errors.New("VM not registered with the memory manager")
 	}
 
@@ -350,6 +388,42 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 
 	return state.latencyMetrics, nil
 }
+
+// Deprecated
+// func (m *MemoryManager) GetUPFSockPath(vmID string, isSnapshotReady bool) (string, error) {
+// 	logger := log.WithFields(log.Fields{"vmID": vmID})
+
+// 	logger.Debug("Get the path of firecracker unix domain socket")
+
+// 	m.Lock()
+
+// 	// id := ""
+// 	// if isSnapshotReady {
+// 	// 	logger.Debugf("TEST: to find originID by vmID %s", vmID)
+// 	// 	originID, ok := m.origins[vmID]
+// 	// 	if !ok {
+// 	// 		logger.Debug("TEST: not loaded from snapshot")
+// 	// 	}
+// 	// 	id = originID
+// 	// }
+// 	// state, ok := m.instances[id]
+
+// 	state, ok := m.instances[vmID]
+// 	if !ok {
+// 		m.Unlock()
+// 		logger.Error("VM not registered with the memory manager")
+// 		return "", errors.New("VM not registered with the memory manager")
+// 	}
+
+// 	m.Unlock()
+
+// 	if state.isActive {
+// 		logger.Error("Cannot get stats while VM is active")
+// 		return "", errors.New("Cannot get stats while VM is active")
+// 	}
+
+// 	return m.instances[vmID].SnapshotStateCfg.InstanceSockAddr, nil
+// }
 
 func getLazyHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
 	header := []string{

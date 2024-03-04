@@ -80,5 +80,8 @@ sudo rm /var/lib/cni/networks/fcnet*/19* || echo clean already
 echo Cleaning snapshots
 sudo rm -rf /fccd/snapshots/*
 
+echo Cleaning UFFD socket
+sudo rm -f /tmp/uffd.sock
+
 echo Creating a fresh devmapper
 source $DIR/create_devmapper.sh

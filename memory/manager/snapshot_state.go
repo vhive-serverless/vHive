@@ -28,11 +28,9 @@ package manager
 import "C"
 
 import (
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -40,14 +38,22 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ftrvxmtrx/fd"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	"github.com/vhive-serverless/vhive/lg"
 	"github.com/vhive-serverless/vhive/metrics"
 
 	"unsafe"
 )
+
+// TODO: for test logging
+type TestPageFault struct {
+	src    uint64
+	dst    uint64
+	mode   uint64
+	offset uint64
+}
 
 // SnapshotStateCfg Config to initialize SnapshotState
 type SnapshotStateCfg struct {
@@ -125,36 +131,50 @@ func (s *SnapshotState) setupStateOnActivate() {
 	}
 }
 
+type GuestRegionUffdMapping struct {
+	BaseHostVirtAddr uint64 `json:"base_host_virt_addr"`
+	Size             uint64 `json:"size"`
+	Offset           uint64 `json:"offset"`
+	PageSizeKiB      uint64 `json:"page_size_kib"`
+}
+
 func (s *SnapshotState) getUFFD() error {
-	var d net.Dialer
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+	// buff := make([]byte, 256) // set a maximum buffer size
+	// oobBuff := make([]byte, unix.CmsgSpace(4))
 
-	for {
-		c, err := d.DialContext(ctx, "unix", s.InstanceSockAddr)
-		if err != nil {
-			if ctx.Err() != nil {
-				log.Error("Failed to dial within the context timeout")
-				return err
-			}
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
+	// n, oobn, _, _, err := sendfdConn.ReadMsgUnix(buff, oobBuff)
+	// if err != nil {
+	// 	return fmt.Errorf("error reading message: %w", err)
+	// }
+	// buff = buff[:n]
 
-		defer c.Close()
+	// var fd int
+	// if oobn > 0 {
+	// 	scms, err := unix.ParseSocketControlMessage(oobBuff[:oobn])
+	// 	if err != nil {
+	// 		return fmt.Errorf("error parsing socket control message: %w", err)
+	// 	}
+	// 	for _, scm := range scms {
+	// 		fds, err := unix.ParseUnixRights(&scm)
+	// 		if err != nil {
+	// 			return fmt.Errorf("error parsing unix rights: %w", err)
+	// 		}
+	// 		if len(fds) > 0 {
+	// 			fd = fds[0] // Assuming only one fd is sent.
+	// 			break
+	// 		}
+	// 	}
+	// }
+	// userfaultFD := os.NewFile(uintptr(fd), "userfaultfd")
 
-		sendfdConn := c.(*net.UnixConn)
+	// var mapping []GuestRegionUffdMapping
+	// if err := json.Unmarshal(buff, &mapping); err != nil {
+	// 	return fmt.Errorf("error unmarshaling data: %w", err)
+	// }
 
-		fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
-		if err != nil {
-			log.Error("Failed to receive the uffd")
-			return err
-		}
-
-		s.userFaultFD = fs[0]
-
-		return nil
-	}
+	// s.startAddress = baseHostVirtAddr
+	// s.userFaultFD = userfaultFD
+	return nil
 }
 
 func (s *SnapshotState) processMetrics() {
@@ -279,7 +299,9 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 		logger.Fatalf("register_epoller: %v", err)
 	}
 
+	// TODO: config where the logger stream goes
 	logger.Debug("Starting polling loop")
+	lg.UniLogger.Println("Starting polling loop")
 
 	defer syscall.Close(s.epfd)
 
@@ -301,6 +323,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 				panic("Wrong number of events")
 			}
 
+			logger.Debugf("TEST: epoller found %d event", nevents)
 			for i := 0; i < nevents; i++ {
 				event := events[i]
 
@@ -374,14 +397,20 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		workingSetInstalled bool
 	)
 
+	// log.SetOutput(os.Stdout)
+	// log.SetLevel(log.DebugLevel)
+
+	log.Debugf("TEST: servePageFault(fd: %d, address: %d)", fd, address)
+
 	s.firstPageFaultOnce.Do(
 		func() {
-			s.startAddress = address
+			log.Debugf("TEST: first page fault address %d", address)
 
 			if s.isRecordReady && !s.IsLazyMode {
 				if s.metricsModeOn {
 					tStart = time.Now()
 				}
+				log.Debug("TEST: first page fault once installation")
 				s.installWorkingSetPages(fd)
 				if s.metricsModeOn {
 					s.currentMetric.MetricMap[installWSMetric] = metrics.ToUS(time.Since(tStart))
@@ -400,6 +429,13 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	src := uint64(uintptr(unsafe.Pointer(&s.guestMem[offset])))
 	dst := uint64(int64(address) & ^(int64(os.Getpagesize()) - 1))
 	mode := uint64(0)
+
+	testPF := TestPageFault{
+		src:    src,
+		dst:    dst,
+		mode:   mode,
+		offset: offset,
+	}
 
 	rec := Record{
 		offset: offset,
@@ -427,6 +463,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		tStart = time.Now()
 	}
 
+	log.Debugf("TEST: install happen for %v", testPF)
 	err := installRegion(fd, src, dst, mode, 1)
 
 	if s.metricsModeOn {

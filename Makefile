@@ -24,11 +24,8 @@ SUBDIRS:=ctriface taps misc profile
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
 EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go
-# User-level page faults are temporarily disabled (gh-807)
-# WITHUPF:=-upfTest
-# WITHLAZY:=-lazyTest
-WITHUPF:=
-WITHLAZY:=
+WITHUPF:=-upfTest
+WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
 CTRDLOGDIR:=/tmp/ctrd-logs
 
@@ -44,6 +41,11 @@ clean:
 test-all: test-subdirs test-orch
 
 test-orch: test test-man
+
+debug:
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF)
 
 test:
 	./scripts/clean_fcctr.sh
