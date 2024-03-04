@@ -47,12 +47,6 @@ var (
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-
-	if *isUPFEnabled {
-		log.Error("User-level page faults are temporarily disabled (gh-807)")
-		os.Exit(-1)
-	}
-
 	os.Exit(m.Run())
 }
 
