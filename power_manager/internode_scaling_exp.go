@@ -92,7 +92,7 @@ func processLatencies(records []int64, serviceName string) {
 	ninetiethPercentile := percentile(records, 90)
 	difference := float64(ninetiethPercentile-fifthPercentile) / float64(fifthPercentile)
 	fmt.Println(serviceName, difference)
-	if difference > 0.40 && !ServiceAssignment[serviceName]  {  // Assign to high performance class
+	if difference > 0.20 && !ServiceAssignment[serviceName]  {  // Assign to high performance class
 		fmt.Println("Assigning to high performance class")
 		command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-high\"}}}}}' --namespace default", serviceName)
 		cmd := exec.Command("bash", "-c", command)
