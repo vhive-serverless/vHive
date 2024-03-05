@@ -45,9 +45,12 @@ else
   echo "No service file, no need to clean"
 fi
 
-
 VHIVE_ROOT="$(git rev-parse --show-toplevel)"
-"$VHIVE_ROOT"/scripts/cloudlab/setup_node.sh "$SANDBOX"
+SCRIPTS=$VHIVE_ROOT/scripts
+
+source $SCRIPTS/install_go.sh
+pushd $SCRIPTS && go build -o setup_tool && popd
+$SCRIPTS/setup_tool setup_node "$SANDBOX"
 
 cd
 export RUNNER_ALLOW_RUNASROOT=1
@@ -58,4 +61,3 @@ RUNNER_LABEL=$SANDBOX-cri
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s - -s "$GH_ORG"/vhive -n "$RUNNER_NAME" -l "$RUNNER_LABEL" -f
 
 echo "0 4 * * * root reboot" | sudo tee -a /etc/crontab
-

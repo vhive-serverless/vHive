@@ -42,6 +42,7 @@ type RunnerConf struct {
 
 type DeployerConf struct {
 	GhOrg        string                `json:"ghOrg"`
+	GhBranch     string                `json:"ghBranch"`
 	GhPat        string                `json:"ghPat"`
 	HostUsername string                `json:"hostUsername"`
 	RunnerConfs  map[string]RunnerConf `json:"runners"`
@@ -121,8 +122,15 @@ func deployRunner(host string, runnerConf RunnerConf, deployerConf *DeployerConf
 		log.Fatalf("Failed to connect to %s@%s: %s", deployerConf.HostUsername, host, err)
 	}
 
+	log.Debug("Remove unattended-upgrades")
+	out, err := client.Exec("sudo systemctl stop unattended-upgrades && sudo apt remove -y unattended-upgrades")
+	log.Debug(string(out))
+	if err != nil {
+		log.Fatalf("Cannot disable unattended-upgrades")
+	}
+
 	log.Debugf("Cloning vHive repository on %s@%s", deployerConf.HostUsername, host)
-	out, err := client.Exec(fmt.Sprintf("rm -rf ./vhive ./actions-runner && git clone --depth=1 https://github.com/%s/vhive", deployerConf.GhOrg))
+	out, err = client.Exec(fmt.Sprintf("rm -rf ./vhive ./actions-runner && git clone --depth=1 --branch=%s https://github.com/%s/vhive", deployerConf.GhBranch, deployerConf.GhOrg))
 	log.Debug(string(out))
 	if err != nil {
 		log.Fatalf("Failed to clone vHive repository on %s@%s: %s", deployerConf.HostUsername, host, err)
