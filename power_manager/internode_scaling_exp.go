@@ -77,7 +77,6 @@ func assignWorkload(ch_latency <-chan int64, serviceName string, wg *sync.WaitGr
 		case <-ticker.C:
 			// Time to process the data
 			processLatencies(records, serviceName)
-			records = nil // Reset the records slice
 		}
 	}
 }
