@@ -151,7 +151,7 @@ func main() {
 	ch_latency_sleeping := make(chan int64)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(3)
 	go writeToCSV(writer, ch, &wg)
 	go assignWorkload(ch_latency_spinning, "spinning-go", &wg)
 	go assignWorkload(ch_latency_sleeping, "sleeping-go", &wg)
