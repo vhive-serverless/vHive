@@ -93,24 +93,24 @@ func processLatencies(records []int64, serviceName string) {
 	fmt.Println(serviceName, difference)
 	if difference >= 0.25 && !ServiceAssignment[serviceName] { // Assign to high performance class
 		fmt.Println("Assigning to high performance class")
-		command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-high\"}}}}}' --namespace default", serviceName)
-		cmd := exec.Command("bash", "-c", command)
-		_, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf(fmt.Sprintf("ERR3: %+v", err))
-			return
-		}
+		// command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-high\"}}}}}' --namespace default", serviceName)
+		// cmd := exec.Command("bash", "-c", command)
+		// _, err := cmd.CombinedOutput()
+		// if err != nil {
+		// 	fmt.Printf(fmt.Sprintf("ERR3: %+v", err))
+		// 	return
+		// }
 		ServiceAssignment[serviceName] = true
 	}
 	if difference < 0.15 && !ServiceAssignment[serviceName] { // Assign to low performance class
 		fmt.Println("Assigning to low performance class")
-		command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-low\"}}}}}' --namespace default", serviceName)
-		cmd := exec.Command("bash", "-c", command)
-		_, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf(fmt.Sprintf("ERR3: %+v", err))
-			return
-		}
+		// command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-low\"}}}}}' --namespace default", serviceName)
+		// cmd := exec.Command("bash", "-c", command)
+		// _, err := cmd.CombinedOutput()
+		// if err != nil {
+		// 	fmt.Printf(fmt.Sprintf("ERR3: %+v", err))
+		// 	return
+		// }
 		ServiceAssignment[serviceName] = true
 	}
 }
