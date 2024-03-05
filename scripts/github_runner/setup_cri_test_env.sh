@@ -45,11 +45,7 @@ $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
 # FIXME (gh-709)
 #source etc/profile && go run $VHIVE_ROOT/examples/registry/populate_registry.go -imageFile $VHIVE_ROOT/examples/registry/images.txt
 
-sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f $VHIVE_ROOT/configs/knative_workloads/helloworld.yaml
-# FIXME (gh-709)
-#KUBECONFIG=/etc/kubernetes/admin.conf sudo kn service apply helloworldlocal -f $VHIVE_ROOT/configs/knative_workloads/helloworld_local.yaml
-#                                      ^^^^^^^ This WILL NOT work because ${KUBECONFIG} would not be set in the context when executing `kn`
-
-sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f $VHIVE_ROOT/configs/knative_workloads/helloworldSerial.yaml
-sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f $VHIVE_ROOT/configs/knative_workloads/pyaes.yaml
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/helloworld.yaml
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/helloworldSerial.yaml
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/pyaes.yaml
 sleep 30s
