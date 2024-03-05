@@ -153,13 +153,13 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(3)
 	go writeToCSV(writer, ch, &wg)
-	go assignWorkload(ch_latency_spinning, "spinning-go", &wg)
-	go assignWorkload(ch_latency_sleeping, "sleeping-go", &wg)
+	go assignWorkload(ch_latency_spinning, "aes-python", &wg)
+	go assignWorkload(ch_latency_sleeping, "auth-python", &wg)
 
 	now := time.Now()
 	for time.Since(now) < (time.Minute * 5) {
-		go invoke(5, SleepingURL, ch, ch_latency_spinning, ch_latency_sleeping, false)
-		go invoke(5, SpinningURL, ch, ch_latency_spinning, ch_latency_sleeping, true)
+		go invoke(5, AuthURL, ch, ch_latency_spinning, ch_latency_sleeping, false)
+		go invoke(5, AesURL, ch, ch_latency_spinning, ch_latency_sleeping, true)
 
 		time.Sleep(1 * time.Second) // Wait for 1 second before invoking again
 	}
