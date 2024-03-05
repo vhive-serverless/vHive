@@ -88,7 +88,7 @@ func processLatencies(records []int64, serviceName string) {
 	}
 
 	fifthPercentile := percentile(records, 5)
-	ninetiethPercentile := percentile(records, 90)
+	ninetiethPercentile := percentile(records, 95)
 	difference := float64(ninetiethPercentile-fifthPercentile) / float64(fifthPercentile)
 	fmt.Println(serviceName, difference)
 	if difference > 0.40 && !ServiceAssignment[serviceName]  {  // Assign to high performance class
