@@ -5,60 +5,26 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
 )
 
 var (
-	SpinningURL = "spinning-go.default.192.168.1.240.sslip.io"
-	SleepingURL = "sleeping-go.default.192.168.1.240.sslip.io"
-	AesURL      = "aes-python.default.192.168.1.240.sslip.io"
-	AuthURL     = "auth-python.default.192.168.1.240.sslip.io"
+	SpinningURL       = "spinning-go.default.192.168.1.240.sslip.io"
+	SleepingURL       = "sleeping-go.default.192.168.1.240.sslip.io"
+	AesURL            = "aes-python.default.192.168.1.240.sslip.io"
+	AuthURL           = "auth-python.default.192.168.1.240.sslip.io"
+	ServiceAssignment = map[string]bool{
+		"spinning-go": false,
+		"sleeping-go": false,
+		"aes-python":  false,
+		"auth-python": false,
+	}
 )
 
-func setPowerProfileToNodes(freq1 int64, freq2 int64) error {
-	// powerConfig
-	command := fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerConfig\nmetadata:\n  name: power-config\n  namespace: intel-power\nspec:\n powerNodeSelector:\n    kubernetes.io/os: linux\n powerProfiles:\n    - \"performance\"\nEOF")
-	cmd := exec.Command("bash", "-c", command)
-	_, err := cmd.CombinedOutput()
-	if err != nil {
-		return err
-	}
-
-	// performanceProfile w freq
-	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerProfile\nmetadata:\n  name: performance-node1\n  namespace: intel-power\nspec:\n  name: \"performance-node1\"\n  max: %d\n  min: %d\n  shared: true\n  governor: \"performance\"\nEOF", freq1, freq1)
-	cmd = exec.Command("bash", "-c", command)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return err
-	}
-
-	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerProfile\nmetadata:\n  name: performance-node2\n  namespace: intel-power\nspec:\n  name: \"performance-node2\"\n  max: %d\n  min: %d\n  shared: true\n  governor: \"performance\"\nEOF", freq2, freq2)
-	cmd = exec.Command("bash", "-c", command)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return err
-	}
-
-	// apply to node
-	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  name: performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  name: \"performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n  powerProfile: \"performance-node1\"\nEOF")
-	cmd = exec.Command("bash", "-c", command)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return err
-	}
-
-	command = fmt.Sprintf("kubectl apply -f - <<EOF\napiVersion: \"power.intel.com/v1\"\nkind: PowerWorkload\nmetadata:\n  name: performance-node-2.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\n  namespace: intel-power\nspec:\n  name: \"performance-node-2.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload\"\n  allCores: true\n  powerNodeSelector:\n    kubernetes.io/hostname: node-2.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us\n  powerProfile: \"performance-node2\"\nEOF")
-	cmd = exec.Command("bash", "-c", command)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func invoke(n int, url string, ch chan<- []string, spinning bool) {
+func invoke(n int, url string, ch chan<- []string, ch_latency_spinning chan<- int64, ch_latency_sleeping chan<- int64, spinning bool) {
 	for i := 0; i < n; i++ {
 		go func() {
 			command := fmt.Sprintf("cd $HOME/vSwarm/tools/test-client && ./test-client --addr %s:80 --name \"allow\"", url)
@@ -72,8 +38,10 @@ func invoke(n int, url string, ch chan<- []string, spinning bool) {
 			endInvoke := time.Now().UTC().UnixMilli()
 			latency := endInvoke - startInvoke
 			if spinning {
+				ch_latency_spinning <- latency
 				ch <- []string{strconv.FormatInt(startInvoke, 10), strconv.FormatInt(endInvoke, 10), strconv.FormatInt(latency, 10), "-"}
 			} else {
+				ch_latency_sleeping <- latency
 				ch <- []string{strconv.FormatInt(startInvoke, 10), strconv.FormatInt(endInvoke, 10), "-", strconv.FormatInt(latency, 10)}
 			}
 		}()
@@ -87,6 +55,80 @@ func writeToCSV(writer *csv.Writer, ch <-chan []string, wg *sync.WaitGroup) {
 			fmt.Printf("Error writing to CSV file: %v\n", err)
 		}
 	}
+}
+
+func assignWorkload(ch_latency <-chan int64, serviceName string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	var records []int64
+
+	for {
+		select {
+		case record, ok := <-ch_latency:
+			if !ok {
+				// Channel is closed, process remaining data
+				processLatencies(records, serviceName)
+				return
+			}
+			records = append(records, record)
+		case <-ticker.C:
+			// Time to process the data
+			processLatencies(records, serviceName)
+			records = nil // Reset the records slice
+		}
+	}
+}
+
+func processLatencies(records []int64, serviceName string) {
+	if len(records) == 0 {
+		fmt.Println("No data to process")
+		return
+	}
+
+	fifthPercentile := percentile(records, 5)
+	eightiethPercentile := percentile(records, 80)
+	difference := float64(eightiethPercentile-fifthPercentile) / float64(fifthPercentile)
+	if difference > 0.40 && !ServiceAssignment[serviceName]  {  // Assign to high performance class
+		fmt.Println("Assigning to high performance class")
+		command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-high\"}}}}}' --namespace default", serviceName)
+		cmd := exec.Command("bash", "-c", command)
+		_, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf(fmt.Sprintf("ERR3: %+v", err))
+			return
+		}
+		ServiceAssignment[serviceName] = true
+	}
+	if difference < 0.05 && !ServiceAssignment[serviceName] { // Assign to low performance class
+		fmt.Println("Assigning to low performance class")
+		command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-low\"}}}}}' --namespace default", serviceName)
+		cmd := exec.Command("bash", "-c", command)
+		_, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf(fmt.Sprintf("ERR3: %+v", err))
+			return
+		}
+		ServiceAssignment[serviceName] = true
+	}
+}
+
+func percentile(data []int64, p float64) int64 {
+	if len(data) == 0 {
+		return 0
+	}
+	sort.Slice(data, func(i, j int) bool { return data[i] < data[j] })
+	n := (p / 100) * float64(len(data)-1)
+	index := int(n)
+
+	if index < 0 {
+		index = 0
+	} else if index >= len(data) {
+		index = len(data) - 1
+	}
+	return data[index]
 }
 
 func main() {
@@ -105,18 +147,25 @@ func main() {
 	}
 
 	ch := make(chan []string)
+	ch_latency_spinning := make(chan int64)
+	ch_latency_sleeping := make(chan int64)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go writeToCSV(writer, ch, &wg)
+	go assignWorkload(ch_latency_spinning, "spinning-go", &wg)
+	go assignWorkload(ch_latency_sleeping, "sleeping-go", &wg)
 
 	now := time.Now()
-	for time.Since(now) < (time.Minute *3) {
-		go invoke(5, AuthURL, ch, false)
-		go invoke(5, AesURL, ch, true)
+	for time.Since(now) < (time.Minute * 5) {
+		go invoke(5, AuthURL, ch, ch_latency_spinning, ch_latency_sleeping, false)
+		go invoke(5, AesURL, ch, ch_latency_spinning, ch_latency_sleeping, true)
 
 		time.Sleep(1 * time.Second) // Wait for 1 second before invoking again
 	}
 	close(ch)
+	close(ch_latency_spinning)
+	close(ch_latency_sleeping)
 	wg.Wait()
 
 	err = writer.Write(append([]string{"-", "-", "-", "-"}))
