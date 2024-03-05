@@ -92,7 +92,7 @@ func processLatencies(records []int64, serviceName string) {
 	ninetiethPercentile := percentile(records, 90)
 	difference := float64(ninetiethPercentile-fifthPercentile) / float64(fifthPercentile)
 	fmt.Println(serviceName, difference)
-	if difference > 0.20 && !ServiceAssignment[serviceName]  {  // Assign to high performance class
+	if difference > 0.25 && !ServiceAssignment[serviceName]  {  // Assign to high performance class
 		fmt.Println("Assigning to high performance class")
 		command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-high\"}}}}}' --namespace default", serviceName)
 		cmd := exec.Command("bash", "-c", command)
@@ -103,7 +103,7 @@ func processLatencies(records []int64, serviceName string) {
 		}
 		ServiceAssignment[serviceName] = true
 	}
-	if difference < 0.05 && !ServiceAssignment[serviceName] { // Assign to low performance class
+	if difference < 0.10 && !ServiceAssignment[serviceName] { // Assign to low performance class
 		fmt.Println("Assigning to low performance class")
 		command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-low\"}}}}}' --namespace default", serviceName)
 		cmd := exec.Command("bash", "-c", command)
@@ -154,13 +154,13 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(3)
 	go writeToCSV(writer, ch, &wg)
-	go assignWorkload(ch_latency_spinning, "aes-python", &wg)
-	go assignWorkload(ch_latency_sleeping, "auth-python", &wg)
+	go assignWorkload(ch_latency_spinning, "spinning-go", &wg)
+	go assignWorkload(ch_latency_sleeping, "sleeping-go", &wg)
 
 	now := time.Now()
 	for time.Since(now) < (time.Minute * 5) {
-		go invoke(5, AuthURL, ch, ch_latency_spinning, ch_latency_sleeping, false)
-		go invoke(5, AesURL, ch, ch_latency_spinning, ch_latency_sleeping, true)
+		go invoke(5, SleepingURL, ch, ch_latency_spinning, ch_latency_sleeping, false)
+		go invoke(5, SpinningURL, ch, ch_latency_spinning, ch_latency_sleeping, true)
 
 		time.Sleep(1 * time.Second) // Wait for 1 second before invoking again
 	}
