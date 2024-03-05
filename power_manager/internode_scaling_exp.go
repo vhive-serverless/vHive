@@ -91,7 +91,7 @@ func processLatencies(records []int64, serviceName string) {
 	fifthPercentile := percentile(records, 5)
 	eightiethPercentile := percentile(records, 80)
 	difference := float64(eightiethPercentile-fifthPercentile) / float64(fifthPercentile)
-	fmt.Println(difference)
+	fmt.Println(serviceName, difference)
 	if difference > 0.40 && !ServiceAssignment[serviceName]  {  // Assign to high performance class
 		fmt.Println("Assigning to high performance class")
 		command := fmt.Sprintf("kubectl patch service.serving.knative.dev %s --type merge --patch '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"loader-nodetype\":\"worker-high\"}}}}}' --namespace default", serviceName)
@@ -159,8 +159,8 @@ func main() {
 
 	now := time.Now()
 	for time.Since(now) < (time.Minute * 5) {
-		go invoke(5, AuthURL, ch, ch_latency_spinning, ch_latency_sleeping, false)
-		go invoke(5, AesURL, ch, ch_latency_spinning, ch_latency_sleeping, true)
+		go invoke(5, SleepingURL, ch, ch_latency_spinning, ch_latency_sleeping, false)
+		go invoke(5, SpinningURL, ch, ch_latency_spinning, ch_latency_sleeping, true)
 
 		time.Sleep(1 * time.Second) // Wait for 1 second before invoking again
 	}
