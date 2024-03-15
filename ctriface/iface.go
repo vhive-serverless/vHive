@@ -458,7 +458,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
 		loadErr, activateErr error
-		loadDone             = make(chan int)
+		// loadDone             = make(chan int)
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -505,9 +505,12 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		BackendType: fileBackend,
 		BackendPath: snap.GetMemFilePath(),
 	}
+	conf.ResumeVM = true
+	conf.EnableDiffSnapshots = false
 
 	var sendfdConn *net.UnixConn
-	uffdListenerCh := make(chan struct{}, 1)
+	// uffdListenerCh := make(chan struct{}, 1)
+	var listener net.Listener
 
 	if o.GetUPFEnabled() {
 		logger.Debug("TEST: UPF is enabled")
@@ -527,73 +530,76 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 			os.Remove(conf.MemBackend.BackendPath)
 		}
 
-		go func() {
-			listener, err := net.Listen("unix", conf.MemBackend.BackendPath)
-			if err != nil {
-				logger.Error("failed to listen to uffd socket")
-				return
-			}
-			defer listener.Close()
+		// ===============================================================
+		listener, err = net.Listen("unix", conf.MemBackend.BackendPath)
+		if err != nil {
+			logger.Error("failed to listen to uffd socket")
+			return
+		}
+		// defer listener.Close()
 
-			logger.Debug("Listening ...")
-			conn, err := listener.Accept()
-			if err != nil {
-				logger.Error("failed to accept connection to uffd socket")
-				return
-			}
+		// logger.Debug("Listening ...")
+		// conn, err := listener.Accept()
+		// if err != nil {
+		// 	logger.Error("failed to accept connection to uffd socket")
+		// 	return
+		// }
 
-			sendfdConn, _ = conn.(*net.UnixConn)
-			close(uffdListenerCh)
-		}()
+		// sendfdConn, _ = conn.(*net.UnixConn)
+		// close(uffdListenerCh)
 
-		time.Sleep(10 * time.Second) // TODO: sleep for 10 seconds to wait for the uffd socket to be ready
+		// time.Sleep(10 * time.Second) // TODO: sleep for 10 seconds to wait for the uffd socket to be ready
 	}
 
 	tStart = time.Now()
 
-	go func() {
-		defer close(loadDone)
+	confStr, _ := json.Marshal(conf)
+	logger.Debugf("TEST: CreateVM request: %s", confStr)
 
-		confStr, _ := json.Marshal(conf)
-		logger.Debugf("TEST: CreateVM request: %s", confStr)
-
-		if _, loadErr := o.fcClient.CreateVM(ctx, conf); loadErr != nil {
-			logger.Error("Failed to load snapshot of the VM: ", loadErr)
-			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), containerSnap.GetDevicePath())
-			files, err := os.ReadDir(filepath.Dir(snap.GetSnapshotFilePath()))
-			if err != nil {
-				logger.Error(err)
-			}
-
-			snapFiles := ""
-			for _, f := range files {
-				snapFiles += f.Name() + ", "
-			}
-
-			logger.Error(snapFiles)
-
-			files, _ = os.ReadDir(filepath.Dir(containerSnap.GetDevicePath()))
-			if err != nil {
-				logger.Error(err)
-			}
-
-			snapFiles = ""
-			for _, f := range files {
-				snapFiles += f.Name() + ", "
-			}
-			logger.Error(snapFiles)
+	if _, loadErr := o.fcClient.CreateVM(ctx, conf); loadErr != nil {
+		logger.Error("Failed to load snapshot of the VM: ", loadErr)
+		logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), containerSnap.GetDevicePath())
+		files, err := os.ReadDir(filepath.Dir(snap.GetSnapshotFilePath()))
+		if err != nil {
+			logger.Error(err)
 		}
-	}()
 
+		snapFiles := ""
+		for _, f := range files {
+			snapFiles += f.Name() + ", "
+		}
+
+		logger.Error(snapFiles)
+
+		files, _ = os.ReadDir(filepath.Dir(containerSnap.GetDevicePath()))
+		if err != nil {
+			logger.Error(err)
+		}
+
+		snapFiles = ""
+		for _, f := range files {
+			snapFiles += f.Name() + ", "
+		}
+		logger.Error(snapFiles)
+	}
 	logger.Debug("TEST: CreatVM request sent")
 
-	<-loadDone
+	// <-loadDone
 
 	if o.GetUPFEnabled() {
+		logger.Debug("Listening ...")
+		conn, err := listener.Accept() // TODO: a question, must accept() first before connect()?
+		if err != nil {
+			logger.Error("failed to accept connection to uffd socket")
+			return
+		}
+		sendfdConn, _ = conn.(*net.UnixConn)
+		listener.Close()
+		// close(uffdListenerCh)
 
 		logger.Debug("TEST: Registering VM with snap with the memory manager")
 
-		<-uffdListenerCh
+		// <-uffdListenerCh
 
 		stateCfg := manager.SnapshotStateCfg{
 			VMID:             vmID,
@@ -613,6 +619,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		if activateErr = o.memoryManager.Activate(originVmID, sendfdConn); activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}
+
+		// time.Sleep(30 * time.Minute) // pause to see fc logs
 	}
 
 	// <-loadDone
