@@ -199,7 +199,7 @@ func SetupGvisorContainerd() error {
 	return nil
 }
 
-func SetupSystem() error {
+func SetupSystem(haMode string) error {
 	// Original Bash Scripts: scripts/setup_system.sh
 
 	// Install required dependencies
@@ -290,6 +290,53 @@ func SetupSystem() error {
 	_, err = utils.ExecShellCmd(bashCmd)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to set up NAT!\n") {
 		return err
+	}
+
+	// High-availability control plane
+	if haMode == "MASTER" || haMode == "BACKUP" {
+		k8s_ha_path := path.Join(configs.VHive.VHiveRepoPath, "configs/k8s_ha")
+
+		err = utils.InstallPackages("haproxy keepalived")
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to install keepalived and haproxy!\n") {
+			return err
+		}
+
+		err = utils.CopyToDir(path.Join(k8s_ha_path, "check_apiserver.sh"), "/etc/keepalived/check_apiserver.sh", true)
+		if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/keepalived/check_apiserver.sh!\n") {
+			return err
+		}
+
+		_, err = utils.ExecVHiveBashScript("configs/k8s_ha/substitute_interface.sh")
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to create HA load balancer !\n") {
+			return err
+		}
+
+		if haMode == "MASTER" {
+			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_master.conff"), "/etc/keepalived/keepalived.conf", true)
+			if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/keepalived/keepalived.conf!\n") {
+				return err
+			}
+		} else {
+			err = utils.CopyToDir(path.Join(k8s_ha_path, "keepalived_backup.conff"), "/etc/keepalived/keepalived.conf", true)
+			if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/keepalived/keepalived.conf!\n") {
+				return err
+			}
+		}
+
+		err = utils.CopyToDir(path.Join(k8s_ha_path, "haproxy.cfg"), "/etc/haproxy/haproxy.cfg", true)
+		if !utils.CheckErrorWithMsg(err, "Failed to copy files to /etc/haproxy/haproxy.cfg!\n") {
+			return err
+		}
+
+		_, err = utils.ExecShellCmd("sudo systemctl enable keepalived --now")
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to start Keepalived!\n") {
+			return err
+		}
+
+		_, err = utils.ExecShellCmd("sudo systemctl enable haproxy --now")
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to start HAProxy!\n") {
+			return err
+		}
 	}
 
 	return nil
