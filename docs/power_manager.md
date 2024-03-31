@@ -17,7 +17,7 @@ carries out the changes.
 ## Setup 
 
 Execute the following below **as a non-root user with sudo rights** using **bash**:
-1. Follow [a quick-start guide](docs/quickstart_guide.md) to set up a Knative cluster to run the experiments. 
+1. Follow [a quick-start guide](quickstart_guide.md) to set up a Knative cluster to run the experiments. 
 
 2. 4 vSwarm benchmarks are used to run the experiments (Spinning, Sleeping, AES, Auth). On master node, deploy these benchmarks on the Knative cluster.
     ```bash
@@ -39,7 +39,7 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     ```
    Then run the experiment:
     ```bash
-    go run $HOME/vhive/examples/power_manager/workload_sensitivity/main.go;
+    go run $HOME/vhive/examples/power_manager/workload_sensitivity_exp/main.go;
     ```
 
 ### Experiment 2: Internode scaling
@@ -112,4 +112,9 @@ spec:
     echo performance | sudo tee /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
     echo 2400000 | sudo tee /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
     echo 2400000 | sudo tee /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+    ```
+
+6. Run the experiment:
+    ```bash
+    go run $HOME/vhive/examples/power_manager/assign_exp/main.go;
     ```
