@@ -29,10 +29,6 @@ git clone https://github.com/intel/kubernetes-power-manager $HOME/kubernetes-pow
 kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/namespace.yaml
 kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/rbac.yaml
 
-# Install docker
-sudo apt update
-sudo apt install docker.io
-
 # Generate the CRD templates, create the Custom Resource Definitions, and install the CRDs and Built Docker images locally
 cd $HOME/kubernetes-power-manager
 make
@@ -48,7 +44,7 @@ kubectl apply -f $HOME/vhive/power_manager/powerconfig.yaml
 # Apply Profile. U can modify the spec in the shared-profile.yaml file
 kubectl apply -f $HOME/vhive/power_manager/shared-profile.yaml
 
-# Apply the shared PowerWorkload. Al CPUs (except reservedCPUs specified in this yaml file) will be tuned ti the specified frequency in shared-profile.yaml
+# Apply the shared PowerWorkload. All CPUs (except reservedCPUs specified in this yaml file) will be tuned to the specified frequency in shared-profile.yaml
 kubectl apply -f $HOME/vhive/power_manager/shared-workload.yaml
 
 kubectl get powerprofiles -n intel-power

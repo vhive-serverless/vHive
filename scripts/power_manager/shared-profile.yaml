@@ -1,10 +1,10 @@
 apiVersion: power.intel.com/v1
 kind: PowerProfile
 metadata:
-  name: shared
+  name: performance
   namespace: intel-power
 spec:
-  name: "shared"
+  name: "performance"
   max: 1200
   min: 1200
   shared: true 
