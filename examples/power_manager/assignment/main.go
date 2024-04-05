@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	powermanager "github.com/vhive-serverless/vhive/examples/power_manager"
+	powermanager "github.com/vhive-serverless/vhive/power_manager"
 )
 
 var (

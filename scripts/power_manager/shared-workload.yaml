@@ -1,11 +1,15 @@
 apiVersion: "power.intel.com/v1"
 kind: PowerWorkload
 metadata:
-  name: performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload
+  # Replace <NODE_NAME> with the Node you want to associate with this PowerWorkload 
+  name: performance-<NODE_NAME>-workload
   namespace: intel-power
 spec:
-  name: "performance-node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us-workload"
+  # Replace <NODE_NAME> with the Node you want to associate with this PowerWorkload 
+  name: "performance-<NODE_NAME>-workload"
   allCores: true
   powerNodeSelector:
-    kubernetes.io/hostname: node-1.kt-cluster.ntu-cloud-pg0.utah.cloudlab.us
+    # The label must be as below, as this workload will be specific to the Node
+    kubernetes.io/hostname: <NODE_NAME>
+  # Replace this value with the intended shared PowerProfile
   powerProfile: "performance"

@@ -25,6 +25,22 @@
 # Install K8 Power Manager
 git clone https://github.com/intel/kubernetes-power-manager $HOME/kubernetes-power-manager
 
+# Install Docker
+sudo apt-get update
+sudo apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
 # Set up the necessary Namespace, Service Account, and RBAC rules for the Kubernetes Power Manager
 kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/namespace.yaml
 kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/rbac.yaml
@@ -32,8 +48,6 @@ kubectl apply -f $HOME/kubernetes-power-manager/config/rbac/rbac.yaml
 # Generate the CRD templates, create the Custom Resource Definitions, and install the CRDs and Built Docker images locally
 cd $HOME/kubernetes-power-manager
 make
-sudo docker pull intel/power-operator
-sudo docker pull intel/power-node-agent:latest
 
 # Apply Power Manager Controller
 kubectl apply -f $HOME/kubernetes-power-manager/config/manager/manager.yaml
