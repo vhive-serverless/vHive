@@ -5,12 +5,13 @@
 ### Added
 
 - Added support for [`OpenYurt`](https://openyurt.io/), an open platform that extends upstream Kubernetes to run on edge node pools. More details on how to the `Knative-atop-OpenYurt` mode are described [here](scripts/openyurt-deployer/README.md).
+- Added support for arm64 ubuntu 18.04 in stock-only setup with [setup scripts](./scripts/setup.go).
 
 
 ### Changed
 
 - Removed the utils and examples from the vHive repo, moved to [vSwarm](https://github.com/vhive-serverless/vSwarm).
-- Bumped Go to 1.21, Kubernetes to v1.29, Knative to v1.13, Istio to 1.20.2, MetalLB to 0.14.3, Calico to 3.27.2.
+- Bumped Go to 1.21, Kubernetes to v1.29, Knative to v1.13, Istio to 1.20.2, MetalLB to 0.14.3, Calico to 3.27.3.
 - Made the automatic patching of the knative-serving and calico manifests instead of storing the patched manifests in the repo.
 
 ### Fixed

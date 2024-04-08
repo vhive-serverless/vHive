@@ -64,7 +64,15 @@ var System = SystemEnvironmentStruct{
 }
 
 func (system *SystemEnvironmentStruct) GetProtocDownloadUrl() string {
-	return fmt.Sprintf(system.ProtocDownloadUrlTemplate, system.ProtocVersion, system.ProtocVersion)
+	unameArch := system.CurrentArch
+	switch unameArch {
+	case "amd64":
+		unameArch = "x86_64"
+	case "arm64":
+		unameArch = "aarch_64"
+	default:
+	}
+	return fmt.Sprintf(system.ProtocDownloadUrlTemplate, system.ProtocVersion, system.ProtocVersion, unameArch)
 }
 
 func (system *SystemEnvironmentStruct) GetContainerdDownloadUrl() string {
@@ -80,6 +88,8 @@ func (system *SystemEnvironmentStruct) GetRunscDownloadUrl() string {
 	switch unameArch {
 	case "amd64":
 		unameArch = "x86_64"
+	case "arm64":
+		unameArch = "aarch_64"
 	default:
 	}
 
