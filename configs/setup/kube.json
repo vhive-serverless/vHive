@@ -6,5 +6,5 @@
 	"ApiserverPort": "6443",
 	"ApiserverToken": "",
 	"ApiserverTokenHash": "",
-	"CalicoVersion": "3.27.2"
+	"CalicoVersion": "3.27.3"
 }
