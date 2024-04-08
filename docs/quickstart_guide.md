@@ -7,7 +7,7 @@ To see how to setup a single node cluster with stock-only or gVisor, see [Develo
 ## I. Host platform requirements
 ### 1. Hardware
 1. Two x64 servers in the same network.
-    - We have not tried vHive with Arm but it may not be hard to port because Firecracker supports Arm64 ISA.
+    - vHive is now compatible with arm64 Ubuntu 18.04 servers for multi-node clusters using the `stock-only` setting. Other configurations and OS versions have not been tested at this time.
 2. Hardware support for virtualization and KVM.
     - Nested virtualization is supported provided that KVM is available.
 3. The root partition of the host filesystem should be mounted on an **SSD**. That is critical for snapshot-based cold-starts.

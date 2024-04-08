@@ -92,7 +92,7 @@ func ExecShellCmd(cmd string, pars ...any) (string, error) {
 // Detect current architecture
 func DetectArch() error {
 	switch configs.System.CurrentArch {
-	case "amd64":
+	case "amd64", "arm64":
 	default:
 		// Only amd64(x86_64) are supported at present
 		FatalPrintf("Unsupported architecture: %s\n", configs.System.CurrentArch)
