@@ -53,13 +53,13 @@ make
 kubectl apply -f $HOME/kubernetes-power-manager/config/manager/manager.yaml
 
 # Apply PowerConfig -> create the power-node-agent DaemonSet that manages the Power Node Agent pods.
-kubectl apply -f $HOME/vhive/power_manager/powerconfig.yaml
+kubectl apply -f $HOME/vhive/scripts/power_manager/power_config.yaml
 
 # Apply Profile. U can modify the spec in the shared-profile.yaml file
-kubectl apply -f $HOME/vhive/power_manager/shared-profile.yaml
+kubectl apply -f $HOME/vhive/scripts/power_manager/shared-profile.yaml
 
 # Apply the shared PowerWorkload. All CPUs (except reservedCPUs specified in this yaml file) will be tuned to the specified frequency in shared-profile.yaml
-kubectl apply -f $HOME/vhive/power_manager/shared-workload.yaml
+kubectl apply -f $HOME/vhive/scripts/power_manager/shared-workload.yaml
 
 kubectl get powerprofiles -n intel-power
 kubectl get powerworkloads -n intel-power
