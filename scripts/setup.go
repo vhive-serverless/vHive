@@ -250,7 +250,7 @@ func main() {
 	}
 
 	if err != nil {
-		utils.FatalPrintf("Faild subcommand: %s!\n", subCmd)
+		utils.FatalPrintf("Failed subcommand: %s!\n", subCmd)
 		utils.CleanEnvironment()
 		os.Exit(1)
 	}

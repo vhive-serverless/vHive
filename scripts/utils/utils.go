@@ -171,3 +171,20 @@ func InstallYQ() {
 	_, err := ExecShellCmd(`sudo wget %s -O /usr/bin/yq && sudo chmod +x /usr/bin/yq`, yqUrl)
 	CheckErrorWithTagAndMsg(err, "Failed to add yq!\n")
 }
+
+func GetNodeIP() (string, error) {
+	nodeIP, err := ExecShellCmd(`ip route | awk '{print $(NF)}' | awk '/^10\..*/'`)
+	if err == nil {
+		return nodeIP, nil
+	}
+
+	WarnPrintf("Failed to find IP address in 10.0.0.0/8 subnet! Falling back to one of the host IP addresses\n")
+	nodeIP, err = ExecShellCmd(`hostname -I | awk '{print $1}'`)
+
+	if err != nil {
+		ErrorPrintf("Failed to find host IP address!\n")
+		return "", err
+	}
+
+	return nodeIP, nil
+}
