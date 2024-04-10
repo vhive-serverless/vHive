@@ -79,10 +79,11 @@ func CreateMasterKubeletService() error {
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
 		return err
 	}
+	nodeIP, _ := utils.GetNodeIP()
 	bashCmd := `sudo sh -c 'cat <<EOF > /etc/default/kubelet
-KUBELET_EXTRA_ARGS="--v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+KUBELET_EXTRA_ARGS="--v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock --node-ip %s"
 EOF'`
-	_, err = utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity)
+	_, err = utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity, nodeIP)
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
 		return err
 	}
@@ -98,7 +99,7 @@ EOF'`
 func DeployKubernetes() error {
 
 	utils.WaitPrintf("Deploying Kubernetes(version %s)", configs.Kube.K8sVersion)
-	masterNodeIp, iperr := utils.ExecShellCmd(`ip route | awk '{print $(NF)}' | awk '/^10\..*/'`)
+	masterNodeIp, iperr := utils.GetNodeIP()
 	if iperr != nil {
 		return iperr
 	}
@@ -191,7 +192,7 @@ func WaitForWorkerNodes() error {
 		var userInput string
 		var allNodesJoined = false
 		_, err := fmt.Scanln(&userInput)
-		if err != nil {
+		if !utils.CheckErrorWithMsg(err, "Failed to wait for node!\n") {
 			utils.FatalPrintf("Unexpected Error!\n")
 			return err
 		}
