@@ -19,7 +19,6 @@ jobs:
     runs-on: ${{ fromJSON(format('["self-hosted", "{0}-cri"]', inputs.sandbox)) }}
 
     steps:
-
       - name: Host Info
         run: |
           echo $HOSTNAME
@@ -31,8 +30,8 @@ jobs:
       - name: Set up golang
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-          
+          go-version: "1.21"
+
       - name: Add rsync
         run: |
           sudo apt update
