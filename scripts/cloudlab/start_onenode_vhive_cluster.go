@@ -122,6 +122,10 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 		return err
 	}
 
+	if err = cluster.SetupMasterNode(sandbox); err != nil {
+		return err
+	}
+
 	utils.InfoPrintf("All logs are stored in %s", ctrdLogDir)
 	return nil
 }

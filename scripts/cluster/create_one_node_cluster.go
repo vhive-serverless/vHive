@@ -70,11 +70,6 @@ func CreateOneNodeCluster(stockContainerd string) error {
 		return err
 	}
 
-	err = SetupMasterNode(stockContainerd)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

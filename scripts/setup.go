@@ -79,6 +79,7 @@ func main() {
 	availableCmds := []string{
 		"create_multinode_cluster",
 		"create_one_node_cluster",
+		"prepare_one_node_cluster",
 		"setup_master_node",
 		"setup_worker_kubelet",
 		"setup_node",
@@ -150,6 +151,18 @@ func main() {
 		utils.InfoPrintf("Create multinode cluster\n")
 		err = cluster.CreateMultinodeCluster(setupFlags.Args()[1])
 	case "create_one_node_cluster":
+		if setupFlags.NArg() < 2 {
+			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
+			utils.CleanEnvironment()
+			os.Exit(1)
+		}
+		utils.InfoPrintf("Create one-node Cluster\n")
+		err = cluster.CreateOneNodeCluster(setupFlags.Args()[1])
+		if err == nil {
+			utils.InfoPrintf("Set up master node\n")
+			err = cluster.SetupMasterNode(setupFlags.Args()[1])
+		}
+	case "prepare_one_node_cluster":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
 			utils.CleanEnvironment()
