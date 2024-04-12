@@ -42,10 +42,10 @@ jobs:
       - name: Checkout LFS objects
         run: git lfs checkout
 
-      - name: Set up Go 1.22
+      - name: Set up Go 1.21
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.21'
 
       - name: Build setup scripts
         run: pushd scripts && go build -o setup_tool && popd

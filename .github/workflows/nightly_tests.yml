@@ -20,10 +20,10 @@ jobs:
     - name: Setup TMPDIR
       run: mkdir -p $TMPDIR
 
-    - name: Set up Go 1.22
+    - name: Set up Go 1.21
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.21'
 
     - name: Upgrade git
       run: |
@@ -77,10 +77,10 @@ jobs:
     - name: Setup TMPDIR
       run: mkdir -p $TMPDIR
 
-    - name: Set up Go 1.22
+    - name: Set up Go 1.21
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.21'
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v4

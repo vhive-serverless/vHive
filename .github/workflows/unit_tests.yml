@@ -29,10 +29,10 @@ jobs:
         module: [misc, networking, snapshotting]
     steps:
 
-    - name: Set up Go 1.22
+    - name: Set up Go 1.21
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.21'
         
     - name: Set up Python 3.x
       uses: actions/setup-python@v5
@@ -74,10 +74,10 @@ jobs:
         module: [profile]
     steps:
 
-    - name: Set up Go 1.22
+    - name: Set up Go 1.21
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.21'
         
     - name: Set up Python 3.x
       uses: actions/setup-python@v5
@@ -122,10 +122,10 @@ jobs:
         module: [ ctriface, ctriface/image, devmapper ]
     steps:
     
-    - name: Set up Go 1.22
+    - name: Set up Go 1.21
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.21'
 
     - name: Upgrade git
       run: |
