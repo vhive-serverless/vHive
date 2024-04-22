@@ -37,9 +37,9 @@ fi
 
 KUBECONFIG=/etc/kubernetes/admin.conf kn service delete --all
 if [ "$SANDBOX" == "stock-only" ]; then
-    sudo kubeadm reset --cri-socket /run/containerd/containerd.sock -f
+    sudo kubeadm reset --cri-socket unix:///run/containerd/containerd.sock -f
 else
-    sudo kubeadm reset --cri-socket /etc/vhive-cri/vhive-cri.sock -f
+    sudo kubeadm reset --cri-socket unix:///etc/vhive-cri/vhive-cri.sock -f
 fi
 
 if [ "$SANDBOX" == "firecracker" ]; then
@@ -91,6 +91,7 @@ fi
 
 if [ "$SANDBOX" == "gvisor" ]; then
     echo Cleaning /run/gvisor-containerd/*
+    sudo umount /run/gvisor-containerd/io.containerd.runtime.v2.task/default/*/rootfs
     sudo rm -rf /run/gvisor-containerd/*
 
     echo Cleaning /var/lib/gvisor-containerd/*

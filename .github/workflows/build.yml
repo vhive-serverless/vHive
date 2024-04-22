@@ -30,16 +30,16 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-    - name: Set up Go ${{ matrix.go }}
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.go }}
-
     - name: Check out code into the Go module directory
       uses: actions/checkout@v4
       with:
         # to add commit DCO checks later
         fetch-depth: 21
+
+    - name: Set up Go ${{ matrix.go }}
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go }}
 
     - name: Check code
       uses: golangci/golangci-lint-action@v4.0.0
