@@ -27,10 +27,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up golang
+      - name: Set up Go version in go.mod file
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version-file: ${{ github.workspace }}/go.mod
+          cache-dependency-path: |
+            **/go.sum
+            **/go.mod
 
       - name: Add rsync
         run: |
