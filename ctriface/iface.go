@@ -505,8 +505,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, originVmID string, vmID
 		BackendType: fileBackend,
 		BackendPath: snap.GetMemFilePath(),
 	}
-	conf.ResumeVM = true
-	conf.EnableDiffSnapshots = false
+	// conf.ResumeVM = true
+	// conf.EnableDiffSnapshots = false
 
 	var sendfdConn *net.UnixConn
 	// uffdListenerCh := make(chan struct{}, 1)
