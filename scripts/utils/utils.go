@@ -173,7 +173,8 @@ func InstallYQ() {
 }
 
 func GetNodeIP() (string, error) {
-	nodeIP, err := ExecShellCmd(`ip route | awk '{print $(NF)}' | awk '/^10\..*/'`)
+	// Choose the first ip address starting from 10.
+	nodeIP, err := ExecShellCmd(`ip route | awk '{print $(NF)}' | awk '/^10\..*/ {print; exit}'`)
 	if err == nil {
 		return nodeIP, nil
 	}
