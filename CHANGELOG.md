@@ -4,9 +4,26 @@
 
 ### Added
 
-- Added support for [`OpenYurt`](https://openyurt.io/), an open platform that extends upstream Kubernetes to run on edge node pools. More details on how to the `Knative-atop-OpenYurt` mode are described [here](scripts/openyurt-deployer/README.md).
+### Changed
+
+### Fixed
+
+## Release v1.7.1
+
+### Added
 - Added support for arm64 ubuntu 18.04 in stock-only setup with [setup scripts](./scripts/setup.go).
 - Added support for [`K8 Power Manager`](https://networkbuilders.intel.com/solutionslibrary/power-manager-a-kubernetes-power-operator-technology-guide), a Kubernetes operator designed to manage and optimize power consumption in a Kubernetes cluster. More details are described [here](docs/power_manager.md).
+
+## Changed
+
+## Fixed
+- Fixed critical issue with IP choice that made CloudLab clusters use the external network interface for control plane communication.
+
+### Release v1.7
+
+### Added
+
+- Added support for [`OpenYurt`](https://openyurt.io/), an open platform that extends upstream Kubernetes to run on edge node pools. More details on how to the `Knative-atop-OpenYurt` mode are described [here](scripts/openyurt-deployer/README.md).
 
 
 ### Changed
