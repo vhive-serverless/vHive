@@ -1,0 +1,39 @@
+name: vHive unit tests
+
+on:
+  push:
+    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    paths:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
+  pull_request:
+    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    paths:
+    - 'docs/**'
+    - '**.md'
+    - 'function-images/**'
+  workflow_dispatch:
+
+env:
+  GOOS: linux
+  GO111MODULE: on
+
+jobs:
+  unit-test:
+    name: Unit test
+    runs-on: ubuntu-20.04
+    steps:
+    - run: 'echo "This check not required"'
+  
+  profile-unit-test:
+    name: "Unit test: profile unit test"
+    runs-on: ubuntu-20.04
+    steps:
+    - run: 'echo "This check not required"'
+
+  firecracker-containerd-interface-test:
+    name: "Unit tests: Firecracker-containerd interface"
+    runs-on: ubuntu-20.04
+    steps:
+    - run: 'echo "This check not required"'
