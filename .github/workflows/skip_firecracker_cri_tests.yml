@@ -1,0 +1,27 @@
+name: vHive firecracker CRI tests
+
+on:
+  push:
+    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - 'function-images/**'
+  pull_request:
+    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - 'function-images/**'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 19 * * 1'
+
+env:
+  GO111MODULE: on
+
+jobs:
+  firecracker-cri-tests:
+    uses: ./.github/workflows/skip_cri_tests.yml
+    with:
+      sandbox: firecracker

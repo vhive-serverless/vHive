@@ -1,0 +1,25 @@
+name: vHive setup scripts build tests
+
+on:
+    push:
+      branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+      paths:
+      - 'docs/**'
+      - '**.md'
+    pull_request:
+      branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+      paths:
+      - 'docs/**'
+      - '**.md'
+    workflow_dispatch:
+  
+env:
+    GOOS: linux
+    GO111MODULE: on
+
+jobs:
+  build_setup:
+    name: Build setup scripts
+    runs-on: ubuntu-20.04
+    steps:
+    - run: 'echo "This check not required"'

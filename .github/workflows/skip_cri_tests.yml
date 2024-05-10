@@ -1,0 +1,22 @@
+name: vHive CRI tests
+
+on:
+  workflow_call:
+    inputs:
+      sandbox:
+        required: true
+        type: string
+
+env:
+  GO111MODULE: on
+
+jobs:
+  cri-tests:
+    name: CRI tests
+    env:
+      GITHUB_RUN_ID: ${{ github.run_id }}
+      GITHUB_VHIVE_ARGS: "-dbg"
+    runs-on: ${{ fromJSON(format('["self-hosted", "{0}-cri"]', inputs.sandbox)) }}
+
+    steps:
+      - run: 'echo "This check not required"'
