@@ -53,6 +53,9 @@ type SystemEnvironmentStruct struct {
 	ProtocDownloadUrlTemplate           string
 	LogVerbosity                        int
 	YqDownloadUrlTemplate               string
+	HelmDownloadUrl                     string
+	MinIOVersion                        string
+	MinIOValuePath                      string
 }
 
 // Current system environment

@@ -1,0 +1,74 @@
+# Operator custom configs
+operator:
+  replicaCount: 1
+  nodeSelector:
+    minio-type: operator
+  env:
+  - name: MINIO_PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: PROMETHEUS_NAMESPACE
+    value: "monitoring"
+  - name: MINIO_PROMETHEUS_AUTH_TYPE
+    value: "public"
+
+console:
+  nodeSelector:
+    minio-type: operator
+  env:
+  - name: MINIO_PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: PROMETHEUS_NAMESPACE
+    value: "monitoring"
+  - name: MINIO_PROMETHEUS_AUTH_TYPE
+    value: "public"
+
+
+# Tenant custom configs
+tenant:
+  name: myminio
+  configuration:
+    configSecret:
+      name: myminio-env-configuration
+      accessKey: minio
+      secretKey: minio123
+  pools:
+    - servers: 8
+      name: pool-0
+      volumesPerServer: 1
+      size: 24Gi
+      nodeSelector:
+        minio-type: tenant
+      storageClassName: local-storage
+      # securityContext:
+      #   runAsNonRoot: false
+      # containerSecurityContext:
+      #   runAsNonRoot: false
+      #   allowPrivilegeEscalation: true
+  # mountPath: /export/storage
+  metrics:
+    enabled: true
+  certificate:
+    requestAutoCert: false
+  prometheusOperator: true
+  # additionalVolumes:
+  #   - name: ramdisk
+  #     hostPath:
+  #       path: /mnt/ramdisk
+  # additionalVolumeMounts:
+  #   - name: ramdisk
+  #     mountPath: /export/ramdisk
+  env:
+  - name: MINIO_PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: PROMETHEUS_NAMESPACE
+    value: "monitoring"
+  - name: MINIO_PROMETHEUS_AUTH_TYPE
+    value: "public"
+  # - name: MINIO_CACHE_DRIVES
+  #   value: "/export/ramdisk"
+  # - name: MINIO_CACHE_QUOTA
+  #   value: "90"  
+  - name: MINIO_STORAGE_CLASS_STANDARD
+    value: "EC:0"
+  - name: MINIO_STORAGE_CLASS_RRS
+    value: "EC:0"

@@ -28,6 +28,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
 )
@@ -188,4 +189,36 @@ func GetNodeIP() (string, error) {
 	}
 
 	return nodeIP, nil
+}
+
+func InstallHelm() error {
+	WaitPrintf("Installing Helm")
+	HelmUrl := configs.System.HelmDownloadUrl
+	_, err := ExecShellCmd(`curl %s | bash`, HelmUrl)
+	CheckErrorWithTagAndMsg(err, "Failed to install Helm!\n")
+	return err
+}
+
+func SetupMinIOPluginClient() error {
+	minIOClientUrl := "https://dl.min.io/client/mc/release/linux-amd64/mc"
+	WaitPrintf("Setting up MinIO CLI Tool")
+	_, err := ExecShellCmd(`sudo wget %s -O /usr/bin/mc && sudo chmod +x /usr/bin/mc`, minIOClientUrl)
+	if !CheckErrorWithTagAndMsg(err, "Failed to setup MinIO CLI Tool!\n") {
+		return err
+	}
+
+	WaitPrintf("Setting up MinIO Port Forwarding")
+	_, err = ExecShellCmd(`tmux new -s portforward-minio -d && tmux send -t portforward 'kubectl port-forward service/myminio-hl 9000:9000 -n minio' ENTER`)
+	if !CheckErrorWithTagAndMsg(err, "Failed to setup port forwarding for MinIO!\n") {
+		return err
+	}
+
+	time.Sleep(30 * time.Second)
+
+	WaitPrintf("Setting up MinIO Client")
+	_, err = ExecShellCmd(`mc alias set k8s-minio http://127.0.0.1:9000 minio minio123 --insecure`)
+	if !CheckErrorWithTagAndMsg(err, "Failed to initialize MinIO Client\n") {
+		return err
+	}
+	return err
 }

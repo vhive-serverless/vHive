@@ -1,0 +1,54 @@
+# Operator custom configs
+operator:
+  replicaCount: 1
+  nodeSelector:
+    minio-type: operator
+  env:
+  - name: MINIO_PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: PROMETHEUS_NAMESPACE
+    value: "monitoring"
+  - name: MINIO_PROMETHEUS_AUTH_TYPE
+    value: "public"
+
+console:
+  nodeSelector:
+    minio-type: operator
+  env:
+  - name: MINIO_PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: PROMETHEUS_NAMESPACE
+    value: "monitoring"
+  - name: MINIO_PROMETHEUS_AUTH_TYPE
+    value: "public"
+
+
+# Tenant custom configs
+tenant:
+  name: myminio
+  configuration:
+    configSecret:
+      name: myminio-env-configuration
+      accessKey: minio
+      secretKey: minio123
+  pools:
+    - servers: 1
+      volumesPerServer: 1
+      size: 50Gi
+      nodeSelector:
+        minio-type: tenant
+      storageClassName: local-storage
+  metrics:
+    enabled: true
+    port: 9090
+    protocol: http
+  certificate:
+    requestAutoCert: false
+  prometheusOperator: true
+  env:
+  - name: MINIO_PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: PROMETHEUS_NAMESPACE
+    value: "monitoring"
+  - name: MINIO_PROMETHEUS_AUTH_TYPE
+    value: "public"

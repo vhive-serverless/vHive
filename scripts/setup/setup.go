@@ -309,3 +309,96 @@ func SetupZipkin() error {
 
 	return nil
 }
+
+func SetupMinIO(mode string) error {
+	switch mode {
+	case "local":
+	case "distributed":
+	default:
+		utils.FatalPrintf("Specified deployment method is not supported. Possible are \"local\" and \"distributed\"!\n")
+		return &utils.ShellError{Msg: "Deployment method not supported!", ExitCode: 1}
+	}
+
+	minIOConfigFilePath, err := utils.GetVHiveFilePath(configs.System.MinIOValuePath)
+	if !utils.CheckErrorWithMsg(err, "Failed to find MinIO Operator yaml file\n") {
+		return err
+	}
+
+	minIOYamlFilePath := minIOConfigFilePath
+	minIOPVYamlFilePath := minIOConfigFilePath
+	switch mode {
+	case "local":
+		minIOYamlFilePath = path.Join(minIOConfigFilePath, "minio_values_single.yaml")
+		minIOPVYamlFilePath = path.Join(minIOConfigFilePath, "pv_single.yaml")
+	case "distributed":
+		minIOYamlFilePath = path.Join(minIOConfigFilePath, "minio_values.yaml")
+		minIOPVYamlFilePath = path.Join(minIOConfigFilePath, "pv.yaml")
+	default:
+	}
+
+	err = utils.InstallHelm()
+	if err != nil {
+		return err
+	}
+
+	utils.WaitPrintf("Adding MinIO Repo to Helm")
+	_, err = utils.ExecShellCmd("helm repo add minio-operator https://operator.min.io")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to add MinIO Repo to Helm\n") {
+		return err
+	}
+
+	utils.WaitPrintf("Create Kubernetes MinIO Namespace")
+	_, err = utils.ExecShellCmd("kubectl create namespace minio")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create k8s namespace\n") {
+		return err
+	}
+
+	utils.WaitPrintf("Installing MinIO Operator")
+	_, err = utils.ExecShellCmd("helm upgrade minio-operator --namespace minio minio-operator/operator --install --atomic --version %s -f %s", configs.System.MinIOVersion, minIOYamlFilePath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install MinIO Operator\n") {
+		return err
+	}
+
+	bashCmd :=
+		`kubectl apply -f - <<EOF` +
+			`apiVersion: v1` +
+			`kind: Secret` +
+			`metadata:` +
+			`name: console-sa-secret` +
+			`namespace: minio` +
+			`annotations:` +
+			`kubernetes.io/service-account.name: console-sa` +
+			`type: kubernetes.io/service-account-token` +
+			`EOF` +
+			`kubectl -n minio get secret console-sa-secret -o jsonpath="{.data.token}" | base64 --decode`
+	_, err = utils.ExecShellCmd(bashCmd)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to get the JWT for logging in to the console\n") {
+		return err
+	}
+
+	utils.WaitPrintf("Creating MinIO Persistent Volume")
+	_, err = utils.ExecShellCmd("kubectl apply --namespace minio -f %s", minIOPVYamlFilePath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create MinIO Persistent Volume\n") {
+		return err
+	}
+
+	utils.WaitPrintf("Installing MinIO Tenant")
+	_, err = utils.ExecShellCmd("helm upgrade minio-tenant --namespace minio minio-operator/tenant --install --atomic --version %s -f %s", configs.System.MinIOVersion, minIOYamlFilePath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install MinIO Tenant\n") {
+		return err
+	}
+	time.Sleep(30 * time.Second)
+
+	utils.WaitPrintf("Patching MinIO Operator Console NodePort")
+	_, err = utils.ExecShellCmd("kubectl patch service myminio-console -n minio --patch-file %s/console_patch.yaml", minIOConfigFilePath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch MinIO Operator Console\n") {
+		return err
+	}
+
+	err = utils.SetupMinIOPluginClient()
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to setup MinIO Plugin and Client\n") {
+		return err
+	}
+
+	return err
+}

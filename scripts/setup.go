@@ -96,6 +96,7 @@ func main() {
 		"create_docker_image",
 		"create_devmapper",
 		"clean_fcctr",
+		"setup_minio",
 	}
 
 	// Check vHive repo
@@ -201,7 +202,6 @@ func main() {
 		} else {
 			err = cloudlab.SetupNode(setupFlags.Args()[1], "")
 		}
-
 	case "start_onenode_vhive_cluster":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <sandbox>\n", subCmd)
@@ -211,6 +211,14 @@ func main() {
 		utils.InfoPrintf("Start one-node vHive cluster\n")
 		err = cloudlab.StartOnenodeVhiveCluster(setupFlags.Args()[1])
 		// Original scripts from `scripts/cloudlab` directory
+	case "setup_minio":
+		if setupFlags.NArg() < 2 {
+			utils.FatalPrintf("Missing parameters: %s <local or distributed>\n", subCmd)
+			utils.CleanEnvironment()
+			os.Exit(1)
+		}
+		utils.InfoPrintf("Set up MinIO\n")
+		err = setup.SetupMinIO(setupFlags.Args()[1])
 	case "setup_nvidia_gpu":
 		utils.InfoPrintf("Set up Nvidia gpu\n")
 		err = gpu.SetupNvidiaGpu()
