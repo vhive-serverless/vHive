@@ -14,7 +14,7 @@
 	"KubeRepoUrl": "https://pkgs.k8s.io/core:/stable:/v1.29/deb/",
 	"PmuToolsRepoUrl": "https://github.com/vhive-serverless/pmu-tools",
 	"ProtocVersion": "3.19.4",
-	"ProtocDownloadUrlTemplate": "https://github.com/protocolbuffers/protobuf/releases/download/v%s/protoc-%s-linux-x86_64.zip",
+	"ProtocDownloadUrlTemplate": "https://github.com/protocolbuffers/protobuf/releases/download/v%s/protoc-%s-linux-%s.zip",
 	"LogVerbosity": 0,
 	"YQDownloadUrlTemplate": "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_%s"
 }
