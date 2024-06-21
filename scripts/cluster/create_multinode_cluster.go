@@ -41,6 +41,10 @@ func CreateMultinodeCluster(stockContainerd string, rawHaReplicaCount string) er
 		return err
 	}
 
+	if err := CreateMasterKubeletService(); err != nil {
+		return err
+	}
+
 	if err := DeployKubernetes(haReplicaCount); err != nil {
 		return err
 	}
