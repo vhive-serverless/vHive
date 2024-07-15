@@ -83,8 +83,8 @@ func SetupFirecrackerContainerd() error {
 		return err
 	}
 
-	// kernel image
-	kernelImgPath, err := utils.DownloadToTmpDir(configs.VHive.FirecrackerKernelImgDownloadUrl)
+	// kernel image; better to download it from AWS S3 but it takes too much time on NTU network
+	kernelImgPath, err := utils.GetVHiveFilePath(path.Join(binsDir, "vmlinux-5.10.186"))
 	if !utils.CheckErrorWithMsg(err, "Failed to download kernel image!\n") {
 		return err
 	}
