@@ -36,7 +36,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/net v0.25.0
-	golang.org/x/sync v0.6.0
+	golang.org/x/sync v0.7.0
 	golang.org/x/sys v0.20.0
 	gonum.org/v1/gonum v0.14.0
 	gonum.org/v1/plot v0.14.0
@@ -77,8 +77,8 @@ require (
 	github.com/opencontainers/selinux v1.10.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/image v0.11.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/image v0.18.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
