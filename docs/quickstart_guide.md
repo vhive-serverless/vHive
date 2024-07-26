@@ -34,7 +34,7 @@ The expected output should be:
 If the opened shell is not a "bash" one, you can just type "bash" in the terminal and it will change the current shell to "bash".
 
 #### A. CloudLab Profile
-You can use our CloudLab profile [faas-sched/vhive-ubuntu20][cloudlab-pf].
+You can use our CloudLab profile [ntu-cloud/vhive-ubuntu20][cloudlab-pf].
 
 It is recommended to use a base Ubuntu 20.04 image for each node and connect the nodes in a LAN.
 
@@ -447,7 +447,7 @@ kn service delete --all
 
 [github-toc]: https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/
 [cloudlab]: https://www.cloudlab.us
-[cloudlab-pf]: https://www.cloudlab.us/p/faas-sched/vhive-ubuntu20
+[cloudlab-pf]: https://www.cloudlab.us/p/ntu-cloud/vhive-ubuntu20
 [cloudlab-hw]: https://docs.cloudlab.us/hardware.html
 [ext-abstract]: https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf
 [kn-benchmark]: https://github.com/vhive-serverless/vSwarm/blob/main/docs/adding_benchmarks.md
