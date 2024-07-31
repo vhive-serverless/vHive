@@ -1,6 +1,7 @@
 module github.com/vhive-serverless/vhive
 
 go 1.21
+toolchain go1.22.5
 
 // Copied from firecracker-containerd
 replace (
@@ -23,7 +24,7 @@ require (
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.4
 	github.com/google/nftables v0.0.0-20210916140115-16a134723a96
 	github.com/google/uuid v1.6.0
 	github.com/montanaflynn/stats v0.7.1
@@ -40,8 +41,8 @@ require (
 	golang.org/x/sys v0.22.0
 	gonum.org/v1/gonum v0.15.0
 	gonum.org/v1/plot v0.14.0
-	google.golang.org/grpc v1.47.0
-	k8s.io/cri-api v0.25.0
+	google.golang.org/grpc v1.58.3
+	k8s.io/cri-api v0.30.3
 )
 
 require (
