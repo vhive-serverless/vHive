@@ -36,7 +36,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/net v0.27.0
-	golang.org/x/sync v0.7.0
+	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.24.0
 	gonum.org/v1/gonum v0.15.0
 	gonum.org/v1/plot v0.14.0
