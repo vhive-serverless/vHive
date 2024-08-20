@@ -127,7 +127,7 @@ func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
 	logger := log.WithFields(log.Fields{"containerID": containerID, "vmID": fi.VmID})
 
 	if fi, present := c.activeInstances[containerID]; present {
-		logger.Errorf("entry for container already exists with vmID %s" + fi.VmID)
+		logger.Errorf("entry for container already exists with vmID %s", fi.VmID)
 		return errors.New("entry for container already exists")
 	}
 
