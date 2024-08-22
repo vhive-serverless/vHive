@@ -26,6 +26,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"net"
+	"os"
+	"os/exec"
+	"regexp"
+	"strconv"
+	"strings"
+
 	"github.com/google/nftables"
 	"github.com/google/nftables/expr"
 	"github.com/pkg/errors"
@@ -33,12 +40,6 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 	"golang.org/x/sys/unix"
-	"net"
-	"os"
-	"os/exec"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 // getHostIfaceName returns the default host network interface name.
@@ -201,7 +202,7 @@ func setupNatRules(vethVmName, hostIp, cloneIp string, vmNsHandle netns.NsHandle
 		Name:     "POSTROUTING",
 		Table:    natTable,
 		Type:     nftables.ChainTypeNAT,
-		Priority: 0,
+		Priority: nftables.ChainPriorityRef(0),
 		Hooknum:  nftables.ChainHookPostrouting,
 		Policy:   &polAccept,
 	}
@@ -251,7 +252,7 @@ func setupNatRules(vethVmName, hostIp, cloneIp string, vmNsHandle netns.NsHandle
 		Name:     "PREROUTING",
 		Table:    natTable,
 		Type:     nftables.ChainTypeNAT,
-		Priority: 0,
+		Priority: nftables.ChainPriorityRef(0),
 		Hooknum:  nftables.ChainHookPrerouting,
 		Policy:   &polAccept,
 	}
@@ -340,7 +341,7 @@ func setupForwardRules(vethHostName, hostIface string) error {
 		Name:     fmt.Sprintf("FORWARD%s", vethHostName),
 		Table:    filterTable,
 		Type:     nftables.ChainTypeFilter,
-		Priority: 0,
+		Priority: nftables.ChainPriorityRef(0),
 		Hooknum:  nftables.ChainHookForward,
 		Policy:   &polAccept,
 	}
@@ -427,7 +428,7 @@ func deleteForwardRules(vethHostName string) error {
 		Name:     fmt.Sprintf("FORWARD%s", vethHostName),
 		Table:    filterTable,
 		Type:     nftables.ChainTypeFilter,
-		Priority: 0,
+		Priority: nftables.ChainPriorityRef(0),
 		Hooknum:  nftables.ChainHookForward,
 		Policy:   &polAccept,
 	}
