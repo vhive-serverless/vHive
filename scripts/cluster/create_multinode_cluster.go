@@ -61,13 +61,6 @@ func CreateMultinodeCluster(stockContainerd string) error {
 		}
 	}
 
-	// Set up master node
-	utils.InfoPrintf("Set up master node\n")
-	if err := SetupMasterNode(stockContainerd); err != nil {
-		utils.FatalPrintf("Failed to set up master node!\n")
-		return err
-	}
-
 	return nil
 }
 
