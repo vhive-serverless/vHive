@@ -104,11 +104,16 @@ EOF'`
 // Deploy Kubernetes
 func DeployKubernetes(haReplicaCount int) error {
 	utils.WaitPrintf("Deploying Kubernetes(version %s)", configs.Kube.K8sVersion)
+	masterNodeIp, iperr := utils.GetNodeIP()
+	if iperr != nil {
+		return iperr
+	}
 
 	command := fmt.Sprintf(`sudo kubeadm init --v=%d \
+--apiserver-advertise-address=%s \
 --cri-socket /run/containerd/containerd.sock \
 --kubernetes-version %s \
---pod-network-cidr="%s" `, configs.System.LogVerbosity, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
+--pod-network-cidr="%s" `, configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
 
 	if haReplicaCount > 0 {
 		command += fmt.Sprintf(`\
