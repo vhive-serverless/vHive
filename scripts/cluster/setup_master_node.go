@@ -123,7 +123,7 @@ func InstallCalico() error {
 
 	_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
 	.spec.template.spec.containers[].name == "calico-node") |
-	.spec.template.spec.containers[].env) += {"name": "IP_AUTODETECTION_METHOD", "value": "skip-interface=br.*"}' %s`,
+	.spec.template.spec.containers[].env) += {"name": "IP_AUTODETECTION_METHOD", "value": "kubernetes-internal-ip"}' %s`,
 		path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico!\n") {
 		return err
