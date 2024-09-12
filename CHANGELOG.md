@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- Fixed problem with the CloudLab profile that caused rootfs not to be the full size after reimaging the node.
+- Fixed routing on the CloudLab that was causing traffic on control interfaces.
+
 ## Release v1.7.1
 
 ### Added
