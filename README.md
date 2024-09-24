@@ -96,15 +96,14 @@ We encourage the community to contribute their analysis scenarios and tools.
 
 You can view the vHive documentation [here](https://pkg.go.dev/github.com/vhive-serverless/vhive).
 
-### vHive roadmap
+### vHive maintenance
 
-vHive is a community-led project, maintained by the EASE lab.
-The current roadmap is [available](https://github.com/vhive-serverless/vhive/projects/1)
-and is going to be updated to accommodate the community's goals and evolution.
+vHive is a community-led project maintained by the EASE lab at the University of
+Edinburgh and the HySCALE lab at Nanyang Technological University.
 To guarantee high code quality and reliability, we deploy fully automated CI
 on cloud and self-hosted runners with GitHub Actions.
 
-The statistics of this repository's views, clones, forks is available by the following
+The statistics of this repository's views, clones, and forks are available by the following
 [link](https://vhive-serverless.github.io/vhive.github.io/vhive-serverless/vhive/latest-report/report.html).
 
 
@@ -121,14 +120,15 @@ You can also talk to us in our [Slack space](https://join.slack.com/t/vhivetutor
 vHive is free. We publish the code under the terms of the MIT License that allows distribution, modification, and commercial use.
 This software, however, comes without any warranty or liability.
 
-The software is maintained at the [EASE lab](https://easelab.inf.ed.ac.uk/) in the University of Edinburgh.
+The software is maintained at the [EASE lab](https://easelab.inf.ed.ac.uk/) at the University of Edinburgh and the
+[HySCALE](https://ustiugov.github.io/) at Nanyang Technological University.
 
 
 ### Maintainers
 
-* High-level architecture, issues and discussions on GitHub, roadmap: Dmitrii
+* High-level architecture, roadmap: Dmitrii
   Ustiugov ([GitHub](https://github.com/ustiugov),
   [twitter](https://twitter.com/DmitriiUstiugov), [web page](https://ustiugov.github.io));
-* Integration with firecracker-containerd [Georgiy Lebedev](https://github.com/curiousgeorgiy) and
-  [Plamen Petrov](https://github.com/plamenmpetrov);
+* Issues, discussions, and tests on GitHub: [Leonid Kondrashov](https://github.com/leokondrashov);
+* Integration with firecracker-containerd [Georgiy Lebedev](https://github.com/curiousgeorgiy);
 * Integration with Knative: [Shyam Jesalpura](https://github.com/shyamjesal)

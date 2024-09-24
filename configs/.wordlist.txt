@@ -201,6 +201,7 @@ html
 http
 https
 Hu
+HySCALE
 Idgunji
 IEEE
 IEEEMicro
@@ -247,6 +248,7 @@ Knative
 KNOC
 Kocberber
 Kogias
+Kondrashov
 kramdown
 kservice
 ksvc
@@ -317,6 +319,7 @@ namespace
 namespaces
 namespacing
 NanoFixed
+Nanyang
 nd
 Netrace
 NEURALWALKER
