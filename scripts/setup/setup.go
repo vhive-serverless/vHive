@@ -328,12 +328,12 @@ func SetupSystem(haMode string) error {
 			return err
 		}
 
-		_, err = utils.ExecShellCmd("sudo systemctl enable keepalived --now")
+		_, err = utils.ExecShellCmd("sudo systemctl start keepalived")
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to start Keepalived!\n") {
 			return err
 		}
 
-		_, err = utils.ExecShellCmd("sudo systemctl enable haproxy --now")
+		_, err = utils.ExecShellCmd("sudo systemctl start haproxy; sudo systemctl restart haproxy")
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to start HAProxy!\n") {
 			return err
 		}
