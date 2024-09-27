@@ -1,6 +1,7 @@
 module github.com/vhive-serverless/vhive
 
 go 1.21
+toolchain go1.22.5
 
 // Copied from firecracker-containerd
 replace (
@@ -19,7 +20,7 @@ replace (
 require (
 	github.com/containerd/containerd v1.6.20
 	github.com/containerd/go-cni v1.1.6
-	github.com/davecgh/go-spew v1.1.1
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
@@ -40,8 +41,8 @@ require (
 	golang.org/x/sys v0.25.0
 	gonum.org/v1/gonum v0.15.0
 	gonum.org/v1/plot v0.14.0
-	google.golang.org/grpc v1.47.0
-	k8s.io/cri-api v0.25.0
+	google.golang.org/grpc v1.65.0
+	k8s.io/cri-api v0.31.1
 )
 
 require (
@@ -77,11 +78,11 @@ require (
 	github.com/opencontainers/runc v1.1.14 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210910115017-0d6cc581aeea // indirect
 	github.com/opencontainers/selinux v1.10.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
