@@ -6,4 +6,5 @@ use (
 	./scripts/github_runner
 	./scripts/openyurt-deployer
 	./power_manager
+	./remote-firecracker-snapshots-poc
 )
