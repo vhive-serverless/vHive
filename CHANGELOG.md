@@ -8,6 +8,10 @@
 
 ### Fixed
 
+- Fix IP choice for CloudLab clusters to use the internal network interface for control plane communication.
+- Fix disk issues on CloudLab profiles after restart.
+- Bump Go to 1.22.
+
 ## Release v1.7.1
 
 ### Added

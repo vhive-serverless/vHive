@@ -1,6 +1,6 @@
 module github.com/vhive-serverless/vhive
 
-go 1.21
+go 1.22.9
 
 // Copied from firecracker-containerd
 replace (
