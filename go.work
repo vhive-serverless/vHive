@@ -1,9 +1,9 @@
-go 1.21
+go 1.22.9
 
 use (
 	.
+	./power_manager
 	./scripts
 	./scripts/github_runner
 	./scripts/openyurt-deployer
-	./power_manager
 )
