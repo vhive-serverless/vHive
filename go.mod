@@ -35,7 +35,7 @@ require (
 	github.com/vishvananda/netlink v1.3.0
 	github.com/vishvananda/netns v0.0.4
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.33.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
 	gonum.org/v1/gonum v0.15.1
