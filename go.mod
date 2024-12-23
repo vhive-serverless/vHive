@@ -38,14 +38,14 @@ require (
 	golang.org/x/net v0.32.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
-	gonum.org/v1/gonum v0.15.0
-	gonum.org/v1/plot v0.14.0
+	gonum.org/v1/gonum v0.15.1
+	gonum.org/v1/plot v0.15.0
 	google.golang.org/grpc v1.47.0
 	k8s.io/cri-api v0.25.0
 )
 
 require (
-	git.sr.ht/~sbinet/gg v0.5.0 // indirect
+	git.sr.ht/~sbinet/gg v0.6.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Microsoft/hcsshim v0.9.8 // indirect
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b // indirect
@@ -58,8 +58,8 @@ require (
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/containernetworking/cni v1.1.2 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
-	github.com/go-fonts/liberation v0.3.2 // indirect
-	github.com/go-latex/latex v0.0.0-20231108140139-5c1ce85aa4ea // indirect
+	github.com/go-fonts/liberation v0.3.3 // indirect
+	github.com/go-latex/latex v0.0.0-20240709081214-31cef3c7570e // indirect
 	github.com/go-pdf/fpdf v0.9.0 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -79,7 +79,7 @@ require (
 	github.com/opencontainers/selinux v1.10.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/image v0.18.0 // indirect
+	golang.org/x/image v0.21.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
