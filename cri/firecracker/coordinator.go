@@ -26,12 +26,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/vhive-serverless/vhive/snapshotting"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/ctriface"
@@ -80,6 +81,8 @@ func (c *coordinator) startVM(ctx context.Context, image, revision string) (*fun
 }
 
 func (c *coordinator) startVMWithEnvironment(ctx context.Context, image, revision string, environment []string) (*funcInstance, error) {
+	log.Debugf("Starting VM for image %s and revision %s", image, revision)
+	defer log.Debugf("Finished starting VM for image %s and revision %s", image, revision)
 	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
 		// Check if snapshot is available
 		if snap, err := c.snapshotManager.AcquireSnapshot(revision); err == nil {
@@ -228,7 +231,7 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 		return err
 	}
 
-	if err := c.snapshotManager.CommitSnapshot(fi.VmID); err != nil {
+	if err := c.snapshotManager.CommitSnapshot(fi.Revision); err != nil {
 		fi.Logger.WithError(err).Error("failed to commit snapshot")
 		return err
 	}

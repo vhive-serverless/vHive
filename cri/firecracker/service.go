@@ -77,6 +77,8 @@ func NewFirecrackerService(orch *ctriface.Orchestrator) (*FirecrackerService, er
 func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	log.Debugf("CreateContainer within sandbox %q for container %+v",
 		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
+	defer log.Debugf("Finished CreateContainer within sandbox %q for container %+v",
+		r.GetPodSandboxId(), r.GetConfig().GetMetadata())
 
 	config := r.GetConfig()
 	containerName := config.GetMetadata().GetName()
@@ -100,6 +102,8 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 	)
 
 	go func() {
+		log.Debugf("Launching stub container")
+		defer log.Debugf("Finished launching stub container")
 		defer close(stockDone)
 		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
 	}()
