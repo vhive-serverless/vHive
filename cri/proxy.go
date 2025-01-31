@@ -31,10 +31,10 @@ import (
 
 // RunPodSandbox creates and starts a pod-level sandbox. Runtimes must ensure
 // the sandbox is in the ready state on success.
-func (s *Service) RunPodSandbox(ctx context.Context, r *criapi.RunPodSandboxRequest) (*criapi.RunPodSandboxResponse, error) {
-	log.Debugf("RunPodsandbox for %+v", r.GetConfig().GetMetadata())
-	return s.stockRuntimeClient.RunPodSandbox(ctx, r)
-}
+// func (s *Service) RunPodSandbox(ctx context.Context, r *criapi.RunPodSandboxRequest) (*criapi.RunPodSandboxResponse, error) {
+// 	log.Debugf("RunPodsandbox for %+v", r.GetConfig().GetMetadata())
+// 	return s.stockRuntimeClient.RunPodSandbox(ctx, r)
+// }
 
 // ListPodSandbox returns a list of PodSandboxes.
 func (s *Service) ListPodSandbox(ctx context.Context, r *criapi.ListPodSandboxRequest) (*criapi.ListPodSandboxResponse, error) {

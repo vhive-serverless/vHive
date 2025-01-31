@@ -92,6 +92,11 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 	return s.stockRuntimeClient.CreateContainer(ctx, r)
 }
 
+func (fs *FirecrackerService) RunPodSandbox(ctx context.Context, r *criapi.RunPodSandboxRequest) (*criapi.RunPodSandboxResponse, error) {
+	log.Debugf("RunPodSandbox for %+v", r.GetConfig().GetMetadata())
+	return fs.stockRuntimeClient.RunPodSandbox(ctx, r)
+}
+
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	var (
 		stockResp *criapi.CreateContainerResponse

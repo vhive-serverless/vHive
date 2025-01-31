@@ -36,6 +36,7 @@ import (
 	"github.com/vhive-serverless/vhive/cri"
 	fccri "github.com/vhive-serverless/vhive/cri/firecracker"
 	gvcri "github.com/vhive-serverless/vhive/cri/gvisor"
+	"github.com/vhive-serverless/vhive/cri/sandbox_pool"
 	ctriface "github.com/vhive-serverless/vhive/ctriface"
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 	pb "github.com/vhive-serverless/vhive/proto"
@@ -86,8 +87,8 @@ func main() {
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
 	flag.Parse()
 
-	if *sandbox != "firecracker" && *sandbox != "gvisor" {
-		log.Fatalln("Only \"gvisor\" or \"firecracker\" are supported as sandboxing-techniques")
+	if *sandbox != "firecracker" && *sandbox != "gvisor" && *sandbox != "sandbox_pool" {
+		log.Fatalln("Only \"gvisor\", \"firecracker\" or \"sandbox_pool\" are supported as sandboxing-techniques")
 		return
 	}
 
@@ -149,6 +150,8 @@ func main() {
 		fwdServe()
 	case "gvisor":
 		setupGVisorCRI()
+	case "sandbox_pool":
+		setupSandboxPoolCRI()
 	}
 }
 
@@ -280,6 +283,31 @@ func setupGVisorCRI() {
 	}
 
 	criService, err := cri.NewService(gvService)
+	if err != nil {
+		log.Fatalf("failed to create CRI service %v", err)
+	}
+
+	criService.Register(s)
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+func setupSandboxPoolCRI() {
+	lis, err := net.Listen("unix", *criSock)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+
+	poolService, err := sandbox_pool.NewPoolService()
+	if err != nil {
+		log.Fatalf("failed to create pool service %v", err)
+	}
+
+	criService, err := cri.NewService(poolService)
 	if err != nil {
 		log.Fatalf("failed to create CRI service %v", err)
 	}

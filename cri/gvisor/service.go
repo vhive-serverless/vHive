@@ -129,6 +129,11 @@ func (gs *GVisorService) createUserContainer(ctx context.Context, r *criapi.Crea
 	return stockResp, stockErr
 }
 
+func (gs *GVisorService) RunPodSandbox(ctx context.Context, r *criapi.RunPodSandboxRequest) (*criapi.RunPodSandboxResponse, error) {
+	log.Debugf("RunPodsandbox for %+v", r.GetConfig().GetMetadata())
+	return gs.stockRuntimeClient.RunPodSandbox(ctx, r)
+}
+
 func (gs *GVisorService) createQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
 	ctrConf, err := gs.getAndRemoveCtrConfig(r.GetPodSandboxId())
 	if err != nil {
