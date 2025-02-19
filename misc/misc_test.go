@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestAllocateFreeVMs(t *testing.T) {
-	vmPool := NewVMPool("", 10)
+	vmPool := NewVMPool("", 10, "172.17", "172.18")
 
 	vmIDs := [2]string{"test1", "test2"}
 
@@ -67,7 +67,7 @@ func TestAllocateFreeVMs(t *testing.T) {
 func TestAllocateFreeVMsParallel(t *testing.T) {
 	vmNum := 100
 
-	vmPool := NewVMPool("", 10)
+	vmPool := NewVMPool("", 10, "172.17", "172.18")
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {

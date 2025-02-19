@@ -23,7 +23,6 @@
 package ctriface
 
 import (
-	"github.com/vhive-serverless/vhive/devmapper"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -31,6 +30,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/devmapper"
 
 	log "github.com/sirupsen/logrus"
 
@@ -91,6 +92,9 @@ type Orchestrator struct {
 	isMetricsMode    bool
 	netPoolSize      int
 
+	vethPrefix  string
+	clonePrefix string
+
 	memoryManager *manager.MemoryManager
 }
 
@@ -103,12 +107,14 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
 	o.netPoolSize = 10
+	o.vethPrefix = "172.17"
+	o.clonePrefix = "172.18"
 
 	for _, opt := range opts {
 		opt(o)
 	}
 
-	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize)
+	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize, o.vethPrefix, o.clonePrefix)
 
 	if _, err := os.Stat(o.snapshotsDir); err != nil {
 		if !os.IsNotExist(err) {

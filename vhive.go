@@ -84,6 +84,8 @@ func main() {
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
+	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
+	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
 	flag.Parse()
 
 	if *sandbox != "firecracker" && *sandbox != "gvisor" {
@@ -142,6 +144,8 @@ func main() {
 			ctriface.WithMetricsMode(*isMetricsMode),
 			ctriface.WithLazyMode(*isLazyMode),
 			ctriface.WithNetPoolSize(*netPoolSize),
+			ctriface.WithVethPrefix(*vethPrefix),
+			ctriface.WithClonePrefix(*clonePrefix),
 		)
 		funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 		go setupFirecrackerCRI()

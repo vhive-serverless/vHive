@@ -53,7 +53,7 @@ func TestCreateCleanManager(t *testing.T) {
 	poolSize := []int{1, 5, 20}
 
 	for _, n := range poolSize {
-		mgr, createErr := NewNetworkManager("", n)
+		mgr, createErr := NewNetworkManager("", n, "172.17", "172.18")
 		require.NoError(t, createErr, "Network manager creation returned error")
 
 		cleanErr := mgr.Cleanup()
@@ -64,7 +64,7 @@ func TestCreateCleanManager(t *testing.T) {
 func TestCreateRemoveNetworkParallel(t *testing.T) {
 	netNum := []int{50, 200}
 
-	mgr, err := NewNetworkManager("", 10)
+	mgr, err := NewNetworkManager("", 10, "172.17", "172.18")
 	require.NoError(t, err, "Network manager creation returned error")
 	defer func() { _ = mgr.Cleanup() }()
 
@@ -94,7 +94,7 @@ func TestCreateRemoveNetworkParallel(t *testing.T) {
 func TestCreateRemoveNetworkSerial(t *testing.T) {
 	netNum := 50
 
-	mgr, err := NewNetworkManager("", 50)
+	mgr, err := NewNetworkManager("", 50, "172.17", "172.18")
 	require.NoError(t, err, "Network manager creation returned error")
 	defer func() { _ = mgr.Cleanup() }()
 

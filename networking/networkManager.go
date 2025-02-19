@@ -24,8 +24,9 @@
 package networking
 
 import (
-	log "github.com/sirupsen/logrus"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // NetworkManager manages the in use network configurations along with a pool of free network configurations
@@ -34,6 +35,8 @@ type NetworkManager struct {
 	sync.Mutex
 	nextID        int
 	hostIfaceName string
+	vethPrefix    string
+	clonePrefix   string
 
 	// Pool of free network configs
 	networkPool []*NetworkConfig
@@ -51,7 +54,7 @@ type NetworkManager struct {
 // using the supplied interface. If no interface is supplied, the default interface is used. To take the network
 // setup of the critical path of a function creation, the network manager tries to maintain a pool of ready to use
 // network configurations of size at least poolSize.
-func NewNetworkManager(hostIfaceName string, poolSize int) (*NetworkManager, error) {
+func NewNetworkManager(hostIfaceName string, poolSize int, vethPrefix, clonePrefix string) (*NetworkManager, error) {
 	manager := new(NetworkManager)
 
 	manager.hostIfaceName = hostIfaceName
@@ -75,6 +78,8 @@ func NewNetworkManager(hostIfaceName string, poolSize int) (*NetworkManager, err
 	}
 
 	manager.poolCond = sync.NewCond(new(sync.Mutex))
+	manager.vethPrefix = vethPrefix
+	manager.clonePrefix = clonePrefix
 	manager.initConfigPool(poolSize)
 	manager.poolSize = poolSize
 
@@ -107,7 +112,7 @@ func (mgr *NetworkManager) addNetConfig() {
 	mgr.inCreation.Add(1)
 	mgr.Unlock()
 
-	netCfg := NewNetworkConfig(id, mgr.hostIfaceName)
+	netCfg := NewNetworkConfig(id, mgr.hostIfaceName, mgr.vethPrefix, mgr.clonePrefix)
 	if err := netCfg.CreateNetwork(); err != nil {
 		log.Errorf("failed to create network %s:", err)
 	}
