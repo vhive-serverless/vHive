@@ -24,18 +24,19 @@ package networking
 
 import (
 	"fmt"
+	"net"
+	"runtime"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netns"
-	"net"
-	"runtime"
 )
 
 const (
 	defaultContainerCIDR = "172.16.0.2/24"
 	defaultGatewayCIDR   = "172.16.0.1/24"
 	defaultContainerTap  = "tap0"
-	defaultContainerMac  = "AA:FC:00:00:00:01"
+	defaultContainerMac  = "06:00:AC:10:00:02"
 )
 
 // NetworkConfig represents the network devices, IPs, namespaces, routes and filter rules to connect a uVM
@@ -48,10 +49,13 @@ type NetworkConfig struct {
 	containerTap  string // Container tap name
 	containerMac  string // Container Mac address
 	hostIfaceName string // Host network interface name
+
+	vethPrefix  string // Prefix for IP addresses of veth devices
+	clonePrefix string // Prefix for IP addresses of clone devices
 }
 
 // NewNetworkConfig creates a new network config with a given id and default host interface
-func NewNetworkConfig(id int, hostIfaceName string) *NetworkConfig {
+func NewNetworkConfig(id int, hostIfaceName string, vethPrefix, clonePrefix string) *NetworkConfig {
 	return &NetworkConfig{
 		id:            id,
 		containerCIDR: defaultContainerCIDR,
@@ -59,6 +63,9 @@ func NewNetworkConfig(id int, hostIfaceName string) *NetworkConfig {
 		containerTap:  defaultContainerTap,
 		containerMac:  defaultContainerMac,
 		hostIfaceName: hostIfaceName,
+
+		vethPrefix:  vethPrefix,
+		clonePrefix: clonePrefix,
 	}
 }
 
@@ -79,7 +86,7 @@ func (cfg *NetworkConfig) getVeth0Name() string {
 
 // getVeth0CIDR returns the IP address for the veth device at the side of the uVM in CIDR notation
 func (cfg *NetworkConfig) getVeth0CIDR() string {
-	return fmt.Sprintf("172.17.%d.%d/30", (4*cfg.id)/256, ((4*cfg.id)+2)%256)
+	return fmt.Sprintf("%s.%d.%d/30", cfg.vethPrefix, (4*cfg.id)/256, ((4*cfg.id)+2)%256)
 }
 
 // getVeth1Name returns the name for the veth device at the side of the host
@@ -89,12 +96,12 @@ func (cfg *NetworkConfig) getVeth1Name() string {
 
 // getVeth1Name returns the IP address for the veth device at the side of the host in CIDR notation
 func (cfg *NetworkConfig) getVeth1CIDR() string {
-	return fmt.Sprintf("172.17.%d.%d/30", (4*cfg.id)/256, ((4*cfg.id)+1)%256)
+	return fmt.Sprintf("%s.%d.%d/30", cfg.vethPrefix, (4*cfg.id)/256, ((4*cfg.id)+1)%256)
 }
 
 // GetCloneIP returns the IP address the uVM is reachable at from the host
 func (cfg *NetworkConfig) GetCloneIP() string {
-	return fmt.Sprintf("172.18.%d.%d", cfg.id/254, 1+(cfg.id%254))
+	return fmt.Sprintf("%s.%d.%d", cfg.clonePrefix, cfg.id/254, 1+(cfg.id%254))
 }
 
 // GetContainerCIDR returns the internal IP of the uVM in CIDR notation

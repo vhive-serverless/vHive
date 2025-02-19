@@ -78,3 +78,15 @@ func WithNetPoolSize(netPoolSize int) OrchestratorOption {
 		o.netPoolSize = netPoolSize
 	}
 }
+
+func WithVethPrefix(vethPrefix string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.vethPrefix = vethPrefix
+	}
+}
+
+func WithClonePrefix(clonePrefix string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.clonePrefix = clonePrefix
+	}
+}
