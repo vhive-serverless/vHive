@@ -95,6 +95,19 @@ func InstallContainerd() error {
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to extract containerd!\n") {
 		return err
 	}
+	// Create containerd config; enable systemd cgroup driver (recommended by k8s)
+	_, err = utils.ExecShellCmd("sudo mkdir -p /etc/containerd")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create containerd config!\n") {
+		return err
+	}
+	_, err = utils.ExecShellCmd("containerd config default | sudo tee /etc/containerd/config.toml")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create containerd config!\n") {
+		return err
+	}
+	_, err = utils.ExecShellCmd("sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to modify containerd config!\n") {
+		return err
+	}
 	return nil
 }
 
