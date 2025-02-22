@@ -204,7 +204,7 @@ func SetupSystem() error {
 
 	// Install required dependencies
 	utils.WaitPrintf("Installing required dependencies")
-	err := utils.InstallPackages("curl ca-certificates")
+	err := utils.InstallPackages("curl ca-certificates screen")
 	if !utils.CheckErrorWithMsg(err, "Failed to install required dependencies!\n") {
 		return err
 	}
@@ -274,21 +274,6 @@ func SetupSystem() error {
 	// Modify fstab to disable swap permanently
 	_, err = utils.ExecShellCmd("sudo sed -i 's/#\\s*\\(.*swap.*\\)/\\1/g' /etc/fstab && sudo sed -i 's/.*swap.*/# &/g' /etc/fstab")
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to modify fstab!\n") {
-		return err
-	}
-
-	// NAT setup
-	utils.WaitPrintf("Setting up NAT")
-	bashCmd =
-		`hostiface=$(sudo route | grep default | tr -s ' ' | cut -d ' ' -f 8) && ` +
-			`sudo nft "add table ip filter" && ` +
-			`sudo nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }" && ` +
-			`sudo nft "add rule ip filter FORWARD ct state related,established counter accept" && ` +
-			`sudo nft "add table ip nat" && ` +
-			`sudo nft "add chain ip nat POSTROUTING { type nat hook postrouting priority 0; policy accept; }" && ` +
-			`sudo nft "add rule ip nat POSTROUTING oifname ${hostiface} counter masquerade"`
-	_, err = utils.ExecShellCmd(bashCmd)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to set up NAT!\n") {
 		return err
 	}
 

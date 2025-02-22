@@ -442,6 +442,93 @@ func deleteForwardRules(vethHostName string) error {
 	return nil
 }
 
+// setupMasquerade creates NAT rules for external communication from the uVM.
+func setupMasquerade(vethHostName, hostIface string) error {
+	conn := nftables.Conn{}
+
+	// 1. add table ip nat
+	natTable := &nftables.Table{
+		Name:   "nat",
+		Family: nftables.TableFamilyIPv4,
+	}
+
+	// 2. add chain ip nat POSTROUTING { type nat hook postrouting priority 0; policy accept; }
+	polAccept := nftables.ChainPolicyAccept
+	natCh := &nftables.Chain{
+		Name:     fmt.Sprintf("MASQ%s", vethHostName),
+		Table:    natTable,
+		Type:     nftables.ChainTypeNAT,
+		Priority: nftables.ChainPriorityRef(0),
+		Hooknum:  nftables.ChainHookPostrouting,
+		Policy:   &polAccept,
+	}
+
+	// 3. add rule ip nat POSTROUTING iifname veth1-0 oifname eno1 counter masquerade
+	masqRule := &nftables.Rule{
+		Table: natTable,
+		Chain: natCh,
+		Exprs: []expr.Any{
+			// Load iffname in register 1
+			&expr.Meta{Key: expr.MetaKeyIIFNAME, Register: 1},
+			// Check iifname == veth1-0
+			&expr.Cmp{
+				Op:       expr.CmpOpEq,
+				Register: 1,
+				Data:     []byte(fmt.Sprintf("%s\x00", vethHostName)),
+			},
+			// Load offname in register 2
+			&expr.Meta{Key: expr.MetaKeyOIFNAME, Register: 2},
+			// Check oifname == eno1
+			&expr.Cmp{
+				Op:       expr.CmpOpEq,
+				Register: 2,
+				Data:     []byte(fmt.Sprintf("%s\x00", hostIface)),
+			},
+			// masq
+			&expr.Masq{},
+		},
+	}
+
+	// Apply
+	conn.AddTable(natTable)
+	conn.AddChain(natCh)
+	conn.AddRule(masqRule)
+	if err := conn.Flush(); err != nil {
+		return errors.Wrapf(err, "creating masquerade rules")
+	}
+	return nil
+}
+
+// deleteMasquerade deletes the NAT rules for external communication from the uVM.
+func deleteMasquerade(vethHostName string) error {
+	conn := nftables.Conn{}
+
+	// 1. add table ip nat
+	natTable := &nftables.Table{
+		Name:   "nat",
+		Family: nftables.TableFamilyIPv4,
+	}
+
+	// 2. del chain ip filter MASQ { type filter hook forward priority 0; policy accept; }
+	polAccept := nftables.ChainPolicyAccept
+	natCh := &nftables.Chain{
+		Name:     fmt.Sprintf("MASQ%s", vethHostName),
+		Table:    natTable,
+		Type:     nftables.ChainTypeNAT,
+		Priority: nftables.ChainPriorityRef(0),
+		Hooknum:  nftables.ChainHookPostrouting,
+		Policy:   &polAccept,
+	}
+
+	// Apply
+	conn.FlushChain(natCh)
+	conn.DelChain(natCh)
+	if err := conn.Flush(); err != nil {
+		return errors.Wrapf(err, "deleting masquerade rules")
+	}
+	return nil
+}
+
 // addRoute adds a routing table entry to destIp with gateway gatewayIp.
 func addRoute(destIp, gatewayIp string) error {
 	_, dstNet, err := net.ParseCIDR(fmt.Sprintf("%s/32", destIp))
