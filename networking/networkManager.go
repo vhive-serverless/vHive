@@ -127,19 +127,20 @@ func (mgr *NetworkManager) addNetConfig() {
 
 // allocNetConfig allocates a new network config from the pool to a function instance identified by funcID
 func (mgr *NetworkManager) allocNetConfig(funcID string) *NetworkConfig {
-	// Add netconfig to pool to keep pool to configured size
-	go mgr.addNetConfig()
-
 	logger := log.WithFields(log.Fields{"funcID": funcID})
 	logger.Debug("Allocating a new network config from network pool to function instance")
 
-	// Pop a network config from the pool and allocate it to the function instance
 	mgr.poolCond.L.Lock()
+	// Add netconfig to pool to keep pool to configured size
+	if len(mgr.networkPool) <= mgr.poolSize {
+		go mgr.addNetConfig()
+	}
 	for len(mgr.networkPool) == 0 {
 		// Wait until a new network config has been created
 		mgr.poolCond.Wait()
 	}
 
+	// Pop a network config from the pool and allocate it to the function instance
 	config := mgr.networkPool[len(mgr.networkPool)-1]
 	mgr.networkPool = mgr.networkPool[:len(mgr.networkPool)-1]
 	mgr.poolCond.L.Unlock()
