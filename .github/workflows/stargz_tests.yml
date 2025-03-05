@@ -26,7 +26,7 @@ jobs:
       KIND_VERSION: v0.22.0
       K8S_VERSION: v1.29
       YAML_DIR: workloads/container
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

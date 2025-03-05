@@ -34,9 +34,9 @@ The expected output should be:
 If the opened shell is not a "bash" one, you can just type "bash" in the terminal and it will change the current shell to "bash".
 
 #### A. CloudLab Profile
-You can use our CloudLab profile [ntu-cloud/vhive-ubuntu20][cloudlab-pf].
+You can use our CloudLab profile [ntu-cloud/vhive-ubuntu24][cloudlab-pf].
 
-It is recommended to use a base Ubuntu 20.04 image for each node and connect the nodes in a LAN.
+It is recommended to use a base Ubuntu 24.04 image for each node and connect the nodes in a LAN.
 
 #### B. Nodes to Rent
 We tested the following instructions by setting up a **2-node** cluster on Cloudlab, using all of the following SSD-equipped machines: `xl170` on Utah, `rs440` on Mass, `m400` on OneLab. `xl170` are normally less occupied than the other two, and users can consider other SSD-based machines too.
@@ -447,7 +447,7 @@ kn service delete --all
 
 [github-toc]: https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/
 [cloudlab]: https://www.cloudlab.us
-[cloudlab-pf]: https://www.cloudlab.us/p/ntu-cloud/vhive-ubuntu20
+[cloudlab-pf]: https://www.cloudlab.us/p/ntu-cloud/vhive-ubuntu24
 [cloudlab-hw]: https://docs.cloudlab.us/hardware.html
 [ext-abstract]: https://asplos-conference.org/abstracts/asplos21-paper212-extended_abstract.pdf
 [kn-benchmark]: https://github.com/vhive-serverless/vSwarm/blob/main/docs/adding_benchmarks.md
