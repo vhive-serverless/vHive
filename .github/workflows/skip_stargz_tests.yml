@@ -22,6 +22,6 @@ env:
 jobs:
   stargz-container-test:
     name: Test running stargz-based image using kn
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - run: 'echo "This check not required"'
