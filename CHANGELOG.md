@@ -6,6 +6,14 @@
 
 ### Changed
 
+### Fixed
+
+## Release v1.8
+
+### Added
+
+### Changed
+
 - Upgraded supported Ubuntu version to 24.04.
 - Bump Go to 1.22.
 
