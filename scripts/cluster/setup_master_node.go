@@ -33,10 +33,15 @@ import (
 func SetupMasterNode(stockContainerd string) error {
 	// Original Bash Scripts: scripts/cluster/setup_master_node.sh
 
-	err := InstallCalico()
+	err := InstallCilium()
 	if err != nil {
 		return err
 	}
+
+	/*err := InstallCalico()
+	if err != nil {
+		return err
+	}*/
 
 	err = InstallMetalLB()
 	if err != nil {
@@ -105,6 +110,36 @@ func SetupMasterNode(stockContainerd string) error {
 	// Logs for verification
 	_, err = utils.ExecShellCmd("kubectl --namespace istio-system get service istio-ingressgateway")
 	if !utils.CheckErrorWithMsg(err, "Verification Failed!") {
+		return err
+	}
+
+	return nil
+}
+
+func InstallCiliumCLI() error {
+	_, err := utils.ExecVHiveBashScript("scripts/cilium/setup_cilium.sh")
+	utils.CheckErrorWithTagAndMsg(err, "Failed to set up Cilium CLI!\n")
+	return err
+}
+
+func InstallCilium() error {
+	utils.InfoPrintf("Installing Cilium CLI and Dataplane")
+
+	utils.WaitPrintf("Installing Cilium CLI")
+	err := InstallCiliumCLI()
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Cilium CLI!\n") {
+		return err
+	}
+
+	utils.WaitPrintf("Installing Cilium dataplane")
+	_, err = utils.ExecShellCmd("cilium install --version 1.17.2")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Cilium dataplane!\n") {
+		return err
+	}
+
+	utils.WaitPrintf("Waiting for Cilium components to become ready")
+	_, err = utils.ExecShellCmd("cilium status --wait")
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to wait for all Cilium components to become ready!\n") {
 		return err
 	}
 
