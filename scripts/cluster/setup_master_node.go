@@ -48,10 +48,10 @@ func SetupMasterNode(stockContainerd string) error {
 		return err
 	}
 
-	err = InstallIstio()
+	/*err = InstallIstio()
 	if err != nil {
 		return err
-	}
+	}*/
 
 	if stockContainerd == "firecracker" {
 		err = PatchKnativeForFirecracker()
@@ -75,10 +75,10 @@ func SetupMasterNode(stockContainerd string) error {
 		return err
 	}
 
-	err = DeployIstioPods()
+	/*err = DeployIstioPods()
 	if err != nil {
 		return err
-	}
+	}*/
 
 	// Logs for verification
 	_, err = utils.ExecShellCmd("kubectl get pods -n knative-serving")
@@ -86,26 +86,26 @@ func SetupMasterNode(stockContainerd string) error {
 		return err
 	}
 
-	err = InstallKnativeEventingComponent()
+	/*err = InstallKnativeEventingComponent()
 	if err != nil {
 		return err
-	}
+	}*/
 
 	// Logs for verification
-	_, err = utils.ExecShellCmd("kubectl get pods -n knative-eventing")
+	/*_, err = utils.ExecShellCmd("kubectl get pods -n knative-eventing")
 	if !utils.CheckErrorWithMsg(err, "Verification Failed!") {
 		return err
-	}
+	}*/
 
-	err = InstallChannelLayer()
+	/*err = InstallChannelLayer()
 	if err != nil {
 		return err
-	}
+	}*/
 
-	err = InstallBrokerLayer()
+	/*err = InstallBrokerLayer()
 	if err != nil {
 		return err
-	}
+	}*/
 
 	// Logs for verification
 	_, err = utils.ExecShellCmd("kubectl --namespace istio-system get service istio-ingressgateway")
@@ -316,6 +316,24 @@ func InstallKnativeServingComponent() error {
 	_, err := utils.ExecShellCmd("kubectl -n knative-serving wait deploy webhook --timeout=180s --for=condition=Available")
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
 		return err
+	}
+
+	_, err = utils.ExecShellCmd("kubectl apply -l knative.dev/crd-install=true -f https://github.com/knative/net-istio/releases/download/knative-v%s/istio.yaml",
+		configs.Knative.KnativeVersion)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Istio CRDs!\n") {
+		//return err
+	}
+
+	_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v%s/istio.yaml",
+		configs.Knative.KnativeVersion)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Istio!\n") {
+		//return err
+	}
+
+	_, err = utils.ExecShellCmd("kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v%s/net-istio.yaml",
+		configs.Knative.KnativeVersion)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Istio controller component!\n") {
+		//return err
 	}
 
 	return nil
