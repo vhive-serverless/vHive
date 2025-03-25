@@ -35,9 +35,9 @@ import (
 func CreateMultinodeCluster(stockContainerd string) error {
 	// Original Bash Scripts: scripts/cluster/create_multinode_cluster.sh
 
-	if err := CreateMasterKubeletService(); err != nil {
+	/*if err := CreateMasterKubeletService(); err != nil {
 		return err
-	}
+	}*/
 
 	if err := DeployKubernetes(); err != nil {
 		return err
