@@ -50,11 +50,11 @@ func CreateWorkerKubeletService(criSock string) error {
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
 		return err
 	}
-	nodeIP, _ := utils.GetNodeIP()
+	//nodeIP, _ := utils.GetNodeIP()
 	bashCmd := `sudo sh -c 'cat <<EOF > /etc/default/kubelet
-KUBELET_EXTRA_ARGS="--v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix://%s --node-ip %s"
+KUBELET_EXTRA_ARGS="--v=%d --runtime-request-timeout=15m --container-runtime-endpoint=unix://%s"
 EOF'`
-	_, err = utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity, criSock, nodeIP)
+	_, err = utils.ExecShellCmd(bashCmd, configs.System.LogVerbosity, criSock)
 	if !utils.CheckErrorWithMsg(err, "Failed to create kubelet service!\n") {
 		return err
 	}
