@@ -104,6 +104,7 @@ func DeployKubernetes() error {
 		return iperr
 	}*/
 	shellCmd := fmt.Sprintf(`sudo kubeadm init --v=%d \
+--skip-phases=addon/kube-proxy \
 --cri-socket unix:///run/containerd/containerd.sock \
 --pod-network-cidr="%s" `,
 		configs.System.LogVerbosity, configs.Kube.PodNetworkCidr)

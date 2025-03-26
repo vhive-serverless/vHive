@@ -86,6 +86,11 @@ func SetupMasterNode(stockContainerd string) error {
 		return err
 	}
 
+	err = InstallCiliumHubbleObservability()
+	if err != nil {
+		return err
+	}
+
 	/*err = InstallKnativeEventingComponent()
 	if err != nil {
 		return err
@@ -118,6 +123,12 @@ func SetupMasterNode(stockContainerd string) error {
 
 func InstallCiliumCLI() error {
 	_, err := utils.ExecVHiveBashScript("scripts/cilium/setup_cilium.sh")
+	utils.CheckErrorWithTagAndMsg(err, "Failed to set up Cilium CLI!\n")
+	return err
+}
+
+func InstallCiliumHubbleObservability() error {
+	_, err := utils.ExecVHiveBashScript("scripts/cilium/setup_hubble.sh")
 	utils.CheckErrorWithTagAndMsg(err, "Failed to set up Cilium CLI!\n")
 	return err
 }
