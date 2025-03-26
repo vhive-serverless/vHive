@@ -43,10 +43,10 @@ func SetupMasterNode(stockContainerd string) error {
 		return err
 	}*/
 
-	err = InstallMetalLB()
+	/*err = InstallMetalLB()
 	if err != nil {
 		return err
-	}
+	}*/
 
 	/*err = InstallIstio()
 	if err != nil {
