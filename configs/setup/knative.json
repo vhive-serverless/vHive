@@ -7,7 +7,7 @@
 	"IstioDownloadUrlTemplate": "https://github.com/istio/istio/releases/download/%s/istio-%s-linux-%s.tar.gz",
 	"IstioZipkinVersion": "1.20",
 	"IstioZipkinDownloadUrlTemplate": "https://raw.githubusercontent.com/istio/istio/release-%s/samples/addons/extras/zipkin.yaml",
-	"MetalLBVersion": "0.14.3",
+	"MetalLBVersion": "0.14.9",
 	"LocalRegistryRepoVolumeSize": "5Gi",
 	"LocalRegistryVolumeConfigPath": "configs/registry/repository-volume.yaml",
 	"LocalRegistryDockerRegistryConfigPath": "configs/registry/docker-registry.yaml",

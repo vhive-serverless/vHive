@@ -192,13 +192,14 @@ func InstallCalico() error {
 
 // Install and configure MetalLB
 func InstallMetalLB() error {
-	utils.WaitPrintf("Installing and configuring MetalLB")
+	/*utils.WaitPrintf("Installing and configuring MetalLB")
 	_, err := utils.ExecShellCmd(`kubectl get configmap kube-proxy -n kube-system -o yaml |
 	sed -e "s/strictARP: false/strictARP: true/" | kubectl apply -f - -n kube-system`)
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
-	}
-	_, err = utils.ExecShellCmd("kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v%s/config/manifests/metallb-native.yaml",
+	}*/
+
+	_, err := utils.ExecShellCmd("kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v%s/config/manifests/metallb-native.yaml",
 		configs.Knative.MetalLBVersion)
 	if !utils.CheckErrorWithMsg(err, "Failed to install and configure MetalLB!\n") {
 		return err
