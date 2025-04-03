@@ -130,6 +130,15 @@ func (mgr *NetworkManager) allocNetConfig(funcID string) *NetworkConfig {
 	logger := log.WithFields(log.Fields{"funcID": funcID})
 	logger.Debug("Allocating a new network config from network pool to function instance")
 
+	mgr.Lock()
+	// Check if a network config is already assigned to the function instance
+	if config, ok := mgr.netConfigs[funcID]; ok {
+		mgr.Unlock()
+		logger.Debug("Network config already assigned to function instance")
+		return config
+	}
+	mgr.Unlock()
+
 	mgr.poolCond.L.Lock()
 	// Add netconfig to pool to keep pool to configured size
 	if len(mgr.networkPool) <= mgr.poolSize {
