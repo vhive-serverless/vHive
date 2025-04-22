@@ -62,6 +62,25 @@ func getHostIfaceName() (string, error) {
 	return "", errors.New("Failed to fetch host net interface")
 }
 
+func getExperimentIfaceName() (string, error) {
+	out, err := exec.Command(
+		"route",
+	).Output()
+	if err != nil {
+		log.Warnf("Failed to fetch host net interfaces %v\n%s\n", err, out)
+		return "", err
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(out))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "10.0.1.0") {
+			return line[strings.LastIndex(line, " ")+1:], nil
+		}
+	}
+	return "", errors.New("Failed to fetch experiment net interface")
+}
+
 // createTap creates a TAP device with name tapName, IP gatewayIP in the network namespace with name netnsName
 func createTap(tapName, gatewayIP, netnsName string) error {
 	// 1. Create tap device
