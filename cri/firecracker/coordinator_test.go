@@ -98,3 +98,28 @@ func TestParallelStartStop(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestOrchCreateSnapshot(t *testing.T) {
+	containerID := "1"
+	revision := "myrev-1"
+
+	// Start VM
+	fi, err := coord.startVM(context.Background(), testImageName, revision)
+	require.NoError(t, err, "could not start VM")
+
+	err = coord.insertActive(containerID, fi)
+	require.NoError(t, err, "could not insert mapping")
+
+	// Trigger snapshot creation
+	err = coord.orchCreateSnapshot(context.Background(), fi)
+	require.NoError(t, err, "snapshot creation failed")
+
+	// Verify that the snapshot is available and ready
+	snap, err := coord.snapshotManager.AcquireSnapshot(revision)
+	require.NoError(t, err, "snapshot was not marked ready or does not exist")
+	require.NotNil(t, snap, "acquired snapshot is nil")
+
+	// Clean up
+	err = coord.stopVM(context.Background(), containerID)
+	require.NoError(t, err, "could not stop VM")
+}
