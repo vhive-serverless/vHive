@@ -49,6 +49,10 @@ jobs:
       - name: Run vHive CRI tests
         run: source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
 
+      - name: Run sandbox specific tests
+        if: ${{ inputs.sandbox == 'firecracker' }}
+        run: source /etc/profile && go clean -testcache && go test ./cri/${{ inputs.sandbox }} -v -race -cover
+
       - name: Archive log artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

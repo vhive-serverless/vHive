@@ -211,24 +211,26 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 
 	fi.Logger.Debug("creating instance snapshot before stopping")
 
-	err = c.orch.PauseVM(ctxTimeout, fi.VmID)
-	if err != nil {
-		fi.Logger.WithError(err).Error("failed to pause VM")
-		return err
+	if !c.withoutOrchestrator {
+		err = c.orch.PauseVM(ctxTimeout, fi.VmID)
+		if err != nil {
+			fi.Logger.WithError(err).Error("failed to pause VM")
+			return err
+		}
+
+		err = c.orch.CreateSnapshot(ctxTimeout, fi.VmID, snap)
+		if err != nil {
+			fi.Logger.WithError(err).Error("failed to create snapshot")
+			return err
+		}
+
+		if _, err := c.orch.ResumeVM(ctx, fi.VmID); err != nil {
+			fi.Logger.WithError(err).Error("failed to resume VM")
+			return err
+		}
 	}
 
-	err = c.orch.CreateSnapshot(ctxTimeout, fi.VmID, snap)
-	if err != nil {
-		fi.Logger.WithError(err).Error("failed to create snapshot")
-		return err
-	}
-
-	if _, err := c.orch.ResumeVM(ctx, fi.VmID); err != nil {
-		fi.Logger.WithError(err).Error("failed to resume VM")
-		return err
-	}
-
-	if err := c.snapshotManager.CommitSnapshot(fi.VmID); err != nil {
+	if err := c.snapshotManager.CommitSnapshot(fi.Revision); err != nil {
 		fi.Logger.WithError(err).Error("failed to commit snapshot")
 		return err
 	}
