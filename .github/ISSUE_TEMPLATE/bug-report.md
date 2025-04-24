@@ -22,7 +22,7 @@ and if used with Kubernetes additionally `containerd` and/or other relevant
 logs of Kubernetes containers and setup scripts.
 
 **Notes**
-Currently, we support only Ubuntu 18 (x86) bare-metal hosts, however
+Currently, we support only Ubuntu 24.04 (x86) bare-metal hosts, however
 we encourage the users to reports Issues that appear in different settings.
 We will try to help and potentially include these scenarios into our CI
 if given enough interest from the community.
