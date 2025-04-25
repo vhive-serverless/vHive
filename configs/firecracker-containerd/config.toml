@@ -1,8 +1,16 @@
 disabled_plugins = ["cri"]
 root = "/var/lib/firecracker-containerd/containerd"
 state = "/run/firecracker-containerd"
+
 [grpc]
   address = "/run/firecracker-containerd/containerd.sock"
+
+# Proxy to remote snapshotters (e.g. stargz)
+[proxy_plugins]
+  [proxy_plugins.proxy]
+    type = "snapshot"
+    address = "/var/lib/demux-snapshotter/snapshotter.sock"
+
 [plugins]
   [plugins.devmapper]
     pool_name = "fc-dev-thinpool"

@@ -2,7 +2,7 @@
 This guide describes how to set up an _N_-node vHive serverless cluster with Firecracker MicroVMs.
 See [here][github-toc] to learn where to find table of contents.
 
-To see how to setup a single node cluster with stock-only or gVisor, see [Developer's guide](developers_guide.md).
+To see how to set up a single node cluster with stock-only or gVisor, see [Developer's guide](developers_guide.md).
 
 ## I. Host platform requirements
 ### 1. Hardware
@@ -57,7 +57,7 @@ Another option is to install using official instructions: [https://golang.org/do
    go version
    ```
 
-## II. Setup a Serverless (Knative) Cluster
+## II. Set up a Serverless (Knative) Cluster
 ### 1. Setup All Nodes
 **On each node (both master and workers)**, make sure you have **Go (version 1.19 at least) installed on your system and added to `PATH` if you want to build the setup scripts from source**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
 
@@ -70,37 +70,36 @@ Another option is to install using official instructions: [https://golang.org/do
     ```bash
     mkdir -p /tmp/vhive-logs/
     ```
-2. Change your working directory to the root of the repository:
+3. Change your working directory to the root of the repository:
     ```bash
     cd vhive
     ```
-3. Get the setup scripts:
+4. Get the setup scripts:
     ```bash
     pushd scripts && go build -o setup_tool && popd && mv scripts/setup_tool .
     ```
-    
-    **Note:** All setup logs will be generated and saved to your current working directory.
-3. Run the node setup script:
+
+   **Note:** All setup logs will be generated and saved to your current working directory.
+5. Run the node setup script:
     > **Note - stargz deployments:**
     >
     > [eStargz](https://github.com/containerd/stargz-snapshotter/tree/cmd/v0.12.1) is a
     > lazily-pullable image format developed to improve the performance of container boot-ups by
     > making better usage of the layering structure of container images. The image format is 
-    > compatible to [OCI](https://github.com/opencontainers/image-spec/)/[Docker](https://github.com/moby/moby/blob/master/image/spec/v1.2.md) images, therefore it allows pushing images to 
-    > standard container registries.
-    > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
-    > flags as follows:
+    > compatible to [OCI](https://github.com/opencontainers/image-spec/)/[Docker](https://github.com/moby/moby/blob/master/image/spec/v1.2.md) images,
+    > therefore it allows pushing images to standard container registries.
+    > To enable runs with `stargz` images, setup kubelet by adding the `use-stargz` flag as follows:
     >
     > ```bash
-    > ./setup_tool setup_node stock-only use-stargz
+    > ./setup_tool setup_node [stock-only|firecracker] use-stargz
     > ```
     > **IMPORTANT**
-    > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
-    > Therefore, the following steps from this guide must **not** be executed:
+    > Currently `stargz` is supported both in native kubelet contexts with and without firecracker.
+    > If you do not want to use firecracker, the following steps from this guide must **not** be executed:
     > * `2.3 - Start firecracker-containerd in a background terminal named firecracker`,
     > * `2.4 - Build vHive host orchestrator`,
     > * `2.5 - Start vHive in a background terminal named vhive`.
-    
+
     For the standard setup, run the following script:
     ```bash
     ./setup_tool setup_node firecracker
@@ -115,7 +114,7 @@ Another option is to install using official instructions: [https://golang.org/do
 
 1. Run the script that setups kubelet:
     > **IMPORTANT:**
-    > If step `1.4 - Run the node setup script` was executed with the `stock-only` flag, execute the following instead:
+    > If step `1.5 - Run the node setup script` was executed with the `stock-only` flag, execute the following instead:
     >   ```bash
     >   ./setup_tool setup_worker_kubelet stock-only
     
@@ -132,7 +131,7 @@ Another option is to install using official instructions: [https://golang.org/do
     >
     > Starting long-running daemons in the background using `screen` allows you to use a single
     > terminal (an SSH session most likely) by keeping it unoccupied and ensures that
-    > daemons will not be terminated when you logout (voluntarily, or because of connection issues).
+    > daemons will not be terminated when you log out (voluntarily, or because of connection issues).
     >
     > - To (re-)attach a background terminal:
     >   ```bash
@@ -153,6 +152,17 @@ Another option is to install using official instructions: [https://golang.org/do
     sudo PATH=$PATH screen -dmS firecracker bash -c "/usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml > >(tee -a /tmp/vhive-logs/firecracker.stdout) 2> >(tee -a /tmp/vhive-logs/firecracker.stderr >&2)"
     ```
 
+    > **Note:**
+    >
+    > If you are using `stargz` with `firecracker`, you need to also start both `demux-snapshotter` and the `http-address-resolver`:
+    > 
+    > ```bash
+    > sudo screen -dmS demux-snapshotter bash -c "demux-snapshotter"
+    > sudo screen -dmS http-address-resolver bash -c "http-address-resolver"
+    > ```
+    >
+    > More details [here](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter.md).
+
 4. Build vHive host orchestrator:
     ```bash
     source /etc/profile && go build
@@ -167,13 +177,15 @@ Another option is to install using official instructions: [https://golang.org/do
     > **Note:**
     >
     > By default, the microVMs are booted, `-snapshots` enables snapshots after the 2nd invocation of each function.
-   >
-   > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP)
-   technique that we described in our ASPLOS'21
-   paper ([extended abstract][ext-abstract], [full paper](papers/REAP_ASPLOS21.pdf)).
-   > This feature is currently disabled due to the Firecracker version upgrade but WIP (see GH-807). It is available in
-   the  
-   > [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
+    >
+    > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP)
+    technique that we described in our ASPLOS'21
+    paper ([extended abstract][ext-abstract], [full paper](papers/REAP_ASPLOS21.pdf)).
+    > This feature is currently disabled due to the Firecracker version upgrade but WIP (see GH-807). It is available in
+    the [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
+    >
+    > If you are using `stargz` with `firecracker`, you also need to set the `-dockerCredentials` flag to be able to [pull the images
+    from inside the microVMs](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds/README.md#docker-credential-helper-mmds).
 
 ### 3. Configure Master Node
 **On the master node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
@@ -241,7 +253,7 @@ Another option is to install using official instructions: [https://golang.org/do
 **Congrats, your Knative cluster is ready!**
 
 
-## III. Setup a Single-Node Cluster
+## III. Set up a Single-Node Cluster
 ### 1. Manual
 In essence, you will execute the same commands for master and worker setups but on a single node.
 
@@ -253,14 +265,13 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     ./setup_tool setup_node firecracker
     ```
     > **Note:**
-    > To enable runs with `stargz` images, setup kubelet by adding the `stock-only` and `use-stargz`
-    > flags as follows:
+    > To enable runs with `stargz` images, setup kubelet by adding the `use-stargz` flag as follows:
     >   ```bash
-    >   ./setup_tool setup_node stock-only use-stargz
+    >   ./setup_tool setup_node <stock-only|firecracker> use-stargz
     >   ```
     > **IMPORTANT**
-    > Currently `stargz` is only supported in native kubelet contexts without firecracker. 
-    > Therefore, the following steps from this guide must **not** be executed:
+    > Currently `stargz` is supported both in native kubelet contexts with and without firecracker.
+    > If you do not want to use firecracker, the following steps from this guide must **not** be executed:
     > * `1.3 - Start firecracker-containerd in a background terminal named firecracker`,
     > * `1.5 - Start vHive in a background terminal named vhive`.
 2. Start `containerd` in a background terminal named `containerd`:
@@ -283,12 +294,26 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     ```bash
     sudo screen -dmS vhive ./vhive; sleep 5;
     ```
+
+    > **Note:**
+    >
+    > By default, the microVMs are booted, `-snapshots` enables snapshots after the 2nd invocation of each function.
+    >
+    > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP)
+    technique that we described in our ASPLOS'21
+    paper ([extended abstract][ext-abstract], [full paper](papers/REAP_ASPLOS21.pdf)).
+    > This feature is currently disabled due to the Firecracker version upgrade but WIP (see GH-807). It is available in
+    the [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
+    >
+    > If you are using `stargz` with `firecracker`, you also need to set the `-dockerCredentials` flag to be able to [pull the images
+    from inside the microVMs](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds/README.md#docker-credential-helper-mmds).
+
 6. Run the single node cluster setup script:
     ```bash
     ./setup_tool create_one_node_cluster firecracker
     ```
     > **IMPORTANT:**
-    > If you setup the node using the `stock-only` flag, execute the following 
+    > If you set up the node using the `stock-only` flag, execute the following 
     > script instead:
     >   ```bash
     >   ./setup_tool create_one_node_cluster stock-only
@@ -313,7 +338,7 @@ export GITHUB_VHIVE_ARGS="[-dbg] [-snapshots]"
 >
 > See note in [II.2.5](./quickstart_guide.md#2-setup-worker-nodes) for details about snapshots.
 
-## IV. Deploying and Invoking Functions in vHive
+## IV. Deploying and Invoking Functions
 
 This section is only for synchronous (i.e., Knative Serving) functions. Please refer to
 [Adding Benchmarks to vHive/Knative and Stock Knative][kn-benchmark]
@@ -406,23 +431,23 @@ To create your own deployment, replace the marked fields as needed:
 apiVersion: serving.knative.dev/v1
 kind: Pod
 metadata:
-  // required
+  # required
   name: <deployment_name>
 spec:
   template:
     spec:
       containers:
-        // required
-      - name: <container_name>
-        // required
-        image: <stargz_image_registry_path>
-        // optional
-        command: [<command>]
-        // optional
-        args: <args>
-        // optional
-        ports:
-        - containerPort: <port_number>
+        # required
+        - name: <container_name>
+          # required
+          image: <stargz_image_registry_path>
+          # optional
+          command: [ <command> ]
+          # optional
+          args: <args>
+          # optional
+          ports:
+            - containerPort: <port_number>
 ```
 
 
