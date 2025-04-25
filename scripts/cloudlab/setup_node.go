@@ -42,8 +42,8 @@ func SetupNode(sandbox string, useStargz string) error {
 		return &utils.ShellError{Msg: "Sandbox technique not supported!", ExitCode: 1}
 	}
 
-	if sandbox != "stock-only" && useStargz == "use-stargz" {
-		utils.FatalPrintf("Invalid options! Stargz is only supported with stock-only mode!\n")
+	if sandbox != "stock-only" && sandbox != "firecracker" && useStargz == "use-stargz" {
+		utils.FatalPrintf("Invalid options! Stargz is only supported with stock-only or firecracker mode!\n")
 		return &utils.ShellError{Msg: "Invalid options: use-stargz", ExitCode: 1}
 	}
 
@@ -100,7 +100,7 @@ func SetupNode(sandbox string, useStargz string) error {
 	// Use Stargz
 	if useStargz == "use-stargz" {
 		utils.InfoPrintf("Set up stargz\n")
-		if err := stargz.SetupStargz(); err != nil {
+		if err := stargz.SetupStargz(sandbox); err != nil {
 			return err
 		}
 	}

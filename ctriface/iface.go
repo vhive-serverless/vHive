@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"fmt"
 	"github.com/vhive-serverless/vhive/snapshotting"
 	"os"
 	"os/exec"
@@ -66,6 +67,15 @@ const (
 	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
 )
 
+func withNamespace(ctx context.Context, snapshotter, vmID string) context.Context {
+	if snapshotter == "proxy" {
+		// http-address-resolver assumes that the containerd namespace is the VM ID
+		// https://github.com/firecracker-microvm/firecracker-containerd/tree/main/snapshotter#address-resolver-agent
+		return namespaces.WithNamespace(ctx, vmID)
+	}
+	return namespaces.WithNamespace(ctx, namespaceName)
+}
+
 // StartVM Boots a VM if it does not exist
 func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	return o.StartVMWithEnvironment(ctx, vmID, imageName, []string{})
@@ -95,12 +105,16 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		}
 	}()
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
-	tStart = time.Now()
-	if vm.Image, err = o.getImage(ctx, imageName); err != nil {
-		return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
+
+	// With remote snapshotters, we first create the VM and then pull the image, since the snapshotter lives inside the VM
+	if o.snapshotter != "proxy" {
+		tStart = time.Now()
+		if vm.Image, err = o.getImage(ctx, imageName); err != nil {
+			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
+		}
+		startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 	}
-	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 
 	tStart = time.Now()
 	conf := o.getVMConfig(vm)
@@ -118,19 +132,46 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		}
 	}()
 
+	if o.snapshotter == "proxy" {
+		tStart = time.Now()
+		if _, err = o.fcClient.SetVMMetadata(ctx, &proto.SetVMMetadataRequest{
+			VMID:     vmID,
+			Metadata: o.GetDockerCredentials(),
+		}); err != nil {
+			logger.WithError(err).Error("failed to set VM metadata")
+			return nil, nil, errors.Wrap(err, "failed to set VM metadata")
+		}
+
+		if vm.Image, err = o.getImage(ctx, imageName); err != nil {
+			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
+		}
+		startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
+	}
+
 	logger.Debug("StartVM: Creating a new container")
+
+	specOpts := []oci.SpecOpts{
+		oci.WithEnv(environmentVariables),
+		firecrackeroci.WithVMID(vmID),
+		firecrackeroci.WithVMNetwork,
+	}
+	if o.snapshotter == "proxy" {
+		// We can't use the regular oci.WithImageConfig from containerd because it will attempt to get UIDs and GIDs from inside the
+		// container by mounting the container's filesystem. With remote snapshotters, that filesystem is inside a VM and inaccessible to the host.
+		// The firecrackeroci variation instructs the firecracker-containerd agent that runs inside the VM to perform those UID/GID lookups because
+		// it has access to the container's filesystem
+		specOpts = append(specOpts, firecrackeroci.WithVMLocalImageConfig(*vm.Image))
+	} else {
+		specOpts = append(specOpts, oci.WithImageConfig(*vm.Image))
+	}
+
 	tStart = time.Now()
 	container, err := o.client.NewContainer(
 		ctx,
 		vm.ContainerSnapKey,
 		containerd.WithSnapshotter(o.snapshotter),
 		containerd.WithNewSnapshot(vm.ContainerSnapKey, *vm.Image),
-		containerd.WithNewSpec(
-			oci.WithImageConfig(*vm.Image),
-			firecrackeroci.WithVMID(vmID),
-			firecrackeroci.WithVMNetwork,
-			oci.WithEnv(environmentVariables),
-		),
+		containerd.WithNewSpec(specOpts...),
 		containerd.WithRuntime("aws.firecracker", nil),
 	)
 	startVMMetric.MetricMap[metrics.NewContainer] = metrics.ToUS(time.Since(tStart))
@@ -233,7 +274,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received StopVM")
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
 	vm, err := o.vmPool.GetVM(vmID)
 	if err != nil {
 		if _, ok := err.(*misc.NonExistErr); ok {
@@ -281,7 +322,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 
 	o.workloadIo.Delete(vmID)
 
-	if vm.SnapBooted {
+	if vm.SnapBooted && o.snapshotter == "devmapper" {
 		if err := o.devMapper.RemoveDeviceSnapshot(ctx, vm.ContainerSnapKey); err != nil {
 			logger.Error("failed to deactivate container snapshot")
 			return err
@@ -294,7 +335,8 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 }
 
 func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*containerd.Image, error) {
-	return o.imageManager.GetImage(ctx, imageName)
+	// Images cannot be marked as cached if using remote snapshotters because they are pulled inside the VM
+	return o.imageManager.GetImage(ctx, imageName, o.snapshotter != "proxy")
 }
 
 func getK8sDNS() []string {
@@ -327,6 +369,7 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 			MemSizeMib: 256,
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
+			AllowMMDS: true,
 			StaticConfig: &proto.StaticNetworkConfiguration{
 				MacAddress:  vm.GetMacAddress(),
 				HostDevName: vm.GetHostDevName(),
@@ -373,7 +416,7 @@ func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received PauseVM")
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
 
 	if _, err := o.fcClient.PauseVM(ctx, &proto.PauseVMRequest{VMID: vmID}); err != nil {
 		logger.WithError(err).Error("failed to pause the VM")
@@ -393,7 +436,7 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metr
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received ResumeVM")
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
 
 	tStart = time.Now()
 	if _, err := o.fcClient.ResumeVM(ctx, &proto.ResumeVMRequest{VMID: vmID}); err != nil {
@@ -410,7 +453,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received CreateSnapshot")
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
 
 	req := &proto.CreateSnapshotRequest{
 		VMID:         vmID,
@@ -428,12 +471,14 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 		return err
 	}
 
-	patchFilePath := snap.GetPatchFilePath()
-	logger = log.WithFields(log.Fields{"vmID": vmID, "patchFilePath": patchFilePath})
-	logger.Debug("Creating patch file with disk state difference")
-	if err := o.devMapper.CreatePatch(ctx, patchFilePath, vm.ContainerSnapKey, *vm.Image); err != nil {
-		logger.WithError(err).Error("failed to create container patch file")
-		return err
+	if o.snapshotter == "devmapper" {
+		patchFilePath := snap.GetPatchFilePath()
+		logger = log.WithFields(log.Fields{"vmID": vmID, "patchFilePath": patchFilePath})
+		logger.Debug("Creating patch file with disk state difference")
+		if err := o.devMapper.CreatePatch(ctx, patchFilePath, vm.ContainerSnapKey, *vm.Image); err != nil {
+			logger.WithError(err).Error("failed to create container patch file")
+			return err
+		}
 	}
 
 	logger = log.WithFields(log.Fields{"vmID": vmID})
@@ -458,7 +503,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
 
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
@@ -474,28 +519,66 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		}
 	}()
 
-	if vm.Image, err = o.getImage(ctx, snap.GetImage()); err != nil {
-		return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
-	}
-
-	if err := o.devMapper.CreateDeviceSnapshotFromImage(ctx, vm.ContainerSnapKey, *vm.Image); err != nil {
-		return nil, nil, errors.Wrapf(err, "creating container snapshot")
-	}
-
-	containerSnap, err := o.devMapper.GetDeviceSnapshot(ctx, vm.ContainerSnapKey)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "previously created container device does not exist")
-	}
-
-	if err := o.devMapper.RestorePatch(ctx, vm.ContainerSnapKey, snap.GetPatchFilePath()); err != nil {
-		return nil, nil, errors.Wrapf(err, "unpacking patch into container snapshot")
-	}
-
 	conf := o.getVMConfig(vm)
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
 	conf.MemFilePath = snap.GetMemFilePath()
-	conf.ContainerSnapshotPath = containerSnap.GetDevicePath()
+
+	if o.snapshotter == "devmapper" {
+		if vm.Image, err = o.getImage(ctx, snap.GetImage()); err != nil {
+			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
+		}
+
+		if err := o.devMapper.CreateDeviceSnapshotFromImage(ctx, vm.ContainerSnapKey, *vm.Image); err != nil {
+			return nil, nil, errors.Wrapf(err, "creating container snapshot")
+		}
+
+		containerSnap, err := o.devMapper.GetDeviceSnapshot(ctx, vm.ContainerSnapKey)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "previously created container device does not exist")
+		}
+
+		if err := o.devMapper.RestorePatch(ctx, vm.ContainerSnapKey, snap.GetPatchFilePath()); err != nil {
+			return nil, nil, errors.Wrapf(err, "unpacking patch into container snapshot")
+		}
+
+		conf.ContainerSnapshotPath = containerSnap.GetDevicePath()
+	} else {
+		// Create default stub drive: https://github.com/vhive-serverless/firecracker-containerd/blob/master/runtime/drive_handler.go#L58
+		// Default path: /var/lib/firecracker-containerd/shim-base/<namespace>#<vmID>/ctrstub0 (https://github.com/vhive-serverless/firecracker-containerd/blob/master/internal/vm/dir.go#L52)
+		namespace, ok := namespaces.Namespace(ctx)
+		if !ok {
+			namespace = vmID // use vmID as default namespace
+		}
+		stubPath := filepath.Join(
+			"/var/lib/firecracker-containerd/shim-base",
+			fmt.Sprintf("%s#%s", namespace, vmID),
+			"ctrstub0",
+		)
+
+		if _, err := os.Stat(stubPath); os.IsNotExist(err) {
+			// Create default stub drive
+			if err := os.MkdirAll(filepath.Dir(stubPath), 0755); err != nil {
+				return nil, nil, errors.Wrapf(err, "creating stub directory")
+			}
+
+			f, err := os.OpenFile(stubPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+			if err != nil {
+				return nil, nil, err
+			}
+			defer func() {
+				if err := f.Close(); err != nil {
+					logger.WithError(err).Errorf("unexpected error during %v close", f.Name())
+				}
+			}()
+
+			// Content is the stub drive ID (base32 encoded hash of "ctrstub0" = "MN2HE43UOVRDA")
+			if _, err := f.WriteString("MN2HE43UOVRDA"); err != nil {
+				return nil, nil, err
+			}
+		}
+		conf.ContainerSnapshotPath = stubPath
+	}
 
 	if o.GetUPFEnabled() {
 		if err := o.memoryManager.FetchState(vmID); err != nil {
@@ -510,7 +593,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 		if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
 			logger.Error("Failed to load snapshot of the VM: ", loadErr)
-			logger.Errorf("snapFilePath: %s, memFilePath: %s, newSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), containerSnap.GetDevicePath())
+			logger.Errorf("snapFilePath: %s, memFilePath: %s, containerSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), conf.ContainerSnapshotPath)
 			files, err := os.ReadDir(filepath.Dir(snap.GetSnapshotFilePath()))
 			if err != nil {
 				logger.Error(err)
@@ -523,7 +606,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 			logger.Error(snapFiles)
 
-			files, _ = os.ReadDir(filepath.Dir(containerSnap.GetDevicePath()))
+			files, _ = os.ReadDir(filepath.Dir(conf.ContainerSnapshotPath))
 			if err != nil {
 				logger.Error(err)
 			}
