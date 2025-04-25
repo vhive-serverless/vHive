@@ -45,8 +45,9 @@ done
 
 # rootfs image
 sudo cp $BINS/default-rootfs.img /var/lib/firecracker-containerd/runtime/
+
 # kernel image
-sudo curl -fsSL -o /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.5/x86_64/vmlinux-5.10.186
+sudo cp $BINS/vmlinux-5.10.186 /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin
 
 sudo cp $CONFIGS/config.toml /etc/firecracker-containerd/
 

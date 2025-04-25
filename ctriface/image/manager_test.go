@@ -39,6 +39,7 @@ import (
 
 const (
 	TestImageName     = "ghcr.io/ease-lab/helloworld:var_workload"
+	StargzImageName   = "ghcr.io/andre-j3sus/helloworld:var_workload-esgz"
 	containerdAddress = "/run/firecracker-containerd/containerd.sock"
 	NamespaceName     = "containerd"
 )
@@ -89,7 +90,7 @@ func TestSingleConcurrent(t *testing.T) {
 	for i := 0; i < concurrentPulls; i++ {
 		go func(i int) {
 			defer wg.Done()
-			_, err := mgr.GetImage(ctx, TestImageName)
+			_, err := mgr.GetImage(ctx, TestImageName, true)
 			require.NoError(t, err, fmt.Sprintf("Failed to pull image %s", TestImageName))
 		}(i)
 	}
@@ -121,7 +122,7 @@ func TestMultipleConcurrent(t *testing.T) {
 			for i := 0; i < concurrentPulls; i++ {
 				go func(i int) {
 					defer imgWg.Done()
-					_, err := mgr.GetImage(ctx, imgName)
+					_, err := mgr.GetImage(ctx, imgName, true)
 					require.NoError(t, err, fmt.Sprintf("Failed to pull image %s", imgName))
 				}(i)
 			}
@@ -131,4 +132,23 @@ func TestMultipleConcurrent(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestIsEstargzImage(t *testing.T) {
+	// Create client
+	client, err := containerd.New(containerdAddress)
+	defer func() { _ = client.Close() }()
+	require.NoError(t, err, "Containerd client creation returned error")
+
+	testTimeout := 60 * time.Second
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
+	defer cancel()
+
+	isEstargz, err := isEstargzImage(ctx, client, TestImageName)
+	require.NoError(t, err, fmt.Sprintf("Failed to check if image %s is eStargz", TestImageName))
+	require.False(t, isEstargz, "Expected image to not be eStargz format")
+
+	isEstargz, err = isEstargzImage(ctx, client, StargzImageName)
+	require.NoError(t, err, fmt.Sprintf("Failed to check if image %s is eStargz", TestImageName))
+	require.True(t, isEstargz, "Expected image to be eStargz format")
 }

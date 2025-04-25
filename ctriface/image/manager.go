@@ -25,6 +25,8 @@ package image
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -33,6 +35,8 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/stargz-snapshotter/fs/source"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -76,6 +80,21 @@ func (mgr *ImageManager) pullImage(ctx context.Context, imageName string) error 
 
 	imageURL := getImageURL(imageName)
 	local, _ := isLocalDomain(imageURL)
+	stargz, _ := isEstargzImage(ctx, mgr.client, imageURL)
+
+	var options []containerd.RemoteOpt
+	options = append(options,
+		containerd.WithPullUnpack,
+		containerd.WithPullSnapshotter(mgr.snapshotter),
+	)
+
+	if stargz {
+		options = append(options,
+			// stargz labels to tell the snapshotter to lazily load the image
+			containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(imageURL, 10*1024*1024)),
+		)
+	}
+
 	if local {
 		// Pull local image using HTTP
 		resolver := docker.NewResolver(docker.ResolverOptions{
@@ -84,18 +103,10 @@ func (mgr *ImageManager) pullImage(ctx context.Context, imageName string) error 
 				docker.WithPlainHTTP(docker.MatchAllHosts),
 			),
 		})
-		image, err = mgr.client.Pull(ctx, imageURL,
-			containerd.WithPullUnpack,
-			containerd.WithPullSnapshotter(mgr.snapshotter),
-			containerd.WithResolver(resolver),
-		)
-	} else {
-		// Pull remote image
-		image, err = mgr.client.Pull(ctx, imageURL,
-			containerd.WithPullUnpack,
-			containerd.WithPullSnapshotter(mgr.snapshotter),
-		)
+		options = append(options, containerd.WithResolver(resolver))
 	}
+
+	image, err = mgr.client.Pull(ctx, imageURL, options...)
 	if err != nil {
 		return err
 	}
@@ -107,7 +118,7 @@ func (mgr *ImageManager) pullImage(ctx context.Context, imageName string) error 
 
 // GetImage fetches an image that can be used to create a container using containerd. Synchronization is implemented
 // on a per image level to keep waiting to a minimum.
-func (mgr *ImageManager) GetImage(ctx context.Context, imageName string) (*containerd.Image, error) {
+func (mgr *ImageManager) GetImage(ctx context.Context, imageName string, shouldCache bool) (*containerd.Image, error) {
 	// Get reference to synchronization object for image
 	mgr.Lock()
 	imgState, found := mgr.imageStates[imageName]
@@ -124,7 +135,7 @@ func (mgr *ImageManager) GetImage(ctx context.Context, imageName string) (*conta
 			imgState.Unlock()
 			return nil, err
 		}
-		imgState.isCached = true
+		imgState.isCached = shouldCache
 	}
 	imgState.Unlock()
 
@@ -165,4 +176,46 @@ func isLocalDomain(s string) (bool, error) {
 	tld := host[i+1:]
 
 	return tld == "local", nil
+}
+
+// Checks whether a container image uses the eStargz format
+func isEstargzImage(ctx context.Context, client *containerd.Client, imageName string) (bool, error) {
+	resolver := docker.NewResolver(docker.ResolverOptions{
+		Client: http.DefaultClient,
+	})
+
+	// Pull only the manifest
+	_, desc, err := resolver.Resolve(ctx, imageName)
+	if err != nil {
+		return false, err
+	}
+
+	fetcher, err := resolver.Fetcher(ctx, imageName)
+	if err != nil {
+		return false, err
+	}
+
+	rc, err := fetcher.Fetch(ctx, desc)
+	if err != nil {
+		return false, err
+	}
+	defer rc.Close()
+
+	manifestBytes, err := io.ReadAll(rc)
+	if err != nil {
+		return false, err
+	}
+
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		return false, err
+	}
+
+	for _, layer := range manifest.Layers {
+		if toc, ok := layer.Annotations["containerd.io/snapshot/stargz/toc.digest"]; ok && toc != "" {
+			return true, nil // Found eStargz layer
+		}
+	}
+
+	return false, nil
 }
