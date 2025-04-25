@@ -6,7 +6,7 @@ metadata:
   labels:
     app: minio-storage-claim
 spec:
-  # Read more about access modes here: http://kubernetes.io/docs/user-guide/persistent-volumes/#access-modes
+  # Read more about access modes here: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
   accessModes:
     - ReadWriteOnce
   storageClassName: local-storage

@@ -22,6 +22,11 @@
 
 package ctriface
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // OrchestratorOption Options to pass to Orchestrator
 type OrchestratorOption func(*Orchestrator)
 
@@ -88,5 +93,21 @@ func WithVethPrefix(vethPrefix string) OrchestratorOption {
 func WithClonePrefix(clonePrefix string) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.clonePrefix = clonePrefix
+	}
+}
+
+func WithDockerCredentials(dockerCredentials string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		if dockerCredentials == "" {
+			// No credentials provided, leave empty
+			o.dockerCredentials = DockerCredentials{}
+			return
+		}
+
+		var creds DockerCredentials
+		if err := json.Unmarshal([]byte(dockerCredentials), &creds); err != nil {
+			panic(fmt.Sprintf("invalid dockerCredentials JSON: %v", err))
+		}
+		o.dockerCredentials = creds
 	}
 }
