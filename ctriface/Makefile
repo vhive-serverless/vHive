@@ -28,17 +28,25 @@ BENCHFILES:=bench_test.go iface.go orch_options.go orch.go
 # WITHLAZY:=-lazy
 WITHUPF:=
 WITHLAZY:=
+STARGZ:=-ss proxy
+STARGZ_IMAGE:=-img 'ghcr.io/andre-j3sus/helloworld:var_workload-esgz'
+DOCKER_CREDENTIALS:=-dockerCredentials $(DOCKER_CREDS)
 GOBENCH:=-v -timeout 1500s
 CTRDLOGDIR:=/tmp/ctrd-logs
 
 test:
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver 1>$(CTRDLOGDIR)/resolver.out 2>$(CTRDLOGDIR)/resolver.err &
+	sudo env "PATH=$(PATH)" /usr/local/bin/demux-snapshotter 1>$(CTRDLOGDIR)/demux.out 2>$(CTRDLOGDIR)/demux.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(STARGZ) $(DOCKER_CREDENTIALS) $(STARGZ_IMAGE)
+	./../scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(WITHUPF)
-	./../scripts/clean_fcctr.sh
+	 ./../scripts/clean_fcctr.sh
 
 test-man:
 	./../scripts/clean_fcctr.sh
