@@ -59,7 +59,7 @@ To use other vHive repos locally, provide the `--vhive-repo-dir` option to speci
 ./setup_tool --vhive-repo-dir <VHIVE REPO PATH> ...
 ```
 
-If the current directory or the provided path is not a valid vHive repo, the setup_tool will [automatically clone the remote vHive repo and use it](#34-use-with-remote-vhive-repo).
+If the current directory or the provided path is not a valid vHive repo, the setup_tool will [automatically clone the remote vHive repo and use it](#34-use-with-remote-vhive-repo-standalone-use).
 
 ### 3.4 Use with Remote vHive Repo (Standalone Use)
 When the setup_tool is directly downloaded or targeted for  standalone use, the setup_tool will automatically clone the remote vHive repo to the temporary directory and then use it during the setup process.

@@ -6,7 +6,7 @@ in a highly multi-tenant environment. The tool relies on
 that arise when colocating VMs on a single host. The tool issues requests to VMs in Round-Robin 
 and collects various high-level and low-level metrics, including requests-per-second (RPS)
  per core, tail latency, hardware counters, plotting the collected metrics in a set of charts.
-An example chart is shown in the [section](###TestProfileIncrementConfiguration-function).
+An example chart is shown in the [section](#testprofileincrementconfiguration-function).
 
 ## Methodology
 
