@@ -145,6 +145,7 @@ func SetupGvisorContainerd() error {
 	if err := utils.CheckVHiveRepo(); !utils.CheckErrorWithMsg(err, "Failed to pull LFS in vHive!\n") {
 		return err
 	}
+
 	_, err = utils.ExecShellCmd("cd %s && git lfs pull", configs.VHive.VHiveRepoPath)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to pull LFS in vHive!\n") {
 		return err

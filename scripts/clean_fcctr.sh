@@ -27,6 +27,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo Killing firecracker agents and VMs
 sudo pkill -9 firec
 sudo pkill -9 containerd
+sudo pkill -f 'while true; do /usr/local/bin/demux-snapshotter'
+sudo pkill -f http-address-resolver
 
 echo Resetting nftables
 sudo nft flush table ip filter
@@ -72,6 +74,9 @@ sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
     /run/firecracker-containerd/io.containerd.runtime.v1.linux \
     /run/firecracker-containerd/io.containerd.runtime.v2.task \
     /run/containerd/*
+
+echo Cleaning /var/lib/demux-snapshotter/*
+sudo rm -rf /var/lib/demux-snapshotter/snapshotter.sock
 
 echo Cleaning CNI state, e.g., allocated addresses
 sudo rm /var/lib/cni/networks/fcnet*/last_reserved_ip.0 || echo clean already

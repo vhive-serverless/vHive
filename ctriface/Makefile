@@ -28,10 +28,18 @@ BENCHFILES:=bench_test.go iface.go orch_options.go orch.go
 # WITHLAZY:=-lazy
 WITHUPF:=
 WITHLAZY:=
+STARGZ:=-ss 'proxy'
+STARGZ_IMAGE:=-img 'ghcr.io/vhive-serverless/helloworld:var_workload-esgz'
+DOCKER_CREDENTIALS:=-dockerCredentials '{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}'
 GOBENCH:=-v -timeout 1500s
 CTRDLOGDIR:=/tmp/ctrd-logs
 
 test:
+	./../scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(STARGZ) $(DOCKER_CREDENTIALS) $(STARGZ_IMAGE)
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
