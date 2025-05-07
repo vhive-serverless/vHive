@@ -145,9 +145,12 @@ jobs:
 
     - name: Build setup scripts
       run: pushd scripts && go build -o setup_tool && popd
-    
+
     - name: Pull binaries
       run: ./scripts/setup_tool setup_firecracker_containerd
+
+    - name: Setup Stargz
+      run: ./scripts/setup_tool setup_stargz firecracker
 
     - name: Build
       run: go build -race -v -a ./...

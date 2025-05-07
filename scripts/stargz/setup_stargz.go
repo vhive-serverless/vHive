@@ -32,6 +32,13 @@ func SetupStargz(sandbox string) error {
 	var err error
 	if sandbox == "firecracker" {
 		_, err = utils.ExecVHiveBashScript("scripts/stargz/setup_demux_snapshotter.sh")
+
+		bashCmd := `sudo sysctl --quiet -w net.ipv4.conf.all.forwarding=1 && ` + 
+			`sudo sysctl --quiet -w net.ipv4.ip_forward=1 && ` +
+			`sudo sysctl --quiet --system`
+
+		_, err := utils.ExecShellCmd(bashCmd)
+		return err
 	} else {
 		_, err = utils.ExecVHiveBashScript("scripts/stargz/setup_stargz.sh")
 	}
