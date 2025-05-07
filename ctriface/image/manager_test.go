@@ -39,7 +39,7 @@ import (
 
 const (
 	TestImageName     = "ghcr.io/ease-lab/helloworld:var_workload"
-	StargzImageName   = "ghcr.io/andre-j3sus/helloworld:var_workload-esgz"
+	StargzImageName   = "ghcr.io/vhive-serverless/helloworld:var_workload-esgz"
 	containerdAddress = "/run/firecracker-containerd/containerd.sock"
 	NamespaceName     = "containerd"
 )

@@ -32,6 +32,7 @@ import (
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
 	gpu "github.com/vhive-serverless/vHive/scripts/gpu"
 	setup "github.com/vhive-serverless/vHive/scripts/setup"
+	stargz "github.com/vhive-serverless/vHive/scripts/stargz"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
@@ -89,6 +90,7 @@ func main() {
 		"setup_system",
 		"setup_gvisor_containerd",
 		"setup_firecracker_containerd",
+		"setup_stargz",
 		"install_stock",
 		"install_pmutools",
 		"create_docker_image",
@@ -225,6 +227,14 @@ func main() {
 	case "setup_firecracker_containerd":
 		utils.InfoPrintf("Set up firecracker_containerd\n")
 		err = setup.SetupFirecrackerContainerd()
+	case "setup_stargz":
+		if setupFlags.NArg() < 2 {
+			utils.FatalPrintf("Missing parameters: %s <sandbox>\n", subCmd)
+			utils.CleanEnvironment()
+			os.Exit(1)
+		}
+		utils.InfoPrintf("Set up stargz\n")
+		err = stargz.SetupStargz(setupFlags.Args()[1])
 	case "install_stock":
 		utils.InfoPrintf("Install stock\n")
 		err = setup.InstallStock()
