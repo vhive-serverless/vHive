@@ -42,7 +42,10 @@ var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
 	//nolint:deadcode,unused,varcheck
-	isWithCache = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	isWithCache       = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	snapshotter       = flag.String("ss", "devmapper", "Snapshotter to use")
+	dockerCredentials = flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM")
+	testImage         = flag.String("img", testImageName, "Test image")
 )
 
 func TestMain(m *testing.M) {
@@ -71,18 +74,23 @@ func TestStartSnapStopLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
-	orch := NewOrchestrator("devmapper", "", WithTestModeOn(true))
+	orch := NewOrchestrator(
+		*snapshotter,
+		"",
+		WithTestModeOn(true),
+		WithDockerCredentials(*dockerCredentials),
+	)
 
 	vmID := "2"
 	revision := "myrev-2"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, *testImage)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revision, "/fccd/snapshots", testImageName)
+	snap := snapshotting.NewSnapshot(revision, "/fccd/snapshots", *testImage)
 	err = snap.CreateSnapDir()
 	require.NoError(t, err, "Failed to create snapshots directory")
 
@@ -121,23 +129,24 @@ func TestPauseSnapResume(t *testing.T) {
 	defer cancel()
 
 	orch := NewOrchestrator(
-		"devmapper",
+		*snapshotter,
 		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithDockerCredentials(*dockerCredentials),
 	)
 
 	vmID := "4"
 	revision := "myrev-4"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, *testImage)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revision, "/fccd/snapshots", testImageName)
+	snap := snapshotting.NewSnapshot(revision, "/fccd/snapshots", *testImage)
 	err = snap.CreateSnapDir()
 	require.NoError(t, err, "Failed to create snapshots directory")
 
@@ -170,16 +179,17 @@ func TestStartStopSerial(t *testing.T) {
 	defer cancel()
 
 	orch := NewOrchestrator(
-		"devmapper",
+		*snapshotter,
 		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithDockerCredentials(*dockerCredentials),
 	)
 
 	vmID := "5"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, *testImage)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.StopSingleVM(ctx, vmID)
@@ -204,16 +214,17 @@ func TestPauseResumeSerial(t *testing.T) {
 	defer cancel()
 
 	orch := NewOrchestrator(
-		"devmapper",
+		*snapshotter,
 		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithDockerCredentials(*dockerCredentials),
 	)
 
 	vmID := "6"
 
-	_, _, err := orch.StartVM(ctx, vmID, testImageName)
+	_, _, err := orch.StartVM(ctx, vmID, *testImage)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
@@ -247,16 +258,19 @@ func TestStartStopParallel(t *testing.T) {
 	vmIDBase := 7
 
 	orch := NewOrchestrator(
-		"devmapper",
+		*snapshotter,
 		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithDockerCredentials(*dockerCredentials),
 	)
 
-	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
-	require.NoError(t, err, "Failed to pull image "+testImageName)
+	if *snapshotter != "proxy" {
+		// Pull image (with remote snapshotters you can't pull the image before starting the VM)
+		_, err := orch.getImage(ctx, *testImage)
+		require.NoError(t, err, "Failed to pull image "+*testImage)
+	}
 
 	{
 		var vmGroup sync.WaitGroup
@@ -265,7 +279,7 @@ func TestStartStopParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName)
+				_, _, err := orch.StartVM(ctx, vmID, *testImage)
 				require.NoError(t, err, "Failed to start VM "+vmID)
 			}(i)
 		}
@@ -308,16 +322,19 @@ func TestPauseResumeParallel(t *testing.T) {
 	vmIDBase := 17
 
 	orch := NewOrchestrator(
-		"devmapper",
+		*snapshotter,
 		"",
 		WithTestModeOn(true),
 		WithUPF(*isUPFEnabled),
 		WithLazyMode(*isLazyMode),
+		WithDockerCredentials(*dockerCredentials),
 	)
 
-	// Pull image
-	_, err := orch.getImage(ctx, testImageName)
-	require.NoError(t, err, "Failed to pull image "+testImageName)
+	if *snapshotter != "proxy" {
+		// Pull image (with remote snapshotters you can't pull the image before starting the VM)
+		_, err := orch.getImage(ctx, *testImage)
+		require.NoError(t, err, "Failed to pull image "+*testImage)
+	}
 
 	{
 		var vmGroup sync.WaitGroup
@@ -326,7 +343,7 @@ func TestPauseResumeParallel(t *testing.T) {
 			go func(i int) {
 				defer vmGroup.Done()
 				vmID := fmt.Sprintf("%d", i)
-				_, _, err := orch.StartVM(ctx, vmID, testImageName)
+				_, _, err := orch.StartVM(ctx, vmID, *testImage)
 				require.NoError(t, err, "Failed to start VM")
 			}(i)
 		}
