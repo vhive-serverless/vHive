@@ -149,6 +149,9 @@ jobs:
     - name: Pull binaries
       run: ./scripts/setup_tool setup_firecracker_containerd
 
+    - name: Setup Stargz
+      run: ./scripts/setup_tool setup_stargz firecracker
+
     - name: Build
       run: go build -race -v -a ./...
 
@@ -157,6 +160,7 @@ jobs:
         MODULE: ${{ matrix.module }}
         AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        DOCKER_CREDS: "'{\"docker-credentials\":{\"ghcr.io\":{\"username\":\"${{ github.actor }}\",\"password\":\"${{ secrets.GITHUB_TOKEN }}\"}}}'"
       run: |
         make -C $MODULE test
         make -C $MODULE test-man

@@ -23,6 +23,7 @@
 package ctriface
 
 import (
+	"encoding/json"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -74,16 +75,28 @@ func (wio WorkloadIoWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+// RegistryCredentials represents the credentials for a single Docker registry.
+type RegistryCredentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// DockerCredentials wraps the credential mapping used for container image registries.
+type DockerCredentials struct {
+	DockerCredentials map[string]RegistryCredentials `json:"docker-credentials"`
+}
+
 // Orchestrator Drives all VMs
 type Orchestrator struct {
-	vmPool       *misc.VMPool
-	cachedImages map[string]containerd.Image
-	workloadIo   sync.Map // vmID string -> WorkloadIoWriter
-	snapshotter  string
-	client       *containerd.Client
-	fcClient     *fcclient.Client
-	devMapper    *devmapper.DeviceMapper
-	imageManager *image.ImageManager
+	vmPool            *misc.VMPool
+	cachedImages      map[string]containerd.Image
+	workloadIo        sync.Map // vmID string -> WorkloadIoWriter
+	snapshotter       string
+	client            *containerd.Client
+	fcClient          *fcclient.Client
+	devMapper         *devmapper.DeviceMapper
+	imageManager      *image.ImageManager
+	dockerCredentials DockerCredentials
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
@@ -228,6 +241,15 @@ func (o *Orchestrator) getWorkingSetFile(vmID string) string {
 
 func (o *Orchestrator) getVMBaseDir(vmID string) string {
 	return filepath.Join(o.snapshotsDir, vmID)
+}
+
+func (o *Orchestrator) GetDockerCredentials() string {
+	data, err := json.Marshal(o.dockerCredentials)
+	if err != nil {
+		// Safe fallback: empty JSON
+		return "{}"
+	}
+	return string(data)
 }
 
 func (o *Orchestrator) setupHeartbeat() {

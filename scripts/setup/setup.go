@@ -74,18 +74,20 @@ func SetupFirecrackerContainerd() error {
 	}
 
 	// rootfs image
+	// https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter-getting-started.md#build-a-firecracker-rootfs-with-a-remote-snapshotter
 	rootfsImgPath, err := utils.GetVHiveFilePath(path.Join(binsDir, "default-rootfs.img"))
 	if !utils.CheckErrorWithMsg(err, "Failed to find rootfs image!\n") {
 		return err
 	}
-	err = utils.CopyToDir(rootfsImgPath, "/var/lib/firecracker-containerd/runtime/", true)
+	err = utils.CopyToDir(rootfsImgPath, "/var/lib/firecracker-containerd/runtime/default-rootfs.img", true)
 	if !utils.CheckErrorWithMsg(err, "Failed to copy rootfs image!\n") {
 		return err
 	}
 
-	// kernel image; better to download it from AWS S3 but it takes too much time on NTU network
+	// kernel image
+	// https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter-getting-started.md#build-a-linux-kernel-with-fuse-support
 	kernelImgPath, err := utils.GetVHiveFilePath(path.Join(binsDir, "vmlinux-5.10.186"))
-	if !utils.CheckErrorWithMsg(err, "Failed to download kernel image!\n") {
+	if !utils.CheckErrorWithMsg(err, "Failed to find kernel image!\n") {
 		return err
 	}
 	err = utils.CopyToDir(kernelImgPath, "/var/lib/firecracker-containerd/runtime/hello-vmlinux.bin", true)
