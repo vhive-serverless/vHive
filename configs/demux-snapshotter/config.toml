@@ -1,0 +1,13 @@
+[snapshotter.listener]
+  type = "unix"
+  address = "/var/lib/demux-snapshotter/snapshotter.sock"
+
+[snapshotter.proxy.address.resolver]
+  type = "http"
+  address = "http://127.0.0.1:10001"
+
+[snapshotter.metrics]
+  enable = false
+
+[debug]
+  logLevel = "debug"

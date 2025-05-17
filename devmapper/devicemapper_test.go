@@ -75,7 +75,7 @@ func testDevmapper(t *testing.T, mgr *image.ImageManager, dmpr *devmapper.Device
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), NamespaceName), testTimeout)
 	defer cancel()
 
-	img, err := mgr.GetImage(ctx, imageName)
+	img, err := mgr.GetImage(ctx, imageName, true)
 	require.NoError(t, err, fmt.Sprintf("Failed to pull image %s", imageName))
 
 	// Test devmapper

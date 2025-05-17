@@ -86,6 +86,7 @@ func main() {
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
+	dockerCredentials := flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM") // https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds
 	flag.Parse()
 
 	if *sandbox != "firecracker" && *sandbox != "gvisor" {
@@ -146,6 +147,7 @@ func main() {
 			ctriface.WithNetPoolSize(*netPoolSize),
 			ctriface.WithVethPrefix(*vethPrefix),
 			ctriface.WithClonePrefix(*clonePrefix),
+			ctriface.WithDockerCredentials(*dockerCredentials),
 		)
 		funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
 		go setupFirecrackerCRI()
