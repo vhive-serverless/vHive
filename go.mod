@@ -19,6 +19,7 @@ replace (
 require (
 	github.com/containerd/containerd v1.6.20
 	github.com/containerd/go-cni v1.1.6
+	github.com/containerd/stargz-snapshotter v0.11.3
 	github.com/davecgh/go-spew v1.1.1
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff

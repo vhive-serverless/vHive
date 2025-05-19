@@ -27,9 +27,14 @@ import (
 )
 
 // Set up stargz by executing vHive bash scripts (scripts/stargz/setup_stargz.sh)
-func SetupStargz() error {
+func SetupStargz(sandbox string) error {
 	utils.WaitPrintf("Setting up stargz")
-	_, err := utils.ExecVHiveBashScript("scripts/stargz/setup_stargz.sh")
+	var err error
+	if sandbox == "firecracker" {
+		_, err = utils.ExecVHiveBashScript("scripts/stargz/setup_demux_snapshotter.sh")
+	} else {
+		_, err = utils.ExecVHiveBashScript("scripts/stargz/setup_stargz.sh")
+	}
 	utils.CheckErrorWithTagAndMsg(err, "Failed to set up stargz!\n")
 	return err
 }
