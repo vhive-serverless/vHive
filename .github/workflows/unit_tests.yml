@@ -119,7 +119,7 @@ jobs:
 
   firecracker-containerd-interface-test:
     name: "Unit tests: Firecracker-containerd interface"
-    runs-on: [self-hosted, integ]
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

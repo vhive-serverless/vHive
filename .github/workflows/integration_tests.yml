@@ -24,7 +24,7 @@ env:
 jobs:
   integration-tests:
     name: Integration tests
-    runs-on: [self-hosted , integ]
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

@@ -14,7 +14,7 @@ env:
 jobs:
   stock-containerd-test:
     name: Stock Containerd test
-    runs-on: [self-hosted, cri]
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup TMPDIR
