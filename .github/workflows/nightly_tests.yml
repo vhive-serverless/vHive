@@ -15,7 +15,7 @@ env:
 jobs:
   integration-tests:
     name: Test all functions
-    runs-on: [self-hosted, nightly, integ]
+    runs-on: ubuntu-24.04
     steps:
     - name: Setup TMPDIR
       run: mkdir -p $TMPDIR
@@ -51,7 +51,7 @@ jobs:
 
   cri-tests:
     name: CRI tests (nightly)
-    runs-on: [self-hosted, cri]
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

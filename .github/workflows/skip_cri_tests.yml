@@ -16,7 +16,7 @@ jobs:
     env:
       GITHUB_RUN_ID: ${{ github.run_id }}
       GITHUB_VHIVE_ARGS: "-dbg"
-    runs-on: ${{ fromJSON(format('["self-hosted", "{0}-cri"]', inputs.sandbox)) }}
+    runs-on: ubuntu-24.04
 
     steps:
       - run: 'echo "This check not required"'
