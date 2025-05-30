@@ -69,7 +69,7 @@ jobs:
   
   profile-unit-test:
     name: "Unit test: profile unit test"
-    runs-on: [self-hosted, profile]
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

@@ -35,15 +35,38 @@ fi
 SANDBOX=$1
 VHIVE_ROOT="$(git rev-parse --show-toplevel)"
 
+echo "=== Setting-Up node ==="
+# Set up the node with proper firecracker-containerd installation
+$VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_node $SANDBOX
+
+echo "=== Setting-Up onenode-vhive ==="
 $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT start_onenode_vhive_cluster $SANDBOX
 # $VHIVE_ROOT/scripts/cloudlab/start_onenode_vhive_cluster.sh "$SANDBOX"
 sleep 30s
 
+echo "=== Setting-Up zipkin ==="
 # KUBECONFIG=/etc/kubernetes/admin.conf sudo $VHIVE_ROOT/scripts/setup_zipkin.sh
-$VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
+#$VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
 
 # FIXME (gh-709)
 #source etc/profile && go run $VHIVE_ROOT/examples/registry/populate_registry.go -imageFile $VHIVE_ROOT/examples/registry/images.txt
+
+echo "=== Kubernetes Status ==="
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get nodes -o wide
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods --all-namespaces
+echo "=== Knative Components ==="
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n knative-serving
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get ksvc --all-namespaces
+
+sudo kubectl get deployment -n knative-serving autoscaler
+sudo kubectl get svc -n knative-serving autoscaler
+sudo kubectl get pods -n kube-system -l k8s-app=kube-dns
+
+
+
+
+echo "=== Activator Status ===" && sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl describe pod -n knative-serving -l app=activator
+echo "=== Activator Logs ===" && sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n knative-serving -l app=activator
 
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/helloworld.yaml
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/helloworldSerial.yaml
