@@ -98,15 +98,20 @@ type Orchestrator struct {
 	imageManager      *image.ImageManager
 	dockerCredentials DockerCredentials
 	// store *skv.KVStore
-	snapshotsEnabled bool
-	isUPFEnabled     bool
-	isLazyMode       bool
-	snapshotsDir     string
-	isMetricsMode    bool
-	netPoolSize      int
+	snapshotMode    string
+	isUPFEnabled    bool
+	isLazyMode      bool
+	snapshotsDir    string
+	snapshotsBucket string
+	isMetricsMode   bool
+	netPoolSize     int
 
 	vethPrefix  string
 	clonePrefix string
+
+	minioAddr      string
+	minioAccessKey string
+	minioSecretKey string
 
 	memoryManager *manager.MemoryManager
 }
@@ -119,9 +124,13 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
+	o.snapshotsBucket = "snapshots"
 	o.netPoolSize = 10
 	o.vethPrefix = "172.17"
 	o.clonePrefix = "172.18"
+	o.minioAddr = "10.96.0.46:9000"
+	o.minioAccessKey = "minio"
+	o.minioSecretKey = "minio123"
 
 	for _, opt := range opts {
 		opt(o)
@@ -187,9 +196,9 @@ func (o *Orchestrator) Cleanup() {
 	}
 }
 
-// GetSnapshotsEnabled Returns the snapshots mode of the orchestrator
-func (o *Orchestrator) GetSnapshotsEnabled() bool {
-	return o.snapshotsEnabled
+// GetSnapshotMode Returns the snapshots mode of the orchestrator
+func (o *Orchestrator) GetSnapshotMode() string {
+	return o.snapshotMode
 }
 
 // GetUPFEnabled Returns the UPF mode of the orchestrator
@@ -250,6 +259,27 @@ func (o *Orchestrator) GetDockerCredentials() string {
 		return "{}"
 	}
 	return string(data)
+}
+
+// GetSnapshotsBucket returns the S3 bucket name used by the orchestrator for storing remote snapshots.
+func (o *Orchestrator) GetSnapshotsBucket() string {
+	return o.snapshotsBucket
+}
+
+// GetMinioAddr returns the address (endpoint) of the MinIO server used by the orchestrator.
+func (o *Orchestrator) GetMinioAddr() string {
+	return o.minioAddr
+}
+
+// GetMinioAccessKey returns the access key used to authenticate with the MinIO server.
+func (o *Orchestrator) GetMinioAccessKey() string {
+	return o.minioAccessKey
+}
+
+// GetMinioSecretKey returns the secret key used to authenticate with the MinIO server.
+// This should be handled securely and never exposed in logs or error messages.
+func (o *Orchestrator) GetMinioSecretKey() string {
+	return o.minioSecretKey
 }
 
 func (o *Orchestrator) setupHeartbeat() {

@@ -63,7 +63,7 @@ func TestBenchParallelServe(t *testing.T) {
 	imageName, isPresent := images[*funcName]
 	require.True(t, isPresent, "Function is not supported")
 
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	createResultsDir()
 
@@ -136,7 +136,7 @@ func TestBenchWarmServe(t *testing.T) {
 	imageName, isPresent := images[*funcName]
 	require.True(t, isPresent, "Function is not supported")
 
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	createResultsDir()
 
@@ -201,7 +201,7 @@ func TestBenchServe(t *testing.T) {
 	imageName, isPresent := images[*funcName]
 	require.True(t, isPresent, "Function is not supported")
 
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	createResultsDir()
 

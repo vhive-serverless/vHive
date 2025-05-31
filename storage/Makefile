@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2023 Georgiy Lebedev, Dmitrii Ustiugov, Plamen Petrov and vHive team
+# Copyright (c) 2025 André Jesus and vHive team
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,12 +21,11 @@
 # SOFTWARE.
 
 EXTRAGOARGS:=-v -race -cover
-EXTRATESTFILES:=manager_test.go
 
 test:
 	# Need to pass GOROOT because GitHub-hosted runners may have several
 	# go versions installed so that calling go from root may fail
-	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
+	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS)
 
 test-man:
 	echo "Nothing to test manually"
@@ -34,6 +33,6 @@ test-man:
 test-remote-snaps:
 	# Need to pass GOROOT because GitHub-hosted runners may have several
 	# go versions installed so that calling go from root may fail
-	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS) -run TestSnapshotMinioUploadDownload	
+	sudo env "PATH=$(PATH)" "GOROOT=$(GOROOT)" go test ./ $(EXTRAGOARGS)
 
 .PHONY: test test-man

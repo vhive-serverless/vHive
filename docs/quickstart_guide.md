@@ -172,11 +172,11 @@ Another option is to install using official instructions: [https://golang.org/do
     # EITHER
     sudo screen -dmS vhive bash -c "./vhive > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)"
     # OR
-    sudo screen -dmS vhive bash -c "./vhive -snapshots > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)"
+    sudo screen -dmS vhive bash -c "./vhive -snapshots 'local' > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)"
     ```
     > **Note:**
     >
-    > By default, the microVMs are booted, `-snapshots` enables snapshots after the 2nd invocation of each function.
+    > By default, the microVMs are booted, `-snapshots <local|remote>` enables snapshots after the 2nd invocation of each function.
     >
     > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP)
     technique that we described in our ASPLOS'21
@@ -186,6 +186,8 @@ Another option is to install using official instructions: [https://golang.org/do
     >
     > If you are using `stargz` with `firecracker`, you also need to set the `-dockerCredentials` flag to be able to [pull the images
     from inside the microVMs](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds/README.md#docker-credential-helper-mmds).
+    >
+    > Remote snapshots are only supported in the `firecracker` mode using `stargz`. Check the [snapshot guide](../docs/snapshots.md) for more details on how to set up remote snapshots.
 
 ### 3. Configure Master Node
 **On the master node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
@@ -297,7 +299,7 @@ Execute the following below **as a non-root user with sudo rights** using **bash
 
     > **Note:**
     >
-    > By default, the microVMs are booted, `-snapshots` enables snapshots after the 2nd invocation of each function.
+    > By default, the microVMs are booted, `-snapshots <local|remote>` enables snapshots after the 2nd invocation of each function.
     >
     > If `-snapshots` and `-upf` are specified, the snapshots are accelerated with the Record-and-Prefetch (REAP)
     technique that we described in our ASPLOS'21
@@ -307,6 +309,8 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     >
     > If you are using `stargz` with `firecracker`, you also need to set the `-dockerCredentials` flag to be able to [pull the images
     from inside the microVMs](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds/README.md#docker-credential-helper-mmds).
+    >
+    > Remote snapshots are only supported in the `firecracker` mode using `stargz`. Check the [snapshot guide](../docs/snapshots.md) for more details on how to set up remote snapshots.
 
 6. Run the single node cluster setup script:
     ```bash

@@ -24,6 +24,7 @@ package ctriface
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -33,13 +34,20 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/snapshotting"
+	"github.com/vhive-serverless/vhive/storage"
 )
 
 const (
 	remoteSnapshotsDir = "/tmp/vhive/remote-snapshots"
+)
+
+var (
+	remoteSnaps = flag.Bool("remote-snaps", false, "Run tests with remote snapshots (upload/download to/from MinIO)")
 )
 
 func TestSnapLoad(t *testing.T) {
@@ -208,7 +216,7 @@ func TestParallelSnapLoad(t *testing.T) {
 
 	// Pull image
 	_, err := orch.getImage(ctx, *testImage)
-	require.NoError(t, err, "Failed to pull image "+testImageName)
+	require.NoError(t, err, "Failed to pull image "+*testImage)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < vmNum; i++ {
@@ -287,7 +295,7 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 
 	// Pull image
 	_, err := orch.getImage(ctx, *testImage)
-	require.NoError(t, err, "Failed to pull image "+testImageName)
+	require.NoError(t, err, "Failed to pull image "+*testImage)
 
 	{
 		var vmGroup sync.WaitGroup
@@ -401,6 +409,32 @@ func TestParallelPhasedSnapLoad(t *testing.T) {
 	orch.Cleanup()
 }
 
+func setupMinioClient(t *testing.T) *storage.MinioStorage {
+	endpoint := "localhost:9000"
+	accessKey := "minio"
+	secretKey := "minio123"
+	bucket := "test-bucket"
+
+	client, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure: false,
+	})
+	require.NoError(t, err)
+
+	// Ensure test bucket exists
+	exists, err := client.BucketExists(context.Background(), bucket)
+	require.NoError(t, err)
+	if !exists {
+		err = client.MakeBucket(context.Background(), bucket, minio.MakeBucketOptions{})
+		require.NoError(t, err)
+	}
+
+	store, err := storage.NewMinioStorage(client, bucket)
+	require.NoError(t, err)
+
+	return store
+}
+
 func TestRemoteSnapCreate(t *testing.T) {
 	// Needs to be cleaned up manually.
 	log.SetFormatter(&log.TextFormatter{
@@ -420,8 +454,15 @@ func TestRemoteSnapCreate(t *testing.T) {
 	vmID := "37"
 	revision := "myrev-37"
 
-	err := os.MkdirAll(remoteSnapshotsDir, 0755)
-	require.NoError(t, err, "Failed to create remote snapshots directory")
+	var snapshotManager *snapshotting.SnapshotManager
+
+	if *remoteSnaps {
+		// Initialize MinIO storage for remote snapshots
+		storage := setupMinioClient(t)
+		snapshotManager = snapshotting.NewSnapshotManager(remoteSnapshotsDir, storage, false)
+	} else {
+		snapshotManager = snapshotting.NewSnapshotManager(remoteSnapshotsDir, nil, false)
+	}
 
 	orch := NewOrchestrator(
 		*snapshotter,
@@ -432,22 +473,32 @@ func TestRemoteSnapCreate(t *testing.T) {
 		WithDockerCredentials(*dockerCredentials),
 	)
 
-	_, _, err = orch.StartVM(ctx, vmID, *testImage)
+	_, _, err := orch.StartVM(ctx, vmID, *testImage)
 	require.NoError(t, err, "Failed to start VM")
 
 	err = orch.PauseVM(ctx, vmID)
 	require.NoError(t, err, "Failed to pause VM")
 
-	snap := snapshotting.NewSnapshot(revision, remoteSnapshotsDir, *testImage)
-	_ = snap.Cleanup()
-	err = snap.CreateSnapDir()
-	require.NoError(t, err, "Failed to create remote snapshots directory")
+	snap, err := snapshotManager.InitSnapshot(revision, *testImage)
+	require.NoError(t, err, "Failed to initialize snapshot")
 
 	err = orch.CreateSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to create snapshot of VM")
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
+
+	err = snap.SerializeSnapInfo()
+	require.NoError(t, err, "Failed to serialize snapshot info")
+
+	err = snapshotManager.CommitSnapshot(revision)
+	require.NoError(t, err, "Failed to commit snapshot")
+
+	if *remoteSnaps {
+		// Upload snapshot to MinIO
+		err = snapshotManager.UploadSnapshot(revision)
+		require.NoError(t, err, "Failed to upload snapshot to MinIO")
+	}
 
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to offload VM")
@@ -474,8 +525,15 @@ func TestRemoteSnapLoad(t *testing.T) {
 	vmID := "37"
 	revision := "myrev-37"
 
-	_, err := os.Stat(remoteSnapshotsDir)
-	require.NoError(t, err, "Failed to stat remote snapshots directory")
+	var snapshotManager *snapshotting.SnapshotManager
+
+	if *remoteSnaps {
+		// Initialize MinIO storage for remote snapshots
+		storage := setupMinioClient(t)
+		snapshotManager = snapshotting.NewSnapshotManager(remoteSnapshotsDir, storage, false)
+	} else {
+		snapshotManager = snapshotting.NewSnapshotManager(remoteSnapshotsDir, nil, true)
+	}
 
 	orch := NewOrchestrator(
 		*snapshotter,
@@ -486,7 +544,18 @@ func TestRemoteSnapLoad(t *testing.T) {
 		WithDockerCredentials(*dockerCredentials),
 	)
 
-	snap := snapshotting.NewSnapshot(revision, remoteSnapshotsDir, *testImage)
+	var snap *snapshotting.Snapshot
+	var err error
+	if *remoteSnaps {
+		// Download snapshot from MinIO
+		_, err = snapshotManager.DownloadSnapshot(revision)
+		require.NoError(t, err, "Failed to download snapshot from MinIO")
+
+		snap, err = snapshotManager.AcquireSnapshot(revision)
+		require.NoError(t, err, "Failed to acquire snapshot")
+	} else {
+		snap = snapshotting.NewSnapshot(revision, remoteSnapshotsDir, *testImage)
+	}
 
 	_, _, err = orch.LoadSnapshot(ctx, vmID, snap)
 	require.NoError(t, err, "Failed to load remote snapshot of VM")

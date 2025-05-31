@@ -104,7 +104,7 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 
 	createResultsDir()
 
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	cores, err := cpuNum()
 	require.NoError(t, err, "Cannot get the number of CPU")
@@ -149,7 +149,7 @@ func TestProfileSingleConfiguration(t *testing.T) {
 
 	createResultsDir()
 
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	bootVMs(t, images, 0, *vmNum)
 
@@ -178,7 +178,7 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 
 	createResultsDir()
 
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	bootVMs(t, images, 0, 2)
 
@@ -242,7 +242,7 @@ func TestBindSocket(t *testing.T) {
 		{vmNum: 4, expected: []string{strconv.Itoa(*profileCPUID), procStr}},
 	}
 
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	for _, tCase := range cases {
 		testName := fmt.Sprintf("vmNum=%d", tCase.vmNum)

@@ -465,6 +465,7 @@ SMI
 sms
 SMT
 snapshotted
+snapshotters
 snapshotting
 SoC
 SOCACHE
