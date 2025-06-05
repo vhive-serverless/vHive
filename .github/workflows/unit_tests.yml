@@ -143,6 +143,9 @@ jobs:
         sudo apt update
         sudo apt install rsync -y
 
+    - name: Cleanup runner disk space
+      run: ./scripts/github_runner/gh-actions-disk-cleanup.sh
+
     - name: Build setup scripts
       run: pushd scripts && go build -o setup_tool && popd
 
