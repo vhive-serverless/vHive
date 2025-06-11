@@ -35,6 +35,7 @@ jobs:
       with:
         # to add commit DCO checks later
         fetch-depth: 21
+        lfs: false
 
     - name: Set up Go ${{ matrix.go }}
       uses: actions/setup-go@v5

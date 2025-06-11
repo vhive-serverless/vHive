@@ -25,6 +25,8 @@ jobs:
 
         - name: Check out the code
           uses: actions/checkout@v4
+          with:
+            lfs: false
 
         - name: Set up Go version in go.mod file
           uses: actions/setup-go@v5
@@ -39,4 +41,3 @@ jobs:
         
         - name: Show scripts help info
           run: ./scripts/setup_tool -h
-        
