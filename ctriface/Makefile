@@ -41,11 +41,6 @@ test:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(WITHUPF)
 	./../scripts/clean_fcctr.sh
-	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
-	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(STARGZ) $(DOCKER_CREDENTIALS)
-	./../scripts/clean_fcctr.sh
 
 test-man:
 	./../scripts/clean_fcctr.sh
@@ -66,6 +61,11 @@ test-man:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_remote_snap_load_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_remote_snap_load_man_travis.err &
 	# Loads the remote snapshot.
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestRemoteSnapLoad
+	./../scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(STARGZ) $(DOCKER_CREDENTIALS)
 	./../scripts/clean_fcctr.sh
 
 test-skip:
