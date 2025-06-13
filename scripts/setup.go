@@ -146,23 +146,32 @@ func main() {
 	// Original scripts from `scripts/cluster` directory
 	case "create_multinode_cluster":
 		if setupFlags.NArg() < 2 {
-			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
+			utils.FatalPrintf("Missing parameters: %s <stock-containerd> [scheduler-name]\n", subCmd)
 			utils.CleanEnvironment()
 			os.Exit(1)
 		}
+		schedulerName := "default-scheduler"
+		if setupFlags.NArg() >= 3 {
+			schedulerName = setupFlags.Args()[2]
+		}
 		utils.InfoPrintf("Create multinode cluster\n")
-		err = cluster.CreateMultinodeCluster(setupFlags.Args()[1])
+		err = cluster.CreateMultinodeCluster(setupFlags.Args()[1], schedulerName)
+
 	case "create_one_node_cluster":
 		if setupFlags.NArg() < 2 {
-			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
+			utils.FatalPrintf("Missing parameters: %s <stock-containerd> [scheduler-name]\n", subCmd)
 			utils.CleanEnvironment()
 			os.Exit(1)
+		}
+		schedulerName := "default-scheduler"
+		if setupFlags.NArg() >= 3 {
+			schedulerName = setupFlags.Args()[2]
 		}
 		utils.InfoPrintf("Create one-node Cluster\n")
 		err = cluster.CreateOneNodeCluster(setupFlags.Args()[1])
 		if err == nil {
 			utils.InfoPrintf("Set up master node\n")
-			err = cluster.SetupMasterNode(setupFlags.Args()[1])
+			err = cluster.SetupMasterNode(setupFlags.Args()[1], schedulerName)
 		}
 	case "prepare_one_node_cluster":
 		if setupFlags.NArg() < 2 {
@@ -174,12 +183,16 @@ func main() {
 		err = cluster.CreateOneNodeCluster(setupFlags.Args()[1])
 	case "setup_master_node":
 		if setupFlags.NArg() < 2 {
-			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
+			utils.FatalPrintf("Missing parameters: %s <stock-containerd> [scheduler-name]\n", subCmd)
 			utils.CleanEnvironment()
 			os.Exit(1)
 		}
+		schedulerName := "default-scheduler"
+		if setupFlags.NArg() >= 3 {
+			schedulerName = setupFlags.Args()[2]
+		}
 		utils.InfoPrintf("Set up master node\n")
-		err = cluster.SetupMasterNode(setupFlags.Args()[1])
+		err = cluster.SetupMasterNode(setupFlags.Args()[1], schedulerName)
 	case "setup_worker_kubelet":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
@@ -204,12 +217,16 @@ func main() {
 
 	case "start_onenode_vhive_cluster":
 		if setupFlags.NArg() < 2 {
-			utils.FatalPrintf("Missing parameters: %s <sandbox>\n", subCmd)
+			utils.FatalPrintf("Missing parameters: %s <sandbox> [scheduler-name]\n", subCmd)
 			utils.CleanEnvironment()
 			os.Exit(1)
 		}
+		schedulerName := "default-scheduler"
+		if setupFlags.NArg() >= 3 {
+			schedulerName = setupFlags.Args()[2]
+		}
 		utils.InfoPrintf("Start one-node vHive cluster\n")
-		err = cloudlab.StartOnenodeVhiveCluster(setupFlags.Args()[1])
+		err = cloudlab.StartOnenodeVhiveCluster(setupFlags.Args()[1], schedulerName)
 		// Original scripts from `scripts/cloudlab` directory
 	case "setup_nvidia_gpu":
 		utils.InfoPrintf("Set up Nvidia gpu\n")

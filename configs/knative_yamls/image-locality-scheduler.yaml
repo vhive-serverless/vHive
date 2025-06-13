@@ -1,0 +1,122 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: image-locality-scheduler
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: image-locality-scheduler
+subjects:
+- kind: ServiceAccount
+  name: image-locality-scheduler
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: system:kube-scheduler
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: image-locality-scheduler-volume
+subjects:
+- kind: ServiceAccount
+  name: image-locality-scheduler
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: system:volume-scheduler
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: image-locality-scheduler-extension-apiserver-authentication-reader
+  namespace: kube-system
+roleRef:
+  kind: Role
+  name: extension-apiserver-authentication-reader
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: image-locality-scheduler
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1
+    kind: KubeSchedulerConfiguration
+    profiles:
+      - schedulerName: image-locality-scheduler
+        plugins:
+          score:
+            enabled:
+              - name: ImageLocality
+        pluginConfig:
+          - name: ImageLocality
+            args:
+              shape:
+                - utilization: 0
+                  score: 0
+                - utilization: 100
+                  score: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: scheduler
+    tier: control-plane
+  name: image-locality-scheduler
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      component: scheduler
+      tier: control-plane
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: scheduler
+        tier: control-plane
+        version: second
+    spec:
+      serviceAccountName: image-locality-scheduler
+      containers:
+      - name: image-locality-scheduler
+        image: registry.k8s.io/kube-scheduler:v1.28.0
+        command:
+        - kube-scheduler
+        - --config=/etc/kubernetes/config.yaml
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10259
+            scheme: HTTPS
+          initialDelaySeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 10259
+            scheme: HTTPS
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kubernetes
+        resources:
+          requests:
+            cpu: '0.1'
+        securityContext:
+          privileged: false
+      volumes:
+      - name: config
+        configMap:
+          name: scheduler-config

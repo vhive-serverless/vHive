@@ -32,7 +32,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func CreateMultinodeCluster(stockContainerd string) error {
+func CreateMultinodeCluster(stockContainerd, schedulerName string) error {
 	// Original Bash Scripts: scripts/cluster/create_multinode_cluster.sh
 
 	if err := CreateMasterKubeletService(); err != nil {
@@ -63,7 +63,7 @@ func CreateMultinodeCluster(stockContainerd string) error {
 
 	// Set up master node
 	utils.InfoPrintf("Set up master node\n")
-	if err := SetupMasterNode(stockContainerd); err != nil {
+	if err := SetupMasterNode(stockContainerd, schedulerName); err != nil {
 		utils.FatalPrintf("Failed to set up master node!\n")
 		return err
 	}
