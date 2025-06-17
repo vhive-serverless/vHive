@@ -35,6 +35,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/ctriface"
+
+	"github.com/vhive-serverless/vhive/storage"
+
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 type coordinator struct {
@@ -67,10 +72,27 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorO
 	}
 
 	snapshotsDir := "/fccd/test/snapshots"
+	var objectStore storage.ObjectStorage
+
 	if !c.withoutOrchestrator {
 		snapshotsDir = orch.GetSnapshotsDir()
+		snapshotsBucket := orch.GetSnapshotsBucket()
+
+		if orch.GetSnapshotMode() == "remote" {
+			minioClient, _ := minio.New(orch.GetMinioAddr(), &minio.Options{
+				Creds:  credentials.NewStaticV4(orch.GetMinioAccessKey(), orch.GetMinioSecretKey(), ""),
+				Secure: false,
+			})
+
+			var err error
+			objectStore, err = storage.NewMinioStorage(minioClient, snapshotsBucket)
+			if err != nil {
+				log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", snapshotsBucket)
+			}
+		}
 	}
-	c.snapshotManager = snapshotting.NewSnapshotManager(snapshotsDir)
+
+	c.snapshotManager = snapshotting.NewSnapshotManager(snapshotsDir, objectStore, false)
 
 	return c
 }
@@ -80,9 +102,17 @@ func (c *coordinator) startVM(ctx context.Context, image, revision string) (*fun
 }
 
 func (c *coordinator) startVMWithEnvironment(ctx context.Context, image, revision string, environment []string) (*funcInstance, error) {
-	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
+	if c.orch != nil && c.orch.GetSnapshotMode() != "disabled" {
 		// Check if snapshot is available
-		if snap, err := c.snapshotManager.AcquireSnapshot(revision); err == nil {
+		if snap, _ := c.snapshotManager.AcquireSnapshot(revision); snap == nil {
+			if c.orch.GetSnapshotMode() == "remote" {
+				if exists, _ := c.snapshotManager.SnapshotExists(revision); exists {
+					_, _ = c.snapshotManager.DownloadSnapshot(revision)
+				}
+			}
+		}
+
+		if snap, _ := c.snapshotManager.AcquireSnapshot(revision); snap != nil {
 			return c.orchLoadInstance(ctx, snap)
 		}
 	}
@@ -102,7 +132,7 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		return nil
 	}
 
-	if c.orch != nil && c.orch.GetSnapshotsEnabled() && !fi.SnapBooted {
+	if c.orch != nil && c.orch.GetSnapshotMode() != "disabled" && !fi.SnapBooted {
 		err := c.orchCreateSnapshot(ctx, fi)
 		if err != nil {
 			log.Printf("Err creating snapshot %s\n", err)
@@ -230,9 +260,20 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 		}
 	}
 
+	if err := snap.SerializeSnapInfo(); err != nil {
+		fi.Logger.WithError(err).Error("failed to serialize snapshot info")
+		return err
+	}
+
 	if err := c.snapshotManager.CommitSnapshot(fi.Revision); err != nil {
 		fi.Logger.WithError(err).Error("failed to commit snapshot")
 		return err
+	}
+
+	if !c.withoutOrchestrator && c.orch.GetSnapshotMode() == "remote" {
+		if err := c.snapshotManager.UploadSnapshot(fi.Revision); err != nil {
+			fi.Logger.WithError(err).Error("failed to upload snapshot")
+		}
 	}
 
 	return nil

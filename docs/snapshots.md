@@ -11,6 +11,20 @@ There are 2 modes of snapshot operation: local and remote. While the local mode 
 too [unstable](./snapshots.md#container-disk-state-restoration-blocker)
 to be used.
 
+There are two modes of snapshot operation: **local** and **remote**.
+
+- **Local mode** is stable and fully operational, except a minor known issue (GH-818). It works both with `stargz` and
+  `devmapper` containerd snapshotters.
+
+- **Remote mode** is now **partially operational**:
+    - It works reliably when using [**stargz**](https://github.com/containerd/stargz-snapshotter) as
+      the [remote snapshotter](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter.md).
+    - However, remote snapshots with `devmapper`
+      remain [unstable](./snapshots.md#container-disk-state-restoration-blocker) and is **not recommended** for
+      production use.
+
+---
+
 ## Local snapshots
 
 The current approach allows loading an arbitrary amount of VMs from a single snapshot. This is done by creating a new
@@ -23,28 +37,45 @@ further configured using the following flags:
 
 ### Snapshot creation
 
-Snapshots are created using the following algorithm.
+Snapshots are created using the following steps:
 
 1. Pause the VM.
-2. Create a snapshot of the VM.
-3. Capture container snapshot (disk state) changes.
+2. Create a Firecracker VM snapshot (memory and CPU state).
+3. **Capture container snapshot (disk state) changes**, only if using **`devmapper`**:
     1. Get a snapshot of the original container image.
     2. Mount the original container image snapshot.
     3. Mount the current container snapshot.
-    4. Extract changes between the mounted container snapshots into a patch file using the `--only-write-batch`
-       of `rsync`.
+    4. Use `rsync --only-write-batch` to generate a patch file with the differences between the two snapshots.
 4. Resume the VM.
+
+> ℹ️ If using `stargz`, capturing disk changes is not needed. The container's root filesystem is mounted
+> via a **FUSE filesystem**, and its state is persisted in the memory snapshot.  
+> See the
+> [remote snapshotter architecture](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter.md)
+> for details about this architecture.
 
 ### Snapshot loading
 
-Snapshots are loaded using the following algorithm.
+To load a local snapshot:
 
-1. Restore container snapshot (disk state) changes.
-    1. Get a snapshot of the original container image.
+1. **Restore container snapshot (disk state)** (only required if using `devmapper`):
+    1. Retrieve a snapshot of the original container image.
     2. Mount the original container image snapshot.
-    3. Apply changes from the patch file to the mounter container snapshot using the `--read-batch` of `rsync`.
-2. Create a VM with a snapshot, providing the memory file, VM snapshot file and the path to the patched container
-   snapshot.
+    3. Apply changes from the patch file to the mounted container snapshot using `rsync --read-batch`.
+
+2. **Create a VM** from the snapshot by providing:
+    - The memory snapshot file
+    - The VM state file
+    - The path to the patched container snapshot (via `ContainerSnapshotPath`)
+
+> ℹ️ If using `stargz`, container snapshot restoration is **not** required, as the container rootfs is mounted
+> via FUSE and restored directly from the memory snapshot.
+
+### Setup
+
+To enable local snapshots, you just need to start the vHive server with the `-snapshots 'local'` flag.
+
+---
 
 ## Remote snapshots
 
@@ -53,6 +84,8 @@ potentially accelerate cold start times and reduce memory utilization, given tha
 minimize the snapshot network transfer latency. This could be done by storing snapshots in a global storage solution
 such as [MinIO S3](./developers_guide.md#MinIO-S3-service), or directly distributing snapshots between compute nodes.
 
+> ℹ️ Remote snapshots currently are only supported when using the `stargz` snapshotter.
+
 ### Snapshot creation
 
 Snapshots are created using the same algorithm as for local snapshots with an additional upload step (uploading
@@ -60,8 +93,43 @@ the snapshot files to the global storage solution).
 
 ### Snapshot loading
 
-Snapshots are created using the same algorithm as for local snapshots with a preliminary download step (downloading
+Snapshots are loaded using the same algorithm as for local snapshots with a preliminary download step (downloading
 the snapshot files from the global storage solution).
+
+### Setup
+
+To enable remote snapshots, first you need to set up a global storage solution (e.g., MinIO S3) to store the snapshots. 
+Check how to set up MinIO S3 in [here](./developers_guide.md#MinIO-S3-service).
+
+Since remote snapshots currently only work with the `stargz` snapshotter, you need to set up the node with this in mind:
+
+```bash
+./setup_tool setup_node firecracker use-stargz
+```
+
+This will set up the node with the `stargz` snapshotter and the required configuration to use remote snapshots.
+
+Start both `demux-snapshotter` and the `http-address-revolver` in the background:
+
+```bash
+sudo demux-snapshotter 
+```
+
+and
+
+```bash
+sudo http-address-revolver
+```
+
+Finally, when starting the vHive server, you need to specify some extra flags:
+
+```bash
+./vhive -snapshots 'remote' \       # use remote snapshots
+    -snapshotter 'proxy' \          # use the proxy snapshotter (demux-snapshotter)
+    -dockerCredentials '{"docker-credentials":{"ghcr.io":{"username":"...","password":"..."}, "https://index.docker.io/v1/":{"username":"...","password":"..."}}}' # credentials for pulling images
+```
+
+> ℹ️ Check the firecracker-containerd [remote snapshotter documentation](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter.md) for more details about the remote snapshotter architecture.
 
 ### Blockers
 
@@ -78,7 +146,7 @@ folder. Instructions on setting up and working with the PoC are provided in the 
 
 ##### Outline
 
-Currently, the blocker for using remote snapshots is container disk state restoration. Containers restored on a
+Currently, the blocker for using remote snapshots with `devmapper` is container disk state restoration. Containers restored on a
 clean node seem to be healthy, and respond to requests, but their disk state gets corrupted after a request is received.
 
 Corruption symptoms vary among different containers:
@@ -125,18 +193,6 @@ inside the VM.
   shut down and all of its network resources are cleaned up and no sockets related to Firecracker could be found in the
   system.
 
-##### Hypotheses
-
-* The variation of container corruption symptoms is caused by different page loading patterns for different binaries.
-  Currently, there is no utility to force eager preloading of a binary in Linux.
-* Though it does not seem like the problem is related to the container image snapshotter, it is worth trying to use a
-  remote snapshotter. An attempt to use
-  the [remote snapshotter](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter-getting-started.md)
-  alternative that firecracker-containerd provides on a container image different from the one that is offered in the
-  firecracker-containerd repository did not succeed (see
-  [firecracker-microvm/firecracker-containerd#761](https://github.com/firecracker-microvm/firecracker-containerd/issues/761)
-  for details).
-
 ##### Debugging facilities
 
 A custom Firecracker VM rootfs with an SSH server can be generated using this
@@ -152,6 +208,8 @@ The container disk state can be explored using `e2fsck`.
 
 The Firecracker VM rootfs can potentially be extended with other debugging facilities (for instance, `iotop` could help
 tracking page loading operations).
+
+---
 
 ## Incompatibilities and limitations
 
@@ -188,7 +246,7 @@ metadata device.
 ### Performance limitations
 
 Currently, snapshots require a new block device and network device with the exact state of the snapshotted VM to be
-created before restoring the snapshot. The network namespace and devmapper block device creation turn out to be a
+created before restoring the snapshot. The network namespace and `devmapper` block device creation turn out to be a
 bottleneck when concurrently restoring many snapshots. Approaches that reduce the impact of these operations could
 further speedup the VM snapshot restore latency at high load.
 

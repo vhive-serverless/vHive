@@ -40,10 +40,10 @@ func WithTestModeOn(testModeOn bool) OrchestratorOption {
 	}
 }
 
-// WithSnapshots Sets the snapshot mode on or off
-func WithSnapshots(snapshotsEnabled bool) OrchestratorOption {
+// WithSnapshotMode Sets the snapshot mode
+func WithSnapshotMode(snapshotMode string) OrchestratorOption {
 	return func(o *Orchestrator) {
-		o.snapshotsEnabled = snapshotsEnabled
+		o.snapshotMode = snapshotMode
 	}
 }
 
@@ -109,5 +109,28 @@ func WithDockerCredentials(dockerCredentials string) OrchestratorOption {
 			panic(fmt.Sprintf("invalid dockerCredentials JSON: %v", err))
 		}
 		o.dockerCredentials = creds
+	}
+}
+
+// WithMinioAddr Sets the MinIO server address (endpoint)
+func WithMinioAddr(minioAddr string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.minioAddr = minioAddr
+	}
+}
+
+// WithMinioAccessKey Sets the MinIO access key
+// Used in conjunction with the secret key for authentication with the MinIO server
+func WithMinioAccessKey(minioAccessKey string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.minioAccessKey = minioAccessKey
+	}
+}
+
+// WithMinioSecretKey Sets the MinIO secret key
+// Used in conjunction with the access key for authentication with the MinIO server
+func WithMinioSecretKey(minioSecretKey string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.minioSecretKey = minioSecretKey
 	}
 }

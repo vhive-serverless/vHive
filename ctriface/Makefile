@@ -32,6 +32,7 @@ STARGZ:=-ss 'proxy' -img 'ghcr.io/vhive-serverless/helloworld:var_workload-esgz'
 DOCKER_CREDENTIALS:=-dockerCredentials '{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}'
 GOBENCH:=-v -timeout 1500s
 CTRDLOGDIR:=/tmp/ctrd-logs
+REMOTE_SNAPS:=-remote-snaps
 
 test:
 	./../scripts/clean_fcctr.sh
@@ -81,6 +82,26 @@ test-skip:
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelSnapLoad -args $(WITHUPF) $(WITHLAZY)
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad -args $(WITHUPF) $(WITHLAZY)
 	./../scripts/clean_fcctr.sh
+
+
+test-remote-snaps:
+	# --- Phase 1: Create a remote snapshot ---
+	# Preserve the network to avoid disrupting the MinIO connection.
+	./../scripts/clean_fcctr.sh --preserve-network --preserve-containers
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_remote_snap_create.out 2>$(CTRDLOGDIR)/ctriface_log_remote_snap_create.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestRemoteSnapCreate -args $(STARGZ) $(DOCKER_CREDENTIALS) $(REMOTE_SNAPS)
+
+	# --- Cleanup node, including the local snapshot ---
+	# Preserve the network to avoid disrupting the MinIO connection.
+	./../scripts/clean_fcctr.sh --preserve-network --preserve-containers
+
+	# --- Phase 2: Load the previously created remote snapshot ---
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_remote_snap_create.out 2>$(CTRDLOGDIR)/ctriface_log_remote_snap_create.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestRemoteSnapLoad -args $(STARGZ) $(DOCKER_CREDENTIALS) $(REMOTE_SNAPS)
 
 
 bench:

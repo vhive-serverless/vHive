@@ -26,6 +26,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
 
 	"net"
 	"os"
@@ -54,16 +55,16 @@ var (
 	orch     *ctriface.Orchestrator
 	funcPool *FuncPool
 
-	isSaveMemory       *bool
-	isSnapshotsEnabled *bool
-	isUPFEnabled       *bool
-	isLazyMode         *bool
-	isMetricsMode      *bool
-	servedThreshold    *uint64
-	pinnedFuncNum      *int
-	criSock            *string
-	hostIface          *string
-	netPoolSize        *int
+	isSaveMemory    *bool
+	snapshotMode    *string
+	isUPFEnabled    *bool
+	isLazyMode      *bool
+	isMetricsMode   *bool
+	servedThreshold *uint64
+	pinnedFuncNum   *int
+	criSock         *string
+	hostIface       *string
+	netPoolSize     *int
 )
 
 func main() {
@@ -74,7 +75,7 @@ func main() {
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
-	isSnapshotsEnabled = flag.Bool("snapshots", false, "Use VM snapshots when adding function instances")
+	snapshotMode = flag.String("snapshots", "disabled", "Use VM snapshots when adding function instances, valid options: disabled, local, remote")
 	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
@@ -87,6 +88,7 @@ func main() {
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
 	dockerCredentials := flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM") // https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds
+	minioCredentials := flag.String("minioCredentials", "", "Minio credentials for uploading/downloading remote firecracker snapshots. Format: <minioAddr>;<minioAccessKey>;<minioSecretKey>")
 	flag.Parse()
 
 	if *sandbox != "firecracker" && *sandbox != "gvisor" {
@@ -94,12 +96,31 @@ func main() {
 		return
 	}
 
+	if *snapshotMode != "disabled" && *snapshotMode != "local" && *snapshotMode != "remote" {
+		log.Fatalln("Only \"disabled\", \"local\" or \"remote\" are supported as snapshotting modes")
+		return
+	}
+
+	minioAddr := "localhost:9000"
+	minioAccessKey := "minio"
+	minioSecretKey := "minio123"
+	if *minioCredentials != "" {
+		parts := strings.SplitN(*minioCredentials, ";", 3)
+		if len(parts) != 3 {
+			log.Fatalln("Minio credentials should be in the format <minioAddr>;<minioAccessKey>;<minioSecretKey>")
+			return
+		}
+		minioAddr = parts[0]
+		minioAccessKey = parts[1]
+		minioSecretKey = parts[2]
+	}
+
 	if *isUPFEnabled {
 		log.Error("User-level page faults are temporarily disabled (gh-807)")
 		return
 	}
 
-	if *isUPFEnabled && !*isSnapshotsEnabled {
+	if *isUPFEnabled && *snapshotMode == "disabled" {
 		log.Error("User-level page faults are not supported without snapshots")
 		return
 	}
@@ -140,7 +161,7 @@ func main() {
 			*snapshotter,
 			*hostIface,
 			ctriface.WithTestModeOn(testModeOn),
-			ctriface.WithSnapshots(*isSnapshotsEnabled),
+			ctriface.WithSnapshotMode(*snapshotMode),
 			ctriface.WithUPF(*isUPFEnabled),
 			ctriface.WithMetricsMode(*isMetricsMode),
 			ctriface.WithLazyMode(*isLazyMode),
@@ -148,8 +169,11 @@ func main() {
 			ctriface.WithVethPrefix(*vethPrefix),
 			ctriface.WithClonePrefix(*clonePrefix),
 			ctriface.WithDockerCredentials(*dockerCredentials),
+			ctriface.WithMinioAddr(minioAddr),
+			ctriface.WithMinioAccessKey(minioAccessKey),
+			ctriface.WithMinioSecretKey(minioSecretKey),
 		)
-		funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
+		funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn, *snapshotMode, minioAddr, minioAccessKey, minioSecretKey)
 		go setupFirecrackerCRI()
 		go orchServe()
 		fwdServe()

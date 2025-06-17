@@ -37,7 +37,7 @@ func TestParallelServe(t *testing.T) {
 		servedTh      uint64 = 1
 		pinnedFuncNum int
 	)
-	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	// Pull image to work around parallel pulling limitation
 	resp, _, err := funcPool.Serve(context.Background(), "plr-fnc", testImageName, "world")
@@ -72,7 +72,7 @@ func TestServeThree(t *testing.T) {
 		servedTh      uint64 = 1
 		pinnedFuncNum int
 	)
-	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
 	require.NoError(t, err, "Function returned error on 1st run")

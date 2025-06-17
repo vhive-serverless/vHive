@@ -170,3 +170,71 @@ jobs:
     - name: Cleaning
       if: ${{ always() }}
       run: ./scripts/setup_tool clean_fcctr
+
+  remote-firecracker-snapshots-test:
+    name: "Unit tests: Remote Firecracker snapshots"
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [storage, snapshotting] # ctriface
+    services:
+      minio: # MinIO service for testing remote snapshots
+        image: lazybit/minio # Can't use minio/minio because there's still no support for the jobs.<job_id>.services.<service_id>.command option in GH Actions
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+        volumes:
+          - ${{ github.workspace }}/data:/data
+        env:
+          MINIO_ROOT_USER: minio
+          MINIO_ROOT_PASSWORD: minio123
+        # command: server /data
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          path: vhive # Use a specific path to avoid conflicts with the MinIO volume
+      
+      - name: Set up Go version in go.mod file
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ github.workspace }}/vhive/go.mod
+          cache-dependency-path: |
+            **/go.sum
+            **/go.mod
+
+      - name: Add rsync
+        run: |
+          sudo apt update
+          sudo apt install rsync -y
+
+      - name: Cleanup runner disk space
+        run: ./vhive/scripts/github_runner/gh-actions-disk-cleanup.sh
+
+      - name: Build setup scripts
+        run: pushd ./vhive/scripts && go build -o setup_tool && popd
+
+      - name: Pull binaries
+        run: ./vhive/scripts/setup_tool setup_firecracker_containerd
+
+      - name: Setup Stargz
+        run: ./vhive/scripts/setup_tool setup_stargz firecracker
+
+      - name: Build
+        run: cd ./vhive && go build -race -v -a ./...
+
+      - name: Run tests in submodules
+        env:
+          MODULE: ${{ matrix.module }}
+        run: |
+          make -C vhive/$MODULE test-remote-snaps
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: ./vhive/scripts/setup_tool clean_fcctr
