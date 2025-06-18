@@ -6,7 +6,7 @@ spec:
   template:
     spec:
       containers:
-        - image: ghcr.io/ease-lab/helloworld:var_workload
+        - image: ghcr.io/ease-lab/helloworld@sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25
           ports:
             - name: h2c # For GRPC support
               containerPort: 50051
@@ -14,4 +14,4 @@ spec:
             - name: GUEST_PORT # Port on which the firecracker-containerd container is accepting requests
               value: "50051"
             - name: GUEST_IMAGE # Container image to use for firecracker-containerd container
-              value: "ghcr.io/ease-lab/helloworld:var_workload"
+              value: "ghcr.io/ease-lab/helloworld@sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25"

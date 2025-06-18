@@ -61,3 +61,7 @@ if [ 64 -eq ${#CONTAINERID} ]; then
 fi
 
 sudo cp $CONFIGS/firecracker-runtime.json /etc/containerd/
+
+# Create directory and symlink for CRI socket
+sudo mkdir -p /etc/vhive-cri
+sudo ln -sf /run/firecracker-containerd/containerd.sock /etc/vhive-cri/vhive-cri.sock

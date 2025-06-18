@@ -41,15 +41,19 @@ type SnapshotManager struct {
 }
 
 // Snapshot identified by VM id
-
 func NewSnapshotManager(baseFolder string) *SnapshotManager {
 	manager := new(SnapshotManager)
 	manager.snapshots = make(map[string]*Snapshot)
 	manager.baseFolder = baseFolder
 
-	// Clean & init basefolder
-	_ = os.RemoveAll(manager.baseFolder)
-	_ = os.MkdirAll(manager.baseFolder, os.ModePerm)
+	if err := os.RemoveAll(manager.baseFolder); err != nil {
+		log.Printf("Failed to clean base folder: %v", err)
+		return nil
+	}
+	if err := os.MkdirAll(manager.baseFolder, 0755); err != nil {
+		log.Printf("Failed to create base folder: %v", err)
+		return nil
+	}
 
 	return manager
 }
