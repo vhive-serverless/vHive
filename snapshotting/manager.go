@@ -23,6 +23,7 @@
 package snapshotting
 
 import (
+	"context"
 	"fmt"
 	"github.com/pkg/errors"
 	"io"
@@ -33,7 +34,21 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/vhive-serverless/vhive/storage"
+
+	"github.com/vhive-serverless/vhive/k8s"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
+
+func init() {
+	ctrlLog.SetLogger(zap.New(zap.UseDevMode(true)))
+}
 
 // SnapshotManager manages snapshots stored on the node.
 type SnapshotManager struct {
@@ -125,6 +140,10 @@ func (mgr *SnapshotManager) CommitSnapshot(revision string) error {
 	}
 
 	snap.ready = true
+
+	if err := mgr.updateNodeSnapshotCRD(revision); err != nil {
+		return errors.Wrapf(err, "updating NodeSnapshotCache CRD for revision %s", revision)
+	}
 
 	return nil
 }
@@ -288,4 +307,57 @@ func (mgr *SnapshotManager) SnapshotExists(revision string) (bool, error) {
 // Helper function to construct object keys (you may need to adjust this based on your key structure)
 func (mgr *SnapshotManager) getObjectKey(revision, fileName string) string {
 	return fmt.Sprintf("%s/%s", revision, fileName)
+}
+
+// TODO probably move this to a separate package
+func newK8sClient() (client.Client, error) {
+	scheme := runtime.NewScheme()
+	if err := k8s.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	return client.New(cfg, client.Options{Scheme: scheme})
+}
+
+// updateNodeSnapshotCRD updates the NodeSnapshotCache CRD with the given revision.
+func (mgr *SnapshotManager) updateNodeSnapshotCRD(revision string) error {
+	nodeName, _ := os.Hostname()
+	k8sClient, err := newK8sClient()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.TODO()
+	crName := nodeName // use the node's hostname as the CR name
+
+	cr := &k8s.NodeSnapshotCache{}
+	err = k8sClient.Get(ctx, types.NamespacedName{Name: crName}, cr)
+	if err != nil && apierrors.IsNotFound(err) {
+		// create it
+		cr = &k8s.NodeSnapshotCache{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      crName,
+				Namespace: "default",
+			},
+			Spec: k8s.NodeSnapshotCacheSpec{
+				NodeName:  nodeName,
+				Snapshots: []string{revision},
+			},
+		}
+		return k8sClient.Create(ctx, cr)
+	} else if err != nil {
+		return err
+	}
+
+	// already exists, update it
+	for _, existing := range cr.Spec.Snapshots {
+		if existing == revision {
+			return nil // already listed
+		}
+	}
+	cr.Spec.Snapshots = append(cr.Spec.Snapshots, revision)
+	return k8sClient.Update(ctx, cr)
 }
