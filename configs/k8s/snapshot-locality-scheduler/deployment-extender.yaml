@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snapshot-locality-extender
+  namespace: kube-system
+  labels:
+    app: snapshot-locality-extender
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snapshot-locality-extender
+  template:
+    metadata:
+      labels:
+        app: snapshot-locality-extender
+    spec:
+      serviceAccountName: snapshot-locality-extender
+      containers:
+      - name: extender
+        image: docker.io/devandrejesus/snapshot-locality-extender:v1.0.1
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: PORT
+          value: "8080"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snapshot-locality-extender
+  namespace: kube-system
+  labels:
+    app: snapshot-locality-extender
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: snapshot-locality-extender
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: snapshot-locality-extender
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: snapshot-locality-extender
+rules:
+- apiGroups: ["vhive.io"]
+  resources: ["nodesnapshotcaches"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: snapshot-locality-extender
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: snapshot-locality-extender
+subjects:
+- kind: ServiceAccount
+  name: snapshot-locality-extender
+  namespace: kube-system

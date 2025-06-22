@@ -30,7 +30,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func StartOnenodeVhiveCluster(sandbox string) error {
+func StartOnenodeVhiveCluster(sandbox, schedulerName string) error {
 
 	// Arguments check
 	if sandbox == "" {
@@ -122,7 +122,7 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 		return err
 	}
 
-	if err = cluster.SetupMasterNode(sandbox); err != nil {
+	if err = cluster.SetupMasterNode(sandbox, schedulerName); err != nil {
 		return err
 	}
 

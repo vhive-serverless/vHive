@@ -5,6 +5,7 @@ metadata:
 spec:
   template:
     spec:
+      schedulerName: snapshot-locality-scheduler
       containers:
         - image: crccheck/hello-world:latest # Stub image. See https://github.com/vhive-serverless/vhive/issues/68
           ports:

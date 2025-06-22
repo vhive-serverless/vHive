@@ -28,6 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// Use the following commands to generate the deepcopy code for Go types
+// go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0
+// export PATH=$PATH:$HOME/go/bin
+// controller-gen object paths="./k8s"
+
 var (
 	GroupVersion  = schema.GroupVersion{Group: "vhive.io", Version: "v1"}
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)

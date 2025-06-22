@@ -23,6 +23,7 @@
 package cluster
 
 import (
+	"fmt"
 	"os"
 	"path"
 
@@ -30,7 +31,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func SetupMasterNode(stockContainerd string) error {
+func SetupMasterNode(stockContainerd, schedulerName string) error {
 	// Original Bash Scripts: scripts/cluster/setup_master_node.sh
 
 	err := InstallCalico()
@@ -55,6 +56,13 @@ func SetupMasterNode(stockContainerd string) error {
 		}
 	}
 
+	if schedulerName != "default-scheduler" {
+		if err = ConfigureCustomScheduler(); err != nil {
+			utils.WarnPrintf("Failed to set up scheduler profile %s: %v\n", schedulerName, err)
+			return err
+		}
+	}
+
 	err = InstallKnativeServingComponent()
 	if err != nil {
 		return err
@@ -73,6 +81,13 @@ func SetupMasterNode(stockContainerd string) error {
 	err = DeployIstioPods()
 	if err != nil {
 		return err
+	}
+
+	if schedulerName != "default-scheduler" {
+		if err = DeployCustomScheduler(schedulerName); err != nil {
+			utils.WarnPrintf("Failed to deploy custom scheduler %s: %v\n", schedulerName, err)
+			return err
+		}
 	}
 
 	// Logs for verification
@@ -395,5 +410,58 @@ func InstallBrokerLayer() error {
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install a Broker layer!\n") {
 		return err
 	}
+	return nil
+}
+
+// DeployCustomScheduler deploys a custom scheduler in the Kubernetes cluster.
+func DeployCustomScheduler(schedulerName string) error {
+	utils.WaitPrintf("Deploying custom scheduler: %s", schedulerName)
+
+	// Path to the scheduler configuration directory
+	schedulerConfigDir := path.Join(configs.VHive.VHiveRepoPath, "configs/k8s", schedulerName)
+
+	// Check if the scheduler config directory exists
+	if stat, err := os.Stat(schedulerConfigDir); os.IsNotExist(err) || !stat.IsDir() {
+		return fmt.Errorf("scheduler config directory not found or not a directory: %s", schedulerConfigDir)
+	}
+
+	// Apply all YAMLs in the scheduler config directory
+	_, err := utils.ExecShellCmd("kubectl apply -f %s", schedulerConfigDir)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy custom scheduler!\n") {
+		return err
+	}
+
+	// Wait for the scheduler deployment to be ready
+	_, err = utils.ExecShellCmd("kubectl wait --for=condition=available deployment/%s -n kube-system --timeout=300s", schedulerName)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to wait for scheduler to be ready!\n") {
+		return err
+	}
+
+	return nil
+}
+
+// ConfigureCustomScheduler configures the kube-scheduler to allow a custom scheduler to be used by Knative.
+func ConfigureCustomScheduler() error {
+	utils.WaitPrintf("Configuring custom scheduler for Knative")
+
+	// Download serving-core.yaml if not already present
+	servingCorePath := path.Join(configs.VHive.VHiveRepoPath, "configs/knative_yamls", "serving-core.yaml")
+	if _, err := os.Stat(servingCorePath); os.IsNotExist(err) {
+		_, err := utils.ExecShellCmd("wget -nc https://github.com/knative/serving/releases/download/knative-v%s/serving-core.yaml -P %s",
+			configs.Knative.KnativeVersion, path.Join(configs.VHive.VHiveRepoPath, "configs/knative_yamls"))
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to download Knative serving-core.yaml!\n") {
+			return err
+		}
+	}
+
+	// Patch the config-features ConfigMap to set the default scheduler at the top of the data map
+	_, err := utils.ExecShellCmd(`yq -i '
+	(select(.kind == "ConfigMap" and .metadata.name == "config-features") |
+		.data) = {"kubernetes.podspec-schedulername": "enabled"} + .data
+	' %s`, servingCorePath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure custom scheduler!\n") {
+		return err
+	}
+
 	return nil
 }

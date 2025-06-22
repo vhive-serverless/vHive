@@ -217,6 +217,11 @@ Another option is to install using official instructions: [https://golang.org/do
     > ```bash
     > ./setup_tool create_multinode_cluster stock-only
     > ```
+    >
+    > If you want to use a specific scheduler, you can specify it as an argument to the script. Example:
+    > ```bash
+    > ./setup_tool create_multinode_cluster firecracker snapshot-locality-scheduler
+    > ```
 
 ### 4. Configure Worker Nodes
 **On each worker node**, execute the following instructions below **as a non-root user with sudo rights** using **bash**:
@@ -321,6 +326,11 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     > script instead:
     >   ```bash
     >   ./setup_tool create_one_node_cluster stock-only
+    >   ```
+    >
+    > If you want to use a specific scheduler, you can specify it as an argument to the script. Example:
+    >   ```bash
+    >   ./setup_tool create_one_node_cluster firecracker snapshot-locality-scheduler
     >   ```
 
 ### 2. Clean Up
