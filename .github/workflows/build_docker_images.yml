@@ -36,11 +36,11 @@ jobs:
         image: [github_runner, github_runner_cri, cri_dev_env]
     steps:
     - uses: actions/checkout@v4
+    - name: Handle LFS Caching
+      uses: ./.github/actions/lfs-cache
       with:
+        lfs_enabled: 'true'
         ref: main
-    - name: pull binaries
-      run: |
-        git lfs pull
     - name: docker build images
       run: |
         DOCKER_BUILDKIT=1 docker build --file ./scripts/github_runner/Dockerfile.${{ matrix.image }} .

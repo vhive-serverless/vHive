@@ -37,10 +37,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Handle LFS Caching
+        uses: ./.github/actions/lfs-cache
         with:
-          lfs: "true"
-      - name: Checkout LFS objects
-        run: git lfs checkout
+          lfs_enabled: 'true'
 
       - name: Set up Go version in go.mod file
         uses: actions/setup-go@v5

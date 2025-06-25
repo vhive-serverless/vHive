@@ -30,11 +30,11 @@ jobs:
       matrix:
         test-name: [test, test-man-bench]
     steps:
-  
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - name: Handle LFS Caching
+      uses: ./.github/actions/lfs-cache
       with:
-        lfs: true
+        lfs_enabled: 'true'
 
     - name: Set up Go version in go.mod file
       uses: actions/setup-go@v5
