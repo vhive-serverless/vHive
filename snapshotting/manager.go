@@ -40,6 +40,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -315,10 +316,17 @@ func newK8sClient() (client.Client, error) {
 	if err := k8s.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
+
+	// Try in-cluster config first
 	cfg, err := config.GetConfig()
 	if err != nil {
-		return nil, err
+		// Fallback to kubeconfig file
+		cfg, err = clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return client.New(cfg, client.Options{Scheme: scheme})
 }
 
