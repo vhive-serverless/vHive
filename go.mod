@@ -1,6 +1,6 @@
 module github.com/vhive-serverless/vhive
 
-go 1.22.9
+go 1.23.0
 
 // Copied from firecracker-containerd
 replace (
@@ -37,7 +37,7 @@ require (
 	github.com/vishvananda/netns v0.0.4
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/net v0.35.0
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.16.0
 	golang.org/x/sys v0.30.0
 	gonum.org/v1/gonum v0.15.1
 	gonum.org/v1/plot v0.15.0
