@@ -40,8 +40,35 @@ jobs:
           sudo apt update
           sudo apt install rsync -y
 
-      - name: Build setup scripts
-        run: pushd scripts && go build -o setup_tool && popd
+      - name: Ensure /etc/cni/net.d exists
+        run: sudo mkdir -p /etc/cni/net.d
+
+      - name: Install containerd and iptables
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y containerd iptables
+
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+
+      - name: Start Docker Daemon
+        run: |
+          sudo dockerd > /tmp/dockerd.log 2>&1 &
+          sleep 5  # wait for dockerd to be ready
+
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+          driver: docker
+          wait: all
+          start-args: '--force'
+
+      - name: Check cluster status
+        run: kubectl get nodes
+        - name: Build setup scripts
+          run: pushd scripts && go build -o setup_tool && popd
 
       - name: Setup vHive CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}

@@ -71,6 +71,18 @@ jobs:
       run: |
         sudo dockerd > /tmp/dockerd.log 2>&1 &
         sleep 5  # wait for dockerd to be ready
+        tries=0
+        until docker info >/dev/null 2>&1; do
+          if (( tries > 15 )); then
+            echo "Docker daemon failed to start"; exit 1
+          fi
+          sleep 2; ((tries++))
+        done
+
+    - name: Clean up Docker networks
+      run: |
+        docker network prune -f
+        docker system prune -f
 
     - name: Start Minikube
       uses: medyagh/setup-minikube@latest
@@ -81,6 +93,16 @@ jobs:
 
     - name: Check cluster status
       run: kubectl get nodes
+
+    - name: Collect Docker and iptables logs for debug
+      if: failure()
+      run: |
+        tail -50 /tmp/dockerd.log || true
+        sudo iptables -t nat -L -v -n
+
+    - name: Ensure kubeconfig set
+      run: |
+        echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
     
     - name: Build setup scripts
       run: pushd scripts && go build -o setup_tool && popd
