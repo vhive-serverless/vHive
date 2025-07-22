@@ -1,18 +1,19 @@
+---
 name: vHive integration tests
 
 on:
   push:
-    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    branches: [main, legacy-firecracker-v0.24.0-with-upf-support]
     paths-ignore:
-    - 'docs/**'
-    - '**.md'
-    - 'function-images/**'
+      - 'docs/**'
+      - '**.md'
+      - 'function-images/**'
   pull_request:
-    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    branches: [main, legacy-firecracker-v0.24.0-with-upf-support]
     paths-ignore:
-    - 'docs/**'
-    - '**.md'
-    - 'function-images/**'
+      - 'docs/**'
+      - '**.md'
+      - 'function-images/**'
   workflow_dispatch:
   schedule:
     - cron: '0 19 * * 1'
@@ -25,57 +26,133 @@ jobs:
   integration-tests:
     name: Integration tests
     runs-on: ubuntu-24.04
+    services:
+      docker:
+        image: docker:dind
+        options: >-
+          --privileged
+        ports:
+          - 2375:2375
+        env:
+          DOCKER_TLS_CERTDIR: ''
     strategy:
       fail-fast: false
       matrix:
         test-name: [test, test-man-bench]
     steps:
-    - uses: actions/checkout@v4
-    - name: Handle LFS Caching
-      uses: ./.github/actions/lfs-cache
-      with:
-        lfs_enabled: 'true'
+      - uses: actions/checkout@v4
 
-    - name: Set up Go version in go.mod file
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: ${{ github.workspace }}/go.mod
-        cache-dependency-path: |
-          **/go.sum
-          **/go.mod
+      - name: Handle LFS Caching
+        uses: ./.github/actions/lfs-cache
+        with:
+          lfs_enabled: true
 
-    - name: Set up Python 3.x
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: Set up Go version in go.mod file
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ github.workspace }}/go.mod
+          cache-dependency-path: |
+            **/go.sum
+            **/go.mod
 
-    - name: Add rsync
-      run: |
-        sudo apt update
-        sudo apt install rsync -y
-    
-    - name: Build setup scripts
-      run: pushd scripts && go build -o setup_tool && popd
-    
-    - name: Pull binaries
-      run: ./scripts/setup_tool setup_firecracker_containerd
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Build
-      run: go build -race -v -a ./...
+      - name: Add rsync and other dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync fuse-overlayfs cni-plugins
 
-    - name: Run vHive end-to-end tests
-      run: make ${{ matrix.test-name }}
+      #- name: Ensure /etc/cni/net.d exists
+      #  run: sudo mkdir -p /etc/cni/net.d
 
-    - name: Archive log artifacts
-      if: ${{ always() }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: ctrd-logs-${{ matrix.test-name }}
-        path: |
-          /tmp/ctrd-logs/
-          ${{ github.workspace }}/*.log
-          ${{ github.workspace }}/scripts/github_runner/*.log
-          
-    - name: Cleaning
-      if: ${{ always() }}
-      run: ./scripts/setup_tool clean_fcctr
+      #- name: Install containerd and iptables
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install -y containerd iptables
+
+      # Use system Docker, do not install or run your own daemon!
+      # GitHub runners provide Docker pre-installed, fully privileged.
+      # Uncomment next two steps ONLY IF YOU REALLY NEED DIN, otherwise use system docker.
+
+      # - name: Install Docker
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y docker.io
+
+      # - name: Start Docker Daemon (DinD, not recommended on hosted runners)
+      #   run: |
+      #     sudo dockerd --storage-driver=overlay2 > /tmp/dockerd.log 2>&1 &
+      #     sleep 5
+      #     tries=0
+      #     until docker info >/dev/null 2>&1; do
+      #       if (( tries > 15 )); then
+      #         echo "Docker daemon failed to start"; tail -50 /tmp/dockerd.log; exit 1
+      #       fi
+      #       sleep 2; ((tries++))
+
+      - name: Start Docker daemon
+        run: |
+          dockerd-entrypoint.sh &
+          sleep 10
+      #     done
+
+      - name: Show Docker version/info
+        run: |
+          docker version
+          docker info
+
+      - name: Clean up Docker networks
+        run: |
+          docker network prune -f
+          docker system prune -f
+
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+          driver: docker
+          wait: all
+          start-args: '--force'
+
+      - name: Check cluster status
+        run: kubectl get nodes
+
+      - name: Collect Docker and iptables logs for debug
+        if: failure()
+        run: |
+          sudo journalctl -u docker || true
+          docker info || true
+          ps auxf | grep dockerd || true
+          sudo iptables -t nat -L -v -n || true
+          tail -50 /tmp/dockerd.log || true
+
+      - name: Ensure kubeconfig set
+        run: echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+
+      - name: Build setup scripts
+        run: pushd scripts && go build -o setup_tool && popd
+
+      - name: Pull binaries
+        run: ./scripts/setup_tool setup_firecracker_containerd
+
+      - name: Build
+        run: go build -race -v -a ./...
+
+      - name: Run vHive end-to-end tests
+        run: make ${{ matrix.test-name }}
+
+      - name: Archive log artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctrd-logs-${{ matrix.test-name }}
+          path: |
+            /tmp/ctrd-logs/
+            ${{ github.workspace }}/*.log
+            ${{ github.workspace }}/scripts/github_runner/*.log
+
+      - name: Cleaning
+        if: ${{ always() }}
+        run: ./scripts/setup_tool clean_fcctr

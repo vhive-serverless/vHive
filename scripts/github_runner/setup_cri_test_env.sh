@@ -35,15 +35,20 @@ fi
 SANDBOX=$1
 VHIVE_ROOT="$(git rev-parse --show-toplevel)"
 
+echo "=== Setting-Up onenode-vhive ==="
 $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT start_onenode_vhive_cluster $SANDBOX
 # $VHIVE_ROOT/scripts/cloudlab/start_onenode_vhive_cluster.sh "$SANDBOX"
 sleep 30s
 
+echo "=== Setting-Up zipkin ==="
 # KUBECONFIG=/etc/kubernetes/admin.conf sudo $VHIVE_ROOT/scripts/setup_zipkin.sh
 $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
 
 # FIXME (gh-709)
 #source etc/profile && go run $VHIVE_ROOT/examples/registry/populate_registry.go -imageFile $VHIVE_ROOT/examples/registry/images.txt
+
+echo "=== Activator Status ===" && sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl describe pod -n knative-serving -l app=activator
+echo "=== Activator Logs ===" && sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n knative-serving -l app=activator
 
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/helloworld.yaml
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/helloworldSerial.yaml

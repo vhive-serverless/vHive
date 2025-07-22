@@ -69,7 +69,7 @@ jobs:
   
   profile-unit-test:
     name: "Unit test: profile unit test"
-    runs-on: [self-hosted, profile]
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -146,6 +146,34 @@ jobs:
 
     - name: Cleanup runner disk space
       run: ./scripts/github_runner/gh-actions-disk-cleanup.sh
+
+    - name: Ensure /etc/cni/net.d exists
+      run: sudo mkdir -p /etc/cni/net.d
+
+    - name: Install containerd and iptables
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y containerd iptables
+
+    - name: Install Docker
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+
+    - name: Start Docker Daemon
+      run: |
+        sudo dockerd > /tmp/dockerd.log 2>&1 &
+        sleep 5  # wait for dockerd to be ready
+
+    - name: Start Minikube
+      uses: medyagh/setup-minikube@latest
+      with:
+        driver: docker
+        wait: all
+        start-args: '--force'
+
+    - name: Check cluster status
+      run: kubectl get nodes
 
     - name: Build setup scripts
       run: pushd scripts && go build -o setup_tool && popd
