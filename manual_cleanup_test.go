@@ -33,6 +33,11 @@ import (
 )
 
 func TestParallelServe(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	var (
 		servedTh      uint64 = 1
 		pinnedFuncNum int
@@ -67,6 +72,11 @@ func TestParallelServe(t *testing.T) {
 }
 
 func TestServeThree(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "200"
 	var (
 		servedTh      uint64 = 1
