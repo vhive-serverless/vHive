@@ -66,6 +66,12 @@ jobs:
     - name: Run vHive end-to-end tests
       run: make ${{ matrix.test-name }}
 
+    - name: Kernel message
+      if: failure()
+      run: |
+        sudo lsmod
+        sudo dmesg -T -f kern
+
     - name: Archive log artifacts
       if: ${{ always() }}
       uses: actions/upload-artifact@v4
