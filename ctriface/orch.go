@@ -99,6 +99,7 @@ type Orchestrator struct {
 	dockerCredentials DockerCredentials
 	// store *skv.KVStore
 	snapshotMode    string
+	cacheSnaps      bool
 	isUPFEnabled    bool
 	isLazyMode      bool
 	snapshotsDir    string
@@ -199,6 +200,10 @@ func (o *Orchestrator) Cleanup() {
 // GetSnapshotMode Returns the snapshots mode of the orchestrator
 func (o *Orchestrator) GetSnapshotMode() string {
 	return o.snapshotMode
+}
+
+func (o *Orchestrator) GetCacheSnaps() bool {
+	return o.cacheSnaps
 }
 
 // GetUPFEnabled Returns the UPF mode of the orchestrator

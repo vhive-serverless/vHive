@@ -139,6 +139,13 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		}
 	}
 
+	if c.orch != nil && c.orch.GetSnapshotMode() == "remote" && fi.SnapBooted && !c.orch.GetCacheSnaps() {
+		if err := c.snapshotManager.DeleteSnapshot(fi.Revision); err != nil {
+			fi.Logger.WithError(err).Error("failed to delete snapshot")
+			return err
+		}
+	}
+
 	return c.orchStopVM(ctx, fi)
 }
 
@@ -273,6 +280,13 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 	if !c.withoutOrchestrator && c.orch.GetSnapshotMode() == "remote" {
 		if err := c.snapshotManager.UploadSnapshot(fi.Revision); err != nil {
 			fi.Logger.WithError(err).Error("failed to upload snapshot")
+		}
+
+		if !c.orch.GetCacheSnaps() {
+			if err := c.snapshotManager.DeleteSnapshot(fi.Revision); err != nil {
+				fi.Logger.WithError(err).Error("failed to delete snapshot")
+				return err
+			}
 		}
 	}
 

@@ -57,6 +57,7 @@ var (
 
 	isSaveMemory    *bool
 	snapshotMode    *string
+	cacheSnaps      *bool
 	isUPFEnabled    *bool
 	isLazyMode      *bool
 	isMetricsMode   *bool
@@ -76,6 +77,7 @@ func main() {
 
 	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
 	snapshotMode = flag.String("snapshots", "disabled", "Use VM snapshots when adding function instances, valid options: disabled, local, remote")
+	cacheSnaps = flag.Bool("cacheSnaps", true, "Keep remote snapshots cached localy for future use")
 	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
@@ -162,6 +164,7 @@ func main() {
 			*hostIface,
 			ctriface.WithTestModeOn(testModeOn),
 			ctriface.WithSnapshotMode(*snapshotMode),
+			ctriface.WithCacheSnaps(*cacheSnaps),
 			ctriface.WithUPF(*isUPFEnabled),
 			ctriface.WithMetricsMode(*isMetricsMode),
 			ctriface.WithLazyMode(*isLazyMode),
