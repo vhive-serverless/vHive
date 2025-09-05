@@ -71,11 +71,11 @@ func (s *Service) PortForward(ctx context.Context, r *criapi.PortForwardRequest)
 }
 
 // StartContainer starts the container.
-func (s *Service) StartContainer(ctx context.Context, r *criapi.StartContainerRequest) (*criapi.StartContainerResponse, error) {
-	log.Debugf("StartContainer for %q", r.GetContainerId())
-	return s.stockRuntimeClient.StartContainer(ctx, r)
+// func (s *Service) StartContainer(ctx context.Context, r *criapi.StartContainerRequest) (*criapi.StartContainerResponse, error) {
+// 	log.Debugf("StartContainer for %q", r.GetContainerId())
+// 	return s.stockRuntimeClient.StartContainer(ctx, r)
 
-}
+// }
 
 // ListContainers lists all containers by filters.
 func (s *Service) ListContainers(ctx context.Context, r *criapi.ListContainersRequest) (*criapi.ListContainersResponse, error) {
@@ -149,7 +149,9 @@ func (s *Service) RemoveImage(ctx context.Context, r *criapi.RemoveImageRequest)
 // ImageFsInfo returns information of the filesystem that is used to store images.
 func (s *Service) ImageFsInfo(ctx context.Context, r *criapi.ImageFsInfoRequest) (*criapi.ImageFsInfoResponse, error) {
 	log.Debugf("ImageFsInfo")
-	return s.stockImageClient.ImageFsInfo(ctx, r)
+	resp, err := s.stockImageClient.ImageFsInfo(ctx, r)
+	log.Debugf("ImageFsInfo response: %+v, error: %v", resp, err)
+	return resp, err
 }
 
 // ContainerStats returns stats of the container. If the container does not

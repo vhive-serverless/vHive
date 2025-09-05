@@ -27,6 +27,8 @@ import (
 	"errors"
 	"sync"
 
+	//	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
@@ -54,6 +56,7 @@ type FirecrackerService struct {
 
 // VMConfig wraps the IP and port of the guest VM
 type VMConfig struct {
+	id        string
 	guestIP   string
 	guestPort string
 }
@@ -93,16 +96,16 @@ func (s *FirecrackerService) CreateContainer(ctx context.Context, r *criapi.Crea
 }
 
 func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
-	var (
-		stockResp *criapi.CreateContainerResponse
-		stockErr  error
-		stockDone = make(chan struct{})
-	)
+	// var (
+	// 	stockResp *criapi.CreateContainerResponse
+	// 	stockErr  error
+	// 	stockDone = make(chan struct{})
+	// )
 
-	go func() {
-		defer close(stockDone)
-		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
-	}()
+	//	go func() {
+	//		defer close(stockDone)
+	//		stockResp, stockErr = fs.stockRuntimeClient.CreateContainer(ctx, r)
+	//	}()
 
 	config := r.GetConfig()
 	guestImage, err := getEnvVal(guestImageEnv, config)
@@ -130,26 +133,26 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	vmConfig := &VMConfig{guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPort}
+	vmConfig := &VMConfig{id: funcInst.VmID, guestIP: funcInst.StartVMResponse.GuestIP, guestPort: guestPort}
 	fs.insertVMConfig(r.GetPodSandboxId(), vmConfig)
 
 	// Wait for placeholder UC to be created
-	<-stockDone
+	//	<-stockDone
 
 	// Check for error from container creation
-	if stockErr != nil {
-		log.WithError(stockErr).Error("failed to create container")
-		return nil, stockErr
-	}
+	//	if stockErr != nil {
+	//		log.WithError(stockErr).Error("failed to create container")
+	//		return nil, stockErr
+	//	}
 
-	containerdID := stockResp.ContainerId
-	err = fs.coordinator.insertActive(containerdID, funcInst)
-	if err != nil {
-		log.WithError(err).Error("failed to insert active VM")
-		return nil, err
-	}
+	containerdID := funcInst.VmID
+	// err = fs.coordinator.insertActive(containerdID, funcInst)
+	// if err != nil {
+	// 	log.WithError(err).Error("failed to insert active VM")
+	// 	return nil, err
+	// }
 
-	return stockResp, stockErr
+	return &criapi.CreateContainerResponse{ContainerId: containerdID}, err
 }
 
 func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.CreateContainerRequest) (*criapi.CreateContainerResponse, error) {
@@ -159,10 +162,17 @@ func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.Cr
 		return nil, err
 	}
 
-	fs.removeVMConfig(r.GetPodSandboxId())
+	// fs.removeVMConfig(r.GetPodSandboxId())
 
 	guestIPKeyVal := &criapi.KeyValue{Key: guestIPEnv, Value: vmConfig.guestIP}
 	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: vmConfig.guestPort}
+	//	readinessProbeKeyVal := &criapi.KeyValue{Key: "SERVING_READINESS_PROBE", Value: ""}//fmt.Sprintf("{\"tcpSocket\":{\"port\":50051,\"host\":\"%s\"},\"successThreshold\":1}", vmConfig.guestIP)}
+	// for _, e := range r.Config.Envs {
+	// 	if e.Key == "SERVING_READINESS_PROBE" {
+	// 		e.Value = ""
+	// 		log.Debug("changed the readiness probe")
+	// 	}
+	// }
 	r.Config.Envs = append(r.Config.Envs, guestIPKeyVal, guestPortKeyVal)
 
 	resp, err := fs.stockRuntimeClient.CreateContainer(ctx, r)
@@ -187,11 +197,40 @@ func (fs *FirecrackerService) RemoveContainer(ctx context.Context, r *criapi.Rem
 	return fs.stockRuntimeClient.RemoveContainer(ctx, r)
 }
 
+// StartContainer starts the container.
+func (fs *FirecrackerService) StartContainer(ctx context.Context, r *criapi.StartContainerRequest) (*criapi.StartContainerResponse, error) {
+
+	containerID := r.GetContainerId()
+
+	log.Debug(fs.vmConfigs)
+	// if we have the vm with this id, we should ignore the start because it is running already
+	if _, err := fs.findVMConfigByID(containerID); err == nil {
+		log.Infof("Ignoring StartContainer for %q because the VM is already running", r.GetContainerId())
+		return &criapi.StartContainerResponse{}, nil
+	}
+
+	log.Debugf("StartContainer for %q", r.GetContainerId())
+	return fs.stockRuntimeClient.StartContainer(ctx, r)
+}
+
 func (fs *FirecrackerService) insertVMConfig(podID string, vmConfig *VMConfig) {
 	fs.Lock()
 	defer fs.Unlock()
 
 	fs.vmConfigs[podID] = vmConfig
+}
+
+func (fs *FirecrackerService) findVMConfigByID(vmID string) (*VMConfig, error) {
+	fs.Lock()
+	defer fs.Unlock()
+
+	for _, vmConfig := range fs.vmConfigs {
+		if vmConfig.id == vmID {
+			return vmConfig, nil
+		}
+	}
+
+	return nil, errors.New("VM config for ID does not exist")
 }
 
 func (fs *FirecrackerService) removeVMConfig(podID string) {

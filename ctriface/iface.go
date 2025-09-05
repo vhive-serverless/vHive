@@ -25,7 +25,6 @@ package ctriface
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/snapshotting"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +32,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	log "github.com/sirupsen/logrus"
 
@@ -61,6 +62,8 @@ import (
 type StartVMResponse struct {
 	// GuestIP is the IP of the guest MicroVM
 	GuestIP string
+
+	ID string
 }
 
 const (
@@ -265,7 +268,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 
 	logger.Debug("Successfully started a VM")
 
-	return &StartVMResponse{GuestIP: vm.GetIP()}, startVMMetric, nil
+	return &StartVMResponse{GuestIP: vm.GetIP(), ID: vm.ID}, startVMMetric, nil
 }
 
 // StopSingleVM Shuts down a VM
@@ -636,5 +639,5 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	vm.SnapBooted = true
 
-	return &StartVMResponse{GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
+	return &StartVMResponse{GuestIP: vm.GetIP(), ID: vm.ID}, loadSnapshotMetric, nil
 }

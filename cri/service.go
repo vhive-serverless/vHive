@@ -80,6 +80,10 @@ func (s *Service) RemoveContainer(ctx context.Context, r *criapi.RemoveContainer
 	return s.serv.RemoveContainer(ctx, r)
 }
 
+func (s *Service) StartContainer(ctx context.Context, r *criapi.StartContainerRequest) (*criapi.StartContainerResponse, error) {
+	return s.serv.StartContainer(ctx, r)
+}
+
 // Register registers the criapi servers.
 func (s *Service) Register(server *grpc.Server) {
 	criapi.RegisterImageServiceServer(server, s)

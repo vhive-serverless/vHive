@@ -161,6 +161,12 @@ func (gs *GVisorService) RemoveContainer(ctx context.Context, r *criapi.RemoveCo
 	return gs.stockRuntimeClient.RemoveContainer(ctx, r)
 }
 
+func (gs *GVisorService) StartContainer(ctx context.Context, r *criapi.StartContainerRequest) (*criapi.StartContainerResponse, error) {
+	log.Debugf("StartContainer for %q", r.GetContainerId())
+
+	return gs.stockRuntimeClient.StartContainer(ctx, r)
+}
+
 func (gs *GVisorService) insertCtrConfig(podID string, ctrConf *ctrConfig) {
 	gs.Lock()
 	defer gs.Unlock()
