@@ -113,6 +113,8 @@ type Orchestrator struct {
 	minioAccessKey string
 	minioSecretKey string
 
+	snapshotCacheCapacityBytes int64
+
 	memoryManager *manager.MemoryManager
 }
 
@@ -131,6 +133,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.minioAddr = "10.96.0.46:9000"
 	o.minioAccessKey = "minio"
 	o.minioSecretKey = "minio123"
+	o.snapshotCacheCapacityBytes = 10 * 1024 * 1024 * 1024 // 10GB default
 
 	for _, opt := range opts {
 		opt(o)

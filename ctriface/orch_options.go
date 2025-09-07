@@ -134,3 +134,10 @@ func WithMinioSecretKey(minioSecretKey string) OrchestratorOption {
 		o.minioSecretKey = minioSecretKey
 	}
 }
+
+// WithSnapshotCacheCapacity Sets the snapshot cache capacity in bytes
+func WithSnapshotCacheCapacity(capacityBytes int64) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.snapshotCacheCapacityBytes = capacityBytes
+	}
+}

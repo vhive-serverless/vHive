@@ -56,18 +56,23 @@ type SnapshotManager struct {
 	sync.Mutex
 	// Stored snapshots (identified by the function instance revision, which is provided by the `K_REVISION` environment
 	// variable of knative).
-	snapshots  map[string]*Snapshot
-	baseFolder string
-
+	snapshots           map[string]*Snapshot
+	baseFolder          string
+	cacheCapacityBytes  int64  // Maximum cache capacity in bytes
 	// Used to store remote snapshots
-	storage storage.ObjectStorage
+	storage             storage.ObjectStorage
 }
 
 func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, skipCleanup bool) *SnapshotManager {
+	return NewSnapshotManagerWithCapacity(baseFolder, store, skipCleanup, 10*1024*1024*1024) // 10GB default
+}
+
+func NewSnapshotManagerWithCapacity(baseFolder string, store storage.ObjectStorage, skipCleanup bool, capacityBytes int64) *SnapshotManager {
 	manager := &SnapshotManager{
-		snapshots:  make(map[string]*Snapshot),
-		baseFolder: baseFolder,
-		storage:    store,
+		snapshots:          make(map[string]*Snapshot),
+		baseFolder:         baseFolder,
+		cacheCapacityBytes: capacityBytes,
+		storage:            store,
 	}
 
 	// Clean & init basefolder unless skipping is requested
@@ -95,6 +100,9 @@ func (mgr *SnapshotManager) AcquireSnapshot(revision string) (*Snapshot, error) 
 		return nil, errors.New("Snapshot is not yet usable")
 	}
 
+	// Update access timestamp for LRU tracking
+	snap.UpdateLastAccessedTimestamp()
+
 	// Return snapshot for supplied revision
 	return mgr.snapshots[revision], nil
 }
@@ -102,28 +110,8 @@ func (mgr *SnapshotManager) AcquireSnapshot(revision string) (*Snapshot, error) 
 // InitSnapshot initializes a snapshot by adding its metadata to the SnapshotManager. Once the snapshot has
 // been created, CommitSnapshot must be run to finalize the snapshot creation and make the snapshot available for use.
 func (mgr *SnapshotManager) InitSnapshot(revision, image string) (*Snapshot, error) {
-	mgr.Lock()
-
-	logger := log.WithFields(log.Fields{"revision": revision, "image": image})
-	logger.Debug("Initializing snapshot corresponding to revision and image")
-
-	if _, present := mgr.snapshots[revision]; present {
-		mgr.Unlock()
-		return nil, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists", revision))
-	}
-
-	// Create snapshot object and move into creating state
-	snap := NewSnapshot(revision, mgr.baseFolder, image)
-	mgr.snapshots[snap.GetId()] = snap
-	mgr.Unlock()
-
-	// Create directory to store snapshot data
-	err := snap.CreateSnapDir()
-	if err != nil {
-		return nil, errors.Wrapf(err, "creating snapDir for snapshots %s", revision)
-	}
-
-	return snap, nil
+	// Use default memory size estimation of 1GB if not specified
+	return mgr.InitSnapshotWithEviction(revision, image, 1024*1024*1024)
 }
 
 // CommitSnapshot finalizes the snapshot creation and makes it available for use.
@@ -138,6 +126,11 @@ func (mgr *SnapshotManager) CommitSnapshot(revision string) error {
 
 	if snap.ready {
 		return errors.New(fmt.Sprintf("Snapshot for revision %s has already been committed", revision))
+	}
+
+	// Calculate and set snapshot size
+	if err := snap.CalculateAndSetSize(); err != nil {
+		return errors.Wrapf(err, "failed to calculate snapshot size for revision %s", revision)
 	}
 
 	snap.ready = true
@@ -367,5 +360,167 @@ func (mgr *SnapshotManager) updateNodeSnapshotCRD(revision string) error {
 		}
 	}
 	cr.Spec.Snapshots = append(cr.Spec.Snapshots, revision)
+	
 	return k8sClient.Update(ctx, cr)
+}
+
+// getCurrentCacheSize calculates the total size of all snapshots in the cache
+func (mgr *SnapshotManager) getCurrentCacheSize() int64 {
+	var totalSize int64
+	for _, snap := range mgr.snapshots {
+		if snap.ready {
+			totalSize += snap.GetSizeInBytes()
+		}
+	}
+	return totalSize
+}
+
+// evictLRUSnapshots evicts least recently used snapshots until there is enough free space
+func (mgr *SnapshotManager) evictLRUSnapshots(requiredSpace int64) error {
+	for mgr.getCurrentCacheSize()+requiredSpace > mgr.cacheCapacityBytes {
+		lruSnapshot := mgr.findLRUSnapshot()
+		if lruSnapshot == nil {
+			// No more snapshots to evict, but still not enough space
+			return errors.New("insufficient space: cannot evict more snapshots")
+		}
+
+		log.WithFields(log.Fields{
+			"revision":   lruSnapshot.GetId(),
+			"size":       lruSnapshot.GetSizeInBytes(),
+			"lastAccess": lruSnapshot.GetLastAccessedTimestamp(),
+		}).Info("Evicting LRU snapshot")
+
+		if err := mgr.evictSnapshot(lruSnapshot.GetId()); err != nil {
+			return errors.Wrapf(err, "failed to evict snapshot %s", lruSnapshot.GetId())
+		}
+	}
+	return nil
+}
+
+// findLRUSnapshot finds the least recently used ready snapshot
+func (mgr *SnapshotManager) findLRUSnapshot() *Snapshot {
+	var lruSnapshot *Snapshot
+	
+	for _, snap := range mgr.snapshots {
+		if !snap.ready {
+			continue // Skip non-ready snapshots
+		}
+		
+		if lruSnapshot == nil || snap.GetLastAccessedTimestamp().Before(lruSnapshot.GetLastAccessedTimestamp()) {
+			lruSnapshot = snap
+		}
+	}
+	
+	return lruSnapshot
+}
+
+// evictSnapshot removes a snapshot from both disk and CRD
+func (mgr *SnapshotManager) evictSnapshot(revision string) error {
+	// Remove from CRD first
+	if err := mgr.removeFromNodeSnapshotCRD(revision); err != nil {
+		log.WithError(err).WithField("revision", revision).Warn("Failed to remove snapshot from CRD during eviction")
+		// Continue with disk cleanup even if CRD update fails
+	}
+
+	// Remove from disk and memory
+	return mgr.DeleteSnapshot(revision)
+}
+
+// removeFromNodeSnapshotCRD removes a snapshot from the NodeSnapshotCache CRD
+func (mgr *SnapshotManager) removeFromNodeSnapshotCRD(revision string) error {
+	nodeName, _ := os.Hostname()
+	k8sClient, err := newK8sClient()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.TODO()
+	crName := nodeName
+
+	cr := &k8s.NodeSnapshotCache{}
+	err = k8sClient.Get(ctx, types.NamespacedName{Name: crName}, cr)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil // CRD doesn't exist, nothing to remove
+		}
+		return err
+	}
+
+	// Find and remove the snapshot from the list
+	var updatedSnapshots []string
+	for _, snap := range cr.Spec.Snapshots {
+		if snap != revision {
+			updatedSnapshots = append(updatedSnapshots, snap)
+		}
+	}
+
+	cr.Spec.Snapshots = updatedSnapshots
+	return k8sClient.Update(ctx, cr)
+}
+
+// InitSnapshotWithEviction initializes a snapshot with LRU eviction
+func (mgr *SnapshotManager) InitSnapshotWithEviction(revision, image string, estimatedMemorySize int64) (*Snapshot, error) {
+	mgr.Lock()
+	defer mgr.Unlock()
+
+	logger := log.WithFields(log.Fields{"revision": revision, "image": image})
+	logger.Debug("Initializing snapshot with eviction policy")
+
+	if _, present := mgr.snapshots[revision]; present {
+		return nil, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists", revision))
+	}
+
+	// Create snapshot object temporarily to estimate size
+	tempSnap := NewSnapshot(revision, mgr.baseFolder, image)
+	estimatedSize := tempSnap.EstimateSnapshotSize(estimatedMemorySize)
+
+	logger.WithFields(log.Fields{
+		"estimatedSize":       estimatedSize,
+		"currentCacheSize":    mgr.getCurrentCacheSize(),
+		"cacheCapacity":       mgr.cacheCapacityBytes,
+	}).Debug("Checking cache capacity before snapshot creation")
+
+	// Check if snapshot size exceeds total capacity
+	if estimatedSize > mgr.cacheCapacityBytes {
+		return nil, errors.New(fmt.Sprintf("Snapshot estimated size (%d bytes) exceeds cache capacity (%d bytes)", estimatedSize, mgr.cacheCapacityBytes))
+	}
+
+	// Evict LRU snapshots if necessary
+	if err := mgr.evictLRUSnapshots(estimatedSize); err != nil {
+		return nil, errors.Wrapf(err, "failed to evict snapshots for revision %s", revision)
+	}
+
+	// Create snapshot object and move into creating state
+	snap := NewSnapshot(revision, mgr.baseFolder, image)
+	mgr.snapshots[snap.GetId()] = snap
+
+	// Create directory to store snapshot data
+	err := snap.CreateSnapDir()
+	if err != nil {
+		delete(mgr.snapshots, snap.GetId()) // Clean up on failure
+		return nil, errors.Wrapf(err, "creating snapDir for snapshots %s", revision)
+	}
+
+	return snap, nil
+}
+
+// GetCacheCapacity returns the cache capacity in bytes
+func (mgr *SnapshotManager) GetCacheCapacity() int64 {
+	return mgr.cacheCapacityBytes
+}
+
+// SetCacheCapacity sets the cache capacity in bytes
+func (mgr *SnapshotManager) SetCacheCapacity(capacityBytes int64) {
+	mgr.Lock()
+	defer mgr.Unlock()
+	mgr.cacheCapacityBytes = capacityBytes
+}
+
+// GetCacheUsage returns current cache usage statistics
+func (mgr *SnapshotManager) GetCacheUsage() (int64, int64, int) {
+	mgr.Lock()
+	defer mgr.Unlock()
+	
+	currentSize := mgr.getCurrentCacheSize()
+	return currentSize, mgr.cacheCapacityBytes, len(mgr.snapshots)
 }
