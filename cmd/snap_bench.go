@@ -34,8 +34,6 @@ var (
 )
 
 func main() {
-	var err error
-
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
@@ -105,53 +103,62 @@ func main() {
 	)
 	defer orch.Cleanup()
 
-	tmpname := fmt.Sprintf("hello-%d", os.Getpid())
-	image := "ghcr.io/vhive-serverless/helloworld:var_workload-esgz"
-	// image := "ghcr.io/leokondrashov/pyaes:esgz"
-	// image := "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz"
-	ctx := context.Background()
-	// ctx = namespaces.WithNamespace(ctx, tmpname)
-	resp, _, err := orch.StartVM(ctx, tmpname, image)
-	if err != nil {
-		log.Errorln("Failed to start VM:", err)
-		return
+	images := map[string]string{
+		"hello": "ghcr.io/vhive-serverless/helloworld:var_workload-esgz",
+		"pyaes": "ghcr.io/leokondrashov/pyaes:esgz",
+		// "lr_serving": "ghcr.io/leokondrashov/lr_serving:esgz",
+		// "invitro":    "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
+		// "chameleon": "ghcr.io/leokondrashov/chameleon:esgz",
 	}
+	for name, image := range images {
 
-	time.Sleep(5 * time.Second) // Wait for VM to fully boot up
+		tmpname := fmt.Sprintf("%s-%d", name, os.Getpid())
+		ctx := context.Background()
+		// ctx = namespaces.WithNamespace(ctx, tmpname)
+		resp, _, err := orch.StartVM(ctx, tmpname, image)
+		if err != nil {
+			log.Errorln("Failed to start VM:", err)
+			return
+		}
+		log.Infoln("VM started:", resp)
 
-	log.Infoln("VM started:", resp)
-	conn, err := grpc.Dial(resp.GuestIP+":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Errorln("Failed to establish a gRPC connection -", err)
-		return
-	}
-	defer conn.Close()
-	grpcClient := helloworld.NewGreeterClient(conn)
-	response, err := grpcClient.SayHello(ctx, &helloworld.HelloRequest{Name: "VHive"})
-	if err != nil {
-		log.Errorln("Failed to call SayHello -", err)
-		return
-	}
-	log.Infoln("SayHello response:", response)
+		// time.Sleep(10 * time.Second) // Wait for VM to fully boot up
+		fmt.Scanf("\n")
 
-	// fmt.Scanf("\n")
-	snap := snapshotting.NewSnapshot(tmpname, "/fccd/bench/snapshots", image)
-	err = snap.CreateSnapDir()
-	if err != nil {
-		log.Errorln("Failed to create snapshot dir:", err)
-		return
-	}
-	err = orch.PauseVM(ctx, tmpname)
-	if err != nil {
-		log.Errorln("Failed to pause VM:", err)
-		return
-	}
-	err = orch.CreateSnapshot(ctx, tmpname, snap)
-	if err != nil {
-		log.Errorln("Failed to create snapshot:", err)
-	}
-	err = orch.StopSingleVM(ctx, tmpname)
-	if err != nil {
-		log.Errorln("Failed to stop VM:", err)
+		conn, err := grpc.Dial(resp.GuestIP+":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Errorln("Failed to establish a gRPC connection -", err)
+			return
+		}
+		defer conn.Close()
+		grpcClient := helloworld.NewGreeterClient(conn)
+		response, err := grpcClient.SayHello(ctx, &helloworld.HelloRequest{Name: "VHive"})
+		if err != nil {
+			log.Errorln("Failed to call SayHello -", err)
+			return
+		}
+		log.Infoln("SayHello response:", response)
+
+		snap := snapshotting.NewSnapshot(name, "/users/lkondras/snapshots", image)
+		err = snap.CreateSnapDir()
+		if err != nil {
+			log.Errorln("Failed to create snapshot dir:", err)
+			return
+		}
+		err = orch.PauseVM(ctx, tmpname)
+		if err != nil {
+			log.Errorln("Failed to pause VM:", err)
+			return
+		}
+		err = orch.CreateSnapshot(ctx, tmpname, snap)
+		if err != nil {
+			log.Errorln("Failed to create snapshot:", err)
+		}
+		err = orch.StopSingleVM(ctx, tmpname)
+		if err != nil {
+			log.Errorln("Failed to stop VM:", err)
+		}
+
+		time.Sleep(60 * time.Second)
 	}
 }
