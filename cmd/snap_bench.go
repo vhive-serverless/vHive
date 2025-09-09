@@ -6,12 +6,17 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/vhive-serverless/vhive/ctriface"
 	"github.com/vhive-serverless/vhive/snapshotting"
+
+	helloworld "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 )
 
 var (
@@ -102,7 +107,7 @@ func main() {
 
 	tmpname := fmt.Sprintf("hello-%d", os.Getpid())
 	image := "ghcr.io/vhive-serverless/helloworld:var_workload-esgz"
-	// image := "ghcr.io/leokondrashov/aes-python:esgz"
+	// image := "ghcr.io/leokondrashov/pyaes:esgz"
 	// image := "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz"
 	ctx := context.Background()
 	// ctx = namespaces.WithNamespace(ctx, tmpname)
@@ -112,8 +117,24 @@ func main() {
 		return
 	}
 
+	time.Sleep(5 * time.Second) // Wait for VM to fully boot up
+
 	log.Infoln("VM started:", resp)
-	fmt.Scanf("\n")
+	conn, err := grpc.Dial(resp.GuestIP+":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Errorln("Failed to establish a gRPC connection -", err)
+		return
+	}
+	defer conn.Close()
+	grpcClient := helloworld.NewGreeterClient(conn)
+	response, err := grpcClient.SayHello(ctx, &helloworld.HelloRequest{Name: "VHive"})
+	if err != nil {
+		log.Errorln("Failed to call SayHello -", err)
+		return
+	}
+	log.Infoln("SayHello response:", response)
+
+	// fmt.Scanf("\n")
 	snap := snapshotting.NewSnapshot(tmpname, "/fccd/bench/snapshots", image)
 	err = snap.CreateSnapDir()
 	if err != nil {
