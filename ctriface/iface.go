@@ -25,7 +25,6 @@ package ctriface
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/snapshotting"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +32,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	log "github.com/sirupsen/logrus"
 
@@ -67,6 +68,22 @@ const (
 	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
 )
 
+func createOverlayFile(overlayPath string, sizeBytes int64) error {
+	f, err := os.Create(overlayPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to create overlay file")
+	}
+	defer f.Close()
+	if err := f.Truncate(sizeBytes); err != nil {
+		return errors.Wrap(err, "failed to truncate overlay file")
+	}
+	cmd := exec.Command("mkfs.ext4", overlayPath)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return errors.Wrapf(err, "failed to format overlay file: %s", output)
+	}
+	return nil
+}
+
 func withNamespace(ctx context.Context, snapshotter, vmID string) context.Context {
 	if snapshotter == "proxy" {
 		// http-address-resolver assumes that the containerd namespace is the VM ID
@@ -94,6 +111,23 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
 		return nil, nil, err
+	}
+
+	if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
+		logger.Error("Failed to create VM base dir")
+		return nil, nil, err
+	}
+
+	overlay := o.getOverlayFile(vmID)
+	if _, err := os.Stat(overlay); os.IsNotExist(err) {
+		logger.Debugf("Creating overlay file %s", overlay)
+		if err := createOverlayFile(overlay, 1024*1024*1024); err != nil {
+			retErr = errors.Wrap(err, "failed to create overlay file")
+			return nil, nil, retErr
+		}
+	} else if err != nil {
+		retErr = errors.Wrap(err, "failed to stat overlay file")
+		return nil, nil, retErr
 	}
 
 	defer func() {
@@ -147,6 +181,8 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		}
 		startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 	}
+
+	fmt.Scanf("\n")
 
 	logger.Debug("StartVM: Creating a new container")
 
@@ -239,10 +275,6 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		}
 	}()
 
-	if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
-		logger.Error("Failed to create VM base dir")
-		return nil, nil, err
-	}
 	if o.GetUPFEnabled() {
 		logger.Debug("Registering VM with the memory manager")
 
@@ -358,7 +390,7 @@ func getK8sDNS() []string {
 }
 
 func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
-	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
+	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target overlay_root=vdc init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
 
 	return &proto.CreateVMRequest{
 		VMID:           vm.ID,
@@ -366,7 +398,15 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 		KernelArgs:     kernelArgs,
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
 			VcpuCount:  1,
-			MemSizeMib: 256,
+			MemSizeMib: 512,
+		},
+		DriveMounts: []*proto.FirecrackerDriveMount{
+			{
+				HostPath:       o.getOverlayFile(vm.ID),
+				VMPath:         "/overlay",
+				FilesystemType: "ext4",
+				IsWritable:     true,
+			},
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
 			AllowMMDS: true,

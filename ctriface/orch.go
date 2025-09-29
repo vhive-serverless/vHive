@@ -249,6 +249,10 @@ func (o *Orchestrator) getMemoryFile(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "mem_file")
 }
 
+func (o *Orchestrator) getOverlayFile(vmID string) string {
+	return filepath.Join(o.getVMBaseDir(vmID), "overlay_file.ext4")
+}
+
 func (o *Orchestrator) getWorkingSetFile(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "working_set_pages")
 }
