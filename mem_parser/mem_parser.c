@@ -115,7 +115,8 @@ static int process_and_output(const char *pagemap_path, MemoryMapping *mappings,
                 fprintf(output, "    \"virtual_address\": %lu,\n", vaddr);
                 fprintf(output, "    \"physical_address\": %lu,\n", physical_addr);
                 fprintf(output, "    \"permissions\": \"%.4s\",\n", m->perms);
-                fprintf(output, "    \"pathname\": \"%s\"\n", m->pathname);
+                fprintf(output, "    \"pathname\": \"%s\",\n", m->pathname);
+                fprintf(output, "    \"offset\": %lu\n", m->offset + (vaddr - m->start_addr));
                 fprintf(output, "  }");
 
                 page_count++;
