@@ -412,12 +412,17 @@ Next, convert the image to the eStargz expected format by replacing the old path
 
 Finally, push the image to your repository by replacing the new path in the following:
 
-`ctr-remote image push <registry/image:new_tag>`
+`ctr-remote image push --platform linux/amd64 <registry/image:new_tag>`
 
 > **Note**
 >
 > If prompted for authentication, add the following flag to the previous command:
 > `-u name:auth_token`
+
+> **Note**
+> 
+> `--platform linux/amd64` pushes an image with only a single platform
+> It is a workaround for [#1137](https://github.com/vhive-serverless/vHive/issues/1137)
 
 
 Our example deployment configuration can be found in [/configs/knative_workloads/stargz-node.yaml](../configs/knative_workloads/stargz-node.yaml) and can be run with:
