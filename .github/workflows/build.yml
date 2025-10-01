@@ -31,7 +31,7 @@ jobs:
     steps:
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         # to add commit DCO checks later
         fetch-depth: 21
