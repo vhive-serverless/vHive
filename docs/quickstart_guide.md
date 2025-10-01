@@ -86,7 +86,7 @@ Another option is to install using official instructions: [https://golang.org/do
     > [eStargz](https://github.com/containerd/stargz-snapshotter/tree/cmd/v0.12.1) is a
     > lazily-pullable image format developed to improve the performance of container boot-ups by
     > making better usage of the layering structure of container images. The image format is 
-    > compatible to [OCI](https://github.com/opencontainers/image-spec/)/[Docker](https://github.com/moby/moby/blob/master/image/spec/v1.2.md) images,
+    > compatible to [OCI](https://github.com/opencontainers/image-spec/)/[Docker](https://github.com/moby/docker-image-spec) images,
     > therefore it allows pushing images to standard container registries.
     > To enable runs with `stargz` images, setup kubelet by adding the `use-stargz` flag as follows:
     >
