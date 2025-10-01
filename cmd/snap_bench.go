@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -104,7 +105,7 @@ func main() {
 	defer orch.Cleanup()
 
 	images := map[string]string{
-		"hello": "ghcr.io/vhive-serverless/helloworld:var_workload-esgz",
+		// "hello-4": "ghcr.io/vhive-serverless/helloworld:var_workload-esgz",
 		"pyaes": "ghcr.io/leokondrashov/pyaes:esgz",
 		// "lr_serving": "ghcr.io/leokondrashov/lr_serving:esgz",
 		// "invitro":    "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
@@ -122,8 +123,8 @@ func main() {
 		}
 		log.Infoln("VM started:", resp)
 
-		// time.Sleep(10 * time.Second) // Wait for VM to fully boot up
-		fmt.Scanf("\n")
+		time.Sleep(10 * time.Second) // Wait for VM to fully boot up
+		// fmt.Scanf("\n")
 
 		conn, err := grpc.Dial(resp.GuestIP+":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
@@ -139,12 +140,25 @@ func main() {
 		}
 		log.Infoln("SayHello response:", response)
 
-		snap := snapshotting.NewSnapshot(name, "/users/lkondras/snapshots", image)
+		snap := snapshotting.NewSnapshot(name, "/home/ubuntu/snapshots", image)
 		err = snap.CreateSnapDir()
 		if err != nil {
 			log.Errorln("Failed to create snapshot dir:", err)
 			return
 		}
+
+		// SSH into the VM and drop the page cache
+		sshCmd := fmt.Sprintf("ssh -o StrictHostKeyChecking=no -i /home/ubuntu/vhive/bin/id_rsa -o UserKnownHostsFile=/dev/null root@%s 'echo 3 > /proc/sys/vm/drop_caches'", resp.GuestIP)
+		log.Infof("Dropping page cache on VM with: %s", sshCmd)
+		out, err := exec.Command("bash", "-c", sshCmd).CombinedOutput()
+		if err != nil {
+			log.Errorf("Failed to drop page cache: %v, output: %s", err, string(out))
+			return
+		}
+		log.Infof("Page cache dropped, output: %s", string(out))
+
+		time.Sleep(5 * time.Second) // Wait for a bit to ensure page cache is dropped
+
 		err = orch.PauseVM(ctx, tmpname)
 		if err != nil {
 			log.Errorln("Failed to pause VM:", err)
@@ -154,11 +168,18 @@ func main() {
 		if err != nil {
 			log.Errorln("Failed to create snapshot:", err)
 		}
+		_, err = orch.ResumeVM(ctx, tmpname)
+		if err != nil {
+			log.Errorln("Failed to resume VM:", err)
+		}
+
+		fmt.Scanf("\n")
+
 		err = orch.StopSingleVM(ctx, tmpname)
 		if err != nil {
 			log.Errorln("Failed to stop VM:", err)
 		}
 
-		time.Sleep(60 * time.Second)
+		// time.Sleep(60 * time.Second)
 	}
 }
