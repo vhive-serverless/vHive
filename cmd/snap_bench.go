@@ -11,12 +11,14 @@ import (
 
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/vhive-serverless/vhive/ctriface"
 	"github.com/vhive-serverless/vhive/snapshotting"
 
+	// grpcClients "github.com/vhive-serverless/vSwarm-proto/grpcclient"
 	helloworld "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 )
 
@@ -33,6 +35,45 @@ var (
 	hostIface     *string
 	netPoolSize   *int
 )
+
+const (
+	homeDir  = "/users/lkondras"
+	snapDir  = homeDir + "/snapshots"
+	vhiveDir = homeDir + "/vhive"
+)
+
+func invokeVSwarm(endpoint, port string, benchmark string) (string, error) {
+	go func() {
+		err := exec.Command(homeDir+"/vswarm/tools/relay/relay", "--addr=0.0.0.0:50000",
+			fmt.Sprintf("--function-endpoint-url=%s", endpoint),
+			fmt.Sprintf("--function-endpoint-port=%s", port),
+			fmt.Sprintf("--function-name=%s", benchmark),
+			"--value=10",
+			"--generator=linear",
+			"--lowerBound=1",
+			"--upperBound=10").Run()
+		if err != nil && !strings.Contains(err.Error(), "signal: terminated") {
+			log.Errorln("Failed to start relay -", err)
+		}
+	}()
+	defer exec.Command("pkill", "relay").Run()
+	time.Sleep(1 * time.Second) // Wait for the relay to start
+
+	conn, err := grpc.Dial("127.0.0.1:50000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Errorln("Failed to establish a gRPC connection -", err)
+		return "", err
+	}
+	defer conn.Close()
+	grpcClient := helloworld.NewGreeterClient(conn)
+	response, err := grpcClient.SayHello(context.Background(), &helloworld.HelloRequest{Name: "VHive"})
+	if err != nil {
+		log.Errorln("Failed to invoke -", err)
+		return "", err
+	}
+
+	return response.Message, err
+}
 
 func main() {
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
@@ -89,6 +130,7 @@ func main() {
 	orch := ctriface.NewOrchestrator(
 		*snapshotter,
 		*hostIface,
+		ctriface.WithTestModeOn(false),
 		ctriface.WithSnapshotMode(*snapshotMode),
 		ctriface.WithCacheSnaps(*cacheSnaps),
 		ctriface.WithUPF(*isUPFEnabled),
@@ -103,13 +145,18 @@ func main() {
 		ctriface.WithMinioSecretKey(minioSecretKey),
 	)
 	defer orch.Cleanup()
+	defer orch.StopActiveVMs()
 
 	images := map[string]string{
 		// "hello-4": "ghcr.io/vhive-serverless/helloworld:var_workload-esgz",
-		"pyaes": "ghcr.io/leokondrashov/pyaes:esgz",
+		// "pyaes": "ghcr.io/leokondrashov/pyaes:esgz",
 		// "lr_serving": "ghcr.io/leokondrashov/lr_serving:esgz",
 		// "invitro":    "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
 		// "chameleon": "ghcr.io/leokondrashov/chameleon:esgz",
+		"auth-go":      "ghcr.io/leokondrashov/auth-go:esgz",
+		"auth-python":  "ghcr.io/leokondrashov/auth-python:esgz",
+		"auth-nodejs":  "ghcr.io/leokondrashov/auth-nodejs:esgz",
+		"fibonacci-go": "ghcr.io/leokondrashov/fibonacci-go:esgz",
 	}
 	for name, image := range images {
 
@@ -126,21 +173,23 @@ func main() {
 		time.Sleep(10 * time.Second) // Wait for VM to fully boot up
 		// fmt.Scanf("\n")
 
-		conn, err := grpc.Dial(resp.GuestIP+":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Errorln("Failed to establish a gRPC connection -", err)
-			return
-		}
-		defer conn.Close()
-		grpcClient := helloworld.NewGreeterClient(conn)
-		response, err := grpcClient.SayHello(ctx, &helloworld.HelloRequest{Name: "VHive"})
-		if err != nil {
-			log.Errorln("Failed to call SayHello -", err)
-			return
-		}
-		log.Infoln("SayHello response:", response)
+		// conn, err := grpc.Dial(resp.GuestIP+":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		// if err != nil {
+		// 	log.Errorln("Failed to establish a gRPC connection -", err)
+		// 	return
+		// }
+		// defer conn.Close()
+		// grpcClient := helloworld.NewGreeterClient(conn)
+		// response, err := grpcClient.SayHello(ctx, &helloworld.HelloRequest{Name: "VHive"})
+		response, err := invokeVSwarm(resp.GuestIP, "50051", name)
 
-		snap := snapshotting.NewSnapshot(name, "/home/ubuntu/snapshots", image)
+		if err != nil {
+			log.Errorln("Failed to invoke -", err)
+			return
+		}
+		log.Infoln("Invocation response:", response)
+
+		snap := snapshotting.NewSnapshot(name, snapDir, image)
 		err = snap.CreateSnapDir()
 		if err != nil {
 			log.Errorln("Failed to create snapshot dir:", err)
@@ -148,7 +197,7 @@ func main() {
 		}
 
 		// SSH into the VM and drop the page cache
-		sshCmd := fmt.Sprintf("ssh -o StrictHostKeyChecking=no -i /home/ubuntu/vhive/bin/id_rsa -o UserKnownHostsFile=/dev/null root@%s 'echo 3 > /proc/sys/vm/drop_caches'", resp.GuestIP)
+		sshCmd := fmt.Sprintf("ssh -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null root@%s 'echo 3 > /proc/sys/vm/drop_caches'", vhiveDir, resp.GuestIP)
 		log.Infof("Dropping page cache on VM with: %s", sshCmd)
 		out, err := exec.Command("bash", "-c", sshCmd).CombinedOutput()
 		if err != nil {
@@ -173,13 +222,44 @@ func main() {
 			log.Errorln("Failed to resume VM:", err)
 		}
 
-		fmt.Scanf("\n")
+		// fmt.Scanf("\n")
+
+		// memory page info retrieval
+		scpCommand := fmt.Sprintf("scp -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null %s/mem_parser/mem_parser root@%s:~",
+			vhiveDir, vhiveDir, resp.GuestIP)
+		out, err = exec.Command("bash", "-c", scpCommand).CombinedOutput()
+		if err != nil {
+			log.Errorf("Failed to copy mem_parser to VM: %v, output: %s", err, string(out))
+			return
+		}
+		log.Infof("mem_parser copied to VM, output: %s", string(out))
+
+		vmCommands := "pid=\\$(ps aux | grep server | head -n 1 | awk '{print \\$2}'); ./mem_parser \\$pid; mv pid_\\${pid}_pagemap.json server.json;" +
+			"pid=\\$(pgrep containerd); ./mem_parser \\$pid; mv pid_\\${pid}_pagemap.json stargz.json;" +
+			"journalctl > journal.log; free -h > free.log; df -h > df.log"
+		sshCmd = fmt.Sprintf("ssh -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null root@%s \"%s\"", vhiveDir, resp.GuestIP, vmCommands)
+		out, err = exec.Command("bash", "-c", sshCmd).CombinedOutput()
+		if err != nil {
+			log.Errorf("Failed to run mem_parser on VM: %v, output: %s", err, string(out))
+			return
+		}
+		log.Infof("mem_parser run on VM, output: %s", string(out))
+
+		scpCommand = fmt.Sprintf("scp -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null root@%s:~/{server.json,stargz.json,journal.log,free.log,df.log} %s",
+			vhiveDir, resp.GuestIP, snapDir+"/"+name)
+		out, err = exec.Command("bash", "-c", scpCommand).CombinedOutput()
+		if err != nil {
+			log.Errorf("Failed to copy pagemap files from VM: %v, output: %s", err, string(out))
+			return
+		}
+		log.Infof("Pagemap files copied from VM, output: %s", string(out))
 
 		err = orch.StopSingleVM(ctx, tmpname)
 		if err != nil {
 			log.Errorln("Failed to stop VM:", err)
 		}
 
+		// break
 		// time.Sleep(60 * time.Second)
 	}
 }

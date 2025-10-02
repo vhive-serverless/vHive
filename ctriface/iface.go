@@ -25,7 +25,6 @@ package ctriface
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/snapshotting"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +32,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	log "github.com/sirupsen/logrus"
 
@@ -143,10 +144,13 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		}
 
 		if vm.Image, err = o.getImage(ctx, imageName); err != nil {
+			fmt.Scanf("\n")
 			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
 		}
 		startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 	}
+
+	// fmt.Scanf("\n")
 
 	logger.Debug("StartVM: Creating a new container")
 
@@ -366,7 +370,7 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 		KernelArgs:     kernelArgs,
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
 			VcpuCount:  1,
-			MemSizeMib: 256,
+			MemSizeMib: 512,
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
 			AllowMMDS: true,
