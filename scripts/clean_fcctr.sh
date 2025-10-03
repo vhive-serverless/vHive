@@ -24,31 +24,48 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+PRESERVE_NETWORK=false # Do not reset nftables, delete veth devices, or delete bridges
+PRESERVE_CONTAINERS=false
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --preserve-network) PRESERVE_NETWORK=true ;;
+        --preserve-containers) PRESERVE_CONTAINERS=true ;;
+        *) echo "Unknown parameter: $1" >&2; exit 1 ;;
+    esac
+    shift
+done
+
 echo Killing firecracker agents and VMs
 sudo pkill -9 firec
-sudo pkill -9 containerd
 sudo pkill -f 'while true; do /usr/local/bin/demux-snapshotter'
 sudo pkill -f http-address-resolver
 
-echo Resetting nftables
-sudo nft flush table ip filter
-sudo nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }"
-sudo nft "add rule ip filter FORWARD ct state related,established counter accept"
+if [ "$PRESERVE_CONTAINERS" = false ]; then
+    sudo pkill -9 containerd
+fi
 
-echo Deleting veth* devices created by CNI
-cat /proc/net/dev | grep veth | cut -d" " -f1| cut -d":" -f1 | while read in; do sudo ip link delete "$in"; done
+if [ "$PRESERVE_NETWORK" = false ]; then
+    echo Resetting nftables
+    sudo nft flush table ip filter
+    sudo nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }"
+    sudo nft "add rule ip filter FORWARD ct state related,established counter accept"
 
-ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
-ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
-sudo ip link delete br0
-sudo ip link delete br1
+    echo Deleting veth* devices created by CNI
+    cat /proc/net/dev | grep veth | cut -d" " -f1| cut -d":" -f1 | while read in; do sudo ip link delete "$in"; done
 
-for i in `seq 0 100`; do sudo ip link delete ${i}_0_tap  1>/dev/null 2>&1; done
+    ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
+    ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
+    sudo ip link delete br0
+    sudo ip link delete br1
 
-echo Cleaning in /var/lib/cni/ non-network
-for d in `find /var/lib/cni/ -mindepth 1 -maxdepth 1  -type d | grep -v networks`; do
-    sudo rm -rf $d
-done
+    for i in `seq 0 100`; do sudo ip link delete ${i}_0_tap  1>/dev/null 2>&1; done
+
+    echo Cleaning in /var/lib/cni/ non-network
+    for d in `find /var/lib/cni/ -mindepth 1 -maxdepth 1  -type d | grep -v networks`; do
+        sudo rm -rf $d
+    done
+fi
 
 # When executed inside a docker container, this command returns the container ID of the container.
 # on a non container environment, this returns "/".
