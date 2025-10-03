@@ -37,7 +37,7 @@ jobs:
         lfs_enabled: 'true'
 
     - name: Set up Go version in go.mod file
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version-file: ${{ github.workspace }}/go.mod
         cache-dependency-path: |
