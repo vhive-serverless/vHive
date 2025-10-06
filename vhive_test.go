@@ -42,12 +42,18 @@ const (
 )
 
 var (
-	isUPFEnabledTest       = flag.Bool("upfTest", false, "Enable user-level page faults guest memory management")
-	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
-	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
-	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
-	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
-	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
+	isUPFEnabledTest  = flag.Bool("upfTest", false, "Enable user-level page faults guest memory management")
+	snapshotTestMode  = flag.String("snapshotsTest", "disabled", "Use VM snapshots when adding function instances")
+	isMetricsModeTest = flag.Bool("metricsTest", false, "Calculate UPF metrics")
+	isLazyModeTest    = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
+	isWithCache       = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	benchDir          = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
+	snapshotter       = flag.String("ss", "devmapper", "Snapshotter to use")
+	dockerCredentials = flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM")
+	testImage         = flag.String("img", testImageName, "Test image")
+	minioAddr         = flag.String("minioAddr", "10.96.0.46:9000", "Minio address for storing remote snapshots")
+	minioAccessKey    = flag.String("minioAccessKey", "minio", "Minio access key for storing remote snapshots")
+	minioSecretKey    = flag.String("minioSecretKey", "minio123", "Minio secret key for storing remote snapshots")
 )
 
 func TestMain(m *testing.M) {
@@ -70,21 +76,24 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
+	log.Infof("Orchestrator snapshots mode: %s", *snapshotTestMode)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
 	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
 	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
 	log.Infof("Drop cache: %t", !*isWithCache)
 	log.Infof("Bench dir: %s", *benchDir)
+	log.Infof("Snapshotter: %s", *snapshotter)
+	log.Infof("Docker credentials: %s", *dockerCredentials)
 
 	orch = ctriface.NewOrchestrator(
-		"devmapper",
+		*snapshotter,
 		"",
 		ctriface.WithTestModeOn(true),
-		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
+		ctriface.WithSnapshotMode(*snapshotTestMode),
 		ctriface.WithUPF(*isUPFEnabledTest),
 		ctriface.WithMetricsMode(*isMetricsModeTest),
 		ctriface.WithLazyMode(*isLazyModeTest),
+		ctriface.WithDockerCredentials(*dockerCredentials),
 	)
 
 	ret := m.Run()
@@ -105,10 +114,10 @@ func TestSendToFunctionSerial(t *testing.T) {
 		servedTh      uint64
 		pinnedFuncNum int
 	)
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	for i := 0; i < 2; i++ {
-		resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
+		resp, _, err := funcPool.Serve(context.Background(), fID, *testImage, "world")
 		require.NoError(t, err, "Function returned error")
 		if i == 0 {
 			require.Equal(t, resp.IsColdStart, true)
@@ -117,7 +126,7 @@ func TestSendToFunctionSerial(t *testing.T) {
 		require.Equal(t, resp.Payload, "Hello, world!")
 	}
 
-	message, err := funcPool.RemoveInstance(fID, testImageName, true)
+	message, err := funcPool.RemoveInstance(fID, *testImage, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
@@ -127,7 +136,7 @@ func TestSendToFunctionParallel(t *testing.T) {
 		servedTh      uint64
 		pinnedFuncNum int
 	)
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < 100; i++ {
@@ -135,7 +144,7 @@ func TestSendToFunctionParallel(t *testing.T) {
 
 		go func(i int) {
 			defer vmGroup.Done()
-			resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, *testImage, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -143,7 +152,7 @@ func TestSendToFunctionParallel(t *testing.T) {
 	}
 	vmGroup.Wait()
 
-	message, err := funcPool.RemoveInstance(fID, testImageName, true)
+	message, err := funcPool.RemoveInstance(fID, *testImage, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
@@ -153,16 +162,16 @@ func TestStartSendStopTwice(t *testing.T) {
 		servedTh      uint64 = 1
 		pinnedFuncNum int    = 2
 	)
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	for i := 0; i < 2; i++ {
 		for k := 0; k < 2; k++ {
-			resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, *testImage, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}
 
-		message, err := funcPool.RemoveInstance(fID, testImageName, true)
+		message, err := funcPool.RemoveInstance(fID, *testImage, true)
 		require.NoError(t, err, "Function returned error, "+message)
 	}
 
@@ -178,13 +187,13 @@ func TestStatsNotNumericFunction(t *testing.T) {
 		servedTh      uint64 = 1
 		pinnedFuncNum int    = 2
 	)
-	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
-	resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, *testImage, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	message, err := funcPool.RemoveInstance(fID, testImageName, true)
+	message, err := funcPool.RemoveInstance(fID, *testImage, true)
 	require.NoError(t, err, "Function returned error, "+message)
 
 	servedGot := funcPool.stats.statMap[fID].served
@@ -199,13 +208,13 @@ func TestStatsNotColdFunction(t *testing.T) {
 		servedTh      uint64 = 1
 		pinnedFuncNum int    = 4
 	)
-	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
-	resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, *testImage, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	message, err := funcPool.RemoveInstance(fID, testImageName, true)
+	message, err := funcPool.RemoveInstance(fID, *testImage, true)
 	require.NoError(t, err, "Function returned error, "+message)
 
 	servedGot := funcPool.stats.statMap[fID].served
@@ -220,10 +229,10 @@ func TestSaveMemorySerial(t *testing.T) {
 		servedTh      uint64 = 40
 		pinnedFuncNum int    = 2
 	)
-	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	for i := 0; i < 100; i++ {
-		resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
+		resp, _, err := funcPool.Serve(context.Background(), fID, *testImage, "world")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, world!")
 	}
@@ -231,7 +240,7 @@ func TestSaveMemorySerial(t *testing.T) {
 	startsGot := funcPool.stats.statMap[fID].started
 	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
 
-	message, err := funcPool.RemoveInstance(fID, testImageName, true)
+	message, err := funcPool.RemoveInstance(fID, *testImage, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
@@ -241,7 +250,7 @@ func TestSaveMemoryParallel(t *testing.T) {
 		servedTh      uint64 = 40
 		pinnedFuncNum int    = 2
 	)
-	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	var vmGroup sync.WaitGroup
 	for i := 0; i < 100; i++ {
@@ -250,7 +259,7 @@ func TestSaveMemoryParallel(t *testing.T) {
 		go func(i int) {
 			defer vmGroup.Done()
 
-			resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
+			resp, _, err := funcPool.Serve(context.Background(), fID, *testImage, "world")
 			require.NoError(t, err, "Function returned error")
 			require.Equal(t, resp.Payload, "Hello, world!")
 		}(i)
@@ -261,7 +270,7 @@ func TestSaveMemoryParallel(t *testing.T) {
 	startsGot := funcPool.stats.statMap[fID].started
 	require.Equal(t, 3, int(startsGot), "Cold start (starts) stats are wrong")
 
-	message, err := funcPool.RemoveInstance(fID, testImageName, true)
+	message, err := funcPool.RemoveInstance(fID, *testImage, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
@@ -271,16 +280,16 @@ func TestDirectStartStopVM(t *testing.T) {
 		servedTh      uint64
 		pinnedFuncNum int
 	)
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
-	message, err := funcPool.AddInstance(fID, testImageName)
+	message, err := funcPool.AddInstance(fID, *testImage)
 	require.NoError(t, err, "This error should never happen (addInstance())"+message)
 
-	resp, _, err := funcPool.Serve(context.Background(), fID, testImageName, "world")
+	resp, _, err := funcPool.Serve(context.Background(), fID, *testImage, "world")
 	require.NoError(t, err, "Function returned error")
 	require.Equal(t, resp.Payload, "Hello, world!")
 
-	message, err = funcPool.RemoveInstance(fID, testImageName, true)
+	message, err = funcPool.RemoveInstance(fID, *testImage, true)
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
@@ -306,7 +315,7 @@ func TestAllFunctions(t *testing.T) {
 		servedTh      uint64
 		pinnedFuncNum int
 	)
-	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst, *snapshotTestMode, *minioAddr, *minioAccessKey, *minioSecretKey)
 
 	for i := 0; i < 2; i++ {
 		var vmGroup sync.WaitGroup
