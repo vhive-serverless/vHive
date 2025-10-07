@@ -238,10 +238,10 @@ func (cfg *NetworkConfig) CreateNetwork() error {
 // function instance to the network
 func (cfg *NetworkConfig) RemoveNetwork() error {
 	// Delete nat to route traffic out of veth device
-	if err := deleteMasquerade(cfg.getVeth1Name()); err != nil {
+	if err := deleteMasquerade(cfg.getVeth1Name(), cfg.hostIfaceName); err != nil {
 		return err
 	}
-	if err := deleteForwardRules(cfg.getVeth1Name()); err != nil {
+	if err := deleteForwardRules(cfg.getVeth1Name(), cfg.hostIfaceName); err != nil {
 		return err
 	}
 

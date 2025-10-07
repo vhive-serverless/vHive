@@ -338,7 +338,7 @@ func setupForwardRules(vethHostName, hostIface string) error {
 	// 2. add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }
 	polAccept := nftables.ChainPolicyAccept
 	fwdCh := &nftables.Chain{
-		Name:     fmt.Sprintf("FORWARD%s", vethHostName),
+		Name:     "vhive-forward",
 		Table:    filterTable,
 		Type:     nftables.ChainTypeFilter,
 		Priority: nftables.ChainPriorityRef(0),
@@ -349,8 +349,9 @@ func setupForwardRules(vethHostName, hostIface string) error {
 	// 3. Iptables: -A FORWARD -i veth1-1 -o eno49 -j ACCEPT
 	// 3.1 add rule ip filter FORWARD iifname veth1-1 oifname eno49 counter accept
 	outRule := &nftables.Rule{
-		Table: filterTable,
-		Chain: fwdCh,
+		Table:    filterTable,
+		Chain:    fwdCh,
+		UserData: []byte(fmt.Sprintf("vhive-forward-%s", vethHostName)),
 		Exprs: []expr.Any{
 			// Load iffname in register 1
 			&expr.Meta{Key: expr.MetaKeyIIFNAME, Register: 1},
@@ -377,8 +378,9 @@ func setupForwardRules(vethHostName, hostIface string) error {
 	// 4. Iptables: -A FORWARD -o veth1-1 -i eno49 -j ACCEPT
 	// 4.1 add rule ip filter FORWARD iifname eno49 oifname veth1-1 counter accept
 	inRule := &nftables.Rule{
-		Table: filterTable,
-		Chain: fwdCh,
+		Table:    filterTable,
+		Chain:    fwdCh,
+		UserData: []byte(fmt.Sprintf("vhive-forward-%s", vethHostName)),
 		Exprs: []expr.Any{
 			// Load oifname in register 1
 			&expr.Meta{Key: expr.MetaKeyOIFNAME, Register: 1},
@@ -407,38 +409,41 @@ func setupForwardRules(vethHostName, hostIface string) error {
 	conn.AddRule(inRule)
 
 	if err := conn.Flush(); err != nil {
+		// Ignore errors if the forward rules already exist
 		return errors.Wrapf(err, "creating forward rules")
 	}
 	return nil
 }
 
 // deleteNatRules deletes the forward rules to allow traffic to the default host interface.
-func deleteForwardRules(vethHostName string) error {
+func deleteForwardRules(vethHostName, hostIface string) error {
 	conn := nftables.Conn{}
 
-	// 1. add table ip filter
 	filterTable := &nftables.Table{
 		Name:   "filter",
 		Family: nftables.TableFamilyIPv4,
 	}
-
-	// 2. add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }
-	polAccept := nftables.ChainPolicyAccept
 	fwdCh := &nftables.Chain{
-		Name:     fmt.Sprintf("FORWARD%s", vethHostName),
-		Table:    filterTable,
-		Type:     nftables.ChainTypeFilter,
-		Priority: nftables.ChainPriorityRef(0),
-		Hooknum:  nftables.ChainHookForward,
-		Policy:   &polAccept,
+		Name:  "vhive-forward",
+		Table: filterTable,
+	}
+	rules, err := conn.GetRules(filterTable, fwdCh)
+	if err != nil {
+		return errors.Wrapf(err, "deleting forward rules")
 	}
 
-	// Apply
-	conn.FlushChain(fwdCh)
-	conn.DelChain(fwdCh)
+	for _, rule := range rules {
+		if string(rule.UserData) == fmt.Sprintf("vhive-forward-%s", vethHostName) {
+			if err := conn.DelRule(rule); err != nil {
+				return errors.Wrapf(err, "deleting forward rules")
+			}
+		}
+	}
+
 	if err := conn.Flush(); err != nil {
 		return errors.Wrapf(err, "deleting forward rules")
 	}
+
 	return nil
 }
 
@@ -455,7 +460,7 @@ func setupMasquerade(vethHostName, hostIface string) error {
 	// 2. add chain ip nat POSTROUTING { type nat hook postrouting priority 0; policy accept; }
 	polAccept := nftables.ChainPolicyAccept
 	natCh := &nftables.Chain{
-		Name:     fmt.Sprintf("MASQ%s", vethHostName),
+		Name:     "vhive-masq",
 		Table:    natTable,
 		Type:     nftables.ChainTypeNAT,
 		Priority: nftables.ChainPriorityRef(0),
@@ -465,8 +470,9 @@ func setupMasquerade(vethHostName, hostIface string) error {
 
 	// 3. add rule ip nat POSTROUTING iifname veth1-0 oifname eno1 counter masquerade
 	masqRule := &nftables.Rule{
-		Table: natTable,
-		Chain: natCh,
+		Table:    natTable,
+		Chain:    natCh,
+		UserData: []byte(fmt.Sprintf("vhive-masq-%s", vethHostName)),
 		Exprs: []expr.Any{
 			// Load iffname in register 1
 			&expr.Meta{Key: expr.MetaKeyIIFNAME, Register: 1},
@@ -475,14 +481,6 @@ func setupMasquerade(vethHostName, hostIface string) error {
 				Op:       expr.CmpOpEq,
 				Register: 1,
 				Data:     []byte(fmt.Sprintf("%s\x00", vethHostName)),
-			},
-			// Load offname in register 2
-			&expr.Meta{Key: expr.MetaKeyOIFNAME, Register: 2},
-			// Check oifname == eno1
-			&expr.Cmp{
-				Op:       expr.CmpOpEq,
-				Register: 2,
-				Data:     []byte(fmt.Sprintf("%s\x00", hostIface)),
 			},
 			// masq
 			&expr.Masq{},
@@ -500,32 +498,34 @@ func setupMasquerade(vethHostName, hostIface string) error {
 }
 
 // deleteMasquerade deletes the NAT rules for external communication from the uVM.
-func deleteMasquerade(vethHostName string) error {
+func deleteMasquerade(vethHostName, hostIface string) error {
 	conn := nftables.Conn{}
 
-	// 1. add table ip nat
 	natTable := &nftables.Table{
 		Name:   "nat",
 		Family: nftables.TableFamilyIPv4,
 	}
-
-	// 2. del chain ip filter MASQ { type filter hook forward priority 0; policy accept; }
-	polAccept := nftables.ChainPolicyAccept
 	natCh := &nftables.Chain{
-		Name:     fmt.Sprintf("MASQ%s", vethHostName),
-		Table:    natTable,
-		Type:     nftables.ChainTypeNAT,
-		Priority: nftables.ChainPriorityRef(0),
-		Hooknum:  nftables.ChainHookPostrouting,
-		Policy:   &polAccept,
+		Name:  "vhive-masq",
+		Table: natTable,
+	}
+	rules, err := conn.GetRules(natTable, natCh)
+	if err != nil {
+		return errors.Wrapf(err, "deleting masquerade rules")
 	}
 
-	// Apply
-	conn.FlushChain(natCh)
-	conn.DelChain(natCh)
+	for _, rule := range rules {
+		if string(rule.UserData) == fmt.Sprintf("vhive-masq-%s", vethHostName) {
+			if err := conn.DelRule(rule); err != nil {
+				return errors.Wrapf(err, "deleting masquerade rules")
+			}
+		}
+	}
+
 	if err := conn.Flush(); err != nil {
 		return errors.Wrapf(err, "deleting masquerade rules")
 	}
+
 	return nil
 }
 
