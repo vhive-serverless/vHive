@@ -153,14 +153,14 @@ func main() {
 		// "lr_serving": "ghcr.io/leokondrashov/lr_serving:esgz",
 		// "invitro":    "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
 		// "chameleon": "ghcr.io/leokondrashov/chameleon:esgz",
-		"auth-go":      "ghcr.io/leokondrashov/auth-go:esgz",
-		"auth-python":  "ghcr.io/leokondrashov/auth-python:esgz",
-		"auth-nodejs":  "ghcr.io/leokondrashov/auth-nodejs:esgz",
-		"fibonacci-go": "ghcr.io/leokondrashov/fibonacci-go:esgz",
+		"auth-go": "ghcr.io/leokondrashov/auth-go:esgz",
+		// "auth-python":  "ghcr.io/leokondrashov/auth-python:esgz",
+		// "auth-nodejs":  "ghcr.io/leokondrashov/auth-nodejs:esgz",
+		// "fibonacci-go": "ghcr.io/leokondrashov/fibonacci-go:esgz",
 	}
 	for name, image := range images {
 
-		tmpname := fmt.Sprintf("%s-%d", name, os.Getpid())
+		tmpname := name //fmt.Sprintf("%s-%d", name, os.Getpid())
 		ctx := context.Background()
 		// ctx = namespaces.WithNamespace(ctx, tmpname)
 		resp, _, err := orch.StartVM(ctx, tmpname, image)
@@ -222,7 +222,7 @@ func main() {
 			log.Errorln("Failed to resume VM:", err)
 		}
 
-		// fmt.Scanf("\n")
+		fmt.Scanf("\n")
 
 		// memory page info retrieval
 		scpCommand := fmt.Sprintf("scp -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null %s/mem_parser/mem_parser root@%s:~",
@@ -253,6 +253,32 @@ func main() {
 			return
 		}
 		log.Infof("Pagemap files copied from VM, output: %s", string(out))
+
+		err = orch.StopSingleVM(ctx, tmpname)
+		if err != nil {
+			log.Errorln("Failed to stop VM:", err)
+		}
+
+		resp, _, err = orch.LoadSnapshot(ctx, tmpname, snap)
+		if err != nil {
+			log.Errorln("Failed to load snapshot:", err)
+			return
+		}
+		defer os.Remove(fmt.Sprintf("/tmp/%s.uffd.sock", tmpname))
+		_, err = orch.ResumeVM(ctx, tmpname)
+		if err != nil {
+			log.Errorln("Failed to resume VM:", err)
+		}
+		log.Infoln("Snapshot loaded, VM info:", resp)
+
+		time.Sleep(10 * time.Second) // Wait for VM to fully boot up
+
+		response, err = invokeVSwarm(resp.GuestIP, "50051", name)
+		if err != nil {
+			log.Errorln("Failed to invoke after snapshot load -", err)
+			return
+		}
+		log.Infoln("Invocation response after snapshot load:", response)
 
 		err = orch.StopSingleVM(ctx, tmpname)
 		if err != nil {
