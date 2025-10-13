@@ -50,7 +50,6 @@ import (
 	_ "google.golang.org/grpc/status" //tmp
 
 	"github.com/go-multierror/multierror"
-	"github.com/vhive-serverless/vhive/memory/manager"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/misc"
 
@@ -247,25 +246,6 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		logger.Error("Failed to create VM base dir")
 		return nil, nil, err
 	}
-	if o.GetUPFEnabled() {
-		logger.Debug("Registering VM with the memory manager")
-
-		stateCfg := manager.SnapshotStateCfg{
-			VMID:           vmID,
-			GuestMemPath:   o.getMemoryFile(vmID),
-			BaseDir:        o.getVMBaseDir(vmID),
-			GuestMemSize:   int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsLazyMode:     o.isLazyMode,
-			VMMStatePath:   o.getSnapshotFile(vmID),
-			WorkingSetPath: o.getWorkingSetFile(vmID),
-			// FIXME (gh-807)
-			//InstanceSockAddr: resp.UPFSockPath,
-		}
-		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
-			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
-			// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
-		}
-	}
 
 	logger.Debug("Successfully started a VM")
 
@@ -362,7 +342,7 @@ func getK8sDNS() []string {
 }
 
 func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
-	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
+	kernelArgs := "ro noapic reboot=k panic=1 acpi=off pci=off nomodules systemd.log_color=false systemd.journald.forward_to_console systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet ipv6.disable=1 console=ttyS0"
 
 	return &proto.CreateVMRequest{
 		VMID:           vm.ID,
@@ -585,9 +565,50 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	}
 
 	if o.GetUPFEnabled() {
-		if err := o.memoryManager.FetchState(vmID); err != nil {
-			return nil, nil, err
+		// stateCfg := manager.SnapshotStateCfg{
+		// 	VMID:           vmID,
+		// 	GuestMemPath:   snap.GetMemFilePath(),
+		// 	BaseDir:        o.getVMBaseDir(vmID),
+		// 	GuestMemSize:   int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+		// 	IsLazyMode:     o.isLazyMode,
+		// 	VMMStatePath:   o.getSnapshotFile(vmID),
+		// 	WorkingSetPath: o.getWorkingSetFile(vmID),
+		// 	// FIXME (gh-807)
+		// 	InstanceSockAddr: fmt.Sprintf("/tmp/%s.uffd.sock", vmID),
+		// }
+		// if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
+		// 	return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
+		// 	// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
+		// }
+		// if err := o.memoryManager.FetchState(vmID); err != nil {
+		// 	return nil, nil, err
+		// }
+		conf.MemFilePath = ""
+		conf.MemBackend = &proto.MemoryBackend{
+			BackendType: "Uffd",
+			BackendPath: fmt.Sprintf("/tmp/%s.uffd.sock", vmID),
 		}
+		// if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
+		// 	logger.Warn("Failed to activate VM in the memory manager", activateErr)
+		// }
+		go func() {
+			cmd := exec.Command("../uffd_handler/handler", fmt.Sprintf("/tmp/%s.uffd.sock", vmID), snap.GetMemFilePath(), snap.GetMemFilePath()+".touched")
+			// cmd := exec.Command("/users/lkondras/firecracker/build/cargo_target/debug/examples/uffd_on_demand_handler", fmt.Sprintf("/tmp/%s.uffd.sock", vmID), snap.GetMemFilePath())
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Start(); err != nil {
+				logger.Warnf("Failed to launch handler process for VM %s: %v", vmID, err)
+			}
+			if err := cmd.Wait(); err != nil {
+				logger.Warnf("Handler process for VM %s exited with error: %v", vmID, err)
+			}
+		}()
+	} else {
+		conf.MemBackend = &proto.MemoryBackend{
+			BackendType: "File",
+			BackendPath: conf.MemFilePath,
+		}
+		conf.MemFilePath = ""
 	}
 
 	tStart = time.Now()
@@ -622,12 +643,6 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 			logger.Error(snapFiles)
 		}
 	}()
-
-	if o.GetUPFEnabled() {
-		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
-			logger.Warn("Failed to activate VM in the memory manager", activateErr)
-		}
-	}
 
 	<-loadDone
 

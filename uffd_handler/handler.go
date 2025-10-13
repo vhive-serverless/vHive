@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"unsafe"
+
+	log "github.com/sirupsen/logrus"
 
 	"golang.org/x/sys/unix"
 )
@@ -17,67 +18,55 @@ import (
 // These values come from the Linux kernel headers: /usr/include/linux/userfaultfd.h
 //
 // Event types (defined directly in the kernel header):
-//   #define UFFD_EVENT_PAGEFAULT 0x12
-//   #define UFFD_EVENT_REMOVE    0x15
+//
+//	#define UFFD_EVENT_PAGEFAULT 0x12
+//	#define UFFD_EVENT_REMOVE    0x15
 //
 // IOCTL commands (computed using the _IOWR macro):
-//   UFFDIO_COPY = _IOWR(UFFDIO, _UFFDIO_COPY, struct uffdio_copy)
-//   where UFFDIO = 0xAA, _UFFDIO_COPY = 0x03, sizeof(struct uffdio_copy) = 40
-//   Result: 0xc028aa03
 //
-//   UFFDIO_ZEROPAGE = _IOWR(UFFDIO, _UFFDIO_ZEROPAGE, struct uffdio_zeropage)
-//   where UFFDIO = 0xAA, _UFFDIO_ZEROPAGE = 0x04, sizeof(struct uffdio_zeropage) = 32
-//   Result: 0xc020aa04
+//	UFFDIO_COPY = _IOWR(UFFDIO, _UFFDIO_COPY, struct uffdio_copy)
+//	where UFFDIO = 0xAA, _UFFDIO_COPY = 0x03, sizeof(struct uffdio_copy) = 40
+//	Result: 0xc028aa03
 //
-// Mode flags:
-//   #define UFFDIO_COPY_MODE_DONTWAKE ((__u64)1<<0)
-//   #define UFFDIO_ZEROPAGE_MODE_DONTWAKE ((__u64)1<<0)
+//	UFFDIO_ZEROPAGE = _IOWR(UFFDIO, _UFFDIO_ZEROPAGE, struct uffdio_zeropage)
+//	where UFFDIO = 0xAA, _UFFDIO_ZEROPAGE = 0x04, sizeof(struct uffdio_zeropage) = 32
+//	Result: 0xc020aa04
 const (
-	UFFD_EVENT_PAGEFAULT          = 0x12
-	UFFD_EVENT_REMOVE             = 0x15
-	UFFDIO_COPY                   = 0xc028aa03
-	UFFDIO_ZEROPAGE               = 0xc020aa04
-	UFFDIO_COPY_MODE_DONTWAKE     = 1
-	UFFDIO_ZEROPAGE_MODE_DONTWAKE = 1
+	UFFD_EVENT_PAGEFAULT = 0x12
+	UFFD_EVENT_REMOVE    = 0x15
+	UFFDIO_COPY          = 0xc028aa03
+	UFFDIO_ZEROPAGE      = 0xc020aa04
 )
 
 // UffdMsg represents the userfaultfd message structure
+// For pagefault events, this is exactly 32 bytes: 8-byte header + 24-byte payload
 type UffdMsg struct {
 	Event uint8
-	_     [7]byte
-	Arg   UffdMsgArg
+	_     [7]byte  // Reserved fields
+	Arg   [24]byte // Raw payload - size for pagefault event
 }
 
-// UffdMsgArg is a union containing different event types
-type UffdMsgArg struct {
-	// This is a union in C, we'll use the largest member size
-	// and interpret the data based on the event type
-	Data [4]uint64
+// Pagefault returns the pagefault event data by interpreting the raw Arg field.
+func (m *UffdMsg) Pagefault() UffdMsgPagefault {
+	// The pagefault struct is overlaid on the Arg field.
+	// We use unsafe.Pointer to cast the Arg array to a pointer to the struct.
+	return *(*UffdMsgPagefault)(unsafe.Pointer(&m.Arg[0]))
 }
 
-// Pagefault returns the pagefault event data
-func (a *UffdMsgArg) Pagefault() UffdMsgPagefault {
-	return UffdMsgPagefault{
-		Address: a.Data[0],
-		Flags:   a.Data[1],
-	}
+// Remove returns the remove event data.
+func (m *UffdMsg) Remove() UffdMsgRemove {
+	return *(*UffdMsgRemove)(unsafe.Pointer(&m.Arg[0]))
 }
 
-// Remove returns the remove event data
-func (a *UffdMsgArg) Remove() UffdMsgRemove {
-	return UffdMsgRemove{
-		Start: a.Data[0],
-		End:   a.Data[1],
-	}
-}
-
-// UffdMsgPagefault represents a pagefault event
+// UffdMsgPagefault represents a pagefault event.
+// The layout must match the kernel's `struct uffdio_pagefault`.
 type UffdMsgPagefault struct {
-	Address uint64
 	Flags   uint64
+	Address uint64
+	Feat    [4]byte // This is the `feat` union in the kernel struct
 }
 
-// UffdMsgRemove represents a remove event
+// UffdMsgRemove represents a remove event.
 type UffdMsgRemove struct {
 	Start uint64
 	End   uint64
@@ -105,6 +94,59 @@ type UffdIoRange struct {
 	Len   uint64
 }
 
+// PageFaultTrace represents a page fault event for tracing
+type PageFaultTrace struct {
+	Address uint64 `json:"address"`
+}
+
+// PageFaultTracer handles tracing page fault events to a file
+type PageFaultTracer struct {
+	file *os.File
+}
+
+// NewPageFaultTracer creates a new page fault tracer
+func NewPageFaultTracer(filePath string) (*PageFaultTracer, error) {
+	if filePath == "" {
+		return nil, nil
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trace file: %w", err)
+	}
+
+	return &PageFaultTracer{file: file}, nil
+}
+
+// TracePageFault logs a page fault event
+func (t *PageFaultTracer) TracePageFault(address, pfn uint64, eventType string, isRemoved, regionFound bool) {
+	if t == nil || t.file == nil {
+		return
+	}
+
+	trace := PageFaultTrace{
+		Address: address,
+	}
+
+	data, err := json.Marshal(trace)
+	if err != nil {
+		log.Errorf("Failed to marshal trace data: %v", err)
+		return
+	}
+
+	if _, err := t.file.Write(append(data, '\n')); err != nil {
+		log.Errorf("Failed to write trace data: %v", err)
+	}
+}
+
+// Close closes the trace file
+func (t *PageFaultTracer) Close() error {
+	if t == nil || t.file == nil {
+		return nil
+	}
+	return t.file.Close()
+}
+
 // GuestRegionUffdMapping describes the mapping between Firecracker base virtual address
 // and offset in the buffer or file backend for a guest memory region.
 type GuestRegionUffdMapping struct {
@@ -127,10 +169,11 @@ type UffdHandler struct {
 	backingBuffer uintptr
 	uffd          int
 	removedPages  map[uint64]bool
+	tracer        *PageFaultTracer
 }
 
 // NewUffdHandler creates a new UFFD handler from a Unix socket stream
-func NewUffdHandler(conn *net.UnixConn, backingBuffer uintptr, size uint64) (*UffdHandler, error) {
+func NewUffdHandler(conn *net.UnixConn, backingBuffer uintptr, size uint64, tracer *PageFaultTracer) (*UffdHandler, error) {
 	body, uffdFd, err := getMappingsAndFile(conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mappings and file: %w", err)
@@ -166,6 +209,7 @@ func NewUffdHandler(conn *net.UnixConn, backingBuffer uintptr, size uint64) (*Uf
 		backingBuffer: backingBuffer,
 		uffd:          uffdFd,
 		removedPages:  make(map[uint64]bool),
+		tracer:        tracer,
 	}, nil
 }
 
@@ -183,6 +227,7 @@ func (h *UffdHandler) ReadEvent() (*UffdMsg, error) {
 		return nil, fmt.Errorf("failed to read uffd event: %w", err)
 	}
 
+	// The kernel should always send a full message.
 	if n != int(msgSize) {
 		return nil, fmt.Errorf("incomplete uffd message: got %d bytes, expected %d", n, msgSize)
 	}
@@ -197,6 +242,9 @@ func (h *UffdHandler) MarkRangeRemoved(start, end uint64) {
 
 	for pfn := pfnStart; pfn < pfnEnd; pfn++ {
 		h.removedPages[pfn] = true
+		// Trace the remove event
+		pageAddr := pfn * h.pageSize
+		h.tracer.TracePageFault(pageAddr, pfn, "remove", true, false)
 	}
 }
 
@@ -207,10 +255,12 @@ func (h *UffdHandler) ServePF(addr uintptr, length uint64) bool {
 	faultPageAddr := uint64(dst)
 	faultPfn := faultPageAddr / h.pageSize
 
-	log.Printf("Handling page fault at addr: %#x (pfn: %d)", addr, faultPfn)
+	// log.Printf("Handling page fault at addr: %#x (pfn: %d)", addr, faultPfn)
 
 	// If this page was removed (by balloon device), zero it out
 	if h.removedPages[faultPfn] {
+		// Trace the page fault for removed page
+		h.tracer.TracePageFault(faultPageAddr, faultPfn, "pagefault", true, false)
 		return h.zeroOut(faultPageAddr)
 	}
 
@@ -218,9 +268,14 @@ func (h *UffdHandler) ServePF(addr uintptr, length uint64) bool {
 	for i := range h.memRegions {
 		region := &h.memRegions[i]
 		if region.Contains(faultPageAddr) {
+			// Trace the page fault
+			h.tracer.TracePageFault(faultPageAddr, faultPfn, "pagefault", false, true)
 			return h.populateFromFile(region, faultPageAddr, length)
 		}
 	}
+
+	// Trace the page fault for address not found in any region
+	h.tracer.TracePageFault(faultPageAddr, faultPfn, "pagefault", false, false)
 
 	log.Panicf("Could not find addr: %#x within guest region mappings", addr)
 	return false
@@ -235,7 +290,7 @@ func (h *UffdHandler) populateFromFile(region *GuestRegionUffdMapping, dst uint6
 		Dst:  dst,
 		Src:  uint64(src),
 		Len:  length,
-		Mode: UFFDIO_COPY_MODE_DONTWAKE,
+		Mode: 0,
 	}
 
 	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(h.uffd), UFFDIO_COPY, uintptr(unsafe.Pointer(&copy)))
@@ -265,7 +320,7 @@ func (h *UffdHandler) zeroOut(addr uint64) bool {
 			Start: addr,
 			Len:   h.pageSize,
 		},
-		Mode: UFFDIO_ZEROPAGE_MODE_DONTWAKE,
+		Mode: 0,
 	}
 
 	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(h.uffd), UFFDIO_ZEROPAGE, uintptr(unsafe.Pointer(&zero)))
@@ -286,10 +341,12 @@ type Runtime struct {
 	backingMemory     uintptr
 	backingMemorySize uint64
 	uffds             map[int]*UffdHandler
+	streamFd          int
+	tracer            *PageFaultTracer
 }
 
 // NewRuntime creates a new runtime
-func NewRuntime(conn *net.UnixConn, backingFile *os.File) (*Runtime, error) {
+func NewRuntime(conn *net.UnixConn, backingFile *os.File, tracer *PageFaultTracer) (*Runtime, error) {
 	fileInfo, err := backingFile.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file metadata: %w", err)
@@ -309,13 +366,35 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File) (*Runtime, error) {
 		return nil, fmt.Errorf("mmap on backing file failed: %w", err)
 	}
 
-	return &Runtime{
+	rt := &Runtime{
 		stream:            conn,
 		backingFile:       backingFile,
 		backingMemory:     uintptr(unsafe.Pointer(&backingMemory[0])),
 		backingMemorySize: backingMemorySize,
 		uffds:             make(map[int]*UffdHandler),
-	}, nil
+		streamFd:          -1,
+		tracer:            tracer,
+	}
+
+	// Retrieve the underlying file descriptor for the UnixConn without
+	// duplicating it. Using SyscallConn.Control gives us the real fd used by
+	// the connection, which we can poll on and compare reliably.
+	sc, err := conn.SyscallConn()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get SyscallConn from stream: %w", err)
+	}
+	var fdErr error
+	err = sc.Control(func(fd uintptr) {
+		rt.streamFd = int(fd)
+	})
+	if err != nil {
+		fdErr = err
+	}
+	if fdErr != nil {
+		return nil, fmt.Errorf("failed to obtain stream fd: %v", fdErr)
+	}
+
+	return rt, nil
 }
 
 // InstallPanicHook installs a panic hook to notify Firecracker on panic
@@ -326,10 +405,6 @@ func (r *Runtime) InstallPanicHook() {
 		log.Printf("Warning: failed to get peer credentials: %v", err)
 		return
 	}
-
-	// Install signal handler to kill Firecracker on panic
-	oldPanic := log.Flags()
-	log.SetFlags(oldPanic)
 
 	// Setup signal handling for panic notification
 	sigChan := make(chan os.Signal, 1)
@@ -364,7 +439,7 @@ func (r *Runtime) peerProcessCredentials() (*unix.Ucred, error) {
 func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 	pollfds := []unix.PollFd{
 		{
-			Fd:     int32(getFd(r.stream)),
+			Fd:     int32(r.streamFd),
 			Events: unix.POLLIN,
 		},
 	}
@@ -381,9 +456,9 @@ func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 		for i := 0; i < len(pollfds) && nready > 0; i++ {
 			if pollfds[i].Revents&unix.POLLIN != 0 {
 				nready--
-				if pollfds[i].Fd == int32(getFd(r.stream)) {
+				if pollfds[i].Fd == int32(r.streamFd) {
 					// Handle new uffd from stream
-					handler, err := NewUffdHandler(r.stream, r.backingMemory, r.backingMemorySize)
+					handler, err := NewUffdHandler(r.stream, r.backingMemory, r.backingMemorySize, r.tracer)
 					if err != nil {
 						log.Panicf("Failed to create UFFD handler: %v", err)
 					}
@@ -464,23 +539,19 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 	return body, -1, nil
 }
 
-// getFd gets the file descriptor from a connection
-func getFd(conn *net.UnixConn) int {
-	connFile, err := conn.File()
-	if err != nil {
-		log.Panicf("Failed to get file descriptor: %v", err)
-	}
-	defer connFile.Close()
-	return int(connFile.Fd())
-}
-
 func main() {
 	if len(os.Args) < 3 {
-		log.Fatal("Usage: handler <uffd_socket_path> <mem_file_path>")
+		log.Fatal("Usage: handler <uffd_socket_path> <mem_file_path> [trace_file]")
 	}
+	log.SetLevel(log.DebugLevel)
+	log.Debugf("Starting handler")
 
 	uffdSockPath := os.Args[1]
 	memFilePath := os.Args[2]
+	traceFilePath := ""
+	if len(os.Args) > 3 {
+		traceFilePath = os.Args[3]
+	}
 
 	// Open the memory file
 	file, err := os.Open(memFilePath)
@@ -504,7 +575,17 @@ func main() {
 	defer conn.Close()
 
 	// Create runtime
-	runtime, err := NewRuntime(conn, file)
+	tracer, err := NewPageFaultTracer(traceFilePath)
+	if err != nil {
+		log.Fatalf("Failed to create tracer: %v", err)
+	}
+	defer func() {
+		if tracer != nil {
+			tracer.Close()
+		}
+	}()
+
+	runtime, err := NewRuntime(conn, file, tracer)
 	if err != nil {
 		log.Fatalf("Failed to create runtime: %v", err)
 	}
@@ -541,14 +622,14 @@ func main() {
 			for _, event := range eventsToHandle {
 				switch event.Event {
 				case UFFD_EVENT_PAGEFAULT:
-					pf := event.Arg.Pagefault()
+					pf := event.Pagefault()
 					addr := uintptr(pf.Address)
 					if !uffdHandler.ServePF(addr, uffdHandler.pageSize) {
 						deferredEvents = append(deferredEvents, event)
 					}
 
 				case UFFD_EVENT_REMOVE:
-					rm := event.Arg.Remove()
+					rm := event.Remove()
 					uffdHandler.MarkRangeRemoved(rm.Start, rm.End)
 
 				default:
