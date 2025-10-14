@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"unsafe"
 
@@ -94,14 +96,10 @@ type UffdIoRange struct {
 	Len   uint64
 }
 
-// PageFaultTrace represents a page fault event for tracing
-type PageFaultTrace struct {
-	Address uint64 `json:"address"`
-}
-
 // PageFaultTracer handles tracing page fault events to a file
 type PageFaultTracer struct {
-	file *os.File
+	file   *os.File
+	writer *csv.Writer
 }
 
 // NewPageFaultTracer creates a new page fault tracer
@@ -115,36 +113,47 @@ func NewPageFaultTracer(filePath string) (*PageFaultTracer, error) {
 		return nil, fmt.Errorf("failed to create trace file: %w", err)
 	}
 
-	return &PageFaultTracer{file: file}, nil
+	writer := csv.NewWriter(file)
+
+	// Write CSV header
+	if err := writer.Write([]string{"pfn"}); err != nil {
+		file.Close()
+		return nil, fmt.Errorf("failed to write CSV header: %w", err)
+	}
+	writer.Flush()
+
+	return &PageFaultTracer{
+		file:   file,
+		writer: writer,
+	}, nil
 }
 
 // TracePageFault logs a page fault event
 func (t *PageFaultTracer) TracePageFault(address, pfn uint64, eventType string, isRemoved, regionFound bool) {
-	if t == nil || t.file == nil {
+	if t == nil || t.writer == nil {
 		return
 	}
 
-	trace := PageFaultTrace{
-		Address: address,
-	}
-
-	data, err := json.Marshal(trace)
-	if err != nil {
-		log.Errorf("Failed to marshal trace data: %v", err)
-		return
-	}
-
-	if _, err := t.file.Write(append(data, '\n')); err != nil {
+	// Write PFN to CSV
+	if err := t.writer.Write([]string{strconv.FormatUint(pfn, 10)}); err != nil {
 		log.Errorf("Failed to write trace data: %v", err)
+		return
 	}
+	t.writer.Flush()
 }
 
 // Close closes the trace file
 func (t *PageFaultTracer) Close() error {
-	if t == nil || t.file == nil {
+	if t == nil {
 		return nil
 	}
-	return t.file.Close()
+	if t.writer != nil {
+		t.writer.Flush()
+	}
+	if t.file != nil {
+		return t.file.Close()
+	}
+	return nil
 }
 
 // GuestRegionUffdMapping describes the mapping between Firecracker base virtual address
@@ -244,7 +253,19 @@ func (h *UffdHandler) MarkRangeRemoved(start, end uint64) {
 		h.removedPages[pfn] = true
 		// Trace the remove event
 		pageAddr := pfn * h.pageSize
-		h.tracer.TracePageFault(pageAddr, pfn, "remove", true, false)
+
+		// Find the region and calculate backing file PFN for removed page
+		backingFilePfn := uint64(0)
+		for i := range h.memRegions {
+			region := &h.memRegions[i]
+			if region.Contains(pageAddr) {
+				offset := pageAddr - region.BaseHostVirtAddr
+				backingFilePfn = (region.Offset + offset) / h.pageSize
+				break
+			}
+		}
+
+		h.tracer.TracePageFault(pageAddr, backingFilePfn, "remove", true, false)
 	}
 }
 
@@ -259,8 +280,8 @@ func (h *UffdHandler) ServePF(addr uintptr, length uint64) bool {
 
 	// If this page was removed (by balloon device), zero it out
 	if h.removedPages[faultPfn] {
-		// Trace the page fault for removed page
-		h.tracer.TracePageFault(faultPageAddr, faultPfn, "pagefault", true, false)
+		// Trace the page fault for removed page (no backing file offset for zeroed pages)
+		h.tracer.TracePageFault(faultPageAddr, (^uint64(0)), "pagefault", true, false)
 		return h.zeroOut(faultPageAddr)
 	}
 
@@ -268,14 +289,18 @@ func (h *UffdHandler) ServePF(addr uintptr, length uint64) bool {
 	for i := range h.memRegions {
 		region := &h.memRegions[i]
 		if region.Contains(faultPageAddr) {
-			// Trace the page fault
-			h.tracer.TracePageFault(faultPageAddr, faultPfn, "pagefault", false, true)
+			// Calculate the actual offset in the backing file
+			offset := faultPageAddr - region.BaseHostVirtAddr
+			backingFilePfn := (region.Offset + offset) / h.pageSize
+
+			// Trace the page fault with the actual PFN from backing file
+			h.tracer.TracePageFault(faultPageAddr, backingFilePfn, "pagefault", false, true)
 			return h.populateFromFile(region, faultPageAddr, length)
 		}
 	}
 
 	// Trace the page fault for address not found in any region
-	h.tracer.TracePageFault(faultPageAddr, faultPfn, "pagefault", false, false)
+	h.tracer.TracePageFault(faultPageAddr, (^uint64(0)), "pagefault", false, false)
 
 	log.Panicf("Could not find addr: %#x within guest region mappings", addr)
 	return false
