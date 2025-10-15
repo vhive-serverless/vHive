@@ -33,10 +33,11 @@ import (
 // that can be used to connect a function instance to the network.
 type NetworkManager struct {
 	sync.Mutex
-	nextID        int
-	hostIfaceName string
-	vethPrefix    string
-	clonePrefix   string
+	nextID              int
+	hostIfaceName       string
+	experimentIfaceName string
+	vethPrefix          string
+	clonePrefix         string
 
 	// Pool of free network configs
 	networkPool []*NetworkConfig
@@ -54,7 +55,7 @@ type NetworkManager struct {
 // using the supplied interface. If no interface is supplied, the default interface is used. To take the network
 // setup of the critical path of a function creation, the network manager tries to maintain a pool of ready to use
 // network configurations of size at least poolSize.
-func NewNetworkManager(hostIfaceName string, poolSize int, vethPrefix, clonePrefix string) (*NetworkManager, error) {
+func NewNetworkManager(hostIfaceName string, experimentIfaceName string, poolSize int, vethPrefix, clonePrefix string) (*NetworkManager, error) {
 	manager := new(NetworkManager)
 
 	manager.hostIfaceName = hostIfaceName
@@ -64,6 +65,16 @@ func NewNetworkManager(hostIfaceName string, poolSize int, vethPrefix, clonePref
 			return nil, err
 		} else {
 			manager.hostIfaceName = hostIface
+		}
+	}
+
+	manager.experimentIfaceName = experimentIfaceName
+	if manager.experimentIfaceName == "" {
+		experimentIface, err := getExperimentIfaceName()
+		if err != nil {
+			return nil, err
+		} else {
+			manager.experimentIfaceName = experimentIface
 		}
 	}
 
@@ -112,7 +123,7 @@ func (mgr *NetworkManager) addNetConfig() {
 	mgr.inCreation.Add(1)
 	mgr.Unlock()
 
-	netCfg := NewNetworkConfig(id, mgr.hostIfaceName, mgr.vethPrefix, mgr.clonePrefix)
+	netCfg := NewNetworkConfig(id, mgr.hostIfaceName, mgr.experimentIfaceName, mgr.vethPrefix, mgr.clonePrefix)
 	if err := netCfg.CreateNetwork(); err != nil {
 		log.Errorf("failed to create network %s:", err)
 	}
