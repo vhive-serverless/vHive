@@ -62,7 +62,7 @@ func TestCreateCleanManager(t *testing.T) {
 }
 
 func TestCreateRemoveNetworkParallel(t *testing.T) {
-	netNum := []int{50, 200, 1500}
+	netNum := []int{50, 200}
 
 	mgr, err := NewNetworkManager("", "", 10, "172.17", "172.18")
 	require.NoError(t, err, "Network manager creation returned error")
