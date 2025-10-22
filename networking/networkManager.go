@@ -170,12 +170,18 @@ func (mgr *NetworkManager) allocNetConfig(funcID string) *NetworkConfig {
 
 // releaseNetConfig releases the network config of a given function instance with id funcID back to the pool
 func (mgr *NetworkManager) releaseNetConfig(funcID string) {
+	logger := log.WithFields(log.Fields{"funcID": funcID})
+
 	mgr.Lock()
-	config := mgr.netConfigs[funcID]
+	config, ok := mgr.netConfigs[funcID]
+	if !ok {
+		mgr.Unlock()
+		logger.Warn("failed to find network config for function")
+		return
+	}
 	delete(mgr.netConfigs, funcID)
 	mgr.Unlock()
 
-	logger := log.WithFields(log.Fields{"funcID": funcID})
 	logger.Debug("Releasing network config from function instance and adding it to network pool")
 
 	// Add network config back to the pool. We allow the pool to grow over it's configured size here since the
