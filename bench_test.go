@@ -48,6 +48,11 @@ var (
 )
 
 func TestBenchParallelServe(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
@@ -124,6 +129,11 @@ func TestBenchParallelServe(t *testing.T) {
 }
 
 func TestBenchWarmServe(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	var (
 		servedTh          uint64
 		pinnedFuncNum     int
@@ -189,6 +199,11 @@ func TestBenchWarmServe(t *testing.T) {
 }
 
 func TestBenchServe(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	var (
 		servedTh          uint64
 		pinnedFuncNum     int
