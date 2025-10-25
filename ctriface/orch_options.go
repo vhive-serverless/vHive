@@ -68,6 +68,13 @@ func WithCacheSnaps(cacheSnaps bool) OrchestratorOption {
 	}
 }
 
+// WithBaseSnapshot Sets whether to use a base snapshot of booted VM
+func WithBaseSnapshot(isBaseSnapshotEnabled bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.baseSnap = isBaseSnapshotEnabled
+	}
+}
+
 // WithLazyMode Sets the lazy paging mode on (or off),
 // where all guest memory pages are brought on demand.
 // Only works if snapshots are enabled

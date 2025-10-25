@@ -38,8 +38,9 @@ var (
 )
 
 const (
-	homeDir  = "/users/lkondras"
-	snapDir  = homeDir + "/snapshots"
+	homeDir = "/users/lkondras"
+	// snapDir = "/tmp/snapshots"
+	snapDir  = homeDir + "/snapshots_after_image"
 	vhiveDir = homeDir + "/vhive"
 )
 
@@ -157,7 +158,7 @@ func main() {
 		"auth-go": "ghcr.io/leokondrashov/auth-go:esgz",
 		// "auth-python":  "ghcr.io/leokondrashov/auth-python:esgz",
 		// "auth-nodejs":  "ghcr.io/leokondrashov/auth-nodejs:esgz",
-		"fibonacci-go": "ghcr.io/leokondrashov/fibonacci-go:esgz",
+		// "fibonacci-go": "ghcr.io/leokondrashov/fibonacci-go:esgz",
 	}
 	for name, image := range images {
 		snap, err := prepareSnapshot(name, image, orch)
@@ -169,7 +170,7 @@ func main() {
 		tmpname := fmt.Sprintf("%s-%d", name, os.Getpid())
 		ctx := context.Background()
 
-		resp, _, err := orch.LoadSnapshot(ctx, tmpname, snap)
+		resp, _, err := orch.LoadSnapshot(ctx, tmpname, snap, false, false)
 		if err != nil {
 			log.Errorln("Failed to load snapshot:", err)
 			return
@@ -211,7 +212,9 @@ func prepareSnapshot(name, image string, orch *ctriface.Orchestrator) (*snapshot
 	tmpname := fmt.Sprintf("%s-%d", name, os.Getpid())
 	ctx := context.Background()
 	// ctx = namespaces.WithNamespace(ctx, tmpname)
-	resp, _, err := orch.StartVM(ctx, tmpname, image)
+	// resp, err := orch.StartWithBaseSnapshot(ctx, tmpname, image, []string{})
+	resp, err := orch.StartWithImageSnapshot(ctx, tmpname, image, []string{})
+	// resp, _, err := orch.StartVM(ctx, tmpname, image)
 	if err != nil {
 		log.Errorln("Failed to start VM:", err)
 		return nil, err
@@ -271,7 +274,7 @@ func prepareSnapshot(name, image string, orch *ctriface.Orchestrator) (*snapshot
 		return nil, err
 	}
 
-	fmt.Scanf("\n")
+	// fmt.Scanf("\n")
 
 	// memory page info retrieval
 	scpCommand := fmt.Sprintf("scp -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null %s/mem_parser/mem_parser root@%s:~",
@@ -284,7 +287,7 @@ func prepareSnapshot(name, image string, orch *ctriface.Orchestrator) (*snapshot
 
 	vmCommands := "pid=\\$(ps aux | grep server | head -n 1 | awk '{print \\$2}'); ./mem_parser \\$pid; mv pid_\\${pid}_pagemap.json server.json;" +
 		"pid=\\$(pgrep containerd); ./mem_parser \\$pid; mv pid_\\${pid}_pagemap.json stargz.json;" +
-		"journalctl > journal.log; free -h > free.log; df -h > df.log"
+		"journalctl > journal.log; free -h > free.log; df -h > df.log; cp /proc/kpageflags ."
 	sshCmd = fmt.Sprintf("ssh -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null root@%s \"%s\"", vhiveDir, resp.GuestIP, vmCommands)
 	out, err = exec.Command("bash", "-c", sshCmd).CombinedOutput()
 	if err != nil {
@@ -292,7 +295,7 @@ func prepareSnapshot(name, image string, orch *ctriface.Orchestrator) (*snapshot
 	}
 	log.Infof("mem_parser run on VM, output: %s", string(out))
 
-	scpCommand = fmt.Sprintf("scp -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null root@%s:~/{server.json,stargz.json,journal.log,free.log,df.log} %s",
+	scpCommand = fmt.Sprintf("scp -o StrictHostKeyChecking=no -i %s/bin/id_rsa -o UserKnownHostsFile=/dev/null root@%s:~/{server.json,stargz.json,journal.log,free.log,df.log,kpageflags} %s",
 		vhiveDir, resp.GuestIP, snapDir+"/"+name)
 	out, err = exec.Command("bash", "-c", scpCommand).CombinedOutput()
 	if err != nil {

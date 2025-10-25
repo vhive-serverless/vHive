@@ -63,8 +63,8 @@ github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o
 github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 h1:kdXcSzyDtseVEc4yCz2qF8ZrQvIDBJLl4S1c3GCXmoI=
 github.com/vhive-serverless/firecracker-containerd v0.0.0-20230912063208-ad6383f05e45 h1:B+2NmtrRoWgfYkaqqG9Dyqud5HRjfibFpB8wbqER/PQ=
 github.com/vhive-serverless/firecracker-containerd v0.0.0-20230912063208-ad6383f05e45/go.mod h1:XC5a/4PWbzipD5Ron745odZxoVy/J6d8xFldwTZJbSU=
-github.com/vhive-serverless/firecracker-containerd v0.0.0-20251013120535-12b9664dfc1c h1:JihKYRecQYB4PneHknbzuNAdjb5qm0Zy6LyJTJFyV2g=
-github.com/vhive-serverless/firecracker-containerd v0.0.0-20251013120535-12b9664dfc1c/go.mod h1:XC5a/4PWbzipD5Ron745odZxoVy/J6d8xFldwTZJbSU=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20251021121521-c88428712e75 h1:913Vab9QYSRZm2wDrZmKZqtfImHelx/UytPsqB4rAsU=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20251021121521-c88428712e75/go.mod h1:XC5a/4PWbzipD5Ron745odZxoVy/J6d8xFldwTZJbSU=
 github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=
 go.mongodb.org/mongo-driver v1.10.0/go.mod h1:wsihk0Kdgv8Kqu1Anit4sfK+22vSFbUrAVEYRhCXrA8=
 golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=

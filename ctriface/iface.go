@@ -65,6 +65,7 @@ type StartVMResponse struct {
 
 const (
 	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
+	baseSnapDir   = "/tmp/vhive_base_snaps"
 )
 
 func withNamespace(ctx context.Context, snapshotter, vmID string) context.Context {
@@ -143,7 +144,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		}
 
 		if vm.Image, err = o.getImage(ctx, imageName); err != nil {
-			fmt.Scanf("\n")
+			// fmt.Scanf("\n")
 			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
 		}
 		startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
@@ -250,6 +251,405 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 	logger.Debug("Successfully started a VM")
 
 	return &StartVMResponse{GuestIP: vm.GetIP()}, startVMMetric, nil
+}
+
+func (o *Orchestrator) prepareBaseSnapshot(ctx context.Context) (_ *snapshotting.Snapshot, retErr error) {
+	if o.snapshotter != "proxy" {
+		return nil, errors.New("base snapshot can be prepared only with proxy snapshotter")
+	}
+
+	if _, err := os.Stat(filepath.Join(baseSnapDir, "base", "info_file")); err == nil {
+		log.Infoln("Snapshot already exists:", filepath.Join(baseSnapDir, "base"))
+		snp := snapshotting.NewSnapshot("base", baseSnapDir, "")
+		err = snp.LoadSnapInfo(filepath.Join(baseSnapDir, "base", "info_file"))
+		return snp, err
+	}
+
+	log.Infoln("Creating base snapshot in:", filepath.Join(baseSnapDir, "base"))
+
+	vmID := "base"
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("starting VM for base snapshot")
+
+	vm, err := o.vmPool.Allocate(vmID)
+	if err != nil {
+		logger.Error("failed to allocate VM in VM pool")
+		return nil, err
+	}
+
+	defer func() {
+		// Free the VM from the pool if function returns error
+		if retErr != nil {
+			if err := o.vmPool.Free(vmID); err != nil {
+				logger.WithError(err).Errorf("failed to free VM from pool after failure")
+			}
+		}
+	}()
+
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
+	conf := o.getVMConfig(vm)
+	_, err = o.fcClient.CreateVM(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create the microVM in firecracker-containerd")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+				logger.WithError(err).Errorf("failed to stop firecracker-containerd VM after failure")
+			}
+		}
+	}()
+
+	o.PauseVM(ctx, vmID)
+	snp := snapshotting.NewSnapshot("base", baseSnapDir, "")
+	snp.CreateSnapDir()
+	o.CreateSnapshot(ctx, vmID, snp)
+
+	o.StopSingleVM(ctx, vmID)
+
+	return snp, nil
+}
+
+func (o *Orchestrator) StartWithBaseSnapshot(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, retErr error) {
+	if o.snapshotter != "proxy" {
+		return nil, errors.New("base snapshot can be prepared only with proxy snapshotter")
+	}
+
+	snap, err := o.prepareBaseSnapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
+	logger.Debug("StartVM: Received StartVM")
+
+	// Start the VM with the base snapshot
+	_, _, err = o.LoadSnapshot(ctx, vmID, snap, false, true)
+	if err != nil {
+		return nil, err
+	}
+	_, err = o.ResumeVM(ctx, vmID)
+	if err != nil {
+		return nil, err
+	}
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
+
+	if _, err = o.fcClient.SetVMMetadata(ctx, &proto.SetVMMetadataRequest{
+		VMID:     vmID,
+		Metadata: o.GetDockerCredentials(),
+	}); err != nil {
+		logger.WithError(err).Error("failed to set VM metadata")
+		fmt.Scanf("\n")
+		return nil, errors.Wrap(err, "failed to set VM metadata")
+	}
+
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		return nil, err
+	}
+
+	if vm.Image, err = o.getImage(ctx, imageName); err != nil {
+		fmt.Scanf("\n")
+		return nil, errors.Wrapf(err, "Failed to get/pull image")
+	}
+
+	// fmt.Scanf("\n")
+
+	logger.Debug("StartVM: Creating a new container")
+
+	specOpts := []oci.SpecOpts{
+		oci.WithEnv(environmentVariables),
+		firecrackeroci.WithVMID(vmID),
+		firecrackeroci.WithVMNetwork,
+	}
+	// We can't use the regular oci.WithImageConfig from containerd because it will attempt to get UIDs and GIDs from inside the
+	// container by mounting the container's filesystem. With remote snapshotters, that filesystem is inside a VM and inaccessible to the host.
+	// The firecrackeroci variation instructs the firecracker-containerd agent that runs inside the VM to perform those UID/GID lookups because
+	// it has access to the container's filesystem
+	specOpts = append(specOpts, firecrackeroci.WithVMLocalImageConfig(*vm.Image))
+
+	container, err := o.client.NewContainer(
+		ctx,
+		vm.ContainerSnapKey,
+		containerd.WithSnapshotter(o.snapshotter),
+		containerd.WithNewSnapshot(vm.ContainerSnapKey, *vm.Image),
+		containerd.WithNewSpec(specOpts...),
+		containerd.WithRuntime("aws.firecracker", nil),
+	)
+	vm.Container = &container
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create a container")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+				logger.WithError(err).Errorf("failed to delete container after failure")
+			}
+		}
+	}()
+
+	iologger := NewWorkloadIoWriter(vmID)
+	o.workloadIo.Store(vmID, &iologger)
+	logger.Debug("StartVM: Creating a new task")
+	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, iologger, iologger)))
+	vm.Task = &task
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create a task")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if _, err := task.Delete(ctx); err != nil {
+				logger.WithError(err).Errorf("failed to delete task after failure")
+			}
+		}
+	}()
+
+	logger.Debug("StartVM: Waiting for the task to get ready")
+	ch, err := task.Wait(ctx)
+	vm.TaskCh = ch
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to wait for a task")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
+				logger.WithError(err).Errorf("failed to kill task after failure")
+			}
+		}
+	}()
+
+	logger.Debug("StartVM: Starting the task")
+	if err := task.Start(ctx); err != nil {
+		return nil, errors.Wrap(err, "failed to start a task")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
+				logger.WithError(err).Errorf("failed to kill task after failure")
+			}
+		}
+	}()
+
+	if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
+		logger.Error("Failed to create VM base dir")
+		return nil, err
+	}
+
+	logger.Debug("Successfully started a VM")
+
+	return &StartVMResponse{GuestIP: vm.GetIP()}, nil
+}
+
+func stripImageName(imageName string) string {
+	imageName = strings.TrimSpace(imageName)
+	if imageName == "" {
+		return ""
+	}
+
+	// drop digest if present
+	if at := strings.Index(imageName, "@"); at != -1 {
+		imageName = imageName[:at]
+	}
+
+	// remove tag: only treat trailing ":" as tag if it's after the last "/"
+	lastSlash := strings.LastIndex(imageName, "/")
+	lastColon := strings.LastIndex(imageName, ":")
+	if lastColon > lastSlash {
+		imageName = imageName[:lastColon]
+	}
+
+	// return the last path component (drop registry and owner)
+	if idx := strings.LastIndex(imageName, "/"); idx != -1 {
+		return imageName[idx+1:]
+	}
+	return imageName
+}
+
+func (o *Orchestrator) prepareImageSnapshot(ctx context.Context, vmID, imageName string) (_ *snapshotting.Snapshot, retErr error) {
+	if o.snapshotter != "proxy" {
+		return nil, errors.New("base snapshot can be prepared only with proxy snapshotter")
+	}
+
+	snapName := "image-snap-prep-" + stripImageName(imageName)
+	vmID = "tmp-" + vmID
+
+	if _, err := os.Stat(filepath.Join(baseSnapDir, snapName, "info_file")); err == nil {
+		log.Infoln("Snapshot already exists:", filepath.Join(baseSnapDir, snapName))
+		snp := snapshotting.NewSnapshot(snapName, baseSnapDir, "")
+		err = snp.LoadSnapInfo(filepath.Join(baseSnapDir, snapName, "info_file"))
+		return snp, err
+	}
+
+	snap, err := o.prepareBaseSnapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
+	logger.Debug("StartVM: Received StartVM")
+
+	// Start the VM with the base snapshot
+	_, _, err = o.LoadSnapshot(ctx, vmID, snap, false, true)
+	if err != nil {
+		return nil, err
+	}
+	_, err = o.ResumeVM(ctx, vmID)
+	if err != nil {
+		return nil, err
+	}
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
+
+	if _, err = o.fcClient.SetVMMetadata(ctx, &proto.SetVMMetadataRequest{
+		VMID:     vmID,
+		Metadata: o.GetDockerCredentials(),
+	}); err != nil {
+		logger.WithError(err).Error("failed to set VM metadata")
+		fmt.Scanf("\n")
+		return nil, errors.Wrap(err, "failed to set VM metadata")
+	}
+
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		return nil, err
+	}
+
+	if vm.Image, err = o.getImage(ctx, imageName); err != nil {
+		fmt.Scanf("\n")
+		return nil, errors.Wrapf(err, "Failed to get/pull image")
+	}
+
+	o.PauseVM(ctx, vmID)
+	snp := snapshotting.NewSnapshot(snapName, baseSnapDir, "")
+	snp.CreateSnapDir()
+	o.CreateSnapshot(ctx, vmID, snp)
+
+	o.StopSingleVM(ctx, vmID)
+
+	return snp, nil
+}
+
+func (o *Orchestrator) StartWithImageSnapshot(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, retErr error) {
+	snap, err := o.prepareImageSnapshot(ctx, vmID, imageName)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
+
+	// Start the VM with the base snapshot
+	_, _, err = o.LoadSnapshot(ctx, vmID, snap, false, true)
+	if err != nil {
+		return nil, err
+	}
+	_, err = o.ResumeVM(ctx, vmID)
+	if err != nil {
+		return nil, err
+	}
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
+
+	logger.Debug("StartVM: Creating a new container")
+
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calls pull for the second time to get a proper reference to the image to start container from
+	if vm.Image, err = o.getImage(ctx, imageName); err != nil {
+		fmt.Scanf("\n")
+		return nil, errors.Wrapf(err, "Failed to get/pull image")
+	}
+	specOpts := []oci.SpecOpts{
+		oci.WithEnv(environmentVariables),
+		firecrackeroci.WithVMID(vmID),
+		firecrackeroci.WithVMNetwork,
+	}
+	// We can't use the regular oci.WithImageConfig from containerd because it will attempt to get UIDs and GIDs from inside the
+	// container by mounting the container's filesystem. With remote snapshotters, that filesystem is inside a VM and inaccessible to the host.
+	// The firecrackeroci variation instructs the firecracker-containerd agent that runs inside the VM to perform those UID/GID lookups because
+	// it has access to the container's filesystem
+	specOpts = append(specOpts, firecrackeroci.WithVMLocalImageConfig(*vm.Image))
+
+	container, err := o.client.NewContainer(
+		ctx,
+		vm.ContainerSnapKey,
+		containerd.WithSnapshotter(o.snapshotter),
+		containerd.WithNewSnapshot(vm.ContainerSnapKey, *vm.Image),
+		containerd.WithNewSpec(specOpts...),
+		containerd.WithRuntime("aws.firecracker", nil),
+	)
+	vm.Container = &container
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create a container")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+				logger.WithError(err).Errorf("failed to delete container after failure")
+			}
+		}
+	}()
+
+	iologger := NewWorkloadIoWriter(vmID)
+	o.workloadIo.Store(vmID, &iologger)
+	logger.Debug("StartVM: Creating a new task")
+	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, iologger, iologger)))
+	vm.Task = &task
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create a task")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if _, err := task.Delete(ctx); err != nil {
+				logger.WithError(err).Errorf("failed to delete task after failure")
+			}
+		}
+	}()
+
+	logger.Debug("StartVM: Waiting for the task to get ready")
+	ch, err := task.Wait(ctx)
+	vm.TaskCh = ch
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to wait for a task")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
+				logger.WithError(err).Errorf("failed to kill task after failure")
+			}
+		}
+	}()
+
+	logger.Debug("StartVM: Starting the task")
+	if err := task.Start(ctx); err != nil {
+		return nil, errors.Wrap(err, "failed to start a task")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
+				logger.WithError(err).Errorf("failed to kill task after failure")
+			}
+		}
+	}()
+
+	if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
+		logger.Error("Failed to create VM base dir")
+		return nil, err
+	}
+
+	logger.Debug("Successfully started a VM")
+
+	return &StartVMResponse{GuestIP: vm.GetIP()}, nil
 }
 
 // StopSingleVM Shuts down a VM
@@ -476,7 +876,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot, enableDiffSnapshots, skipUPF bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
@@ -507,6 +907,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
 	conf.MemFilePath = snap.GetMemFilePath()
+	conf.EnableDiffSnapshots = enableDiffSnapshots
 
 	if o.snapshotter == "devmapper" {
 		if vm.Image, err = o.getImage(ctx, snap.GetImage()); err != nil {
@@ -564,7 +965,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		conf.ContainerSnapshotPath = stubPath
 	}
 
-	if o.GetUPFEnabled() {
+	if o.GetUPFEnabled() && !skipUPF {
 		// stateCfg := manager.SnapshotStateCfg{
 		// 	VMID:           vmID,
 		// 	GuestMemPath:   snap.GetMemFilePath(),

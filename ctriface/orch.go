@@ -104,6 +104,7 @@ type Orchestrator struct {
 	isLazyMode      bool
 	snapshotsDir    string
 	snapshotsBucket string
+	baseSnap        bool
 	isMetricsMode   bool
 	netPoolSize     int
 
