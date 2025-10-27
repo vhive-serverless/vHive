@@ -8,6 +8,21 @@
 
 ### Fixed
 
+## Release v1.8.1
+
+### Added
+
+- Support for Stargz container snapshotter inside Firecracker VMs.
+
+### Changed
+
+- The Network Manager now utilizes a shared network chain for all created network namespaces, rather than creating a separate chain for each one.
+
+### Fixed
+
+- The Network Manager now verifies that a network configuration exists before deletion and prevents nil configurations from being appended to the resource pool, which avoids a potential use-after-free violation.
+- Fix reaction to repeated allocation of network namespaces with the same name in Network Manager.
+
 ## Release v1.8
 
 ### Added
