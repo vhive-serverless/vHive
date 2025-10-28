@@ -1,5 +1,5 @@
 {
-	"KnativeVersion": "1.19.7",
+	"KnativeVersion": "1.19.6",
 	"KnativeCLIBranch": "release-1.19",
 	"KnativeCLIRepoUrl": "https://github.com/knative/client.git",
 	"IstioVersion": "1.26.6",
