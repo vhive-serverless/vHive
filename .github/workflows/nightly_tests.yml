@@ -102,7 +102,7 @@ jobs:
 
     - name: Archive log artifacts
       if: ${{ always() }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ github.job }}-${{ matrix.vhive_args }}-ctrd-logs
         path: |
