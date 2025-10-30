@@ -40,7 +40,7 @@ var (
 const (
 	homeDir = "/users/lkondras"
 	// snapDir = "/tmp/snapshots"
-	snapDir  = homeDir + "/snapshots_after_image"
+	snapDir  = homeDir + "/snapshots"
 	vhiveDir = homeDir + "/vhive"
 )
 
@@ -212,8 +212,8 @@ func prepareSnapshot(name, image string, orch *ctriface.Orchestrator) (*snapshot
 	tmpname := fmt.Sprintf("%s-%d", name, os.Getpid())
 	ctx := context.Background()
 	// ctx = namespaces.WithNamespace(ctx, tmpname)
-	// resp, err := orch.StartWithBaseSnapshot(ctx, tmpname, image, []string{})
-	resp, err := orch.StartWithImageSnapshot(ctx, tmpname, image, []string{})
+	resp, err := orch.StartWithBaseSnapshot(ctx, tmpname, image, []string{})
+	// resp, err := orch.StartWithImageSnapshot(ctx, tmpname, image, []string{})
 	// resp, _, err := orch.StartVM(ctx, tmpname, image)
 	if err != nil {
 		log.Errorln("Failed to start VM:", err)
