@@ -12,9 +12,13 @@ import (
 	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/ctriface"
+	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/snapshotting"
+	"github.com/vhive-serverless/vhive/storage"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -31,27 +35,29 @@ const (
 var (
 	flog *os.File
 
-	isSaveMemory  *bool
-	snapshotMode  *string
-	cacheSnaps    *bool
-	isUPFEnabled  *bool
-	isLazyMode    *bool
-	isMetricsMode *bool
-	pinnedFuncNum *int
-	hostIface     *string
-	netPoolSize   *int
+	isSaveMemory      *bool
+	snapshotMode      *string
+	cacheSnaps        *bool
+	isUPFEnabled      *bool
+	isChunkingEnabled *bool
+	isLazyMode        *bool
+	isMetricsMode     *bool
+	pinnedFuncNum     *int
+	hostIface         *string
+	netPoolSize       *int
 )
 
 var (
 	orch    *ctriface.Orchestrator
-	snapMng *snapshotting.SnapshotManager
+	snapMgr *snapshotting.SnapshotManager
 	nextID  = 0 // TODO: protect with mutex
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	log.Debug("request received")
 
-	ctx := context.Background()
+	// ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.TODO()
 	id := fmt.Sprintf("%d-%d", os.Getpid(), nextID)
 	nextID++
 	vmId := "vm-" + id
@@ -61,16 +67,65 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	var resp *ctriface.StartVMResponse
 	var err error
 	var snap *snapshotting.Snapshot
-	if snap, err = snapMng.AcquireSnapshot(rev); err == nil {
+	var metric *metrics.Metric
+	// go func() {
+	// 	logPath := fmt.Sprintf("/var/lib/firecracker-containerd/shim-base/%s#%s/fc-logs.fifo", vmId, vmId)
+	// 	// The FIFO file might not be created immediately. Retry opening it.
+	// 	var f *os.File
+	// 	var err error
+	// 	for i := 0; i < 10; i++ {
+	// 		f, err = os.OpenFile(logPath, os.O_RDONLY, 0)
+	// 		if err == nil {
+	// 			break
+	// 		}
+	// 		time.Sleep(100 * time.Millisecond)
+	// 	}
+	// 	if err != nil {
+	// 		log.Debugf("could not open fifo %s: %v", logPath, err)
+	// 		return
+	// 	}
+	// 	defer f.Close()
+
+	// 	scanner := bufio.NewScanner(f)
+	// 	for {
+	// 		select {
+	// 		case <-ctx.Done():
+	// 			log.Debugf("context cancelled, stopping log reader for %s", vmId)
+	// 			return
+	// 		default:
+	// 			if scanner.Scan() {
+	// 				log.Debugf("[vm-%s] %s", id, scanner.Text())
+	// 			} else {
+	// 				if err := scanner.Err(); err != nil {
+	// 					log.Debugf("error reading from fifo for %s: %v", vmId, err)
+	// 				}
+	// 				// If Scan returns false and no error, it's EOF.
+	// 				// For a FIFO, this might mean the writer closed it.
+	// 				// We can exit or wait for more data. Exiting seems reasonable.
+	// 				return
+	// 			}
+	// 		}
+	// 	}
+	// }()
+
+	var ok bool
+	if snap, err = snapMgr.AcquireSnapshot(rev); err == nil { // local case
 		log.Debugf("Using snapshot for rev %s", rev)
-		resp, _, err = orch.LoadSnapshot(ctx, vmId, snap, false, false)
-	} else {
+		resp, metric, err = orch.LoadSnapshot(ctx, vmId, snap, false, false)
+		log.Debugf("Loaded snapshot for rev %s: %v", rev, metric)
+	} else if ok, err = snapMgr.SnapshotExists(rev); err == nil && ok { // remote case
+		log.Debugf("Using remote snapshot for rev %s", rev)
+		snap, err = snapMgr.DownloadSnapshot(rev)
+		resp, metric, err = orch.LoadSnapshot(ctx, vmId, snap, false, false)
+		log.Debugf("Loaded snapshot for rev %s: %v", rev, metric)
+	} else { // boot case
 		log.Debugf("No snapshot for rev %s, starting from image", rev)
 		resp, _, err = orch.StartVM(ctx, vmId, image)
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
 		http.Error(w, "Server Error", http.StatusInternalServerError)
+		// cancel()
 		return
 	}
 
@@ -88,13 +143,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		log.Debugf("removing VM-%s", id)
 		if snap == nil {
-			snap, err = snapMng.InitSnapshot(rev, image)
+			snap, err = snapMgr.InitSnapshot(rev, image)
 			orch.PauseVM(ctx, vmId)
 			orch.CreateSnapshot(ctx, vmId, snap)
-			snapMng.CommitSnapshot(rev)
+			snapMgr.CommitSnapshot(rev)
+			snapMgr.UploadSnapshot(rev)
+			snapMgr.DeleteSnapshot(rev)
 			log.Debugf("finished snapshotting VM-%s", id)
 		}
 		orch.StopSingleVM(ctx, vmId)
+		// cancel()
 	}()
 }
 
@@ -109,6 +167,7 @@ func main() {
 	snapshotMode = flag.String("snapshots", "disabled", "Use VM snapshots when adding function instances, valid options: disabled, local, remote")
 	cacheSnaps = flag.Bool("cacheSnaps", true, "Keep remote snapshots cached localy for future use")
 	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
+	isChunkingEnabled = flag.Bool("chunking", false, "Enable chunking for memory file uploads and downloads")
 	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
@@ -171,7 +230,23 @@ func main() {
 		ctriface.WithMinioSecretKey(minioSecretKey),
 	)
 
-	snapMng = snapshotting.NewSnapshotManager(snapDir, nil, false)
+	var objectStore storage.ObjectStorage
+	snapshotsBucket := orch.GetSnapshotsBucket()
+
+	if orch.GetSnapshotMode() == "remote" {
+		minioClient, _ := minio.New(orch.GetMinioAddr(), &minio.Options{
+			Creds:  credentials.NewStaticV4(orch.GetMinioAccessKey(), orch.GetMinioSecretKey(), ""),
+			Secure: false,
+		})
+
+		var err error
+		objectStore, err = storage.NewMinioStorage(minioClient, snapshotsBucket)
+		if err != nil {
+			log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", snapshotsBucket)
+		}
+	}
+
+	snapMgr = snapshotting.NewSnapshotManager(snapDir, objectStore, *isChunkingEnabled, false)
 
 	s := &http.Server{Addr: ":8080", Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{})}
 	s.ListenAndServe()
