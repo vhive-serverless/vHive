@@ -84,6 +84,12 @@ func WithLazyMode(isLazyMode bool) OrchestratorOption {
 	}
 }
 
+func WithChunkingEnabled(isChunkingEnabled bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.isChunkingEnabled = isChunkingEnabled
+	}
+}
+
 // WithMetricsMode Sets the metrics mode
 func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
 	return func(o *Orchestrator) {

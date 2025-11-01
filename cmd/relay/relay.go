@@ -12,13 +12,10 @@ import (
 	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/ctriface"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/snapshotting"
-	"github.com/vhive-serverless/vhive/storage"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -221,6 +218,7 @@ func main() {
 		ctriface.WithUPF(*isUPFEnabled),
 		ctriface.WithMetricsMode(*isMetricsMode),
 		ctriface.WithLazyMode(*isLazyMode),
+		ctriface.WithChunkingEnabled(*isChunkingEnabled),
 		ctriface.WithNetPoolSize(*netPoolSize),
 		ctriface.WithVethPrefix(*vethPrefix),
 		ctriface.WithClonePrefix(*clonePrefix),
@@ -228,25 +226,9 @@ func main() {
 		ctriface.WithMinioAddr(minioAddr),
 		ctriface.WithMinioAccessKey(minioAccessKey),
 		ctriface.WithMinioSecretKey(minioSecretKey),
+		ctriface.WithSnapshotsDir(snapDir),
 	)
-
-	var objectStore storage.ObjectStorage
-	snapshotsBucket := orch.GetSnapshotsBucket()
-
-	if orch.GetSnapshotMode() == "remote" {
-		minioClient, _ := minio.New(orch.GetMinioAddr(), &minio.Options{
-			Creds:  credentials.NewStaticV4(orch.GetMinioAccessKey(), orch.GetMinioSecretKey(), ""),
-			Secure: false,
-		})
-
-		var err error
-		objectStore, err = storage.NewMinioStorage(minioClient, snapshotsBucket)
-		if err != nil {
-			log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", snapshotsBucket)
-		}
-	}
-
-	snapMgr = snapshotting.NewSnapshotManager(snapDir, objectStore, *isChunkingEnabled, false)
+	snapMgr = orch.GetSnapshotManager()
 
 	s := &http.Server{Addr: ":8080", Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{})}
 	s.ListenAndServe()

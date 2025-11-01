@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/vhive-serverless/vhive/snapshotting"
+	"github.com/vhive-serverless/vhive/uffd_handler"
 
 	log "github.com/sirupsen/logrus"
 
@@ -992,18 +993,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		// if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
 		// 	logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		// }
-		go func() {
-			cmd := exec.Command("../../uffd_handler/handler", fmt.Sprintf("/tmp/%s.uffd.sock", vmID), snap.GetMemFilePath(), snap.GetMemFilePath()+".touched")
-			// cmd := exec.Command("/users/lkondras/firecracker/build/cargo_target/debug/examples/uffd_on_demand_handler", fmt.Sprintf("/tmp/%s.uffd.sock", vmID), snap.GetMemFilePath())
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Start(); err != nil {
-				logger.Warnf("Failed to launch handler process for VM %s: %v", vmID, err)
-			}
-			if err := cmd.Wait(); err != nil {
-				logger.Warnf("Handler process for VM %s exited with error: %v", vmID, err)
-			}
-		}()
+		memPath := snap.GetMemFilePath()
+		if o.isLazyMode {
+			memPath = snap.GetRecipeFilePath()
+		}
+		go uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", o.isLazyMode, o.snapshotManager)
 	} else {
 		conf.MemBackend = &proto.MemoryBackend{
 			BackendType: "File",

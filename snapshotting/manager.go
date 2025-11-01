@@ -43,6 +43,10 @@ const (
 	chunkSize   = 4 * 1024 // 4 KB
 )
 
+func GetChunkSize() uint64 {
+	return chunkSize
+}
+
 // SnapshotManager manages snapshots stored on the node.
 type SnapshotManager struct {
 	sync.Mutex
@@ -51,17 +55,19 @@ type SnapshotManager struct {
 	snapshots  map[string]*Snapshot
 	baseFolder string
 	chunking   bool
+	lazy       bool
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup bool) *SnapshotManager {
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy bool) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:  make(map[string]*Snapshot),
 		baseFolder: baseFolder,
 		chunking:   chunking,
 		storage:    store,
+		lazy:       lazy,
 	}
 
 	// Clean & init basefolder unless skipping is requested
@@ -309,17 +315,20 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 		return mgr.downloadFile(snap.GetId(), snap.GetMemFilePath(), filepath.Base(snap.GetMemFilePath()))
 	}
 
-	outFile, err := os.Create(snap.GetMemFilePath())
-	if err != nil {
-		return errors.Wrapf(err, "creating memory file for chunked download")
-	}
-	defer outFile.Close()
-
 	recipeFilePath := snap.GetRecipeFilePath()
 	recipeFileName := filepath.Base(recipeFilePath)
 	if err := mgr.downloadFile(snap.GetId(), recipeFilePath, recipeFileName); err != nil {
 		return errors.Wrapf(err, "downloading recipe file for chunked download")
 	}
+	if mgr.lazy {
+		return nil // that is all we need in lazy mode
+	}
+
+	outFile, err := os.Create(snap.GetMemFilePath())
+	if err != nil {
+		return errors.Wrapf(err, "creating memory file for chunked download")
+	}
+	defer outFile.Close()
 
 	recipeFile, err := os.Open(recipeFilePath)
 	if err != nil {
@@ -333,31 +342,16 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 	}
 
 	chunkIndex := 0
-	for {
-		hashStart := chunkIndex * md5.Size
-		if hashStart >= len(recipe) {
-			break
-		}
+	for hashStart := 0; hashStart < len(recipe); hashStart += md5.Size {
 		hashEnd := hashStart + md5.Size
-		if hashEnd > len(recipe) {
-			hashEnd = len(recipe)
+		if hashEnd >= len(recipe) {
+			break
 		}
 		hash := hex.EncodeToString(recipe[hashStart:hashEnd])
 
 		chunkFilePath := filepath.Join(mgr.baseFolder, chunkPrefix, hash)
-
-		if _, err := os.Stat(chunkFilePath); err != nil { // Chunk file does not exist locally, download it
-			err := mgr.downloadFile(chunkPrefix, chunkFilePath, hash)
-			if err != nil {
-				// If the error indicates the object does not exist, we assume we've reached the end of chunks
-				if found, e := mgr.storage.Exists(chunkFilePath); e == nil && !found {
-					break
-				} else if found {
-					return errors.Wrapf(err, "downloading chunk %d of memory file", chunkIndex)
-				} else {
-					return errors.Wrapf(e, "downloading chunk %d of memory file", chunkIndex)
-				}
-			}
+		if err := mgr.DownloadChunk(hash); err != nil {
+			return errors.Wrapf(err, "downloading chunk %d of memory file", chunkIndex)
 		}
 
 		chunkFile, err := os.Open(chunkFilePath)
@@ -375,6 +369,21 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 	}
 
 	return nil
+}
+
+func (mgr *SnapshotManager) DownloadChunk(hash string) error {
+	chunkFilePath := filepath.Join(mgr.baseFolder, chunkPrefix, hash)
+
+	if _, err := os.Stat(chunkFilePath); err == nil { // Chunk file exists locally, use it
+		return nil
+	}
+
+	// Chunk file does not exist locally, download it
+	return mgr.downloadFile(chunkPrefix, chunkFilePath, hash)
+}
+
+func (mgr *SnapshotManager) GetChunkFilePath(hash string) string {
+	return filepath.Join(mgr.baseFolder, chunkPrefix, hash)
 }
 
 // uploadFile uploads a single file to MinIO under the specified revision and file name.

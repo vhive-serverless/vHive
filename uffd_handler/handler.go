@@ -1,17 +1,19 @@
-package main
+package uffd_handler
 
 import (
+	"crypto/md5"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
+	"strings"
 	"unsafe"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	"golang.org/x/sys/unix"
 )
@@ -96,6 +98,120 @@ type UffdIoRange struct {
 	Len   uint64
 }
 
+// PageOperations encapsulates the page-level operations for UFFD handling.
+// This structure is shared across multiple UFFD handlers to provide consistent
+// behavior without duplicating configuration.
+type PageOperations struct {
+	backingBuffer uintptr
+	pageSize      uint64
+	lazy          bool
+	mappedChunks  map[[md5.Size]byte]uintptr
+	snapMgr       *snapshotting.SnapshotManager
+}
+
+// NewPageOperations creates a new PageOperations instance
+func NewPageOperations(backingBuffer uintptr, pageSize uint64, lazy bool, mappedChunks map[[md5.Size]byte]uintptr, snapMgr *snapshotting.SnapshotManager) *PageOperations {
+	return &PageOperations{
+		backingBuffer: backingBuffer,
+		pageSize:      pageSize,
+		lazy:          lazy,
+		mappedChunks:  mappedChunks,
+		snapMgr:       snapMgr,
+	}
+}
+
+// PopulateFromFile populates a page from the backing file
+func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapping, dst uint64, length uint64) bool {
+	offset := dst - region.BaseHostVirtAddr
+
+	src := uintptr(0)
+	if !po.lazy {
+		src = po.backingBuffer + uintptr(region.Offset+offset)
+	} else {
+		// In lazy mode, read the MD5 hash from the recipe file
+		recipeOffset := (region.Offset + offset) / snapshotting.GetChunkSize() * md5.Size
+		hashBytes := (*[md5.Size]byte)(unsafe.Pointer(uintptr(unsafe.Pointer(po.backingBuffer)) + uintptr(recipeOffset)))
+		var hashKey [md5.Size]byte
+		copy(hashKey[:], hashBytes[:])
+		mappedAddr, found := po.mappedChunks[hashKey]
+		if !found {
+			// Chunk not found, need to mmap it
+			hash := hex.EncodeToString(hashKey[:])
+			po.snapMgr.DownloadChunk(hash)
+			chunkFileName := po.snapMgr.GetChunkFilePath(hash)
+			chunkFile, err := os.Open(chunkFileName)
+			if err != nil {
+				log.Fatalf("Failed to open chunk file %s: %v", chunkFileName, err)
+			}
+
+			chunkMem, err := unix.Mmap(
+				int(chunkFile.Fd()),
+				0,
+				int(snapshotting.GetChunkSize()),
+				unix.PROT_READ,
+				unix.MAP_PRIVATE,
+			)
+			if err != nil {
+				chunkFile.Close()
+				log.Fatalf("Failed to mmap chunk file %s: %v", chunkFileName, err)
+			}
+
+			chunkFile.Close()
+			mappedAddr = uintptr(unsafe.Pointer(&chunkMem[0]))
+			po.mappedChunks[hashKey] = mappedAddr
+		}
+
+		src = mappedAddr + (uintptr(region.Offset+offset) % uintptr(snapshotting.GetChunkSize()))
+	}
+
+	copy := UffdIoCopy{
+		Dst:  dst,
+		Src:  uint64(src),
+		Len:  length,
+		Mode: 0,
+	}
+
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(uffd), UFFDIO_COPY, uintptr(unsafe.Pointer(&copy)))
+	if errno != 0 {
+		if errno == unix.EAGAIN {
+			// A 'remove' event is blocking us
+			return false
+		}
+		if errno == unix.EEXIST {
+			// Page already exists, this is ok
+			return true
+		}
+		log.Errorf("UFFD copy failed: %v", errno)
+	}
+
+	if copy.Copy <= 0 {
+		log.Errorf("UFFD copy returned non-positive value: %d", copy.Copy)
+	}
+
+	return true
+}
+
+// ZeroOut zeros out a page
+func (po *PageOperations) ZeroOut(uffd int, addr uint64) bool {
+	zero := UffdIoZeropage{
+		Range: UffdIoRange{
+			Start: addr,
+			Len:   po.pageSize,
+		},
+		Mode: 0,
+	}
+
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(uffd), UFFDIO_ZEROPAGE, uintptr(unsafe.Pointer(&zero)))
+	if errno != 0 {
+		if errno == unix.EAGAIN {
+			return false
+		}
+		log.Errorf("Unexpected zeropage result: %v", errno)
+	}
+
+	return true
+}
+
 // PageFaultTracer handles tracing page fault events to a file
 type PageFaultTracer struct {
 	file   *os.File
@@ -173,16 +289,16 @@ func (r *GuestRegionUffdMapping) Contains(faultPageAddr uint64) bool {
 
 // UffdHandler handles userfaultfd events
 type UffdHandler struct {
-	memRegions    []GuestRegionUffdMapping
-	pageSize      uint64
-	backingBuffer uintptr
-	uffd          int
-	removedPages  map[uint64]bool
-	tracer        *PageFaultTracer
+	memRegions   []GuestRegionUffdMapping
+	pageSize     uint64
+	uffd         int
+	removedPages map[uint64]bool
+	tracer       *PageFaultTracer
+	pageOps      *PageOperations
 }
 
 // NewUffdHandler creates a new UFFD handler from a Unix socket stream
-func NewUffdHandler(conn *net.UnixConn, backingBuffer uintptr, size uint64, tracer *PageFaultTracer) (*UffdHandler, error) {
+func NewUffdHandler(conn *net.UnixConn, pageOps *PageOperations, size uint64, tracer *PageFaultTracer) (*UffdHandler, error) {
 	body, uffdFd, err := getMappingsAndFile(conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mappings and file: %w", err)
@@ -213,12 +329,12 @@ func NewUffdHandler(conn *net.UnixConn, backingBuffer uintptr, size uint64, trac
 	}
 
 	return &UffdHandler{
-		memRegions:    mappings,
-		pageSize:      pageSize,
-		backingBuffer: backingBuffer,
-		uffd:          uffdFd,
-		removedPages:  make(map[uint64]bool),
-		tracer:        tracer,
+		memRegions:   mappings,
+		pageSize:     pageSize,
+		uffd:         uffdFd,
+		removedPages: make(map[uint64]bool),
+		tracer:       tracer,
+		pageOps:      pageOps,
 	}, nil
 }
 
@@ -282,7 +398,7 @@ func (h *UffdHandler) ServePF(addr uintptr, length uint64) bool {
 	if h.removedPages[faultPfn] {
 		// Trace the page fault for removed page (no backing file offset for zeroed pages)
 		h.tracer.TracePageFault(faultPageAddr, (^uint64(0)), "pagefault", true, false)
-		return h.zeroOut(faultPageAddr)
+		return h.pageOps.ZeroOut(h.uffd, faultPageAddr)
 	}
 
 	// Find the region containing this fault address
@@ -295,68 +411,15 @@ func (h *UffdHandler) ServePF(addr uintptr, length uint64) bool {
 
 			// Trace the page fault with the actual PFN from backing file
 			h.tracer.TracePageFault(faultPageAddr, backingFilePfn, "pagefault", false, true)
-			return h.populateFromFile(region, faultPageAddr, length)
+			return h.pageOps.PopulateFromFile(h.uffd, region, faultPageAddr, length)
 		}
 	}
 
 	// Trace the page fault for address not found in any region
 	h.tracer.TracePageFault(faultPageAddr, (^uint64(0)), "pagefault", false, false)
 
-	log.Panicf("Could not find addr: %#x within guest region mappings", addr)
+	log.Errorf("Could not find addr: %#x within guest region mappings", addr)
 	return false
-}
-
-// populateFromFile populates a page from the backing file
-func (h *UffdHandler) populateFromFile(region *GuestRegionUffdMapping, dst uint64, length uint64) bool {
-	offset := dst - region.BaseHostVirtAddr
-	src := h.backingBuffer + uintptr(region.Offset+offset)
-
-	copy := UffdIoCopy{
-		Dst:  dst,
-		Src:  uint64(src),
-		Len:  length,
-		Mode: 0,
-	}
-
-	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(h.uffd), UFFDIO_COPY, uintptr(unsafe.Pointer(&copy)))
-	if errno != 0 {
-		if errno == unix.EAGAIN {
-			// A 'remove' event is blocking us
-			return false
-		}
-		if errno == unix.EEXIST {
-			// Page already exists, this is ok
-			return true
-		}
-		log.Panicf("UFFD copy failed: %v", errno)
-	}
-
-	if copy.Copy <= 0 {
-		log.Panicf("UFFD copy returned non-positive value: %d", copy.Copy)
-	}
-
-	return true
-}
-
-// zeroOut zeros out a page
-func (h *UffdHandler) zeroOut(addr uint64) bool {
-	zero := UffdIoZeropage{
-		Range: UffdIoRange{
-			Start: addr,
-			Len:   h.pageSize,
-		},
-		Mode: 0,
-	}
-
-	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(h.uffd), UFFDIO_ZEROPAGE, uintptr(unsafe.Pointer(&zero)))
-	if errno != 0 {
-		if errno == unix.EAGAIN {
-			return false
-		}
-		log.Panicf("Unexpected zeropage result: %v", errno)
-	}
-
-	return true
 }
 
 // Runtime manages the UFFD handler runtime
@@ -368,10 +431,14 @@ type Runtime struct {
 	uffds             map[int]*UffdHandler
 	streamFd          int
 	tracer            *PageFaultTracer
+	lazy              bool
+	snapMgr           *snapshotting.SnapshotManager
+	mappedChunks      map[[md5.Size]byte]uintptr
+	pageOps           *PageOperations
 }
 
 // NewRuntime creates a new runtime
-func NewRuntime(conn *net.UnixConn, backingFile *os.File, tracer *PageFaultTracer) (*Runtime, error) {
+func NewRuntime(conn *net.UnixConn, backingFile *os.File, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager) (*Runtime, error) {
 	fileInfo, err := backingFile.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file metadata: %w", err)
@@ -391,14 +458,32 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, tracer *PageFaultTrace
 		return nil, fmt.Errorf("mmap on backing file failed: %w", err)
 	}
 
+	var mappedChunks map[[md5.Size]byte]uintptr
+
+	if lazy {
+		// in case of lazy, the backing memory file is just a recipe file containing md5 hashes
+		backingMemorySize *= uint64(snapshotting.GetChunkSize()) / uint64(md5.Size)
+		mappedChunks = make(map[[md5.Size]byte]uintptr)
+	}
+
+	backingMemoryPtr := uintptr(unsafe.Pointer(&backingMemory[0]))
+
+	// Create PageOperations with a reasonable default page size
+	// The actual page size will be validated when handlers are created
+	pageOps := NewPageOperations(backingMemoryPtr, 4096, lazy, mappedChunks, snapMgr)
+
 	rt := &Runtime{
 		stream:            conn,
 		backingFile:       backingFile,
-		backingMemory:     uintptr(unsafe.Pointer(&backingMemory[0])),
+		backingMemory:     backingMemoryPtr,
 		backingMemorySize: backingMemorySize,
 		uffds:             make(map[int]*UffdHandler),
 		streamFd:          -1,
 		tracer:            tracer,
+		lazy:              lazy,
+		snapMgr:           snapMgr,
+		mappedChunks:      mappedChunks,
+		pageOps:           pageOps,
 	}
 
 	// Retrieve the underlying file descriptor for the UnixConn without
@@ -422,44 +507,6 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, tracer *PageFaultTrace
 	return rt, nil
 }
 
-// InstallPanicHook installs a panic hook to notify Firecracker on panic
-func (r *Runtime) InstallPanicHook() {
-	// Get peer process credentials
-	creds, err := r.peerProcessCredentials()
-	if err != nil {
-		log.Printf("Warning: failed to get peer credentials: %v", err)
-		return
-	}
-
-	// Setup signal handling for panic notification
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		if creds != nil {
-			_ = syscall.Kill(int(creds.Pid), syscall.SIGTERM)
-		}
-		os.Exit(1)
-	}()
-}
-
-// peerProcessCredentials gets the credentials of the peer process
-func (r *Runtime) peerProcessCredentials() (*unix.Ucred, error) {
-	// Get the underlying file descriptor
-	connFile, err := r.stream.File()
-	if err != nil {
-		return nil, err
-	}
-	defer connFile.Close()
-
-	creds, err := unix.GetsockoptUcred(int(connFile.Fd()), unix.SOL_SOCKET, unix.SO_PEERCRED)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get peer process credentials: %w", err)
-	}
-
-	return creds, nil
-}
-
 // Run runs the main event loop
 func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 	pollfds := []unix.PollFd{
@@ -475,7 +522,7 @@ func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 			if err == unix.EINTR {
 				continue
 			}
-			log.Panicf("Could not poll for events: %v", err)
+			log.Errorf("Could not poll for events: %v", err)
 		}
 
 		for i := 0; i < len(pollfds) && nready > 0; i++ {
@@ -483,9 +530,13 @@ func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 				nready--
 				if pollfds[i].Fd == int32(r.streamFd) {
 					// Handle new uffd from stream
-					handler, err := NewUffdHandler(r.stream, r.backingMemory, r.backingMemorySize, r.tracer)
+					handler, err := NewUffdHandler(r.stream, r.pageOps, r.backingMemorySize, r.tracer)
 					if err != nil {
-						log.Panicf("Failed to create UFFD handler: %v", err)
+						if strings.Contains(err.Error(), "EOF") {
+							log.Infof("Peer terminated, shutting down gracefully")
+							return
+						}
+						log.Errorf("Failed to create UFFD handler: %v", err)
 					}
 
 					pollfds = append(pollfds, unix.PollFd{
@@ -525,6 +576,9 @@ func getMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 			return body, uffdFd, nil
 		}
 		if err != nil {
+			if strings.Contains(err.Error(), "EOF") {
+				return "", -1, err
+			}
 			log.Printf("Could not get UFFD and mapping from Firecracker: %v. Retrying...", err)
 		} else {
 			log.Printf("Didn't receive UFFD over socket. We received: '%s'. Retrying...", body)
@@ -564,19 +618,8 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 	return body, -1, nil
 }
 
-func main() {
-	if len(os.Args) < 3 {
-		log.Fatal("Usage: handler <uffd_socket_path> <mem_file_path> [trace_file]")
-	}
-	log.SetLevel(log.DebugLevel)
+func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, lazy bool, snapMgr *snapshotting.SnapshotManager) {
 	log.Debugf("Starting handler")
-
-	uffdSockPath := os.Args[1]
-	memFilePath := os.Args[2]
-	traceFilePath := ""
-	if len(os.Args) > 3 {
-		traceFilePath = os.Args[3]
-	}
 
 	// Open the memory file
 	file, err := os.Open(memFilePath)
@@ -610,12 +653,10 @@ func main() {
 		}
 	}()
 
-	runtime, err := NewRuntime(conn, file, tracer)
+	runtime, err := NewRuntime(conn, file, tracer, lazy, snapMgr)
 	if err != nil {
 		log.Fatalf("Failed to create runtime: %v", err)
 	}
-
-	runtime.InstallPanicHook()
 
 	// Run the page fault handler
 	runtime.Run(func(uffdHandler *UffdHandler) {
@@ -635,7 +676,7 @@ func main() {
 			for {
 				event, err := uffdHandler.ReadEvent()
 				if err != nil {
-					log.Panicf("Failed to read uffd_msg: %v", err)
+					log.Errorf("Failed to read uffd_msg: %v", err)
 				}
 				if event == nil {
 					break
@@ -658,7 +699,7 @@ func main() {
 					uffdHandler.MarkRangeRemoved(rm.Start, rm.End)
 
 				default:
-					log.Panicf("Unexpected event on userfaultfd: %d", event.Event)
+					log.Errorf("Unexpected event on userfaultfd: %d", event.Event)
 				}
 			}
 

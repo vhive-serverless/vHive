@@ -32,7 +32,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/vhive-serverless/vhive/devmapper"
+	"github.com/vhive-serverless/vhive/snapshotting"
+	"github.com/vhive-serverless/vhive/storage"
 
 	log "github.com/sirupsen/logrus"
 
@@ -96,17 +100,19 @@ type Orchestrator struct {
 	fcClient          *fcclient.Client
 	devMapper         *devmapper.DeviceMapper
 	imageManager      *image.ImageManager
+	snapshotManager   *snapshotting.SnapshotManager
 	dockerCredentials DockerCredentials
 	// store *skv.KVStore
-	snapshotMode    string
-	cacheSnaps      bool
-	isUPFEnabled    bool
-	isLazyMode      bool
-	snapshotsDir    string
-	snapshotsBucket string
-	baseSnap        bool
-	isMetricsMode   bool
-	netPoolSize     int
+	snapshotMode      string
+	cacheSnaps        bool
+	isUPFEnabled      bool
+	isLazyMode        bool
+	isChunkingEnabled bool
+	snapshotsDir      string
+	snapshotsBucket   string
+	baseSnap          bool
+	isMetricsMode     bool
+	netPoolSize       int
 
 	vethPrefix  string
 	clonePrefix string
@@ -173,6 +179,23 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 
 	o.devMapper = devmapper.NewDeviceMapper(o.client)
 	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
+
+	snapshotsBucket := o.GetSnapshotsBucket()
+
+	var objectStore storage.ObjectStorage
+	if o.GetSnapshotMode() == "remote" {
+		minioClient, _ := minio.New(o.GetMinioAddr(), &minio.Options{
+			Creds:  credentials.NewStaticV4(o.GetMinioAccessKey(), o.GetMinioSecretKey(), ""),
+			Secure: false,
+		})
+
+		var err error
+		objectStore, err = storage.NewMinioStorage(minioClient, snapshotsBucket)
+		if err != nil {
+			log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", snapshotsBucket)
+		}
+	}
+	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsDir, objectStore, o.isChunkingEnabled, false, o.isLazyMode)
 
 	return o
 }
@@ -286,6 +309,10 @@ func (o *Orchestrator) GetMinioAccessKey() string {
 // This should be handled securely and never exposed in logs or error messages.
 func (o *Orchestrator) GetMinioSecretKey() string {
 	return o.minioSecretKey
+}
+
+func (o *Orchestrator) GetSnapshotManager() *snapshotting.SnapshotManager {
+	return o.snapshotManager
 }
 
 func (o *Orchestrator) setupHeartbeat() {
