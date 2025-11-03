@@ -29,6 +29,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -56,17 +57,19 @@ type SnapshotManager struct {
 	baseFolder string
 	chunking   bool
 	lazy       bool
+	wsPulling  bool
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy bool) *SnapshotManager {
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:  make(map[string]*Snapshot),
 		baseFolder: baseFolder,
 		chunking:   chunking,
 		storage:    store,
+		wsPulling:  wsPulling,
 		lazy:       lazy,
 	}
 
@@ -187,6 +190,19 @@ func (mgr *SnapshotManager) UploadSnapshot(revision string) error {
 	err = mgr.uploadMemFile(snap)
 	if err != nil {
 		return errors.Wrapf(err, "uploading memory file for snapshot %s", revision)
+	}
+
+	return nil
+}
+
+func (mgr *SnapshotManager) UploadWSFile(revision string) error {
+	snap, err := mgr.AcquireSnapshot(revision)
+	if err != nil {
+		return errors.Wrapf(err, "acquiring snapshot")
+	}
+
+	if err := mgr.uploadFile(revision, snap.GetWSFilePath()); err != nil {
+		return errors.Wrapf(err, "uploading working set file for snapshot %s", revision)
 	}
 
 	return nil
@@ -321,7 +337,22 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 		return errors.Wrapf(err, "downloading recipe file for chunked download")
 	}
 	if mgr.lazy {
-		return nil // that is all we need in lazy mode
+		if !mgr.wsPulling {
+			return nil // nothing more to do in lazy mode without WS pulling
+		}
+		if found, err := mgr.storage.Exists(mgr.getObjectKey(snap.GetId(), filepath.Base(snap.GetWSFilePath()))); err != nil || !found {
+			return nil // no working set file available yet, fall back to lazy without WS pulling
+		}
+
+		// Download working set file
+		wsFilePath := snap.GetWSFilePath()
+		wsFileName := filepath.Base(wsFilePath)
+		if err := mgr.downloadFile(snap.GetId(), wsFilePath, wsFileName); err != nil {
+			return errors.Wrapf(err, "downloading working set file for lazy chunked download")
+		}
+		log.Infof("Downloaded working set file for snapshot %s", snap.GetId())
+
+		return mgr.downloadWorkingSet(snap)
 	}
 
 	outFile, err := os.Create(snap.GetMemFilePath())
@@ -421,6 +452,73 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 	if _, err := io.Copy(outFile, obj); err != nil {
 		return errors.Wrap(err, "writing file")
 	}
+	return nil
+}
+
+func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
+	wsFile, err := os.Open(snap.GetWSFilePath())
+	if err != nil {
+		return errors.Wrapf(err, "opening working set file for lazy chunked download")
+	}
+	defer wsFile.Close()
+
+	wsPages, err := io.ReadAll(wsFile)
+	if err != nil {
+		return errors.Wrapf(err, "reading working set file for lazy chunked download")
+	}
+
+	recipeFile, err := os.Open(snap.GetRecipeFilePath())
+	if err != nil {
+		return errors.Wrapf(err, "opening recipe file for lazy chunked download")
+	}
+	defer recipeFile.Close()
+
+	recipe, err := io.ReadAll(recipeFile)
+	if err != nil {
+		return errors.Wrapf(err, "reading recipe file for lazy chunked download")
+	}
+
+	// Parse working set pages (skip first entry which is header/total count)
+	lines := strings.Split(string(wsPages), "\n")
+	if len(lines) <= 1 {
+		return errors.New("working set file is empty or invalid")
+	}
+
+	chunksToLoad := make(map[string]bool)
+	for _, line := range lines[1:] {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Parse page offset from working set
+		var pageOffset uint64
+		if _, err := fmt.Sscanf(line, "%d", &pageOffset); err != nil {
+			continue // Skip invalid lines
+		}
+
+		// Calculate which chunk this page belongs to
+		byteOffset := pageOffset * 4096 // Assuming 4KB pages
+		chunkIndex := byteOffset / chunkSize
+
+		// Get chunk hash from recipe
+		hashStart := int(chunkIndex) * md5.Size
+		hashEnd := hashStart + md5.Size
+		if hashEnd > len(recipe) {
+			continue // Page is beyond recipe bounds
+		}
+
+		hash := hex.EncodeToString(recipe[hashStart:hashEnd])
+		chunksToLoad[hash] = true
+	}
+
+	// Download only the working set chunks
+	for hash := range chunksToLoad {
+		if err := mgr.DownloadChunk(hash); err != nil {
+			return errors.Wrapf(err, "downloading working set chunk %s", hash)
+		}
+	}
+
 	return nil
 }
 

@@ -90,6 +90,12 @@ func WithChunkingEnabled(isChunkingEnabled bool) OrchestratorOption {
 	}
 }
 
+func WithWSPulling(isWSEnabled bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.isWSPulling = isWSEnabled
+	}
+}
+
 // WithMetricsMode Sets the metrics mode
 func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
 	return func(o *Orchestrator) {

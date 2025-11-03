@@ -107,6 +107,7 @@ type Orchestrator struct {
 	cacheSnaps        bool
 	isUPFEnabled      bool
 	isLazyMode        bool
+	isWSPulling       bool
 	isChunkingEnabled bool
 	snapshotsDir      string
 	snapshotsBucket   string
@@ -195,7 +196,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 			log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", snapshotsBucket)
 		}
 	}
-	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsDir, objectStore, o.isChunkingEnabled, false, o.isLazyMode)
+	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsDir, objectStore, o.isChunkingEnabled, false, o.isLazyMode, o.isWSPulling)
 
 	return o
 }
