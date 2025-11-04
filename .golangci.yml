@@ -1,3 +1,5 @@
-formatters:
+version: "1"
+
+linters:
   enable:
     - gofmt
