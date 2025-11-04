@@ -1,5 +1,8 @@
-version: "1"
+# golangci-lint configuration
+# See https://golangci-lint.run/usage/configuration/
 
-linters:
+version: "2"
+
+formatters:
   enable:
     - gofmt
