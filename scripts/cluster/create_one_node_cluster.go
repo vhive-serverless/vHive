@@ -96,6 +96,12 @@ func CreateOneNodeKubernetes(criSock string) error {
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to create cluster!\n") {
 			return err
 		}
+		// Enable nftables mode for kube-proxy
+		utils.WaitPrintf("Configuring kube-proxy to use nftables")
+		_, err = utils.ExecShellCmd(`kubectl -n kube-system get configmap kube-proxy -o yaml | sed 's/mode: ""/mode: "nftables"/' | kubectl apply -f - && kubectl -n kube-system delete pod -l k8s-app=kube-proxy`)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure nftables!\n") {
+			return err
+		}
 	}
 
 	return nil
