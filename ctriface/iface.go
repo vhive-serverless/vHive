@@ -730,10 +730,10 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 		return err
 	}
 
-	if err := o.shimPool.ReleaseShim(ctx, vmID); err != nil {
-		logger.Error("failed to release shim to shim pool")
-		return err
-	}
+	// if err := o.shimPool.ReleaseShim(ctx, vmID); err != nil {
+	// 	logger.Error("failed to release shim to shim pool")
+	// 	return err
+	// }
 
 	o.workloadIo.Delete(vmID)
 

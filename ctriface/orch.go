@@ -172,7 +172,7 @@ func (sp *ShimPool) ReleaseShim(ctx context.Context, vmID string) error {
 func (sp *ShimPool) createShim(ctx context.Context, vmID string) error {
 	sp.logger.WithField("vmID", vmID).Debug("Creating new shim")
 
-	ctx = namespaces.WithNamespace(ctx, vmID)
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
 	_, err := sp.fcClient.PrepareShim(ctx, &proto.PrepareShimRequest{
 		VMID: vmID,
 	})
@@ -189,6 +189,7 @@ func (sp *ShimPool) createShim(ctx context.Context, vmID string) error {
 func (sp *ShimPool) removeShim(ctx context.Context, vmID string) error {
 	sp.logger.WithField("vmID", vmID).Debug("Removing shim")
 
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
 	_, err := sp.fcClient.RemoveShim(ctx, &proto.RemoveShimRequest{
 		VMID: vmID,
 	})

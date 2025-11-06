@@ -149,6 +149,7 @@ func main() {
 		ctriface.WithMinioAddr(minioAddr),
 		ctriface.WithMinioAccessKey(minioAccessKey),
 		ctriface.WithMinioSecretKey(minioSecretKey),
+		ctriface.WithShimPoolSize(1),
 	)
 	defer orch.Cleanup()
 	defer orch.StopActiveVMs()
