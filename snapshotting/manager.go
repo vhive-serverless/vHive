@@ -41,7 +41,7 @@ import (
 
 const (
 	chunkPrefix = "_chunks"
-	chunkSize   = 4 * 1024 // 4 KB
+	chunkSize   = 512 * 1024 // 512 KB
 )
 
 func GetChunkSize() uint64 {
@@ -165,6 +165,18 @@ func (mgr *SnapshotManager) DeleteSnapshot(revision string) error {
 
 	delete(mgr.snapshots, revision)
 
+	return nil
+}
+
+func (mgr *SnapshotManager) CleanChunks() error {
+	mgr.Lock()
+	defer mgr.Unlock()
+
+	if !mgr.chunking {
+		return nil
+	}
+	os.RemoveAll(filepath.Join(mgr.baseFolder, chunkPrefix))
+	os.MkdirAll(filepath.Join(mgr.baseFolder, chunkPrefix), os.ModePerm)
 	return nil
 }
 
@@ -317,7 +329,23 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 		}
 	}
 
-	mgr.downloadMemFile(snap)
+	if found, err := mgr.storage.Exists(mgr.getObjectKey(snap.GetId(), filepath.Base(snap.GetWSFilePath()))); err == nil && found {
+		// Download working set file, if it exists
+		wsFilePath := snap.GetWSFilePath()
+		wsFileName := filepath.Base(wsFilePath)
+		if err := mgr.downloadFile(snap.GetId(), wsFilePath, wsFileName); err != nil {
+			return nil, errors.Wrapf(err, "downloading working set file for lazy chunked download")
+		}
+		log.Infof("Downloaded working set file for snapshot %s", snap.GetId())
+	}
+
+	err = mgr.downloadMemFile(snap)
+	if err != nil {
+		return nil, errors.Wrapf(err, "downloading memory file for snapshot %s", revision)
+	}
+
+	// stat, _ := os.Stat(snap.GetMemFilePath())
+	// log.Infof("Downloaded memory file for snapshot %s, size is %d", snap.GetId(), stat.Size())
 
 	if err := mgr.CommitSnapshot(revision); err != nil {
 		return nil, errors.Wrap(err, "committing snapshot")
@@ -340,17 +368,10 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 		if !mgr.wsPulling {
 			return nil // nothing more to do in lazy mode without WS pulling
 		}
-		if found, err := mgr.storage.Exists(mgr.getObjectKey(snap.GetId(), filepath.Base(snap.GetWSFilePath()))); err != nil || !found {
-			return nil // no working set file available yet, fall back to lazy without WS pulling
+		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat.Size() == 0 {
+			log.Infof("No working set file for snapshot %s, skipping WS pulling", snap.GetId())
+			return nil // nothing more to do if no working set file
 		}
-
-		// Download working set file
-		wsFilePath := snap.GetWSFilePath()
-		wsFileName := filepath.Base(wsFilePath)
-		if err := mgr.downloadFile(snap.GetId(), wsFilePath, wsFileName); err != nil {
-			return errors.Wrapf(err, "downloading working set file for lazy chunked download")
-		}
-		log.Infof("Downloaded working set file for snapshot %s", snap.GetId())
 
 		return mgr.downloadWorkingSet(snap)
 	}
@@ -375,7 +396,7 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 	chunkIndex := 0
 	for hashStart := 0; hashStart < len(recipe); hashStart += md5.Size {
 		hashEnd := hashStart + md5.Size
-		if hashEnd >= len(recipe) {
+		if hashEnd > len(recipe) {
 			break
 		}
 		hash := hex.EncodeToString(recipe[hashStart:hashEnd])
@@ -518,6 +539,8 @@ func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 			return errors.Wrapf(err, "downloading working set chunk %s", hash)
 		}
 	}
+
+	log.Infof("Finished downloading working set for snapshot %s, %d chunks downloaded", snap.GetId(), len(chunksToLoad))
 
 	return nil
 }
