@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	log "github.com/sirupsen/logrus"
@@ -27,7 +28,7 @@ import (
 //	#define UFFD_EVENT_PAGEFAULT 0x12
 //	#define UFFD_EVENT_REMOVE    0x15
 //
-// IOCTL commands (computed using the _IOWR macro):
+// IOCTL commands (computed using the _IOWR or _IOR macros):
 //
 //	UFFDIO_COPY = _IOWR(UFFDIO, _UFFDIO_COPY, struct uffdio_copy)
 //	where UFFDIO = 0xAA, _UFFDIO_COPY = 0x03, sizeof(struct uffdio_copy) = 40
@@ -36,11 +37,29 @@ import (
 //	UFFDIO_ZEROPAGE = _IOWR(UFFDIO, _UFFDIO_ZEROPAGE, struct uffdio_zeropage)
 //	where UFFDIO = 0xAA, _UFFDIO_ZEROPAGE = 0x04, sizeof(struct uffdio_zeropage) = 32
 //	Result: 0xc020aa04
+//
+//	UFFDIO_WAKE = _IOR(UFFDIO, _UFFDIO_WAKE, struct uffdio_range)
+//	where UFFDIO = 0xAA, _UFFDIO_WAKE = 0x02, sizeof(struct uffdio_range) = 16
+//	Result: 0x8010aa02
+//
+// Mode flags:
+//
+//	UFFDIO_COPY_MODE_DONTWAKE = (1 << 0)
+//	Result: 0x1
+//
+// Page fault flags:
+//
+//	UFFD_PAGEFAULT_FLAG_MINOR = (1 << 2)
+//	Result: 0x4
 const (
-	UFFD_EVENT_PAGEFAULT = 0x12
-	UFFD_EVENT_REMOVE    = 0x15
-	UFFDIO_COPY          = 0xc028aa03
-	UFFDIO_ZEROPAGE      = 0xc020aa04
+	UFFD_EVENT_PAGEFAULT      = 0x12
+	UFFD_EVENT_REMOVE         = 0x15
+	UFFDIO_COPY               = 0xc028aa03
+	UFFDIO_ZEROPAGE           = 0xc020aa04
+	UFFDIO_CONTINUE           = 0xc020aa07
+	UFFDIO_WAKE               = 0x8010aa02
+	UFFDIO_COPY_MODE_DONTWAKE = 0x1
+	UFFD_PAGEFAULT_FLAG_MINOR = 0x4
 )
 
 // UffdMsg represents the userfaultfd message structure
@@ -93,6 +112,13 @@ type UffdIoZeropage struct {
 	Zeropage int64
 }
 
+// UffdIoContinue represents the ioctl continue structure
+type UffdIoContinue struct {
+	Range  UffdIoRange
+	Mode   uint64
+	Mapped int64
+}
+
 // UffdIoRange represents a range of addresses
 type UffdIoRange struct {
 	Start uint64
@@ -139,7 +165,7 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 	} else {
 		// In lazy mode, read the MD5 hash from the recipe file
 		recipeOffset := (region.Offset + offset) / snapshotting.GetChunkSize() * md5.Size
-		hashBytes := (*[md5.Size]byte)(unsafe.Pointer(uintptr(unsafe.Pointer(po.backingBuffer)) + uintptr(recipeOffset)))
+		hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
 		var hashKey [md5.Size]byte
 		copy(hashKey[:], hashBytes[:])
 		mappedAddr, err := po.mapChunk(hashKey)
@@ -167,6 +193,15 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 		}
 		if errno == unix.EEXIST {
 			// Page already exists, this is ok
+			// Wake up any threads that might be waiting on the pages we just inserted
+			wakeRange := UffdIoRange{
+				Start: dst,
+				Len:   region.PageSize,
+			}
+			_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(uffd), uintptr(UFFDIO_WAKE), uintptr(unsafe.Pointer(&wakeRange)))
+			if errno != 0 {
+				log.Errorf("UFFD wake failed: %v", errno)
+			}
 			return true
 		}
 		log.Errorf("UFFD copy failed: %v", errno)
@@ -180,10 +215,16 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 }
 
 func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapping) {
-	log.Debugf("Pre-inserting working set of %d pages", len(po.workingSet))
+	startTime := time.Now()
+	counter := 0
+	defer func() {
+		log.Debugf("Pre-inserting working set of %d pages in %v", counter, time.Since(startTime))
+	}()
+
 	for _, pfn := range po.workingSet {
 		pageAddr := pfn * po.pageSize
-		if region.Contains(pageAddr) {
+		if pageAddr >= region.Offset && pageAddr < region.Offset+region.Size {
+			counter++
 
 			src := uintptr(0)
 			if !po.lazy {
@@ -191,7 +232,7 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 			} else {
 				// In lazy mode, read the MD5 hash from the recipe file
 				recipeOffset := (pageAddr) / snapshotting.GetChunkSize() * md5.Size
-				hashBytes := (*[md5.Size]byte)(unsafe.Pointer(uintptr(unsafe.Pointer(po.backingBuffer)) + uintptr(recipeOffset)))
+				hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
 				var hashKey [md5.Size]byte
 				copy(hashKey[:], hashBytes[:])
 				mappedAddr, err := po.mapChunk(hashKey)
@@ -208,18 +249,18 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 				Dst:  pageAddr + region.BaseHostVirtAddr,
 				Src:  uint64(src),
 				Len:  po.pageSize,
-				Mode: 0,
+				Mode: UFFDIO_COPY_MODE_DONTWAKE,
 			}
 
 			_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(uffd), UFFDIO_COPY, uintptr(unsafe.Pointer(&copy)))
 			if errno != 0 {
 				if errno == unix.EAGAIN {
 					// A 'remove' event is blocking us
-					return
+					continue
 				}
 				if errno == unix.EEXIST {
 					// Page already exists, this is ok
-					return
+					continue
 				}
 				log.Errorf("UFFD copy failed: %v", errno)
 			}
@@ -279,8 +320,9 @@ func (po *PageOperations) ZeroOut(uffd int, addr uint64) bool {
 
 // PageFaultTracer handles tracing page fault events to a file
 type PageFaultTracer struct {
-	file   *os.File
-	writer *csv.Writer
+	file    *os.File
+	writer  *csv.Writer
+	counter uint64
 }
 
 // NewPageFaultTracer creates a new page fault tracer
@@ -304,14 +346,19 @@ func NewPageFaultTracer(filePath string) (*PageFaultTracer, error) {
 	writer.Flush()
 
 	return &PageFaultTracer{
-		file:   file,
-		writer: writer,
+		file:    file,
+		writer:  writer,
+		counter: 0,
 	}, nil
 }
 
 // TracePageFault logs a page fault event
 func (t *PageFaultTracer) TracePageFault(address, pfn uint64, eventType string, isRemoved, regionFound bool) {
-	if t == nil || t.writer == nil {
+	if t == nil {
+		return
+	}
+	t.counter++
+	if t.writer == nil {
 		return
 	}
 
@@ -328,6 +375,7 @@ func (t *PageFaultTracer) Close() error {
 	if t == nil {
 		return nil
 	}
+	log.Debugf("Handled %d page faults", t.counter)
 	if t.writer != nil {
 		t.writer.Flush()
 	}
@@ -487,13 +535,43 @@ func (h *UffdHandler) ServePF(addr uintptr, length uint64) bool {
 	return false
 }
 
+// Continue handles a minor page fault by issuing UFFDIO_CONTINUE
+func (h *UffdHandler) Continue(addr uintptr) bool {
+	// Find the start of the page that the current faulting address belongs to
+	dst := uintptr(uint64(addr) & ^(h.pageSize - 1))
+	faultPageAddr := uint64(dst)
+
+	cont := UffdIoContinue{
+		Range: UffdIoRange{
+			Start: faultPageAddr,
+			Len:   h.pageSize,
+		},
+		Mode: 0,
+	}
+
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(h.uffd), UFFDIO_CONTINUE, uintptr(unsafe.Pointer(&cont)))
+	if errno != 0 {
+		if errno == unix.EAGAIN {
+			return false
+		}
+		log.Errorf("UFFD continue failed: %v", errno)
+		return false
+	}
+
+	if cont.Mapped <= 0 {
+		log.Errorf("UFFD continue returned non-positive value: %d", cont.Mapped)
+		return false
+	}
+
+	return true
+}
+
 // Runtime manages the UFFD handler runtime
 type Runtime struct {
 	stream            *net.UnixConn
 	backingFile       *os.File
 	backingMemory     uintptr
 	backingMemorySize uint64
-	wsFile            *os.File
 	uffds             map[int]*UffdHandler
 	streamFd          int
 	tracer            *PageFaultTracer
@@ -531,27 +609,27 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 		// in case of lazy, the backing memory file is just a recipe file containing md5 hashes
 		backingMemorySize *= uint64(snapshotting.GetChunkSize()) / uint64(md5.Size)
 		mappedChunks = make(map[[md5.Size]byte]uintptr)
+	}
 
-		if wsFile != nil {
-			// Read working set file to pre-map pages
-			scanner := csv.NewReader(wsFile)
-			records, err := scanner.ReadAll()
+	if wsFile != nil {
+		// Read working set file to pre-map pages
+		scanner := csv.NewReader(wsFile)
+		records, err := scanner.ReadAll()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read working set file: %w", err)
+		}
+
+		// Skip header row and convert PFNs to addresses
+		for i := 1; i < len(records); i++ {
+			if len(records[i]) == 0 {
+				continue
+			}
+			pfn, err := strconv.ParseUint(records[i][0], 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("failed to read working set file: %w", err)
+				log.Warnf("Failed to parse PFN from working set: %v", err)
+				continue
 			}
-
-			// Skip header row and convert PFNs to addresses
-			for i := 1; i < len(records); i++ {
-				if len(records[i]) == 0 {
-					continue
-				}
-				pfn, err := strconv.ParseUint(records[i][0], 10, 64)
-				if err != nil {
-					log.Warnf("Failed to parse PFN from working set: %v", err)
-					continue
-				}
-				ws = append(ws, uint64(pfn))
-			}
+			ws = append(ws, uint64(pfn))
 		}
 	}
 
@@ -566,7 +644,6 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 		backingFile:       backingFile,
 		backingMemory:     backingMemoryPtr,
 		backingMemorySize: backingMemorySize,
-		wsFile:            wsFile,
 		uffds:             make(map[int]*UffdHandler),
 		streamFd:          -1,
 		tracer:            tracer,
@@ -796,7 +873,11 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 				case UFFD_EVENT_PAGEFAULT:
 					pf := event.Pagefault()
 					addr := uintptr(pf.Address)
-					if !uffdHandler.ServePF(addr, uffdHandler.pageSize) {
+					if pf.Flags&UFFD_PAGEFAULT_FLAG_MINOR != 0 {
+						if !uffdHandler.Continue(addr) {
+							deferredEvents = append(deferredEvents, event)
+						}
+					} else if !uffdHandler.ServePF(addr, uffdHandler.pageSize) {
 						deferredEvents = append(deferredEvents, event)
 					}
 
