@@ -45,8 +45,10 @@ const (
 )
 
 func invokeVSwarm(endpoint, port string, benchmark string) (string, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
-		err := exec.Command(homeDir+"/vswarm/tools/relay/relay", "--addr=0.0.0.0:50000",
+		err := exec.CommandContext(ctx, homeDir+"/vswarm/tools/relay/server", "--addr=0.0.0.0:50000",
 			fmt.Sprintf("--function-endpoint-url=%s", endpoint),
 			fmt.Sprintf("--function-endpoint-port=%s", port),
 			fmt.Sprintf("--function-name=%s", benchmark),
@@ -58,9 +60,10 @@ func invokeVSwarm(endpoint, port string, benchmark string) (string, error) {
 			log.Errorln("Failed to start relay -", err)
 		}
 	}()
-	defer exec.Command("pkill", "relay").Run()
 	time.Sleep(1 * time.Second) // Wait for the relay to start
 
+	timeStart := time.Now()
+	log.Infoln("Invoking function via vSwarm relay...")
 	conn, err := grpc.Dial("127.0.0.1:50000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Errorln("Failed to establish a gRPC connection -", err)
@@ -73,6 +76,7 @@ func invokeVSwarm(endpoint, port string, benchmark string) (string, error) {
 		log.Errorln("Failed to invoke -", err)
 		return "", err
 	}
+	log.Infoln("Function invocation completed in", time.Since(timeStart))
 
 	return response.Message, err
 }
@@ -167,10 +171,10 @@ func main() {
 			continue
 		}
 
-		tmpname := fmt.Sprintf("%s-%d", name, os.Getpid())
 		ctx := context.Background()
 
-		resp, _, err := orch.LoadSnapshot(ctx, tmpname, snap, false, false)
+		resp, _, err := orch.LoadSnapshot(ctx, snap, false, false)
+		tmpname := resp.VMID
 		if err != nil {
 			log.Errorln("Failed to load snapshot:", err)
 			return
@@ -209,12 +213,12 @@ func prepareSnapshot(name, image string, orch *ctriface.Orchestrator) (*snapshot
 		return snp, err
 	}
 
-	tmpname := fmt.Sprintf("%s-%d", name, os.Getpid())
 	ctx := context.Background()
 	// ctx = namespaces.WithNamespace(ctx, tmpname)
-	resp, err := orch.StartWithBaseSnapshot(ctx, tmpname, image, []string{})
+	// resp, err := orch.StartWithBaseSnapshot(ctx, tmpname, image, []string{})
 	// resp, err := orch.StartWithImageSnapshot(ctx, tmpname, image, []string{})
-	// resp, _, err := orch.StartVM(ctx, tmpname, image)
+	resp, _, err := orch.StartVM(ctx, image)
+	tmpname := resp.VMID
 	if err != nil {
 		log.Errorln("Failed to start VM:", err)
 		return nil, err
@@ -233,6 +237,14 @@ func prepareSnapshot(name, image string, orch *ctriface.Orchestrator) (*snapshot
 	// grpcClient := helloworld.NewGreeterClient(conn)
 	// response, err := grpcClient.SayHello(ctx, &helloworld.HelloRequest{Name: "VHive"})
 	response, err := invokeVSwarm(resp.GuestIP, "50051", name)
+	time.Sleep(100 * time.Millisecond)
+	response, err = invokeVSwarm(resp.GuestIP, "50051", name)
+	time.Sleep(100 * time.Millisecond)
+	response, err = invokeVSwarm(resp.GuestIP, "50051", name)
+	time.Sleep(100 * time.Millisecond)
+	response, err = invokeVSwarm(resp.GuestIP, "50051", name)
+	time.Sleep(100 * time.Millisecond)
+	response, err = invokeVSwarm(resp.GuestIP, "50051", name)
 
 	if err != nil {
 		log.Errorln("Failed to invoke -", err)

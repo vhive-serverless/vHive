@@ -47,7 +47,6 @@ var (
 var (
 	orch    *ctriface.Orchestrator
 	snapMgr *snapshotting.SnapshotManager
-	nextID  = 0 // TODO: protect with mutex
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -55,9 +54,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// ctx, cancel := context.WithCancel(context.Background())
 	ctx := context.TODO()
-	id := fmt.Sprintf("%d-%d", os.Getpid(), nextID)
-	nextID++
-	vmId := "vm-" + id
 	image := "ghcr.io/leokondrashov/auth-go:esgz"
 	rev := "auth-go-esgz"
 
@@ -108,16 +104,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	var ok bool
 	if snap, err = snapMgr.AcquireSnapshot(rev); err == nil { // local case
 		log.Debugf("Using snapshot for rev %s", rev)
-		resp, metric, err = orch.LoadSnapshot(ctx, vmId, snap, false, false)
-		log.Debugf("Loaded snapshot for rev %s: %v", rev, metric)
+		resp, metric, err = orch.LoadSnapshot(ctx, snap, false, false)
+		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
 	} else if ok, err = snapMgr.SnapshotExists(rev); err == nil && ok { // remote case
 		log.Debugf("Using remote snapshot for rev %s", rev)
+		startDownload := time.Now()
 		snap, err = snapMgr.DownloadSnapshot(rev)
-		resp, metric, err = orch.LoadSnapshot(ctx, vmId, snap, false, false)
-		log.Debugf("Loaded snapshot for rev %s: %v", rev, metric)
+		downloadDelay := time.Since(startDownload)
+		log.Debugf("Downloaded snapshot for rev %s in %v", rev, downloadDelay.Microseconds())
+		resp, metric, err = orch.LoadSnapshot(ctx, snap, false, false)
+		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
 	} else { // boot case
 		log.Debugf("No snapshot for rev %s, starting from image", rev)
-		resp, _, err = orch.StartVM(ctx, vmId, image)
+		resp, _, err = orch.StartVM(ctx, image)
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
@@ -126,7 +125,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Debugf("Sending invocation VM-%s", id)
+	vmId := resp.VMID
+
+	log.Debugf("Sending invocation to %s", vmId)
 
 	proxy := pkghttp.NewHeaderPruningReverseProxy(resp.GuestIP+":50051", pkghttp.NoHostOverride, []string{}, false /* use HTTP */)
 	proxy.Transport = &http2.Transport{
@@ -138,7 +139,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 
 	go func() {
-		log.Debugf("removing VM-%s", id)
+		log.Debugf("removing %s", vmId)
 		if snap == nil {
 			snap, err = snapMgr.InitSnapshot(rev, image)
 			orch.PauseVM(ctx, vmId)
@@ -146,7 +147,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			snapMgr.CommitSnapshot(rev)
 			snapMgr.UploadSnapshot(rev)
 			snapMgr.DeleteSnapshot(rev)
-			log.Debugf("finished snapshotting VM-%s", id)
+			snapMgr.CleanChunks()
+			log.Debugf("finished snapshotting %s", vmId)
 		}
 		orch.StopSingleVM(ctx, vmId)
 		// cancel()
@@ -228,7 +230,7 @@ func main() {
 		ctriface.WithMinioAddr(minioAddr),
 		ctriface.WithMinioAccessKey(minioAccessKey),
 		ctriface.WithMinioSecretKey(minioSecretKey),
-		ctriface.WithSnapshotsDir(snapDir),
+		ctriface.WithSnapshotsStorage(snapDir),
 	)
 	snapMgr = orch.GetSnapshotManager()
 

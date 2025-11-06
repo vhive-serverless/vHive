@@ -23,7 +23,9 @@
 package ctriface
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -32,6 +34,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/vhive-serverless/vhive/devmapper"
@@ -41,8 +44,11 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/namespaces"
 
 	fcclient "github.com/firecracker-microvm/firecracker-containerd/firecracker-control/client"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
+
 	// note: from the original repo
 
 	_ "google.golang.org/grpc/codes"  //tmp
@@ -90,9 +96,205 @@ type DockerCredentials struct {
 	DockerCredentials map[string]RegistryCredentials `json:"docker-credentials"`
 }
 
+// ShimPool manages a pool of pre-created shims for faster VM startup
+type ShimPool struct {
+	mu            sync.Mutex
+	availableVMID []string         // Pool of available pre-created shim VM IDs
+	inUseVMID     map[string]bool  // Track which VM IDs are currently in use
+	fcClient      *fcclient.Client // Firecracker client for creating shims
+	poolSize      int              // Target pool size
+	logger        *log.Entry
+}
+
+// NewShimPool creates a new shim pool
+func NewShimPool(fcClient *fcclient.Client, poolSize int) *ShimPool {
+	return &ShimPool{
+		availableVMID: make([]string, 0, poolSize),
+		inUseVMID:     make(map[string]bool),
+		fcClient:      fcClient,
+		poolSize:      poolSize,
+		logger:        log.WithField("component", "ShimPool"),
+	}
+}
+
+// generateVMID creates a new unique VM ID
+func (sp *ShimPool) generateVMID() string {
+	return fmt.Sprintf("shim-%s", uuid.New().String())
+}
+
+// AcquireShim gets a pre-created shim from the pool, or creates a new one if pool is empty
+func (sp *ShimPool) AcquireShim(ctx context.Context) (string, error) {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+
+	// Try to get a pre-created shim from the pool
+	if len(sp.availableVMID) > 0 {
+		vmID := sp.availableVMID[0]
+		sp.availableVMID = sp.availableVMID[1:]
+		sp.inUseVMID[vmID] = true
+		sp.logger.WithField("vmID", vmID).Debug("Acquired pre-created shim from pool")
+
+		// Asynchronously refill the pool
+		go sp.refillPool(ctx)
+
+		return vmID, nil
+	}
+
+	// Pool is empty, create a new shim on-demand
+	vmID := sp.generateVMID()
+	sp.logger.WithField("vmID", vmID).Debug("Pool empty, creating new shim on-demand")
+
+	if err := sp.createShim(ctx, vmID); err != nil {
+		return "", err
+	}
+
+	sp.inUseVMID[vmID] = true
+
+	// Asynchronously refill the pool
+	go sp.refillPool(ctx)
+
+	return vmID, nil
+}
+
+// ReleaseShim removes a shim and removes it from tracking
+func (sp *ShimPool) ReleaseShim(ctx context.Context, vmID string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+
+	delete(sp.inUseVMID, vmID)
+
+	// Always remove the shim (no reuse)
+	sp.logger.WithField("vmID", vmID).Debug("Removing shim")
+	return sp.removeShim(ctx, vmID)
+}
+
+// createShim creates a new shim using the PrepareShim API
+func (sp *ShimPool) createShim(ctx context.Context, vmID string) error {
+	sp.logger.WithField("vmID", vmID).Debug("Creating new shim")
+
+	ctx = namespaces.WithNamespace(ctx, vmID)
+	_, err := sp.fcClient.PrepareShim(ctx, &proto.PrepareShimRequest{
+		VMID: vmID,
+	})
+	if err != nil {
+		sp.logger.WithField("vmID", vmID).WithError(err).Error("Failed to prepare shim")
+		return err
+	}
+
+	sp.logger.WithField("vmID", vmID).Debug("Successfully created shim")
+	return nil
+}
+
+// removeShim removes a shim using the RemoveShim API
+func (sp *ShimPool) removeShim(ctx context.Context, vmID string) error {
+	sp.logger.WithField("vmID", vmID).Debug("Removing shim")
+
+	_, err := sp.fcClient.RemoveShim(ctx, &proto.RemoveShimRequest{
+		VMID: vmID,
+	})
+	if err != nil {
+		sp.logger.WithField("vmID", vmID).WithError(err).Error("Failed to remove shim")
+		return err
+	}
+
+	sp.logger.WithField("vmID", vmID).Debug("Successfully removed shim")
+	return nil
+}
+
+// refillPool ensures the pool has the target number of pre-created shims
+func (sp *ShimPool) refillPool(ctx context.Context) {
+	sp.mu.Lock()
+	currentSize := len(sp.availableVMID)
+	needed := sp.poolSize - currentSize
+	sp.mu.Unlock()
+
+	if needed <= 0 {
+		return
+	}
+
+	sp.logger.WithField("needed", needed).Debug("Refilling shim pool")
+
+	for i := 0; i < needed; i++ {
+		vmID := sp.generateVMID()
+		if err := sp.createShim(ctx, vmID); err != nil {
+			sp.logger.WithField("vmID", vmID).WithError(err).Error("Failed to create shim during pool refill")
+			continue
+		}
+
+		sp.mu.Lock()
+		sp.availableVMID = append(sp.availableVMID, vmID)
+		sp.mu.Unlock()
+	}
+
+	sp.logger.WithField("poolSize", len(sp.availableVMID)).Debug("Pool refilled")
+}
+
+// InitializePool pre-creates shims to fill the pool
+func (sp *ShimPool) InitializePool(ctx context.Context) error {
+	sp.logger.WithField("poolSize", sp.poolSize).Info("Initializing shim pool")
+
+	for i := 0; i < sp.poolSize; i++ {
+		vmID := sp.generateVMID()
+		if err := sp.createShim(ctx, vmID); err != nil {
+			sp.logger.WithError(err).Error("Failed to initialize shim pool")
+			return err
+		}
+
+		sp.mu.Lock()
+		sp.availableVMID = append(sp.availableVMID, vmID)
+		sp.mu.Unlock()
+	}
+
+	sp.logger.WithField("poolSize", len(sp.availableVMID)).Info("Shim pool initialized")
+	return nil
+}
+
+// Cleanup removes all shims from the pool
+func (sp *ShimPool) Cleanup(ctx context.Context) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+
+	sp.logger.Info("Cleaning up shim pool")
+
+	var errors []error
+
+	// Remove all available shims
+	for _, vmID := range sp.availableVMID {
+		if err := sp.removeShim(ctx, vmID); err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	// Remove all in-use shims
+	for vmID := range sp.inUseVMID {
+		if err := sp.removeShim(ctx, vmID); err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	sp.availableVMID = nil
+	sp.inUseVMID = make(map[string]bool)
+
+	if len(errors) > 0 {
+		sp.logger.WithField("errorCount", len(errors)).Error("Errors during shim pool cleanup")
+		return errors[0] // Return the first error
+	}
+
+	sp.logger.Debug("Shim pool cleaned up")
+	return nil
+}
+
+// GetPoolStats returns statistics about the shim pool
+func (sp *ShimPool) GetPoolStats() (available int, inUse int) {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	return len(sp.availableVMID), len(sp.inUseVMID)
+}
+
 // Orchestrator Drives all VMs
 type Orchestrator struct {
 	vmPool            *misc.VMPool
+	shimPool          *ShimPool
 	cachedImages      map[string]containerd.Image
 	workloadIo        sync.Map // vmID string -> WorkloadIoWriter
 	snapshotter       string
@@ -110,10 +312,12 @@ type Orchestrator struct {
 	isWSPulling       bool
 	isChunkingEnabled bool
 	snapshotsDir      string
+	snapshotsStorage  string
 	snapshotsBucket   string
 	baseSnap          bool
 	isMetricsMode     bool
 	netPoolSize       int
+	shimPoolSize      int
 
 	vethPrefix  string
 	clonePrefix string
@@ -135,6 +339,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.snapshotsDir = "/fccd/snapshots"
 	o.snapshotsBucket = "snapshots"
 	o.netPoolSize = 10
+	o.shimPoolSize = 5 // Default shim pool size
 	o.vethPrefix = "172.17"
 	o.clonePrefix = "172.18"
 	o.minioAddr = "10.96.0.46:9000"
@@ -178,6 +383,13 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 	log.Info("Created firecracker client")
 
+	// Initialize shim pool
+	if o.shimPoolSize > 0 {
+		log.WithField("poolSize", o.shimPoolSize).Info("Initializing shim pool")
+		o.shimPool = NewShimPool(o.fcClient, o.shimPoolSize)
+		o.shimPool.InitializePool(context.Background())
+	}
+
 	o.devMapper = devmapper.NewDeviceMapper(o.client)
 	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
 
@@ -196,7 +408,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 			log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", snapshotsBucket)
 		}
 	}
-	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsDir, objectStore, o.isChunkingEnabled, false, o.isLazyMode, o.isWSPulling)
+	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, false, o.isLazyMode, o.isWSPulling)
 
 	return o
 }
@@ -214,9 +426,18 @@ func (o *Orchestrator) setupCloseHandler() {
 }
 
 // Cleanup Removes the bridges created by the VM pool's tap manager
-// Cleans up snapshots directory
+// Cleans up snapshots directory and shim pool
 func (o *Orchestrator) Cleanup() {
 	o.vmPool.CleanupNetwork()
+
+	// Cleanup shim pool
+	if o.shimPool != nil {
+		ctx := context.Background()
+		if err := o.shimPool.Cleanup(ctx); err != nil {
+			log.WithError(err).Error("Failed to cleanup shim pool")
+		}
+	}
+
 	if err := os.RemoveAll(o.snapshotsDir); err != nil {
 		log.Panic("failed to delete snapshots dir", err)
 	}
@@ -314,6 +535,39 @@ func (o *Orchestrator) GetMinioSecretKey() string {
 
 func (o *Orchestrator) GetSnapshotManager() *snapshotting.SnapshotManager {
 	return o.snapshotManager
+}
+
+// InitializeShimPool initializes the shim pool by pre-creating shims
+func (o *Orchestrator) InitializeShimPool(ctx context.Context) error {
+	if o.shimPool == nil {
+		return fmt.Errorf("shim pool is not enabled")
+	}
+	return o.shimPool.InitializePool(ctx)
+}
+
+// AcquireShimFromPool gets a pre-created shim from the pool
+// Returns a VM ID that should be used for creating the VM
+func (o *Orchestrator) AcquireShimFromPool(ctx context.Context) (string, error) {
+	if o.shimPool == nil {
+		return "", fmt.Errorf("shim pool is not enabled")
+	}
+	return o.shimPool.AcquireShim(ctx)
+}
+
+// ReleaseShimToPool releases a shim and removes it (shims are never reused)
+func (o *Orchestrator) ReleaseShimToPool(ctx context.Context, vmID string) error {
+	if o.shimPool == nil {
+		return nil // Silently ignore if pool is not enabled
+	}
+	return o.shimPool.ReleaseShim(ctx, vmID)
+}
+
+// GetShimPoolStats returns statistics about the shim pool
+func (o *Orchestrator) GetShimPoolStats() (available int, inUse int) {
+	if o.shimPool == nil {
+		return 0, 0
+	}
+	return o.shimPool.GetPoolStats()
 }
 
 func (o *Orchestrator) setupHeartbeat() {

@@ -60,6 +60,8 @@ import (
 // StartVMResponse is the response returned by StartVM
 // TODO: Integrate response with non-cri API
 type StartVMResponse struct {
+	// VMID is the ID of the VM (acquired from shim pool)
+	VMID string
 	// GuestIP is the IP of the guest MicroVM
 	GuestIP string
 }
@@ -79,18 +81,35 @@ func withNamespace(ctx context.Context, snapshotter, vmID string) context.Contex
 }
 
 // StartVM Boots a VM if it does not exist
-func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
-	return o.StartVMWithEnvironment(ctx, vmID, imageName, []string{})
+// The VM ID is acquired from the shim pool and returned in the response
+func (o *Orchestrator) StartVM(ctx context.Context, imageName string) (*StartVMResponse, *metrics.Metric, error) {
+	return o.StartVMWithEnvironment(ctx, imageName, []string{})
 }
 
-func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, imageName string, environmentVariables []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		startVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart        time.Time
 	)
 
+	// Acquire a VM ID from the shim pool
+	vmID, err := o.AcquireShimFromPool(ctx)
+	if err != nil {
+		log.WithError(err).Error("failed to acquire VM ID from shim pool")
+		return nil, nil, err
+	}
+
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
+
+	// Release shim on error
+	defer func() {
+		if retErr != nil {
+			if err := o.ReleaseShimToPool(ctx, vmID); err != nil {
+				logger.WithError(err).Error("failed to release shim to pool after failure")
+			}
+		}
+	}()
 
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
@@ -251,7 +270,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 
 	logger.Debug("Successfully started a VM")
 
-	return &StartVMResponse{GuestIP: vm.GetIP()}, startVMMetric, nil
+	return &StartVMResponse{VMID: vmID, GuestIP: vm.GetIP()}, startVMMetric, nil
 }
 
 func (o *Orchestrator) prepareBaseSnapshot(ctx context.Context) (_ *snapshotting.Snapshot, retErr error) {
@@ -327,10 +346,12 @@ func (o *Orchestrator) StartWithBaseSnapshot(ctx context.Context, vmID, imageNam
 	logger.Debug("StartVM: Received StartVM")
 
 	// Start the VM with the base snapshot
-	_, _, err = o.LoadSnapshot(ctx, vmID, snap, false, true)
+	resp, _, err := o.LoadSnapshot(ctx, snap, false, true)
 	if err != nil {
 		return nil, err
 	}
+	vmID = resp.VMID // Get the VM ID from the response
+	logger = log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	_, err = o.ResumeVM(ctx, vmID)
 	if err != nil {
 		return nil, err
@@ -496,10 +517,12 @@ func (o *Orchestrator) prepareImageSnapshot(ctx context.Context, vmID, imageName
 	logger.Debug("StartVM: Received StartVM")
 
 	// Start the VM with the base snapshot
-	_, _, err = o.LoadSnapshot(ctx, vmID, snap, false, true)
+	resp, _, err := o.LoadSnapshot(ctx, snap, false, true)
 	if err != nil {
 		return nil, err
 	}
+	vmID = resp.VMID // Get the VM ID from the response (override temporary vmID)
+	logger = log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	_, err = o.ResumeVM(ctx, vmID)
 	if err != nil {
 		return nil, err
@@ -544,10 +567,12 @@ func (o *Orchestrator) StartWithImageSnapshot(ctx context.Context, vmID, imageNa
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 
 	// Start the VM with the base snapshot
-	_, _, err = o.LoadSnapshot(ctx, vmID, snap, false, true)
+	resp, _, err := o.LoadSnapshot(ctx, snap, false, true)
 	if err != nil {
 		return nil, err
 	}
+	vmID = resp.VMID // Get the VM ID from the response
+	logger = log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	_, err = o.ResumeVM(ctx, vmID)
 	if err != nil {
 		return nil, err
@@ -702,6 +727,11 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 
 	if err := o.vmPool.Free(vmID); err != nil {
 		logger.Error("failed to free VM from VM pool")
+		return err
+	}
+
+	if err := o.shimPool.ReleaseShim(ctx, vmID); err != nil {
+		logger.Error("failed to release shim to shim pool")
 		return err
 	}
 
@@ -877,7 +907,8 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 // LoadSnapshot Loads a snapshot of a VM
-func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot, enableDiffSnapshots, skipUPF bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+// The VM ID is acquired from the shim pool and returned in the response
+func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snapshot, enableDiffSnapshots, skipUPF bool) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
 		tStart               time.Time
@@ -885,8 +916,24 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		loadDone             = make(chan int)
 	)
 
+	// Acquire a VM ID from the shim pool
+	vmID, err := o.AcquireShimFromPool(ctx)
+	if err != nil {
+		log.WithError(err).Error("failed to acquire VM ID from shim pool")
+		return nil, nil, err
+	}
+
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
+
+	// Release shim on error
+	defer func() {
+		if retErr != nil {
+			if err := o.ReleaseShimToPool(ctx, vmID); err != nil {
+				logger.WithError(err).Error("failed to release shim to pool after failure")
+			}
+		}
+	}()
 
 	ctx = withNamespace(ctx, o.snapshotter, vmID)
 
@@ -1063,5 +1110,5 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	vm.SnapBooted = true
 
-	return &StartVMResponse{GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
+	return &StartVMResponse{VMID: vmID, GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
 }

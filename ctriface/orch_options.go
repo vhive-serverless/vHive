@@ -62,6 +62,14 @@ func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
 	}
 }
 
+// WithSnapshotsStorage Sets the storage location where
+// snapshots should be stored long term
+func WithSnapshotsStorage(snapshotsStorage string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.snapshotsStorage = snapshotsStorage
+	}
+}
+
 func WithCacheSnaps(cacheSnaps bool) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.cacheSnaps = cacheSnaps
@@ -106,6 +114,12 @@ func WithMetricsMode(isMetricsMode bool) OrchestratorOption {
 func WithNetPoolSize(netPoolSize int) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.netPoolSize = netPoolSize
+	}
+}
+
+func WithShimPoolSize(shimPoolSize int) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.shimPoolSize = shimPoolSize
 	}
 }
 

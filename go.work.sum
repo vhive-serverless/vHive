@@ -198,6 +198,8 @@ github.com/tsenart/vegeta/v12 v12.8.4/go.mod h1:ZiJtwLn/9M4fTPdMY7bdbIeyNeFVE8/A
 github.com/tsenart/vegeta/v12 v12.12.0/go.mod h1:gpdfR++WHV9/RZh4oux0f6lNPhsOH8pCjIGUlcPQe1M=
 github.com/vhive-serverless/firecracker-containerd v0.0.0-20230912063208-ad6383f05e45 h1:B+2NmtrRoWgfYkaqqG9Dyqud5HRjfibFpB8wbqER/PQ=
 github.com/vhive-serverless/firecracker-containerd v0.0.0-20230912063208-ad6383f05e45/go.mod h1:XC5a/4PWbzipD5Ron745odZxoVy/J6d8xFldwTZJbSU=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20251105131017-f10d8a3dea77 h1:NO6SXo0mPVAYZzYXVVBXEExdYPq2pZL48+Cl6ZsnDzY=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20251105131017-f10d8a3dea77/go.mod h1:XC5a/4PWbzipD5Ron745odZxoVy/J6d8xFldwTZJbSU=
 github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 go.mongodb.org/mongo-driver v1.10.0/go.mod h1:wsihk0Kdgv8Kqu1Anit4sfK+22vSFbUrAVEYRhCXrA8=
