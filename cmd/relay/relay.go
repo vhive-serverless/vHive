@@ -32,17 +32,16 @@ const (
 var (
 	flog *os.File
 
-	isSaveMemory            *bool
-	snapshotMode            *string
-	cacheSnaps              *bool
-	isUPFEnabled            *bool
-	isChunkingEnabled       *bool
-	isLazyMode              *bool
-	isMetricsMode           *bool
-	pinnedFuncNum           *int
-	hostIface               *string
-	netPoolSize             *int
-	memFileOptimizationMode *bool
+	isSaveMemory      *bool
+	snapshotMode      *string
+	cacheSnaps        *bool
+	isUPFEnabled      *bool
+	isChunkingEnabled *bool
+	isLazyMode        *bool
+	isMetricsMode     *bool
+	pinnedFuncNum     *int
+	hostIface         *string
+	netPoolSize       *int
 )
 
 var (
@@ -54,7 +53,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	log.Debug("request received")
 
 	// ctx, cancel := context.WithCancel(context.Background())
-	ctx := context.TODO()
+	ctx := context.Background()
 	image := "ghcr.io/leokondrashov/auth-go:esgz"
 	rev := "auth-go-esgz"
 
@@ -178,7 +177,6 @@ func main() {
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
 	dockerCredentials := flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM") // https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds
 	minioCredentials := flag.String("minioCredentials", "", "Minio credentials for uploading/downloading remote firecracker snapshots. Format: <minioAddr>;<minioAccessKey>;<minioSecretKey>")
-	memFileOptimizationMode = flag.Bool("memOpt", false, "Optimize the download and upload of MemoryFile in snapshots")
 	flag.Parse()
 
 	minioAddr := "localhost:9000"
@@ -233,13 +231,13 @@ func main() {
 		ctriface.WithMinioAccessKey(minioAccessKey),
 		ctriface.WithMinioSecretKey(minioSecretKey),
 		ctriface.WithSnapshotsStorage(snapDir),
-		ctriface.WithShimPoolSize(1),
+		ctriface.WithShimPoolSize(5),
 	)
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()
 	time.Sleep(1 * time.Second) // Wait for orchestrator to fully initialize
 
-	s := &http.Server{Addr: ":8080", Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{})}
+	s := &http.Server{Addr: "10.0.1.1:8080", Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{})}
 	s.ListenAndServe()
 	// http.HandleFunc("/", handler)
 	// http.ListenAndServe(":8080", nil)

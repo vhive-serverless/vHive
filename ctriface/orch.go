@@ -127,12 +127,11 @@ func (sp *ShimPool) generateVMID() string {
 // AcquireShim gets a pre-created shim from the pool, or creates a new one if pool is empty
 func (sp *ShimPool) AcquireShim(ctx context.Context) (string, error) {
 	sp.mu.Lock()
-	defer sp.mu.Unlock()
-
 	// Try to get a pre-created shim from the pool
 	if len(sp.availableVMID) > 0 {
 		vmID := sp.availableVMID[0]
 		sp.availableVMID = sp.availableVMID[1:]
+		sp.mu.Unlock()
 		sp.logger.WithField("vmID", vmID).Debug("Acquired pre-created shim from pool")
 
 		// Asynchronously refill the pool
@@ -140,6 +139,7 @@ func (sp *ShimPool) AcquireShim(ctx context.Context) (string, error) {
 
 		return vmID, nil
 	}
+	sp.mu.Unlock()
 
 	// Pool is empty, create a new shim on-demand
 	vmID := sp.generateVMID()
