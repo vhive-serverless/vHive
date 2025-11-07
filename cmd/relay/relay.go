@@ -231,8 +231,11 @@ func main() {
 		ctriface.WithMinioAccessKey(minioAccessKey),
 		ctriface.WithMinioSecretKey(minioSecretKey),
 		ctriface.WithSnapshotsStorage(snapDir),
+		ctriface.WithShimPoolSize(1),
 	)
+	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()
+	time.Sleep(1 * time.Second) // Wait for orchestrator to fully initialize
 
 	s := &http.Server{Addr: ":8080", Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{})}
 	s.ListenAndServe()

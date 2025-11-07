@@ -34,7 +34,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/vhive-serverless/vhive/devmapper"
@@ -100,26 +99,29 @@ type DockerCredentials struct {
 type ShimPool struct {
 	mu            sync.Mutex
 	availableVMID []string         // Pool of available pre-created shim VM IDs
-	inUseVMID     map[string]bool  // Track which VM IDs are currently in use
 	fcClient      *fcclient.Client // Firecracker client for creating shims
 	poolSize      int              // Target pool size
 	logger        *log.Entry
+	counter       int // Counter for generating unique VM IDs
 }
 
 // NewShimPool creates a new shim pool
 func NewShimPool(fcClient *fcclient.Client, poolSize int) *ShimPool {
 	return &ShimPool{
 		availableVMID: make([]string, 0, poolSize),
-		inUseVMID:     make(map[string]bool),
 		fcClient:      fcClient,
 		poolSize:      poolSize,
 		logger:        log.WithField("component", "ShimPool"),
+		counter:       0,
 	}
 }
 
 // generateVMID creates a new unique VM ID
 func (sp *ShimPool) generateVMID() string {
-	return fmt.Sprintf("shim-%s", uuid.New().String())
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.counter++
+	return fmt.Sprintf("shim-%d-%d", os.Getpid(), sp.counter)
 }
 
 // AcquireShim gets a pre-created shim from the pool, or creates a new one if pool is empty
@@ -131,7 +133,6 @@ func (sp *ShimPool) AcquireShim(ctx context.Context) (string, error) {
 	if len(sp.availableVMID) > 0 {
 		vmID := sp.availableVMID[0]
 		sp.availableVMID = sp.availableVMID[1:]
-		sp.inUseVMID[vmID] = true
 		sp.logger.WithField("vmID", vmID).Debug("Acquired pre-created shim from pool")
 
 		// Asynchronously refill the pool
@@ -148,8 +149,6 @@ func (sp *ShimPool) AcquireShim(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	sp.inUseVMID[vmID] = true
-
 	// Asynchronously refill the pool
 	go sp.refillPool(ctx)
 
@@ -161,8 +160,6 @@ func (sp *ShimPool) ReleaseShim(ctx context.Context, vmID string) error {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 
-	delete(sp.inUseVMID, vmID)
-
 	// Always remove the shim (no reuse)
 	sp.logger.WithField("vmID", vmID).Debug("Removing shim")
 	return sp.removeShim(ctx, vmID)
@@ -172,7 +169,7 @@ func (sp *ShimPool) ReleaseShim(ctx context.Context, vmID string) error {
 func (sp *ShimPool) createShim(ctx context.Context, vmID string) error {
 	sp.logger.WithField("vmID", vmID).Debug("Creating new shim")
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	ctx = namespaces.WithNamespace(ctx, vmID)
 	_, err := sp.fcClient.PrepareShim(ctx, &proto.PrepareShimRequest{
 		VMID: vmID,
 	})
@@ -189,7 +186,7 @@ func (sp *ShimPool) createShim(ctx context.Context, vmID string) error {
 func (sp *ShimPool) removeShim(ctx context.Context, vmID string) error {
 	sp.logger.WithField("vmID", vmID).Debug("Removing shim")
 
-	ctx = namespaces.WithNamespace(ctx, namespaceName)
+	ctx = namespaces.WithNamespace(ctx, vmID)
 	_, err := sp.fcClient.RemoveShim(ctx, &proto.RemoveShimRequest{
 		VMID: vmID,
 	})
@@ -266,15 +263,7 @@ func (sp *ShimPool) Cleanup(ctx context.Context) error {
 		}
 	}
 
-	// Remove all in-use shims
-	for vmID := range sp.inUseVMID {
-		if err := sp.removeShim(ctx, vmID); err != nil {
-			errors = append(errors, err)
-		}
-	}
-
 	sp.availableVMID = nil
-	sp.inUseVMID = make(map[string]bool)
 
 	if len(errors) > 0 {
 		sp.logger.WithField("errorCount", len(errors)).Error("Errors during shim pool cleanup")
@@ -286,10 +275,10 @@ func (sp *ShimPool) Cleanup(ctx context.Context) error {
 }
 
 // GetPoolStats returns statistics about the shim pool
-func (sp *ShimPool) GetPoolStats() (available int, inUse int) {
+func (sp *ShimPool) GetPoolStats() (available int) {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-	return len(sp.availableVMID), len(sp.inUseVMID)
+	return len(sp.availableVMID)
 }
 
 // Orchestrator Drives all VMs
@@ -420,7 +409,7 @@ func (o *Orchestrator) setupCloseHandler() {
 	go func() {
 		<-c
 		log.Info("\r- Ctrl+C pressed in Terminal")
-		_ = o.StopActiveVMs()
+		// _ = o.StopActiveVMs()
 		o.Cleanup()
 		os.Exit(0)
 	}()
@@ -442,6 +431,8 @@ func (o *Orchestrator) Cleanup() {
 	if err := os.RemoveAll(o.snapshotsDir); err != nil {
 		log.Panic("failed to delete snapshots dir", err)
 	}
+
+	o.StopActiveVMs()
 }
 
 // GetSnapshotMode Returns the snapshots mode of the orchestrator
@@ -564,9 +555,9 @@ func (o *Orchestrator) ReleaseShimToPool(ctx context.Context, vmID string) error
 }
 
 // GetShimPoolStats returns statistics about the shim pool
-func (o *Orchestrator) GetShimPoolStats() (available int, inUse int) {
+func (o *Orchestrator) GetShimPoolStats() (available int) {
 	if o.shimPool == nil {
-		return 0, 0
+		return 0
 	}
 	return o.shimPool.GetPoolStats()
 }

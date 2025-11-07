@@ -152,7 +152,8 @@ func main() {
 		ctriface.WithShimPoolSize(1),
 	)
 	defer orch.Cleanup()
-	defer orch.StopActiveVMs()
+
+	time.Sleep(1 * time.Second) // Wait for orchestrator to fully initialize
 
 	images := map[string]string{
 		// "hello-4": "ghcr.io/vhive-serverless/helloworld:var_workload-esgz",
