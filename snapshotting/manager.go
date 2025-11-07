@@ -63,20 +63,17 @@ type SnapshotManager struct {
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
-
-	memFileOptimizationMode bool
 }
 
 func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool) *SnapshotManager {
 	manager := &SnapshotManager{
-		snapshots:               make(map[string]*Snapshot),
-		baseFolder:              baseFolder,
-		chunking:                chunking,
-		chunkRegistry:           sync.Map{},
-		storage:                 store,
-		wsPulling:               wsPulling,
-		lazy:                    lazy,
-		memFileOptimizationMode: false,
+		snapshots:     make(map[string]*Snapshot),
+		baseFolder:    baseFolder,
+		chunking:      chunking,
+		chunkRegistry: sync.Map{},
+		storage:       store,
+		wsPulling:     wsPulling,
+		lazy:          lazy,
 	}
 
 	// Clean & init basefolder unless skipping is requested
@@ -89,10 +86,6 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 	}
 
 	return manager
-}
-
-func (mgr *SnapshotManager) SetMemFileOptimizationMode(mode bool) {
-	mgr.memFileOptimizationMode = mode
 }
 
 // AcquireSnapshot returns a snapshot for the specified revision if it is available.
@@ -241,89 +234,7 @@ func (mgr *SnapshotManager) RegisterChunk(hash string) {
 	mgr.chunkRegistry.Store(hash, true)
 }
 
-func (mgr *SnapshotManager) oldUploadMemFile(snap *Snapshot) error {
-	startTime := time.Now()
-
-	if !mgr.chunking {
-		error := mgr.uploadFile(snap.GetId(), snap.GetMemFilePath())
-		log.Infof("unchunked uploadMemFile for snapshot %s completed in %s", snap.GetId(), time.Since(startTime))
-		return error
-	}
-
-	file, err := os.Open(snap.GetMemFilePath())
-	if err != nil {
-		return errors.Wrapf(err, "opening memory file for chunked upload")
-	}
-	defer file.Close()
-
-	buffer := make([]byte, chunkSize)
-	chunkIndex := 0
-	recipe := make([]byte, 0)
-	for {
-		n, err := io.ReadFull(file, buffer)
-		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-			return errors.Wrapf(err, "reading chunk %d from memory file", chunkIndex)
-		}
-		if n == 0 {
-			break
-		}
-
-		// Compute MD5 hash of chunk
-		hash := md5.Sum(buffer[:n])
-		recipe = append(recipe, hash[:]...)
-		chunkHash := hex.EncodeToString(hash[:])
-		chunkFilePath := filepath.Join(mgr.baseFolder, chunkPrefix, chunkHash)
-
-		if _, err := os.Stat(chunkFilePath); err == nil {
-			// Chunk file already exists, skip uploading
-			chunkIndex++
-			continue
-		}
-
-		chunkFile, err := os.Create(chunkFilePath)
-		if err != nil {
-			return errors.Wrapf(err, "creating chunk file %s", chunkFilePath)
-		}
-
-		if _, err := chunkFile.Write(buffer); err != nil {
-			chunkFile.Close()
-			return errors.Wrapf(err, "writing to chunk file %s", chunkFilePath)
-		}
-		mgr.uploadFile(chunkPrefix, chunkFilePath)
-
-		chunkFile.Close()
-		// os.Remove(chunkFilePath)
-		chunkIndex++
-		if err == io.EOF {
-			break
-		}
-	}
-
-	// Upload recipe file
-	recipeFilePath := snap.GetRecipeFilePath()
-	recipeFile, err := os.Create(recipeFilePath)
-	if err != nil {
-		return errors.Wrapf(err, "creating recipe file for chunked upload")
-	}
-	defer recipeFile.Close()
-
-	if _, err := recipeFile.Write(recipe); err != nil {
-		return errors.Wrapf(err, "writing recipe file for chunked upload")
-	}
-
-	mgr.uploadFile(snap.GetId(), recipeFilePath)
-	os.Remove(recipeFilePath)
-
-	log.Infof("Old uploadMemFile for snapshot %s completed in %s, chunk count: %d", snap.GetId(), time.Since(startTime), chunkIndex)
-
-	return nil
-}
-
 func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
-	if !mgr.memFileOptimizationMode {
-		return mgr.oldUploadMemFile(snap)
-	}
-
 	startTime := time.Now()
 
 	if !mgr.chunking {
@@ -445,7 +356,7 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 	mgr.uploadFile(snap.GetId(), recipeFilePath)
 	os.Remove(recipeFilePath)
 
-	log.Infof("uploadMemFile for snapshot %s completed in %s, chunk count: %d", snap.GetId(), time.Since(startTime), chunkIndex + 1)
+	log.Infof("uploadMemFile for snapshot %s completed in %s, chunk count: %d", snap.GetId(), time.Since(startTime), chunkIndex+1)
 	return nil
 }
 
@@ -511,86 +422,7 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 	return snap, nil
 }
 
-func (mgr *SnapshotManager) OldDownloadMemFile(snap *Snapshot) error { // TODO: Remove
-	startTime := time.Now()
-
-	if !mgr.chunking {
-		error := mgr.downloadFile(snap.GetId(), snap.GetMemFilePath(), filepath.Base(snap.GetMemFilePath()))
-		log.Infof("unchunked downloadMemFile for snapshot %s completed in %s", snap.GetId(), time.Since(startTime))
-		return error
-	}
-
-	recipeFilePath := snap.GetRecipeFilePath()
-	recipeFileName := filepath.Base(recipeFilePath)
-	if err := mgr.downloadFile(snap.GetId(), recipeFilePath, recipeFileName); err != nil {
-		return errors.Wrapf(err, "downloading recipe file for chunked download")
-	}
-	if mgr.lazy {
-		if !mgr.wsPulling {
-			return nil // nothing more to do in lazy mode without WS pulling
-		}
-		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat.Size() == 0 {
-			log.Infof("No working set file for snapshot %s, skipping WS pulling", snap.GetId())
-			return nil // nothing more to do if no working set file
-		}
-
-		return mgr.downloadWorkingSet(snap)
-	}
-
-	outFile, err := os.Create(snap.GetMemFilePath())
-	if err != nil {
-		return errors.Wrapf(err, "creating memory file for chunked download")
-	}
-	defer outFile.Close()
-
-	recipeFile, err := os.Open(recipeFilePath)
-	if err != nil {
-		return errors.Wrapf(err, "opening recipe file for chunked download")
-	}
-	defer recipeFile.Close()
-
-	recipe, err := io.ReadAll(recipeFile)
-	if err != nil {
-		return errors.Wrapf(err, "reading recipe file for chunked download")
-	}
-
-	chunkIndex := 0
-	for hashStart := 0; hashStart < len(recipe); hashStart += md5.Size {
-		hashEnd := hashStart + md5.Size
-		if hashEnd > len(recipe) {
-			break
-		}
-		hash := hex.EncodeToString(recipe[hashStart:hashEnd])
-
-		chunkFilePath := filepath.Join(mgr.baseFolder, chunkPrefix, hash)
-		if err := mgr.DownloadChunk(hash); err != nil {
-			return errors.Wrapf(err, "downloading chunk %d of memory file", chunkIndex)
-		}
-
-		chunkFile, err := os.Open(chunkFilePath)
-		if err != nil {
-			return errors.Wrapf(err, "opening chunk file %s", chunkFilePath)
-		}
-
-		if _, err := io.Copy(outFile, chunkFile); err != nil {
-			chunkFile.Close()
-			return errors.Wrapf(err, "writing chunk %d to memory file", chunkIndex)
-		}
-
-		chunkFile.Close()
-		chunkIndex++
-	}
-
-	log.Infof("Old downloadMemFile for snapshot %s completed in %s, %d chunks downloaded", snap.GetId(), time.Since(startTime), chunkIndex)
-	
-	return nil
-}
-
 func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
-	if !mgr.memFileOptimizationMode {
-		return mgr.OldDownloadMemFile(snap)
-	}
-
 	startTime := time.Now()
 
 	if !mgr.chunking {
@@ -723,17 +555,6 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	mgr.RegisterChunk(hash)
 
 	return data, nil
-}
-
-func (mgr *SnapshotManager) OldDownloadChunk(hash string) error {
-	chunkFilePath := filepath.Join(mgr.baseFolder, chunkPrefix, hash)
-
-	if _, err := os.Stat(chunkFilePath); err == nil { // Chunk file exists locally, use it
-		return nil
-	}
-
-	// Chunk file does not exist locally, download it
-	return mgr.downloadFile(chunkPrefix, chunkFilePath, hash)
 }
 
 func (mgr *SnapshotManager) DownloadChunk(hash string) error {
