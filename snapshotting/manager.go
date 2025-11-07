@@ -671,13 +671,30 @@ func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 		chunksToLoad[hash] = true
 	}
 
-	// Download only the working set chunks
-	for hash := range chunksToLoad {
-		if err := mgr.DownloadChunk(hash); err != nil {
-			return errors.Wrapf(err, "downloading working set chunk %s", hash)
-		}
+	var wg sync.WaitGroup
+	jobs := make(chan string, len(chunksToLoad))
+	numWorkers := 8 // TODO: tune based on CPU/network
+
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for hash := range jobs {
+				err := mgr.DownloadChunk(hash)
+				if err != nil {
+					log.Printf("Error downloading chunk %s: %v", hash, err)
+					continue
+				}
+			}
+		}()
 	}
 
+	for hash := range chunksToLoad {
+		jobs <- hash
+	}
+	close(jobs)
+
+	wg.Wait()
 	log.Infof("Finished downloading working set for snapshot %s, %d chunks downloaded", snap.GetId(), len(chunksToLoad))
 
 	return nil
