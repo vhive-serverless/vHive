@@ -42,11 +42,10 @@ import (
 
 const (
 	chunkPrefix = "_chunks"
-	chunkSize   = 512 * 1024 // 512 KB
 )
 
-func GetChunkSize() uint64 {
-	return chunkSize
+func (mgr *SnapshotManager) GetChunkSize() uint64 {
+	return mgr.chunkSize
 }
 
 // SnapshotManager manages snapshots stored on the node.
@@ -60,17 +59,19 @@ type SnapshotManager struct {
 	chunkRegistry sync.Map
 	lazy          bool
 	wsPulling     bool
+	chunkSize     uint64
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool) *SnapshotManager {
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
 		baseFolder:    baseFolder,
 		chunking:      chunking,
 		chunkRegistry: sync.Map{},
+		chunkSize:     chunkSize,
 		storage:       store,
 		wsPulling:     wsPulling,
 		lazy:          lazy,
@@ -296,7 +297,7 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 		}()
 	}
 
-	buffer := make([]byte, chunkSize)
+	buffer := make([]byte, mgr.chunkSize)
 	chunkIndex := 0
 	recipe := make([]byte, 0)
 
@@ -499,7 +500,7 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 					continue
 				}
 
-				offset := int64(idx * chunkSize)
+				offset := int64(idx * int(mgr.chunkSize))
 				if _, err := outFile.WriteAt(chunk_bytes, offset); err != nil {
 					log.Printf("Error writing chunk %d: %v", idx, err)
 				}
@@ -659,7 +660,7 @@ func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 
 		// Calculate which chunk this page belongs to
 		byteOffset := pageOffset * 4096 // Assuming 4KB pages
-		chunkIndex := byteOffset / chunkSize
+		chunkIndex := byteOffset / mgr.chunkSize
 
 		// Get chunk hash from recipe
 		hashStart := int(chunkIndex) * md5.Size

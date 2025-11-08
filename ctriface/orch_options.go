@@ -98,6 +98,12 @@ func WithChunkingEnabled(isChunkingEnabled bool) OrchestratorOption {
 	}
 }
 
+func WithChunkSize(chunkSize uint64) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.chunkSize = chunkSize
+	}
+}
+
 func WithWSPulling(isWSEnabled bool) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.isWSPulling = isWSEnabled

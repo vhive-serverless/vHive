@@ -164,7 +164,7 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 		src = po.backingBuffer + uintptr(region.Offset+offset)
 	} else {
 		// In lazy mode, read the MD5 hash from the recipe file
-		recipeOffset := (region.Offset + offset) / snapshotting.GetChunkSize() * md5.Size
+		recipeOffset := (region.Offset + offset) / po.snapMgr.GetChunkSize() * md5.Size
 		hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
 		var hashKey [md5.Size]byte
 		copy(hashKey[:], hashBytes[:])
@@ -175,7 +175,7 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 			return false
 		}
 
-		src = mappedAddr + (uintptr(region.Offset+offset) % uintptr(snapshotting.GetChunkSize()))
+		src = mappedAddr + (uintptr(region.Offset+offset) % uintptr(po.snapMgr.GetChunkSize()))
 	}
 
 	copy := UffdIoCopy{
@@ -231,7 +231,7 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 				src = po.backingBuffer + uintptr(pageAddr)
 			} else {
 				// In lazy mode, read the MD5 hash from the recipe file
-				recipeOffset := (pageAddr) / snapshotting.GetChunkSize() * md5.Size
+				recipeOffset := (pageAddr) / po.snapMgr.GetChunkSize() * md5.Size
 				hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
 				var hashKey [md5.Size]byte
 				copy(hashKey[:], hashBytes[:])
@@ -242,7 +242,7 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 					return
 				}
 
-				src = mappedAddr + (uintptr(pageAddr) % uintptr(snapshotting.GetChunkSize()))
+				src = mappedAddr + (uintptr(pageAddr) % uintptr(po.snapMgr.GetChunkSize()))
 			}
 
 			copy := UffdIoCopy{
@@ -281,7 +281,7 @@ func (po *PageOperations) mapChunk(hashKey [md5.Size]byte) (uintptr, error) {
 	chunkMem, err := unix.Mmap(
 		int(chunkFile.Fd()),
 		0,
-		int(snapshotting.GetChunkSize()),
+		int(po.snapMgr.GetChunkSize()),
 		unix.PROT_READ,
 		unix.MAP_PRIVATE,
 	)
@@ -607,7 +607,7 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 	ws := make([]uint64, 0)
 	if lazy {
 		// in case of lazy, the backing memory file is just a recipe file containing md5 hashes
-		backingMemorySize *= uint64(snapshotting.GetChunkSize()) / uint64(md5.Size)
+		backingMemorySize *= uint64(snapMgr.GetChunkSize()) / uint64(md5.Size)
 		mappedChunks = make(map[[md5.Size]byte]uintptr)
 	}
 

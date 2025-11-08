@@ -101,6 +101,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			exec.CommandContext(r.Context(), homeDir+"/vswarm/tools/relay/server", strings.Split(relayArgs, " ")...).Run()
 		}()
+
+		time.Sleep(5 * time.Millisecond)
 	}
 
 	log.Debugf("Sending invocation to %s", vmId)
@@ -157,6 +159,7 @@ func main() {
 	dockerCredentials := flag.String("dockerCredentials", `{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}`, "Docker credentials for pulling images from inside a microVM") // https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds
 	minioCredentials := flag.String("minioCredentials", "10.0.1.1:9000;minio;minio123", "Minio credentials for uploading/downloading remote firecracker snapshots. Format: <minioAddr>;<minioAccessKey>;<minioSecretKey>")
 	endpoint := flag.String("endpoint", "localhost:8080", "Endpoint for the relay server")
+	chunkSize := flag.Uint64("chunkSize", 512*1024, "Chunk size in bytes for memory file uploads and downloads when chunking is enabled")
 	flag.Parse()
 
 	imageMap = make(map[string]string)
@@ -213,6 +216,7 @@ func main() {
 		ctriface.WithLazyMode(*isLazyMode),
 		ctriface.WithWSPulling(*isWSEnabled),
 		ctriface.WithChunkingEnabled(*isChunkingEnabled),
+		ctriface.WithChunkSize(*chunkSize),
 		ctriface.WithNetPoolSize(*netPoolSize),
 		ctriface.WithVethPrefix(*vethPrefix),
 		ctriface.WithClonePrefix(*clonePrefix),

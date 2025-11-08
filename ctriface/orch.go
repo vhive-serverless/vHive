@@ -301,6 +301,7 @@ type Orchestrator struct {
 	isLazyMode        bool
 	isWSPulling       bool
 	isChunkingEnabled bool
+	chunkSize         uint64
 	snapshotsDir      string
 	snapshotsStorage  string
 	snapshotsBucket   string
@@ -398,7 +399,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 			log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", snapshotsBucket)
 		}
 	}
-	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, false, o.isLazyMode, o.isWSPulling)
+	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, false, o.isLazyMode, o.isWSPulling, o.chunkSize)
 
 	return o
 }
