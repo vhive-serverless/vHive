@@ -17,3 +17,5 @@ tmux new -s http-address-resolver -d
 tmux send -t http-address-resolver "sudo PATH=$PATH /usr/local/bin/http-address-resolver" ENTER
 tmux new -s demux-snapshotter -d
 tmux send -t demux-snapshotter 'while true; do sudo /usr/local/bin/demux-snapshotter; done' ENTER
+
+pushd ~; git clone https://github.com/vhive-serverless/vswarm; cd vswarm/tools/relay; make relay; popd

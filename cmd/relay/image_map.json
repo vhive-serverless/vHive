@@ -1,0 +1,4 @@
+{
+    "ghcr.io/vhive-serverless/invitro_trace_function:latest": "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
+    "docker.io/vhiveease/auth-go:latest": "ghcr.io/leokondrashov/auth-go:esgz"
+}

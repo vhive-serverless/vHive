@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
@@ -30,76 +33,28 @@ const (
 )
 
 var (
-	flog *os.File
-
-	isSaveMemory      *bool
-	snapshotMode      *string
-	cacheSnaps        *bool
-	isUPFEnabled      *bool
-	isChunkingEnabled *bool
-	isLazyMode        *bool
-	isMetricsMode     *bool
-	pinnedFuncNum     *int
-	hostIface         *string
-	netPoolSize       *int
-)
-
-var (
-	orch    *ctriface.Orchestrator
-	snapMgr *snapshotting.SnapshotManager
+	orch      *ctriface.Orchestrator
+	snapMgr   *snapshotting.SnapshotManager
+	imageMap  map[string]string
+	relayPort = 0
+	mu        = &sync.Mutex{}
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	log.Debug("request received")
+	log.Debugf("request received, image %s, revision %s", r.Header.Get("image"), r.Header.Get("revision"))
 
 	// ctx, cancel := context.WithCancel(context.Background())
 	ctx := context.Background()
-	image := "ghcr.io/leokondrashov/auth-go:esgz"
-	rev := "auth-go-esgz"
+	image := r.Header.Get("image")
+	if mapped, ok := imageMap[image]; ok {
+		image = mapped
+	}
+	rev := r.Header.Get("revision")
 
 	var resp *ctriface.StartVMResponse
 	var err error
 	var snap *snapshotting.Snapshot
 	var metric *metrics.Metric
-	// go func() {
-	// 	logPath := fmt.Sprintf("/var/lib/firecracker-containerd/shim-base/%s#%s/fc-logs.fifo", vmId, vmId)
-	// 	// The FIFO file might not be created immediately. Retry opening it.
-	// 	var f *os.File
-	// 	var err error
-	// 	for i := 0; i < 10; i++ {
-	// 		f, err = os.OpenFile(logPath, os.O_RDONLY, 0)
-	// 		if err == nil {
-	// 			break
-	// 		}
-	// 		time.Sleep(100 * time.Millisecond)
-	// 	}
-	// 	if err != nil {
-	// 		log.Debugf("could not open fifo %s: %v", logPath, err)
-	// 		return
-	// 	}
-	// 	defer f.Close()
-
-	// 	scanner := bufio.NewScanner(f)
-	// 	for {
-	// 		select {
-	// 		case <-ctx.Done():
-	// 			log.Debugf("context cancelled, stopping log reader for %s", vmId)
-	// 			return
-	// 		default:
-	// 			if scanner.Scan() {
-	// 				log.Debugf("[vm-%s] %s", id, scanner.Text())
-	// 			} else {
-	// 				if err := scanner.Err(); err != nil {
-	// 					log.Debugf("error reading from fifo for %s: %v", vmId, err)
-	// 				}
-	// 				// If Scan returns false and no error, it's EOF.
-	// 				// For a FIFO, this might mean the writer closed it.
-	// 				// We can exit or wait for more data. Exiting seems reasonable.
-	// 				return
-	// 			}
-	// 		}
-	// 	}
-	// }()
 
 	var ok bool
 	if snap, err = snapMgr.AcquireSnapshot(rev); err == nil { // local case
@@ -127,9 +82,27 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	vmId := resp.VMID
 
+	relayArgs := r.Header.Get("relayArgs")
+	endpoint := resp.GuestIP + ":50051"
+	if relayArgs != "" {
+		mu.Lock()
+		relayPort++
+		port := 50000 + relayPort%5000
+		mu.Unlock()
+
+		endpoint = fmt.Sprintf("localhost:%d", port)
+		relayArgs = strings.Replace(relayArgs, "--addr=0.0.0.0:50000", "--addr="+endpoint, 1)
+		relayArgs = strings.Replace(relayArgs, "--function-endpoint-url=0.0.0.0", "--function-endpoint-url="+resp.GuestIP, 1)
+		log.Debugf("Relay args: %s", relayArgs)
+
+		go func() {
+			exec.CommandContext(r.Context(), homeDir+"/vswarm/tools/relay/server", strings.Split(relayArgs, " ")...).Run()
+		}()
+	}
+
 	log.Debugf("Sending invocation to %s", vmId)
 
-	proxy := pkghttp.NewHeaderPruningReverseProxy(resp.GuestIP+":50051", pkghttp.NoHostOverride, []string{}, false /* use HTTP */)
+	proxy := pkghttp.NewHeaderPruningReverseProxy(endpoint, pkghttp.NoHostOverride, []string{}, false /* use HTTP */)
 	proxy.Transport = &http2.Transport{
 		AllowHTTP: true,
 		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
@@ -162,22 +135,33 @@ func main() {
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
-	isSaveMemory = flag.Bool("ms", false, "Enable memory saving")
-	snapshotMode = flag.String("snapshots", "disabled", "Use VM snapshots when adding function instances, valid options: disabled, local, remote")
-	cacheSnaps = flag.Bool("cacheSnaps", true, "Keep remote snapshots cached localy for future use")
-	isUPFEnabled = flag.Bool("upf", false, "Enable user-level page faults guest memory management")
-	isChunkingEnabled = flag.Bool("chunking", false, "Enable chunking for memory file uploads and downloads")
-	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
-	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
-	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
+	isSaveMemory := flag.Bool("ms", false, "Enable memory saving")
+	snapshotMode := flag.String("snapshots", "disabled", "Use VM snapshots when adding function instances, valid options: disabled, local, remote")
+	cacheSnaps := flag.Bool("cacheSnaps", true, "Keep remote snapshots cached localy for future use")
+	isUPFEnabled := flag.Bool("upf", false, "Enable user-level page faults guest memory management")
+	isChunkingEnabled := flag.Bool("chunking", false, "Enable chunking for memory file uploads and downloads")
+	isMetricsMode := flag.Bool("metrics", false, "Calculate UPF metrics")
+	pinnedFuncNum := flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
+	isLazyMode := flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 	isWSEnabled := flag.Bool("ws", false, "Enable working set pulling for UPFs in lazy mode")
-	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
-	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
+	hostIface := flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
+	netPoolSize := flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
 	dockerCredentials := flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM") // https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds
 	minioCredentials := flag.String("minioCredentials", "", "Minio credentials for uploading/downloading remote firecracker snapshots. Format: <minioAddr>;<minioAccessKey>;<minioSecretKey>")
+	endpoint := flag.String("endpoint", "localhost:8080", "Endpoint for the relay server")
 	flag.Parse()
+
+	imageMap = make(map[string]string)
+	data, err := os.ReadFile("image_map.json")
+	if err != nil {
+		log.Warnf("Could not read image map file: %v", err)
+	} else {
+		if err := json.Unmarshal(data, &imageMap); err != nil {
+			log.Warnf("Could not parse image map JSON: %v", err)
+		}
+	}
 
 	minioAddr := "localhost:9000"
 	minioAccessKey := "minio"
@@ -237,7 +221,7 @@ func main() {
 	snapMgr = orch.GetSnapshotManager()
 	time.Sleep(1 * time.Second) // Wait for orchestrator to fully initialize
 
-	s := &http.Server{Addr: "10.0.1.1:8080", Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{})}
+	s := &http.Server{Addr: *endpoint, Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{})}
 	s.ListenAndServe()
 	// http.HandleFunc("/", handler)
 	// http.ListenAndServe(":8080", nil)
