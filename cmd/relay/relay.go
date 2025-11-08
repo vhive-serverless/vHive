@@ -50,6 +50,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		image = mapped
 	}
 	rev := r.Header.Get("revision")
+	if rev == "" {
+		rev = "default"
+	}
 
 	var resp *ctriface.StartVMResponse
 	var err error
@@ -115,6 +118,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("removing %s", vmId)
 		if snap == nil {
 			snap, err = snapMgr.InitSnapshot(rev, image)
+			if err != nil && strings.Contains(err.Error(), "Snapshot") && strings.Contains(err.Error(), "already exists") {
+				return
+			}
 			orch.PauseVM(ctx, vmId)
 			orch.CreateSnapshot(ctx, vmId, snap)
 			snapMgr.CommitSnapshot(rev)
