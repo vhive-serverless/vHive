@@ -180,6 +180,7 @@ func (mgr *SnapshotManager) CleanChunks() error {
 	}
 	os.RemoveAll(filepath.Join(mgr.baseFolder, chunkPrefix))
 	os.MkdirAll(filepath.Join(mgr.baseFolder, chunkPrefix), os.ModePerm)
+	mgr.chunkRegistry = sync.Map{}
 	return nil
 }
 
