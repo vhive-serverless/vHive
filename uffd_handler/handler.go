@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -125,6 +126,11 @@ type UffdIoRange struct {
 	Len   uint64
 }
 
+type MappedChunkInfo struct {
+	addr         uintptr
+	chunkContent []byte
+}
+
 // PageOperations encapsulates the page-level operations for UFFD handling.
 // This structure is shared across multiple UFFD handlers to provide consistent
 // behavior without duplicating configuration.
@@ -134,19 +140,20 @@ type PageOperations struct {
 	workingSet         []uint64
 	firstPageFaultOnce *sync.Once
 	lazy               bool
-	mappedChunks       map[[md5.Size]byte]uintptr
+	mappedChunks       sync.Map
+	keyLocks           sync.Map
 	snapMgr            *snapshotting.SnapshotManager
 }
 
 // NewPageOperations creates a new PageOperations instance
-func NewPageOperations(backingBuffer uintptr, pageSize uint64, workingSet []uint64, lazy bool, mappedChunks map[[md5.Size]byte]uintptr, snapMgr *snapshotting.SnapshotManager) *PageOperations {
+// TODO: Remove mappedChunks from signature: it's obsolete
+func NewPageOperations(backingBuffer uintptr, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager) *PageOperations {
 	return &PageOperations{
 		backingBuffer:      backingBuffer,
 		pageSize:           pageSize,
 		workingSet:         workingSet,
 		firstPageFaultOnce: &sync.Once{},
 		lazy:               lazy,
-		mappedChunks:       mappedChunks,
 		snapMgr:            snapMgr,
 	}
 }
@@ -216,83 +223,98 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 
 func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapping) {
 	startTime := time.Now()
-	counter := 0
+	var counter int32
+
 	defer func() {
-		log.Debugf("Pre-inserting working set of %d pages in %v", counter, time.Since(startTime))
+		mode := ""
+		if po.lazy {
+			mode = "(Lazy Version) "
+		}
+		log.Infof("%sPre-inserting working set of %d pages in %v", mode, atomic.LoadInt32(&counter), time.Since(startTime))
 	}()
 
+	pfnCh := make(chan uint64, len(po.workingSet))
 	for _, pfn := range po.workingSet {
 		pageAddr := pfn * po.pageSize
 		if pageAddr >= region.Offset && pageAddr < region.Offset+region.Size {
-			counter++
-
-			src := uintptr(0)
-			if !po.lazy {
-				src = po.backingBuffer + uintptr(pageAddr)
-			} else {
-				// In lazy mode, read the MD5 hash from the recipe file
-				recipeOffset := (pageAddr) / po.snapMgr.GetChunkSize() * md5.Size
-				hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
-				var hashKey [md5.Size]byte
-				copy(hashKey[:], hashBytes[:])
-				mappedAddr, err := po.mapChunk(hashKey)
-
-				if err != nil {
-					log.Errorf("Failed to map chunk: %v", err)
-					return
-				}
-
-				src = mappedAddr + (uintptr(pageAddr) % uintptr(po.snapMgr.GetChunkSize()))
-			}
-
-			copy := UffdIoCopy{
-				Dst:  pageAddr + region.BaseHostVirtAddr,
-				Src:  uint64(src),
-				Len:  po.pageSize,
-				Mode: UFFDIO_COPY_MODE_DONTWAKE,
-			}
-
-			_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(uffd), UFFDIO_COPY, uintptr(unsafe.Pointer(&copy)))
-			if errno != 0 {
-				if errno == unix.EAGAIN {
-					// A 'remove' event is blocking us
-					continue
-				}
-				if errno == unix.EEXIST {
-					// Page already exists, this is ok
-					continue
-				}
-				log.Errorf("UFFD copy failed: %v", errno)
-			}
+			pfnCh <- pfn
 		}
 	}
+	close(pfnCh)
+
+	numWorkers := 8 // TODO: tune
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+
+	for w := 0; w < numWorkers; w++ {
+		go func() {
+			defer wg.Done()
+			for pfn := range pfnCh {
+				pageAddr := pfn * po.pageSize
+				atomic.AddInt32(&counter, 1)
+
+				var src uintptr
+				if po.lazy {
+					recipeOffset := (pageAddr) / po.snapMgr.GetChunkSize() * md5.Size
+					hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
+					var hashKey [md5.Size]byte
+					copy(hashKey[:], hashBytes[:])
+
+					mappedAddr, err := po.mapChunk(hashKey)
+					if err != nil {
+						log.Errorf("Failed to map chunk: %v", err)
+						continue
+					}
+					src = mappedAddr + (uintptr(pageAddr) % uintptr(po.snapMgr.GetChunkSize()))
+				} else {
+					src = po.backingBuffer + uintptr(pageAddr)
+				}
+
+				copy := UffdIoCopy{
+					Dst:  pageAddr + region.BaseHostVirtAddr,
+					Src:  uint64(src),
+					Len:  po.pageSize,
+					Mode: UFFDIO_COPY_MODE_DONTWAKE,
+				}
+
+				_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(uffd), UFFDIO_COPY, uintptr(unsafe.Pointer(&copy)))
+				if errno != 0 && errno != unix.EAGAIN && errno != unix.EEXIST {
+					log.Errorf("UFFD copy failed: %v", errno)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
 }
 
 func (po *PageOperations) mapChunk(hashKey [md5.Size]byte) (uintptr, error) {
-	// Chunk not found, need to mmap it
+	// Return already mapped chunk if exists
+	if value, ok := po.mappedChunks.Load(hashKey); ok {
+		return value.(*MappedChunkInfo).addr, nil
+	}
+
+	// Ensure per-key lock exists
+	lockIface, _ := po.keyLocks.LoadOrStore(hashKey, &sync.Mutex{})
+	keyMu := lockIface.(*sync.Mutex)
+	keyMu.Lock()
+	defer keyMu.Unlock()
+
+	if value, ok := po.mappedChunks.Load(hashKey); ok {
+		return value.(*MappedChunkInfo).addr, nil
+	}
+
 	hash := hex.EncodeToString(hashKey[:])
-	po.snapMgr.DownloadChunk(hash)
-	chunkFileName := po.snapMgr.GetChunkFilePath(hash)
-	chunkFile, err := os.Open(chunkFileName)
+	chunkContent, err := po.snapMgr.DownloadAndReturnChunk(hash)
 	if err != nil {
-		return 0, fmt.Errorf("failed to open chunk file %s: %w", chunkFileName, err)
+		return 0, fmt.Errorf("failed to download and return chunk file %s: %w", hash, err)
 	}
 
-	chunkMem, err := unix.Mmap(
-		int(chunkFile.Fd()),
-		0,
-		int(po.snapMgr.GetChunkSize()),
-		unix.PROT_READ,
-		unix.MAP_PRIVATE,
-	)
-	if err != nil {
-		chunkFile.Close()
-		return 0, fmt.Errorf("failed to mmap chunk file %s: %w", chunkFileName, err)
-	}
-
-	chunkFile.Close()
-	mappedAddr := uintptr(unsafe.Pointer(&chunkMem[0]))
-	po.mappedChunks[hashKey] = mappedAddr
+	mappedAddr := uintptr(unsafe.Pointer(&chunkContent[0]))
+	po.mappedChunks.Store(hashKey, &MappedChunkInfo{
+		addr:         mappedAddr,
+		chunkContent: chunkContent,
+	})
 
 	return mappedAddr, nil
 }
@@ -577,7 +599,6 @@ type Runtime struct {
 	tracer            *PageFaultTracer
 	lazy              bool
 	snapMgr           *snapshotting.SnapshotManager
-	mappedChunks      map[[md5.Size]byte]uintptr
 	pageOps           *PageOperations
 }
 
@@ -602,13 +623,10 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 		return nil, fmt.Errorf("mmap on backing file failed: %w", err)
 	}
 
-	var mappedChunks map[[md5.Size]byte]uintptr
-
 	ws := make([]uint64, 0)
 	if lazy {
 		// in case of lazy, the backing memory file is just a recipe file containing md5 hashes
 		backingMemorySize *= uint64(snapMgr.GetChunkSize()) / uint64(md5.Size)
-		mappedChunks = make(map[[md5.Size]byte]uintptr)
 	}
 
 	if wsFile != nil {
@@ -637,7 +655,7 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 
 	// Create PageOperations with a reasonable default page size
 	// The actual page size will be validated when handlers are created
-	pageOps := NewPageOperations(backingMemoryPtr, 4096, ws, lazy, mappedChunks, snapMgr)
+	pageOps := NewPageOperations(backingMemoryPtr, 4096, ws, lazy, snapMgr)
 
 	rt := &Runtime{
 		stream:            conn,
@@ -649,7 +667,6 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 		tracer:            tracer,
 		lazy:              lazy,
 		snapMgr:           snapMgr,
-		mappedChunks:      mappedChunks,
 		pageOps:           pageOps,
 	}
 
