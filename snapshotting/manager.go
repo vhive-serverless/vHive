@@ -268,10 +268,15 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				chunkFilePath := filepath.Join(mgr.baseFolder, chunkPrefix, job.hash)
+				chunkFilePath := mgr.GetChunkFilePath(job.hash)
 
 				if mgr.IsChunkRegistered(job.hash) {
 					continue
+				}
+
+				dir := filepath.Dir(chunkFilePath)
+				if _, err := os.Stat(dir); os.IsNotExist(err) {
+					os.MkdirAll(dir, os.ModePerm)
 				}
 
 				chunkFile, err := os.Create(chunkFilePath)
@@ -520,7 +525,7 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 }
 
 func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) {
-	chunkFilePath := filepath.Join(mgr.baseFolder, chunkPrefix, hash)
+	chunkFilePath := mgr.GetChunkFilePath(hash)
 
 	// Return from in-memory registry if already downloaded
 	if mgr.IsChunkRegistered(hash) {
@@ -539,6 +544,10 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	}
 	defer obj.Close()
 
+	dir := filepath.Dir(chunkFilePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.MkdirAll(dir, os.ModePerm)
+	}
 	outFile, err := os.Create(chunkFilePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating chunk file %s", chunkFilePath)
@@ -560,7 +569,7 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 }
 
 func (mgr *SnapshotManager) DownloadChunk(hash string) error {
-	chunkFilePath := filepath.Join(mgr.baseFolder, chunkPrefix, hash)
+	chunkFilePath := mgr.GetChunkFilePath(hash)
 
 	if mgr.IsChunkRegistered(hash) {
 		return nil // already downloaded
@@ -575,7 +584,7 @@ func (mgr *SnapshotManager) DownloadChunk(hash string) error {
 }
 
 func (mgr *SnapshotManager) GetChunkFilePath(hash string) string {
-	return filepath.Join(mgr.baseFolder, chunkPrefix, hash)
+	return filepath.Join(mgr.baseFolder, chunkPrefix, hash[:2], hash)
 }
 
 // uploadFile uploads a single file to MinIO under the specified revision and file name.
@@ -604,6 +613,10 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 	}
 	defer obj.Close()
 
+	dir := filepath.Dir(filePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.MkdirAll(dir, os.ModePerm)
+	}
 	outFile, err := os.Create(filePath)
 	if err != nil {
 		return errors.Wrap(err, "creating output file")
@@ -737,5 +750,8 @@ func (mgr *SnapshotManager) SnapshotExists(revision string) (bool, error) {
 
 // Helper function to construct object keys (you may need to adjust this based on your key structure)
 func (mgr *SnapshotManager) getObjectKey(revision, fileName string) string {
+	if revision == chunkPrefix {
+		return fmt.Sprintf("%s/%s/%s", revision, fileName[:2], fileName)
+	}
 	return fmt.Sprintf("%s/%s", revision, fileName)
 }
