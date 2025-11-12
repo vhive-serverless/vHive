@@ -53,6 +53,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if rev == "" {
 		rev = "default"
 	}
+	env := r.Header.Get("env")
+	envArr := []string{}
+	if env != "" {
+		envArr = strings.Split(env, "|")
+	}
+	args := r.Header.Get("args")
+	argsArr := []string{}
+	if args != "" {
+		argsArr = strings.Split(args, " ")
+	}
+	log.Debugf("env vars: %v, args: %v", envArr, argsArr)
 
 	var resp *ctriface.StartVMResponse
 	var err error
@@ -74,7 +85,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
 	} else { // boot case
 		log.Debugf("No snapshot for rev %s, starting from image", rev)
-		resp, _, err = orch.StartVM(ctx, image)
+		resp, _, err = orch.StartVMWithEnvironment(ctx, image, envArr, argsArr)
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {

@@ -40,6 +40,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 
@@ -83,10 +84,10 @@ func withNamespace(ctx context.Context, snapshotter, vmID string) context.Contex
 // StartVM Boots a VM if it does not exist
 // The VM ID is acquired from the shim pool and returned in the response
 func (o *Orchestrator) StartVM(ctx context.Context, imageName string) (*StartVMResponse, *metrics.Metric, error) {
-	return o.StartVMWithEnvironment(ctx, imageName, []string{})
+	return o.StartVMWithEnvironment(ctx, imageName, []string{}, []string{})
 }
 
-func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, imageName string, environmentVariables []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, imageName string, environmentVariables, args []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
 		startVMMetric *metrics.Metric = metrics.NewMetric()
 		tStart        time.Time
@@ -187,6 +188,14 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, imageName str
 		specOpts = append(specOpts, firecrackeroci.WithVMLocalImageConfig(*vm.Image))
 	} else {
 		specOpts = append(specOpts, oci.WithImageConfig(*vm.Image))
+	}
+	if len(args) > 0 {
+		specOpts = append(specOpts, func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
+			if s.Process != nil {
+				s.Process.Args = append(s.Process.Args, args...)
+			}
+			return nil
+		})
 	}
 
 	tStart = time.Now()
@@ -1056,6 +1065,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 				logger.Debugf("Uploading WS file for snap %s after UFFD handler finished", snap.GetId())
 				os.Rename(memPath+".touched", snap.GetWSFilePath())
 				o.snapshotManager.UploadWSFile(snap.GetId())
+				o.snapshotManager.DeleteSnapshot(snap.GetId())
+				o.snapshotManager.CleanChunks()
 			}
 		}()
 	} else {
