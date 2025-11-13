@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   # This name uniquely identifies the PVC. Will be used in deployment below.
   name: minio-pv-claim
+  namespace: minio
   labels:
     app: minio-storage-claim
 spec:

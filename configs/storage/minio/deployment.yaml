@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   # This name uniquely identifies the Deployment
   name: minio-deployment
+  namespace: minio
 spec:
   selector:
     matchLabels:
