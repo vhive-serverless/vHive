@@ -1,4 +1,21 @@
 {
     "ghcr.io/vhive-serverless/invitro_trace_function:latest": "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
-    "docker.io/vhiveease/auth-go:latest": "ghcr.io/leokondrashov/auth-go:esgz"
+    "docker.io/vhiveease/fibonacci-go-mod:latest": "ghcr.io/leokondrashov/fibonacci-go-mod:esgz",
+    "docker.io/vhiveease/fibonacci-nodejs-mod:latest": "ghcr.io/leokondrashov/fibonacci-nodejs-mod:esgz",
+    "docker.io/vhiveease/fibonacci-python-mod:latest": "ghcr.io/leokondrashov/fibonacci-python-mod:esgz",
+    "docker.io/vhiveease/auth-go:latest": "ghcr.io/leokondrashov/auth-go:esgz",
+    "docker.io/vhiveease/auth-python:latest": "ghcr.io/leokondrashov/auth-python:esgz",
+    "docker.io/vhiveease/auth-nodejs:latest": "ghcr.io/leokondrashov/auth-nodejs:esgz",
+    "docker.io/vhiveease/aes-go:latest": "ghcr.io/leokondrashov/aes-go:esgz",
+    "docker.io/vhiveease/aes-python:latest": "ghcr.io/leokondrashov/aes-python:esgz",
+    "docker.io/vhiveease/aes-nodejs:latest": "ghcr.io/leokondrashov/aes-nodejs:esgz",
+    "docker.io/vhiveease/image-rotate-go:latest": "ghcr.io/leokondrashov/image-rotate-go:esgz",
+    "docker.io/vhiveease/image-rotate-python:latest": "ghcr.io/leokondrashov/image-rotate-python:esgz",
+    "docker.io/vhiveease/rnn-serving-python:latest": "ghcr.io/leokondrashov/rnn-serving-python:esgz",
+    "docker.io/vhiveease/video-processing-python:latest": "ghcr.io/leokondrashov/video-processing-python:esgz",
+    "docker.io/vhiveease/video-analytics-standalone-python:latest": "ghcr.io/leokondrashov/video-analytics-standalone-python:esgz",
+    "docker.io/vhiveease/onlineshop-adservice:latest": "ghcr.io/leokondrashov/onlineshop-adservice:esgz",
+    "docker.io/vhiveease/onlineshop-emailservice:latest": "ghcr.io/leokondrashov/onlineshop-emailservice:esgz",
+    "docker.io/vhiveease/onlineshop-cartservice:latest": "ghcr.io/leokondrashov/onlineshop-cartservice:esgz",
+    "": "ghcr.io/leokondrashov/auth-go:esgz"
 }
