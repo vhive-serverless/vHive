@@ -19,5 +19,5 @@ DST=/usr/local/bin
 
 for BINARY in demux-snapshotter http-address-resolver
 do
-  [ -f $DST/$BINARY ] || sudo cp $BINS/$BINARY $DST/
+  sudo cp $BINS/$BINARY $DST/
 done
