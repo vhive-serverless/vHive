@@ -49,10 +49,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if mapped, ok := imageMap[image]; ok {
 		image = mapped
 	}
-	rev := r.Header.Get("revision")
-	if rev == "" {
-		rev = "default"
-	}
+	// rev := r.Header.Get("revision")
+	// if rev == "" {
+	// 	rev = "default"
+	// }
+	rev := strings.Split(strings.Split(image, "/")[2], ":")[0]
 	env := r.Header.Get("env")
 	envArr := []string{}
 	if env != "" {
@@ -138,8 +139,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			orch.CreateSnapshot(ctx, vmId, snap)
 			snapMgr.CommitSnapshot(rev)
 			snapMgr.UploadSnapshot(rev)
-			snapMgr.DeleteSnapshot(rev)
-			snapMgr.CleanChunks()
+			// snapMgr.DeleteSnapshot(rev)
+			// snapMgr.CleanChunks()
 			log.Debugf("finished snapshotting %s", vmId)
 		}
 		orch.StopSingleVM(ctx, vmId)
