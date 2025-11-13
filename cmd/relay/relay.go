@@ -50,12 +50,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if mapped, ok := imageMap[image]; ok {
 		image = mapped
 	}
-	rev := r.Header.Get("revision")
-	if rev == "" {
-		rev = "default"
-	} else {
-		rev = strings.Join(strings.Split(rev, "-")[:len(strings.Split(rev, "-"))-2], "-") // remove the unique suffix added by Knative
-	}
+	// rev := r.Header.Get("revision")
+	// if rev == "" {
+	// 	rev = "default"
+	// } else {
+	// 	rev = strings.Join(strings.Split(rev, "-")[:len(strings.Split(rev, "-"))-2], "-") // remove the unique suffix added by Knative
+	// }
+	rev := strings.Split(strings.Split(image, "/")[2], ":")[0]
 	env := r.Header.Get("env")
 	envArr := []string{}
 	if env != "" {
