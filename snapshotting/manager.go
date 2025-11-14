@@ -85,8 +85,66 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 	if chunking {
 		_ = os.MkdirAll(filepath.Join(manager.baseFolder, chunkPrefix), os.ModePerm)
 	}
+	if skipCleanup {
+		_ = manager.RecoverSnapshots()
+	}
 
 	return manager
+}
+
+// RecoverSnapshots scans the base folder and recreates snapshot entries in the manager
+// for any existing snapshots. This is used when skipCleanup is true to recover state
+// after a restart.
+func (mgr *SnapshotManager) RecoverSnapshots() error {
+	logger := log.WithField("baseFolder", mgr.baseFolder)
+	logger.Debug("Recovering snapshots from base folder")
+
+	entries, err := os.ReadDir(mgr.baseFolder)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // Base folder doesn't exist yet, nothing to recover
+		}
+		return errors.Wrapf(err, "reading base folder %s", mgr.baseFolder)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Skip the chunks directory
+		if entry.Name() == chunkPrefix {
+			continue
+		}
+
+		revision := entry.Name()
+		snapDir := filepath.Join(mgr.baseFolder, revision)
+		infoPath := filepath.Join(snapDir, "info.json")
+
+		// Check if this looks like a valid snapshot directory
+		if _, err := os.Stat(infoPath); os.IsNotExist(err) {
+			logger.Warnf("Skipping directory %s: missing info.json", revision)
+			continue
+		}
+
+		// Create snapshot object
+		snap := NewSnapshot(revision, mgr.baseFolder, "")
+
+		// Load snapshot info
+		if err := snap.LoadSnapInfo(infoPath); err != nil {
+			logger.Warnf("Failed to load snapshot info for %s: %v", revision, err)
+			continue
+		}
+
+		// Mark as ready if all required files exist
+		snap.ready = true
+		mgr.snapshots[revision] = snap
+
+		logger.Infof("Recovered snapshot for revision %s", revision)
+	}
+
+	logger.Infof("Recovered %d snapshot(s)", len(mgr.snapshots))
+	return nil
 }
 
 // AcquireSnapshot returns a snapshot for the specified revision if it is available.
@@ -268,6 +326,9 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
+				if found, err := mgr.storage.Exists(mgr.getObjectKey(chunkPrefix, job.hash)); err == nil && found {
+					continue
+				}
 				chunkFilePath := mgr.GetChunkFilePath(job.hash)
 
 				if mgr.IsChunkRegistered(job.hash) {
