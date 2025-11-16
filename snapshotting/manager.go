@@ -522,12 +522,6 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 	}
 	defer outFile.Close()
 
-	recipeFile, err := os.Open(recipeFilePath)
-	if err != nil {
-		return errors.Wrapf(err, "opening recipe file for chunked download")
-	}
-	defer recipeFile.Close()
-
 	// Worker pool
 	type job struct {
 		idx  int

@@ -590,16 +590,17 @@ func (h *UffdHandler) Continue(addr uintptr) bool {
 
 // Runtime manages the UFFD handler runtime
 type Runtime struct {
-	stream            *net.UnixConn
-	backingFile       *os.File
-	backingMemory     uintptr
-	backingMemorySize uint64
-	uffds             map[int]*UffdHandler
-	streamFd          int
-	tracer            *PageFaultTracer
-	lazy              bool
-	snapMgr           *snapshotting.SnapshotManager
-	pageOps           *PageOperations
+	stream             *net.UnixConn
+	backingFile        *os.File
+	backingMemory      uintptr
+	backingMemoryBytes []byte
+	backingMemorySize  uint64
+	uffds              map[int]*UffdHandler
+	streamFd           int
+	tracer             *PageFaultTracer
+	lazy               bool
+	snapMgr            *snapshotting.SnapshotManager
+	pageOps            *PageOperations
 }
 
 // NewRuntime creates a new runtime
@@ -658,16 +659,17 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 	pageOps := NewPageOperations(backingMemoryPtr, 4096, ws, lazy, snapMgr)
 
 	rt := &Runtime{
-		stream:            conn,
-		backingFile:       backingFile,
-		backingMemory:     backingMemoryPtr,
-		backingMemorySize: backingMemorySize,
-		uffds:             make(map[int]*UffdHandler),
-		streamFd:          -1,
-		tracer:            tracer,
-		lazy:              lazy,
-		snapMgr:           snapMgr,
-		pageOps:           pageOps,
+		stream:             conn,
+		backingFile:        backingFile,
+		backingMemory:      backingMemoryPtr,
+		backingMemoryBytes: backingMemory,
+		backingMemorySize:  backingMemorySize,
+		uffds:              make(map[int]*UffdHandler),
+		streamFd:           -1,
+		tracer:             tracer,
+		lazy:               lazy,
+		snapMgr:            snapMgr,
+		pageOps:            pageOps,
 	}
 
 	// Retrieve the underlying file descriptor for the UnixConn without
@@ -747,6 +749,13 @@ func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 			}
 		}
 		pollfds = newPollfds
+	}
+}
+
+func (r *Runtime) FreeBackingFile() {
+	err := unix.Munmap(r.backingMemoryBytes)
+	if err != nil {
+		log.Fatalf("Failed to unmap memory: %v", err)
 	}
 }
 
@@ -914,5 +923,7 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 			}
 		}
 	})
+
+	runtime.FreeBackingFile()
 	return nil
 }
