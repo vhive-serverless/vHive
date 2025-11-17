@@ -23,15 +23,21 @@
 package snapshotting
 
 import (
+	"container/list"
 	"crypto/md5"
+	"encoding/csv"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	// "math/rand"
 
 	"github.com/pkg/errors"
 
@@ -41,11 +47,271 @@ import (
 )
 
 const (
-	chunkPrefix = "_chunks"
+	chunkPrefix     = "_chunks"
+	K               = 3   // TODO: tune
+	deleteBatchSize = 150 // TODO: tune
 )
 
 func (mgr *SnapshotManager) GetChunkSize() uint64 {
 	return mgr.chunkSize
+}
+
+type ChunkEntry struct {
+	hash           string
+	accessTimes    []time.Time
+	element        *list.Element
+	containingList *list.List
+}
+
+type ChunkStats struct {
+	Hits  int64
+	Calls int64
+}
+
+type ChunkRegistry struct {
+	deletionLock        sync.RWMutex // freezes the cache when evictor runs
+	statsLock           sync.Mutex   // protect hotList and coldList and other "stats": only one goroutine can AddAccess at the same time
+	chunkLocks          sync.Map     // protects individual chunks. only one thread can access or change chunk files at the same time
+	deleteLoopScheduled bool
+
+	snpMgr   *SnapshotManager
+	K        int
+	capacity uint64
+	hotList  *list.List // TODO: possibly change to heap implementation
+	coldList *list.List
+	items    sync.Map
+	stats    sync.Map
+
+	accessHistory []string
+	historyLock   sync.Mutex
+
+	deleteBatchSize uint64 // Threshold for evictor to start deleting chunks
+}
+
+func NewChunkRegistry(snpMgr *SnapshotManager, K int) *ChunkRegistry {
+	cr := &ChunkRegistry{
+		snpMgr:              snpMgr,
+		K:                   K,
+		capacity:            snpMgr.cacheSize,
+		hotList:             list.New(),
+		coldList:            list.New(),
+		deleteBatchSize:     deleteBatchSize,
+		deleteLoopScheduled: false,
+	}
+	return cr
+}
+
+// should only be called while holding the chunk's lock, otherwise might return true while chunk is being deleted
+func (cr *ChunkRegistry) ChunkExists(hash string) bool {
+	_, ok := cr.items.Load(hash)
+
+	cr.historyLock.Lock()
+	cr.accessHistory = append(cr.accessHistory, fmt.Sprintf("%v + %s", time.Now(), hash))
+	cr.historyLock.Unlock()
+
+	actualIface, _ := cr.stats.LoadOrStore(hash, &ChunkStats{})
+	stats := actualIface.(*ChunkStats)
+	atomic.AddInt64(&stats.Calls, 1)
+	if ok {
+		atomic.AddInt64(&stats.Hits, 1)
+	}
+
+	return ok
+}
+
+func (cr *ChunkRegistry) GetAccessHistory() []string {
+	cr.historyLock.Lock()
+	historyCopy := make([]string, len(cr.accessHistory))
+	copy(historyCopy, cr.accessHistory)
+	cr.historyLock.Unlock()
+	return historyCopy
+}
+
+func (cr *ChunkRegistry) GetHitStats() map[string]ChunkStats {
+	allStats := make(map[string]ChunkStats)
+
+	cr.stats.Range(func(key, value interface{}) bool {
+		hash := key.(string)
+		statsPtr := value.(*ChunkStats)
+
+		// Read the atomic values safely
+		currentStats := ChunkStats{
+			Calls: atomic.LoadInt64(&statsPtr.Calls),
+			Hits:  atomic.LoadInt64(&statsPtr.Hits),
+		}
+		allStats[hash] = currentStats
+		return true
+	})
+
+	return allStats
+}
+
+// Assumes caller holds hash's per-chunk lock and the RdeletionLock
+func (cr *ChunkRegistry) AddAccess(hash string) error {
+	cr.statsLock.Lock() // makes accesses to coldList and hotList and stats operations concurrency-safe
+	defer cr.statsLock.Unlock()
+
+	now := time.Now()
+
+	entryIface, ok := cr.items.Load(hash)
+	if !ok { // means the chunk is new
+		entry := &ChunkEntry{
+			hash:        hash,
+			accessTimes: []time.Time{now},
+
+			element:        nil,
+			containingList: cr.coldList,
+		}
+		cr.items.Store(hash, entry)
+		entry.element = cr.coldList.PushFront(entry)
+
+		if cr.GetLength() > cr.capacity+cr.deleteBatchSize {
+			if !cr.deleteLoopScheduled {
+				cr.deleteLoopScheduled = true
+				go cr.correctLength()
+			}
+		}
+
+		return nil
+	}
+
+	entry := entryIface.(*ChunkEntry)
+	entry.accessTimes = append(entry.accessTimes, now)
+
+	if entry.containingList == cr.coldList {
+		if len(entry.accessTimes) == cr.K {
+			cr.coldList.Remove(entry.element)
+			entry.element = cr.hotList.PushFront(entry)
+			entry.containingList = cr.hotList
+		} else if len(entry.accessTimes) < cr.K {
+			cr.coldList.MoveToFront(entry.element)
+		} else {
+			return errors.New(fmt.Sprintf("chunk %s is on cold list but has K or more accesses!", hash))
+		}
+	}
+	return nil
+}
+
+// deletes extra chunk. assumes no lock.
+func (cr *ChunkRegistry) correctLength() {
+	start := time.Now()
+
+	cr.deletionLock.Lock()
+	defer cr.deletionLock.Unlock()
+	cr.statsLock.Lock()
+	defer cr.statsLock.Unlock()
+
+	lockDuration := time.Since(start)
+
+	firstLength := cr.GetLength()
+	if firstLength > cr.capacity+cr.deleteBatchSize {
+		count := 0
+		for cr.GetLength() > cr.capacity {
+			to_remove, err := cr.getVictimChunk()
+			if err != nil {
+				log.Errorf("error while getting the victim chunk")
+				break
+			}
+
+			cr.historyLock.Lock()
+			cr.accessHistory = append(cr.accessHistory, fmt.Sprintf("%v - %s", time.Now(), to_remove))
+			cr.historyLock.Unlock()
+
+			lockI, _ := cr.chunkLocks.LoadOrStore(to_remove, &sync.Mutex{})
+			lock := lockI.(*sync.Mutex)
+			lock.Lock()
+
+			if err := cr.UnregisterChunk(to_remove); err != nil {
+				log.Errorf("error while unregistering chunk %s: %v", to_remove, err)
+				lock.Unlock()
+				continue
+			}
+
+			if err := cr.snpMgr.RemoveChunk(to_remove); err != nil {
+				log.Errorf("failed to remove chunk: %s, err: %v", to_remove, err)
+				lock.Unlock()
+				continue
+			}
+
+			count += 1
+
+			lock.Unlock()
+		}
+		log.Debugf("deletionLoop ran (firstLength was %d). deleted %d chunks and took %v. Waited %v for locks", firstLength, count, time.Since(start), lockDuration)
+	} else {
+		log.Debugf("deletionLoop short-circuited (firstLength was %d). Waited %v for locks. returning in %v", firstLength, lockDuration, time.Since(start))
+	}
+	cr.deleteLoopScheduled = false
+}
+
+// assumes deletionLock and statsLock are held
+func (cr *ChunkRegistry) getVictimChunk() (string, error) {
+	// total := cr.GetLength()
+	// selected := rand.Intn(total)
+	// head := cr.coldList.Front()
+	// for selected > 0 {
+	// 	head = head.Next()
+	// 	if head == nil {
+	// 		head = cr.hotList.Front()
+	// 	}
+	// 	selected -= 1
+	// }
+	// return head.Value.(*ChunkEntry).hash, nil
+
+	var hotLRU, coldLRU *ChunkEntry = nil, nil
+
+	if cr.hotList.Len() > 0 {
+		hotLRU = cr.getHotLRU().Value.(*ChunkEntry)
+	}
+	if cr.coldList.Len() > 0 {
+		coldLRU = cr.coldList.Back().Value.(*ChunkEntry)
+	}
+
+	to_remove := ""
+	if hotLRU == nil {
+		to_remove = coldLRU.hash
+	} else if coldLRU == nil {
+		to_remove = hotLRU.hash
+	} else {
+		if int(time.Since(hotLRU.accessTimes[len(hotLRU.accessTimes)-1]).Milliseconds())/cr.K < int(time.Since(coldLRU.accessTimes[len(coldLRU.accessTimes)-1]).Milliseconds())/len(coldLRU.accessTimes) {
+			to_remove = coldLRU.hash
+		} else {
+			to_remove = hotLRU.hash
+		}
+	}
+
+	return to_remove, nil
+}
+
+func (cr *ChunkRegistry) getHotLRU() *list.Element {
+	var max *list.Element = nil
+	for e := cr.hotList.Front(); e != nil; e = e.Next() {
+		eAccessTimes := e.Value.(*ChunkEntry).accessTimes
+		if max == nil || max.Value.(*ChunkEntry).accessTimes[len(max.Value.(*ChunkEntry).accessTimes)-K].After(eAccessTimes[len(eAccessTimes)-K]) {
+			max = e
+		}
+	}
+	return max
+}
+
+// assumes caller holds lock for hash, the WdeletionLock, and statsLock; does NOT remove chunk from disk
+func (cr *ChunkRegistry) UnregisterChunk(hash string) error {
+	entryIface, ok := cr.items.Load(hash)
+	if ok {
+		entry := entryIface.(*ChunkEntry)
+		if entry.containingList.Remove(entry.element) == nil {
+			return errors.New(fmt.Sprintf("UnregisterChunk: chunk to delete (%s) not in hotList against expectation", hash))
+		}
+		cr.items.Delete(hash)
+		return nil
+	} else {
+		return errors.New(fmt.Sprintf("UnregisterChunk: chunk to delete (%s) not in registry", hash))
+	}
+}
+
+// assumes statsLock is held
+func (cr *ChunkRegistry) GetLength() uint64 {
+	return uint64(cr.coldList.Len() + cr.hotList.Len())
 }
 
 // SnapshotManager manages snapshots stored on the node.
@@ -56,26 +322,29 @@ type SnapshotManager struct {
 	snapshots     map[string]*Snapshot
 	baseFolder    string
 	chunking      bool
-	chunkRegistry sync.Map
+	chunkRegistry *ChunkRegistry
 	lazy          bool
 	wsPulling     bool
 	chunkSize     uint64
+	cacheSize     uint64
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64) *SnapshotManager {
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64, cacheSize uint64) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
 		baseFolder:    baseFolder,
 		chunking:      chunking,
-		chunkRegistry: sync.Map{},
+		chunkRegistry: nil, // TODO: tune params
 		chunkSize:     chunkSize,
 		storage:       store,
 		wsPulling:     wsPulling,
 		lazy:          lazy,
+		cacheSize:     cacheSize,
 	}
+	manager.chunkRegistry = NewChunkRegistry(manager, K)
 
 	// Clean & init basefolder unless skipping is requested
 	if !skipCleanup {
@@ -90,6 +359,66 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 	}
 
 	return manager
+}
+
+func (mgr *SnapshotManager) WriteHitStatsToCSV(filePath string) error {
+	statsMap := mgr.chunkRegistry.GetHitStats()
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create CSV file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	header := []string{"ChunkHash", "Calls", "Hits", "HitRate"}
+	if err := writer.Write(header); err != nil {
+		return fmt.Errorf("failed to write CSV header: %w", err)
+	}
+
+	for hash, stats := range statsMap {
+		var hitRate float64
+		if stats.Calls > 0 {
+			hitRate = float64(stats.Hits) / float64(stats.Calls)
+		} else {
+			hitRate = 0.0
+		}
+
+		record := []string{
+			hash,
+			strconv.FormatInt(stats.Calls, 10),
+			strconv.FormatInt(stats.Hits, 10),
+			fmt.Sprintf("%.4f", hitRate),
+		}
+
+		if err := writer.Write(record); err != nil {
+			return fmt.Errorf("failed to write record for hash %s: %w", hash, err)
+		}
+	}
+
+	return nil
+}
+
+func (mgr *SnapshotManager) WriteAccessHistoryToTextFile(filePath string) error {
+	accessList := mgr.chunkRegistry.GetAccessHistory()
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create text file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	for i, hash := range accessList {
+		_, err := fmt.Fprintf(file, "%s\n", hash)
+
+		if err != nil {
+			return fmt.Errorf("failed to write hash at index %d (%s) to file: %w", i, hash, err)
+		}
+	}
+
+	return nil
 }
 
 // RecoverSnapshots scans the base folder and recreates snapshot entries in the manager
@@ -175,9 +504,10 @@ func (mgr *SnapshotManager) InitSnapshot(revision, image string) (*Snapshot, err
 	logger := log.WithFields(log.Fields{"revision": revision, "image": image})
 	logger.Debug("Initializing snapshot corresponding to revision and image")
 
-	if _, present := mgr.snapshots[revision]; present {
+	if snp, present := mgr.snapshots[revision]; present {
+		ready := snp.ready
 		mgr.Unlock()
-		return nil, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists", revision))
+		return nil, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists and its ready is %v", revision, ready))
 	}
 
 	// Create snapshot object and move into creating state
@@ -210,6 +540,9 @@ func (mgr *SnapshotManager) CommitSnapshot(revision string) error {
 
 	snap.ready = true
 
+	logger := log.WithFields(log.Fields{"revision": revision})
+	logger.Debug("finished commiting snapshot " + revision)
+
 	return nil
 }
 
@@ -231,15 +564,39 @@ func (mgr *SnapshotManager) DeleteSnapshot(revision string) error {
 }
 
 func (mgr *SnapshotManager) CleanChunks() error {
-	mgr.Lock()
-	defer mgr.Unlock()
-
 	if !mgr.chunking {
 		return nil
 	}
-	os.RemoveAll(filepath.Join(mgr.baseFolder, chunkPrefix))
-	os.MkdirAll(filepath.Join(mgr.baseFolder, chunkPrefix), os.ModePerm)
-	mgr.chunkRegistry = sync.Map{}
+
+	mgr.Lock()
+	defer mgr.Unlock()
+
+	mgr.chunkRegistry.deletionLock.Lock()
+	defer mgr.chunkRegistry.deletionLock.Unlock()
+
+	mgr.chunkRegistry.statsLock.Lock()
+	defer mgr.chunkRegistry.statsLock.Unlock()
+
+	hashes := []string{}
+
+	mgr.chunkRegistry.items.Range(func(key, value interface{}) bool {
+		hash := key.(string)
+		entry := value.(*ChunkEntry)
+
+		lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+		lock := lockI.(*sync.Mutex)
+		lock.Lock()
+		defer lock.Unlock()
+
+		hashes = append(hashes, entry.hash)
+		return true
+	})
+
+	for _, hash := range hashes {
+		os.Remove(mgr.GetChunkFilePath(hash))
+	}
+
+	mgr.chunkRegistry = NewChunkRegistry(mgr, K)
 	return nil
 }
 
@@ -283,20 +640,9 @@ func (mgr *SnapshotManager) UploadWSFile(revision string) error {
 	return nil
 }
 
-// Check if a chunk exists
-func (mgr *SnapshotManager) IsChunkRegistered(hash string) bool {
-	_, ok := mgr.chunkRegistry.Load(hash)
-	return ok
-}
-
-// Add a chunk to the registry
-func (mgr *SnapshotManager) RegisterChunk(hash string) {
-	mgr.chunkRegistry.Store(hash, true)
-}
-
 func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 	startTime := time.Now()
-
+	log.Debugf("starting uploadMemFile for snapshot %s at %v", snap.id, startTime)
 	if !mgr.chunking {
 		error := mgr.uploadFile(snap.GetId(), snap.GetMemFilePath())
 		log.Infof("unchunked uploadMemFile for snapshot %s completed in %s", snap.GetId(), time.Since(startTime))
@@ -326,15 +672,27 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
+				mgr.chunkRegistry.deletionLock.RLock()
+				lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(job.hash, &sync.Mutex{})
+				lock := lockI.(*sync.Mutex)
+
+				// start := time.Now()
+				lock.Lock()
+				// log.Debugf("uploadMemFile: Acquired lock for chunk %s in %v", job.hash, time.Since(start))
+
+				if mgr.chunkRegistry.ChunkExists(job.hash) {
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
+					continue
+				}
+
 				if found, err := mgr.storage.Exists(mgr.getObjectKey(chunkPrefix, job.hash)); err == nil && found {
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				}
+
 				chunkFilePath := mgr.GetChunkFilePath(job.hash)
-
-				if mgr.IsChunkRegistered(job.hash) {
-					continue
-				}
-
 				dir := filepath.Dir(chunkFilePath)
 				if _, err := os.Stat(dir); os.IsNotExist(err) {
 					os.MkdirAll(dir, os.ModePerm)
@@ -343,22 +701,30 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 				chunkFile, err := os.Create(chunkFilePath)
 				if err != nil {
 					errCh <- fmt.Errorf("creating chunk %s: %w", chunkFilePath, err)
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
 					break
 				}
 
 				if _, err := chunkFile.Write(job.data); err != nil {
 					chunkFile.Close()
 					errCh <- fmt.Errorf("writing chunk %d: %w", job.idx, err)
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
 					break
 				}
 				chunkFile.Close()
 
 				if err := mgr.uploadFile(chunkPrefix, chunkFilePath); err != nil {
 					errCh <- fmt.Errorf("uploading chunk %d: %w", job.idx, err)
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				}
 
-				mgr.RegisterChunk(job.hash)
+				mgr.chunkRegistry.AddAccess(job.hash)
+				lock.Unlock()
+				mgr.chunkRegistry.deletionLock.RUnlock()
 			}
 		}()
 	}
@@ -409,22 +775,37 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 		return firstErr
 	}
 
-	// Upload recipe file
+	log.Infof("All chunks uploaded, preparing recipe file")
 	recipeFilePath := snap.GetRecipeFilePath()
+	log.Infof("Recipe file path: %s", recipeFilePath)
+
 	recipeFile, err := os.Create(recipeFilePath)
 	if err != nil {
+		log.Errorf("Failed to create recipe file: %v", err)
 		return errors.Wrapf(err, "creating recipe file for chunked upload")
 	}
-	defer recipeFile.Close()
+	defer func() {
+		recipeFile.Close()
+		log.Infof("Closed recipe file handle")
+	}()
 
+	log.Infof("Writing recipe file (%d bytes)", len(recipe))
 	if _, err := recipeFile.Write(recipe); err != nil {
+		log.Errorf("Failed to write recipe file: %v", err)
 		return errors.Wrapf(err, "writing recipe file for chunked upload")
 	}
+	log.Infof("Recipe file written successfully")
 
-	mgr.uploadFile(snap.GetId(), recipeFilePath)
+	log.Infof("Uploading recipe file for snapshot %s", snap.GetId())
+	if err := mgr.uploadFile(snap.GetId(), recipeFilePath); err != nil {
+		log.Errorf("Failed to upload recipe file: %v", err)
+		return err
+	}
+	log.Infof("Recipe file uploaded successfully, removing local file")
 	os.Remove(recipeFilePath)
+	log.Infof("Local recipe file removed")
 
-	log.Infof("uploadMemFile for snapshot %s completed in %s, chunk count: %d", snap.GetId(), time.Since(startTime), chunkIndex+1)
+	log.Infof("uploadMemFile for snapshot %s completed in %s, total chunks: %d", snap.GetId(), time.Since(startTime), chunkIndex)
 	return nil
 }
 
@@ -479,7 +860,7 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 	if err != nil {
 		return nil, errors.Wrapf(err, "downloading memory file for snapshot %s", revision)
 	}
-
+	log.Debug("Finished downloading memfile for revision " + revision)
 	// stat, _ := os.Stat(snap.GetMemFilePath())
 	// log.Infof("Downloaded memory file for snapshot %s, size is %d", snap.GetId(), stat.Size())
 
@@ -580,10 +961,19 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 }
 
 func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) {
+	mgr.chunkRegistry.deletionLock.RLock()
+	defer mgr.chunkRegistry.deletionLock.RUnlock()
+
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+	lock := lockI.(*sync.Mutex)
+
+	lock.Lock()
+	defer lock.Unlock()
+
 	chunkFilePath := mgr.GetChunkFilePath(hash)
 
 	// Return from in-memory registry if already downloaded
-	if mgr.IsChunkRegistered(hash) {
+	if mgr.chunkRegistry.ChunkExists(hash) {
 		data, err := os.ReadFile(chunkFilePath)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading cached chunk %s", hash)
@@ -617,24 +1007,54 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	if _, err := outFile.Write(data); err != nil {
 		return nil, errors.Wrapf(err, "writing chunk %s", hash)
 	}
+
 	// Mark as downloaded
-	mgr.RegisterChunk(hash)
+	mgr.chunkRegistry.AddAccess(hash)
 
 	return data, nil
 }
 
 func (mgr *SnapshotManager) DownloadChunk(hash string) error {
-	chunkFilePath := mgr.GetChunkFilePath(hash)
+	mgr.chunkRegistry.deletionLock.RLock()
+	defer mgr.chunkRegistry.deletionLock.RUnlock()
 
-	if mgr.IsChunkRegistered(hash) {
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+	lock := lockI.(*sync.Mutex)
+
+	lock.Lock()
+	defer lock.Unlock()
+
+	if mgr.chunkRegistry.ChunkExists(hash) {
+		mgr.chunkRegistry.AddAccess(hash)
 		return nil // already downloaded
 	}
+	chunkFilePath := mgr.GetChunkFilePath(hash)
 
 	if err := mgr.downloadFile(chunkPrefix, chunkFilePath, hash); err != nil {
 		return err
 	}
 
-	mgr.RegisterChunk(hash)
+	mgr.chunkRegistry.AddAccess(hash)
+	return nil
+}
+
+// removes the chunk from local disk. assumes chunk lock and deletionLock are held
+func (mgr *SnapshotManager) RemoveChunk(hash string) error {
+	chunkFilePath := mgr.GetChunkFilePath(hash)
+
+	// Check if file exists
+	if _, err := os.Stat(chunkFilePath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("chunk %s does not exist at %s", hash, chunkFilePath)
+		}
+		return fmt.Errorf("failed to stat chunk %s: %w", hash, err)
+	}
+
+	// Remove the file
+	if err := os.Remove(chunkFilePath); err != nil {
+		return fmt.Errorf("failed to remove chunk %s: %w", hash, err)
+	}
+
 	return nil
 }
 
@@ -685,6 +1105,7 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 }
 
 func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
+	log.Debugf("start downloadWorkingSet for %s", snap.id)
 	wsFile, err := os.Open(snap.GetWSFilePath())
 	if err != nil {
 		return errors.Wrapf(err, "opening working set file for lazy chunked download")
@@ -770,36 +1191,41 @@ func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 	return nil
 }
 
-// SnapshotExistsComplete checks if all required snapshot files exist in remote storage
+// SnapshotExists checks if all required snapshot files exist in remote storage
 func (mgr *SnapshotManager) SnapshotExists(revision string) (bool, error) {
+	log.Infof("[SnapshotExists] Checking snapshot existence for revision=%s", revision)
+
 	// Create a temporary snapshot to get the expected file names
-	snap, err := mgr.InitSnapshot(revision, "")
-	if err != nil {
-		return false, errors.Wrapf(err, "initializing snapshot for existence check")
-	}
-
-	defer func() {
-		// Clean up the temporary snapshot
-		_ = mgr.DeleteSnapshot(revision)
-	}()
-
+	snap := NewSnapshot(revision, mgr.baseFolder, "")
 	requiredFiles := []string{
 		filepath.Base(snap.GetSnapshotFilePath()),
 		filepath.Base(snap.GetInfoFilePath()),
 	}
 
+	log.Infof("[SnapshotExists] Required files for revision=%s: %v", revision, requiredFiles)
+
 	// Check each file exists
 	for _, fileName := range requiredFiles {
 		objectKey := mgr.getObjectKey(revision, fileName)
+		log.Infof("[SnapshotExists] Checking existence of object key=%s", objectKey)
+
 		exists, err := mgr.storage.Exists(objectKey)
 		if err != nil {
+			log.Errorf("[SnapshotExists] Error checking file=%s for revision=%s: %v",
+				fileName, revision, err)
 			return false, errors.Wrapf(err, "checking if file %s exists for snapshot %s", fileName, revision)
 		}
+
 		if !exists {
-			return false, nil // At least one required file is missing
+			log.Warnf("[SnapshotExists] File missing: %s (objectKey=%s) for revision=%s",
+				fileName, objectKey, revision)
+			return false, nil
 		}
+
+		log.Infof("[SnapshotExists] File present: %s (objectKey=%s)", fileName, objectKey)
 	}
 
+	log.Infof("[SnapshotExists] All required snapshot files exist for revision=%s", revision)
 	return true, nil
 }
 

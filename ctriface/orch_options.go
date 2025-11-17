@@ -104,6 +104,12 @@ func WithChunkSize(chunkSize uint64) OrchestratorOption {
 	}
 }
 
+func WithCacheSize(cacheSize uint64) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.cacheSize = cacheSize
+	}
+}
+
 func WithWSPulling(isWSEnabled bool) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.isWSPulling = isWSEnabled

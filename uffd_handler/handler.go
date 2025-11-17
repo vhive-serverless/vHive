@@ -813,7 +813,7 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 }
 
 func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, wsFilePath string, lazy bool, snapMgr *snapshotting.SnapshotManager) error {
-	log.Debugf("Starting handler")
+	log.Debugf("Starting handler at %s", uffdSockPath)
 
 	// Open the memory file
 	file, err := os.Open(memFilePath)
@@ -827,6 +827,7 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 	if err != nil {
 		return fmt.Errorf("cannot bind to socket path: %w", err)
 	}
+	log.Debugf("opened the listener at %s", uffdSockPath)
 	defer listener.Close()
 
 	// Accept connection from Firecracker

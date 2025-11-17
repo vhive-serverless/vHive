@@ -28,8 +28,10 @@ import (
 const (
 	homeDir = "/users/lkondras"
 	// snapDir = "/tmp/snapshots"
-	snapDir  = homeDir + "/snapshots"
-	vhiveDir = homeDir + "/vhive"
+	snapDir     = homeDir + "/snapshots"
+	hitRateFile = snapDir + "/hit_rates.csv"
+	accessFile  = snapDir + "/access.txt"
+	vhiveDir    = homeDir + "/vhive"
 )
 
 var (
@@ -82,9 +84,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Using remote snapshot for rev %s", rev)
 		startDownload := time.Now()
 		snap, err = snapMgr.DownloadSnapshot(rev)
+		if err != nil {
+			log.Errorf("DownloadSnapshot error is %v", err)
+		}
+		if snap == nil {
+			log.Errorf("DownloadSnapshot snap is nil without error!")
+		}
 		downloadDelay := time.Since(startDownload)
 		log.Debugf("Downloaded snapshot for rev %s in %v", rev, downloadDelay.Microseconds())
+		if err != nil || snap == nil {
+			http.Error(w, fmt.Sprintf("Snapshot Download Error, snap: %p", snap), http.StatusInternalServerError)
+			return
+		}
 		resp, metric, err = orch.LoadSnapshot(ctx, snap, false, false)
+		if err != nil {
+			log.Errorf("LoadSnapshot error is %v", err)
+			http.Error(w, fmt.Sprintf("Snapshot Load Error, metric: %p", metric), http.StatusInternalServerError)
+		}
+		log.Debugf("Snapshot Load Result: metric: %p", metric)
 		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
 	} else { // boot case
 		log.Debugf("No snapshot for rev %s, starting from image", rev)
@@ -98,6 +115,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vmId := resp.VMID
+
+	log.Debugf("created VM with ID %s and IP %s for revision %s", resp.VMID, resp.GuestIP, r.Header.Get("revision"))
 
 	relayArgs := r.Header.Get("relayArgs")
 	endpoint := resp.GuestIP + ":50051"
@@ -113,10 +132,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Relay args: %s", relayArgs)
 
 		go func() {
-			exec.CommandContext(relayCtx, homeDir+"/vswarm/tools/relay/server", strings.Split(relayArgs, " ")...).Run()
+			cmd := exec.CommandContext(
+				relayCtx,
+				homeDir+"/vswarm/tools/relay/server",
+				strings.Split(relayArgs, " ")...,
+			)
+
+			out, err := cmd.CombinedOutput()
+
+			log.Debugf("vswarm relay output:\n%s\n", out)
+
+			if err != nil {
+				fmt.Printf("vswarm relay error: %v\n", err)
+			}
 		}()
 
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	log.Debugf("Sending invocation to %s", vmId)
@@ -132,6 +163,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		log.Debugf("removing %s", vmId)
+		snapMgr.WriteHitStatsToCSV(hitRateFile)
+		snapMgr.WriteAccessHistoryToTextFile(accessFile)
 		if snap == nil {
 			snap, err = snapMgr.InitSnapshot(rev, image)
 			if err != nil && strings.Contains(err.Error(), "Snapshot") && strings.Contains(err.Error(), "already exists") {
@@ -140,7 +173,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			orch.PauseVM(ctx, vmId)
 			orch.CreateSnapshot(ctx, vmId, snap)
 			snapMgr.CommitSnapshot(rev)
-			snapMgr.UploadSnapshot(rev)
+			if err := snapMgr.UploadSnapshot(rev); err != nil {
+				log.Errorf("upload error: %v", err)
+			}
 			// snapMgr.DeleteSnapshot(rev)
 			// snapMgr.CleanChunks()
 			log.Debugf("finished snapshotting %s", vmId)
@@ -174,6 +209,7 @@ func main() {
 	minioCredentials := flag.String("minioCredentials", "10.0.1.1:9000;minio;minio123", "Minio credentials for uploading/downloading remote firecracker snapshots. Format: <minioAddr>;<minioAccessKey>;<minioSecretKey>")
 	endpoint := flag.String("endpoint", "localhost:8080", "Endpoint for the relay server")
 	chunkSize := flag.Uint64("chunkSize", 512*1024, "Chunk size in bytes for memory file uploads and downloads when chunking is enabled")
+	cacheSize := flag.Uint64("cacheSize", 15000, "Size of the cache for memory file chunks when chunking is enabled")
 	flag.Parse()
 
 	imageMap = make(map[string]string)
@@ -240,6 +276,7 @@ func main() {
 		ctriface.WithMinioSecretKey(minioSecretKey),
 		ctriface.WithSnapshotsStorage(snapDir),
 		ctriface.WithShimPoolSize(5),
+		ctriface.WithCacheSize(*cacheSize),
 	)
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()

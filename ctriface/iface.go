@@ -962,6 +962,9 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 
 	conf := o.getVMConfig(vm)
 	conf.LoadSnapshot = true
+	if snap == nil {
+		return nil, nil, errors.New("ERROR: snap is nil")
+	}
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
 	conf.MemFilePath = snap.GetMemFilePath()
 	conf.EnableDiffSnapshots = enableDiffSnapshots
@@ -1059,7 +1062,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		}
 		go func() {
 			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, o.isLazyMode, o.snapshotManager)
-			if err != nil {
+			if err != nil {	
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil {
 				logger.Debugf("Uploading WS file for snap %s after UFFD handler finished", snap.GetId())
@@ -1069,6 +1072,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 				// o.snapshotManager.CleanChunks()
 			}
 		}()
+		time.Sleep(time.Second)
 	} else {
 		conf.MemBackend = &proto.MemoryBackend{
 			BackendType: "File",
