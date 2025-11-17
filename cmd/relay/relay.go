@@ -99,6 +99,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	relayArgs := r.Header.Get("relayArgs")
 	endpoint := resp.GuestIP + ":50051"
+	relayCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	if relayArgs != "" {
 		mu.Lock()
 		relayPort++
@@ -111,7 +113,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Relay args: %s", relayArgs)
 
 		go func() {
-			exec.CommandContext(r.Context(), homeDir+"/vswarm/tools/relay/server", strings.Split(relayArgs, " ")...).Run()
+			exec.CommandContext(relayCtx, homeDir+"/vswarm/tools/relay/server", strings.Split(relayArgs, " ")...).Run()
 		}()
 
 		time.Sleep(50 * time.Millisecond)
