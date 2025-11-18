@@ -31,7 +31,7 @@ import (
 // NewVMPool Initializes a pool of VMs
 func NewVMPool(hostIfaceName string, netPoolSize int, vethPrefix, clonePrefix string) *VMPool {
 	p := new(VMPool)
-	networkManager, err := networking.NewNetworkManager(hostIfaceName, netPoolSize, vethPrefix, clonePrefix)
+	networkManager, err := networking.NewNetworkManager(hostIfaceName, "", netPoolSize, vethPrefix, clonePrefix)
 	if err != nil {
 		log.Println(err)
 	}
