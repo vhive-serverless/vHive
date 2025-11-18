@@ -43,6 +43,10 @@ func CreateMultinodeCluster(stockContainerd string) error {
 		return err
 	}
 
+	if err := EnableNftablesForKubeProxy(); err != nil {
+		return err
+	}
+
 	if err := KubectlForNonRoot(); err != nil {
 		return err
 	}
@@ -116,8 +120,19 @@ func DeployKubernetes() error {
 		shellCmd = fmt.Sprintf(shellCmd+"--apiserver-advertise-address=%s ", configs.Kube.ApiserverAdvertiseAddress)
 	}
 	shellCmd = fmt.Sprintf(shellCmd+"| tee %s/masterNodeInfo", configs.System.TmpDir)
-	_, err := utils.ExecShellCmd(shellCmd)
+	_, err := utils.ExecShellCmd("%s", shellCmd)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy Kubernetes(version %s)!\n", configs.Kube.K8sVersion) {
+		return err
+	}
+
+	return nil
+}
+
+// Enable nftables mode for kube-proxy
+func EnableNftablesForKubeProxy() error {
+	utils.WaitPrintf("Configuring kube-proxy to use nftables")
+	_, err := utils.ExecShellCmd(`sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system get configmap kube-proxy -o yaml | sed 's/mode: ""/mode: "nftables"/' | sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f - && sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system delete pod -l k8s-app=kube-proxy`)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure nftables!\n") {
 		return err
 	}
 
