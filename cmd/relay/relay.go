@@ -116,7 +116,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			exec.CommandContext(relayCtx, homeDir+"/vswarm/tools/relay/server", strings.Split(relayArgs, " ")...).Run()
 		}()
 
-		time.Sleep(5 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	log.Debugf("Sending invocation to %s", vmId)
