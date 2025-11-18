@@ -1065,8 +1065,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 				logger.Debugf("Uploading WS file for snap %s after UFFD handler finished", snap.GetId())
 				os.Rename(memPath+".touched", snap.GetWSFilePath())
 				o.snapshotManager.UploadWSFile(snap.GetId())
-				o.snapshotManager.DeleteSnapshot(snap.GetId())
-				o.snapshotManager.CleanChunks()
+				// o.snapshotManager.DeleteSnapshot(snap.GetId())
+				// o.snapshotManager.CleanChunks()
 			}
 		}()
 	} else {

@@ -138,8 +138,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			orch.CreateSnapshot(ctx, vmId, snap)
 			snapMgr.CommitSnapshot(rev)
 			snapMgr.UploadSnapshot(rev)
-			snapMgr.DeleteSnapshot(rev)
-			snapMgr.CleanChunks()
+			// snapMgr.DeleteSnapshot(rev)
+			// snapMgr.CleanChunks()
 			log.Debugf("finished snapshotting %s", vmId)
 		}
 		orch.StopSingleVM(ctx, vmId)
