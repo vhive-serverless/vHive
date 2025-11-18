@@ -52,6 +52,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	rev := r.Header.Get("revision")
 	if rev == "" {
 		rev = "default"
+	} else {
+		rev = strings.Join(strings.Split(rev, "-")[:len(strings.Split(rev, "-"))-2], "-") // remove the unique suffix added by Knative
 	}
 	env := r.Header.Get("env")
 	envArr := []string{}
