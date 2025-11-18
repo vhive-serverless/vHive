@@ -43,8 +43,9 @@ var (
 func handler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("request received, image %s, revision %s", r.Header.Get("image"), r.Header.Get("revision"))
 
-	// ctx, cancel := context.WithCancel(context.Background())
 	ctx := context.Background()
+	relayCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	image := r.Header.Get("image")
 	if mapped, ok := imageMap[image]; ok {
 		image = mapped
@@ -112,7 +113,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Relay args: %s", relayArgs)
 
 		go func() {
-			exec.CommandContext(r.Context(), homeDir+"/vswarm/tools/relay/server", strings.Split(relayArgs, " ")...).Run()
+			exec.CommandContext(relayCtx, homeDir+"/vswarm/tools/relay/server", strings.Split(relayArgs, " ")...).Run()
 		}()
 
 		time.Sleep(5 * time.Millisecond)
