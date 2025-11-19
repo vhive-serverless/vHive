@@ -43,6 +43,10 @@ func CreateMultinodeCluster(stockContainerd string) error {
 		return err
 	}
 
+	if err := EnableNftablesForKubeProxy(); err != nil {
+		return err
+	}
+
 	if err := KubectlForNonRoot(); err != nil {
 		return err
 	}
@@ -104,12 +108,11 @@ func DeployKubernetes() error {
 		return iperr
 	}
 	shellCmd := fmt.Sprintf(`sudo kubeadm init --v=%d \
---config=%s/configs/cluster/kubeadm_init.yaml \
 --apiserver-advertise-address=%s \
 --cri-socket unix:///run/containerd/containerd.sock \
 --kubernetes-version %s \
 --pod-network-cidr="%s" `,
-		configs.System.LogVerbosity, configs.System.CurrentDir, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
+		configs.System.LogVerbosity, masterNodeIp, configs.Kube.K8sVersion, configs.Kube.PodNetworkCidr)
 	if len(configs.Kube.AlternativeImageRepo) > 0 {
 		shellCmd = fmt.Sprintf(shellCmd+"--image-repository %s ", configs.Kube.AlternativeImageRepo)
 	}
