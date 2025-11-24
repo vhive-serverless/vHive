@@ -119,11 +119,11 @@ func (mgr *SnapshotManager) RecoverSnapshots() error {
 
 		revision := entry.Name()
 		snapDir := filepath.Join(mgr.baseFolder, revision)
-		infoPath := filepath.Join(snapDir, "info.json")
+		infoPath := filepath.Join(snapDir, "info_file")
 
 		// Check if this looks like a valid snapshot directory
 		if _, err := os.Stat(infoPath); os.IsNotExist(err) {
-			logger.Warnf("Skipping directory %s: missing info.json", revision)
+			logger.Warnf("Skipping directory %s: missing info_file", revision)
 			continue
 		}
 
