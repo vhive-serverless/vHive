@@ -82,11 +82,16 @@ func getExperimentIfaceName() (string, error) {
 	return "", errors.New("Failed to fetch experiment net interface")
 }
 
-// createTap creates a TAP device with name tapName, IP gatewayIP in the network namespace with name netnsName
-func createTap(tapName, gatewayIP, netnsName string) error {
-	// 1. Create tap device
+// createTap creates a TAP device with name tapName, IP gatewayIP and gateway MACin the current namespace
+func createTap(tapName, gatewayIP, netnsName, gatewayTapMac string) error {
+	logger := log.WithFields(log.Fields{"tap": tapName, "IP gateway": gatewayIP, "gatewayMac": gatewayTapMac})
+	logger.Debug("Creating tap for virtual network")
 
-	logger := log.WithFields(log.Fields{"tap": tapName, "IP gateway": gatewayIP, "namespace": netnsName})
+	// Parse MAC address early for validation
+	macAddr, err := net.ParseMAC(gatewayTapMac)
+	if err != nil {
+		return errors.Wrapf(err, "parsing gateway tap MAC address")
+	}
 
 	la := netlink.NewLinkAttrs()
 	la.Name = tapName
@@ -99,15 +104,27 @@ func createTap(tapName, gatewayIP, netnsName string) error {
 		return errors.Wrapf(err, "creating tap")
 	}
 
-	// 2. Give tap device ip address
+	// Get the tap device link to configure it
+	tapLink, err := netlink.LinkByName(tapName)
+	if err != nil {
+		return errors.Wrapf(err, "finding tap device")
+	}
+
+	// Set MAC address to ensure consistency across namespaces
+	// This is critical for VM snapshots that cache the gateway MAC address
+	if err := netlink.LinkSetHardwareAddr(tapLink, macAddr); err != nil {
+		return errors.Wrapf(err, "setting tap MAC address")
+	}
+
+	// Set IP address
 	addr, _ := netlink.ParseAddr(gatewayIP)
 	addr.Broadcast = net.IPv4(0, 0, 0, 0)
-	if err := netlink.AddrAdd(tap0, addr); err != nil {
+	if err := netlink.AddrAdd(tapLink, addr); err != nil {
 		return errors.Wrapf(err, "adding tap ip address")
 	}
 
-	// 3. Enable tap network interface
-	if err := netlink.LinkSetUp(tap0); err != nil {
+	// Enable tap device
+	if err := netlink.LinkSetUp(tapLink); err != nil {
 		return errors.Wrapf(err, "enabling tap")
 	}
 

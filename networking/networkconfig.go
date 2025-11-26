@@ -37,6 +37,7 @@ const (
 	defaultGatewayCIDR   = "172.16.0.1/24"
 	defaultContainerTap  = "tap0"
 	defaultContainerMac  = "06:00:AC:10:00:02"
+	defaultGatewayTapMac = "06:00:AC:10:00:01"
 )
 
 // NetworkConfig represents the network devices, IPs, namespaces, routes and filter rules to connect a uVM
@@ -48,6 +49,7 @@ type NetworkConfig struct {
 	gatewayCIDR         string // Container gateway IP address (CIDR notation)
 	containerTap        string // Container tap name
 	containerMac        string // Container Mac address
+	gatewayTapMac       string // TAP device Mac address (gateway)
 	hostIfaceName       string // Host network interface name
 	experimentIfaceName string // Experiment network interface name
 
@@ -63,6 +65,7 @@ func NewNetworkConfig(id int, hostIfaceName string, experimentIfaceName string, 
 		gatewayCIDR:         defaultGatewayCIDR,
 		containerTap:        defaultContainerTap,
 		containerMac:        defaultContainerMac,
+		gatewayTapMac:       defaultGatewayTapMac,
 		hostIfaceName:       hostIfaceName,
 		experimentIfaceName: experimentIfaceName,
 
@@ -146,7 +149,7 @@ func (cfg *NetworkConfig) createVmNetwork(hostNsHandle netns.NsHandle) error {
 	defer func() { _ = vmNsHandle.Close() }()
 
 	// A.2. Create tap device for uVM
-	if err := createTap(cfg.containerTap, cfg.gatewayCIDR, cfg.getNamespaceName()); err != nil {
+	if err := createTap(cfg.containerTap, cfg.gatewayCIDR, cfg.getNamespaceName(), cfg.gatewayTapMac); err != nil {
 		return err
 	}
 
@@ -203,7 +206,7 @@ func (cfg *NetworkConfig) createHostNetwork() error {
 	if err := setupMasquerade(cfg.getVeth1Name(), cfg.experimentIfaceName); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
