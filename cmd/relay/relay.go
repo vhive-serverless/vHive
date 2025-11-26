@@ -138,6 +138,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			if err != nil && strings.Contains(err.Error(), "Snapshot") && strings.Contains(err.Error(), "already exists") {
 				return
 			}
+			cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking=no", "-i", vhiveDir+"/bin/id_rsa", "root@"+resp.GuestIP, "sudo /usr/bin/ss -K -t state established &")
+			if err := cmd.Run(); err != nil {
+				log.Warnf("Failed to kill connections in VM %s: %v", vmId, err)
+			}
 			orch.PauseVM(ctx, vmId)
 			orch.CreateSnapshot(ctx, vmId, snap)
 			snapMgr.CommitSnapshot(rev)
