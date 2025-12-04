@@ -1,5 +1,5 @@
 {
-	"K8sVersion": "1.29.1",
+	"K8sVersion": "1.33.5",
 	"AlternativeImageRepo": "",
 	"ApiserverAdvertiseAddress": "",
 	"PodNetworkCidr": "192.168.0.0/16",
