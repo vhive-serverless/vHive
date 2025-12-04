@@ -131,7 +131,17 @@ func DeployKubernetes() error {
 // Enable nftables mode for kube-proxy
 func EnableNftablesForKubeProxy() error {
 	utils.WaitPrintf("Configuring kube-proxy to use nftables")
-	_, err := utils.ExecShellCmd(`sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system get configmap kube-proxy -o yaml | sed 's/mode: .*/mode: "nftables"/' | sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f - && sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system delete pod -l k8s-app=kube-proxy`)
+	kubeconfig := "/etc/kubernetes/admin.conf"
+	kubectlCmd := fmt.Sprintf("sudo kubectl --kubeconfig=%s", kubeconfig)
+
+	// Patch the configmap
+	_, err := utils.ExecShellCmd(`%s -n kube-system get configmap kube-proxy -o yaml | sed 's/mode: .*/mode: "nftables"/' | %s apply -f -`, kubectlCmd, kubectlCmd)
+	if err != nil {
+		return err
+	}
+
+	// Restart kube-proxy pods
+	_, err = utils.ExecShellCmd(`%s -n kube-system delete pod -l k8s-app=kube-proxy`, kubectlCmd)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure nftables!\n") {
 		return err
 	}
