@@ -125,7 +125,16 @@ func InstallCalico() error {
 	.spec.template.spec.containers[].name == "calico-node") |
 	.spec.template.spec.containers[].env) += {"name": "IP_AUTODETECTION_METHOD", "value": "kubernetes-internal-ip"}' %s`,
 		path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico!\n") {
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico for IP detection!\n") {
+		return err
+	}
+
+	utils.WaitPrintf("Configuring Calico to use nftables")
+	_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
+	.spec.template.spec.containers[].name == "calico-node") |
+	.spec.template.spec.containers[].env) += {"name": "FELIX_IPTABLESBACKEND", "value": "NFT"}' %s`,
+		path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico for nftables!\n") {
 		return err
 	}
 
