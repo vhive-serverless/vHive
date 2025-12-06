@@ -321,7 +321,7 @@ func (node *Node) SystemInit() {
 
 	// Install dependencies
 	utils.InfoPrintf("Installing dependencies")
-	err = node.InstallPackages(node.Configs.System.Dependencies)
+	err = node.InstallPackages("%s", node.Configs.System.Dependencies)
 	utils.CheckErrorWithMsg(err, "Failed to install dependencies!\n")
 
 	// Install Golang
@@ -363,7 +363,7 @@ func (node *Node) SystemInit() {
 		utils.CheckErrorWithMsg(err, "Failed to extract containerd!\n")
 		// Start containerd via systemd
 		utils.InfoPrintf("Downloading systemd profile for containerd")
-		filePathName, err = node.DownloadToTmpDir(node.Configs.System.ContainerdSystemdProfileDownloadUrl)
+		filePathName, err = node.DownloadToTmpDir("%s", node.Configs.System.ContainerdSystemdProfileDownloadUrl)
 		utils.CheckErrorWithMsg(err, "Failed to download systemd profile for containerd!\n")
 		utils.InfoPrintf("Starting containerd via systemd")
 		_, err = node.ExecShellCmd("sudo cp %s /lib/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now containerd", filePathName)
@@ -474,7 +474,7 @@ func (node *Node) KubeMasterInit() (string, string, string, string) {
 	if len(node.Configs.Kube.AlternativeImageRepo) > 0 {
 		shellCmd = fmt.Sprintf(shellCmd+"--image-repository %s ", node.Configs.Kube.AlternativeImageRepo)
 	}
-	_, err = node.ExecShellCmd(shellCmd)
+	_, err = node.ExecShellCmd("%s", shellCmd)
 	utils.CheckErrorWithMsg(err, "Failed to pre-pull required images!\n")
 
 	// Deploy Kubernetes
@@ -489,7 +489,7 @@ func (node *Node) KubeMasterInit() (string, string, string, string) {
 		shellCmd = fmt.Sprintf(shellCmd+"--apiserver-advertise-address=%s ", node.Configs.Kube.ApiserverAdvertiseAddress)
 	}
 	shellCmd = fmt.Sprintf(shellCmd+"| tee %s/masterNodeInfo", node.Configs.System.TmpDir)
-	_, err = node.ExecShellCmd(shellCmd)
+	_, err = node.ExecShellCmd("%s", shellCmd)
 	utils.CheckErrorWithMsg(err, "Failed to deploy Kubernetes(version %s)!\n", node.Configs.Kube.K8sVersion)
 
 	// Make kubectl work for non-root user
@@ -526,7 +526,7 @@ func (node *Node) KubeMasterInit() (string, string, string, string) {
 		node.Configs.Kube.ApiserverToken,
 		node.Configs.Kube.ApiserverTokenHash,
 		node.Configs.System.TmpDir)
-	_, err = node.ExecShellCmd(shellData)
+	_, err = node.ExecShellCmd("%s", shellData)
 	utils.CheckErrorWithMsg(err, "Failed to write master node information to file!\n")
 
 	return node.Configs.Kube.ApiserverAdvertiseAddress,
@@ -612,7 +612,7 @@ func (node *Node) InstallKnativeServing() {
 	// Install istio
 	// Download istio
 	utils.WaitPrintf("Downloading istio")
-	istioFilePath, err := node.DownloadToTmpDir(node.GetIstioDownloadUrl())
+	istioFilePath, err := node.DownloadToTmpDir("%s", node.GetIstioDownloadUrl())
 	utils.CheckErrorWithMsg(err, "Failed to download istio!")
 	// Extract istio
 	utils.WaitPrintf("Extracting istio")
@@ -623,7 +623,7 @@ func (node *Node) InstallKnativeServing() {
 	utils.CheckErrorWithMsg(err, "Failed to update PATH!")
 	// Deploy istio operator
 	utils.WaitPrintf("Deploying istio operator")
-	operatorConfigPath, err := node.DownloadToTmpDir(node.Configs.Knative.IstioOperatorConfigUrl)
+	operatorConfigPath, err := node.DownloadToTmpDir("%s", node.Configs.Knative.IstioOperatorConfigUrl)
 	utils.CheckErrorWithMsg(err, "Failed to download istio operator config!")
 	_, err = node.ExecShellCmd("sudo /usr/local/istio-%s/bin/istioctl install -y -f %s",
 		node.Configs.Knative.IstioVersion,
@@ -764,7 +764,7 @@ func (node *Node) YurtMasterInit() {
 
 	// Install dependencies
 	utils.WaitPrintf("Installing dependencies")
-	err = node.InstallPackages(node.Configs.Yurt.Dependencies)
+	err = node.InstallPackages("%s", node.Configs.Yurt.Dependencies)
 	utils.CheckErrorWithMsg(err, "Failed to install dependencies!\n")
 
 	// Treat master as cloud node
@@ -781,7 +781,7 @@ func (node *Node) YurtMasterInit() {
 			// Download public signing key && Add the Helm apt repository
 			utils.WaitPrintf("Downloading public signing key && Add the Helm apt repository")
 			// Download public signing key
-			filePathName, err := node.DownloadToTmpDir(node.Configs.Yurt.HelmPublicSigningKeyDownloadUrl)
+			filePathName, err := node.DownloadToTmpDir("%s", node.Configs.Yurt.HelmPublicSigningKeyDownloadUrl)
 			utils.CheckErrorWithMsg(err, "Failed to download public signing key && add the Helm apt repository!\n")
 			_, err = node.ExecShellCmd("sudo mkdir -p /usr/share/keyrings && cat %s | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null", filePathName)
 			utils.CheckErrorWithMsg(err, "Failed to download public signing key && add the Helm apt repository!\n")
@@ -791,7 +791,7 @@ func (node *Node) YurtMasterInit() {
 			utils.CheckErrorWithMsg(err, "Failed to download public signing key && add the Helm apt repository!\n")
 			// Install helm
 			utils.WaitPrintf("Installing Helm")
-			err = node.InstallPackages("helm")
+			err = node.InstallPackages("%s", "helm")
 			utils.CheckErrorWithMsg(err, "Failed to install helm!\n")
 		default:
 			utils.FatalPrintf("Unsupported Linux distribution: %s\n", node.Configs.System.CurrentOS)
@@ -802,7 +802,7 @@ func (node *Node) YurtMasterInit() {
 	if !node.Configs.Yurt.KustomizeInstalled {
 		// Download kustomize helper script
 		utils.WaitPrintf("Downloading kustomize")
-		filePathName, err := node.DownloadToTmpDir(node.Configs.Yurt.KustomizeScriptDownloadUrl)
+		filePathName, err := node.DownloadToTmpDir("%s", node.Configs.Yurt.KustomizeScriptDownloadUrl)
 		utils.CheckErrorWithMsg(err, "Failed to download kustomize!\n")
 		// Download kustomize
 		_, err = node.ExecShellCmd("chmod u+x %s && %s %s", filePathName, filePathName, node.Configs.System.TmpDir)
@@ -983,7 +983,7 @@ func (masterNode *Node) BuildDemo(workerNodes []Node) {
 	// cloud.yaml
 	utils.WaitPrintf("Creating yaml files for cloud nodepool")
 	cloudNpcommand := fmt.Sprintf("yq  '.metadata.name = \"%s\"' %s > %s ", cloudPoolName, cloudNPTmpFilePath, cloudFile)
-	_, err = masterNode.ExecShellCmd(cloudNpcommand)
+	_, err = masterNode.ExecShellCmd("%s", cloudNpcommand)
 	utils.CheckErrorWithTagAndMsg(err, "Failed to create yaml for cloud\n")
 
 	// Copy edgeNP file over
@@ -992,7 +992,7 @@ func (masterNode *Node) BuildDemo(workerNodes []Node) {
 	// edge.yaml
 	utils.WaitPrintf("Creating yaml files for edge nodepool")
 	edgeNpcommand := fmt.Sprintf("yq  '.metadata.name = \"%s\"' %s > %s ", edgePoolName, edgeNPTmpFilePath, edgeFile)
-	_, err = masterNode.ExecShellCmd(edgeNpcommand)
+	_, err = masterNode.ExecShellCmd("%s", edgeNpcommand)
 	utils.CheckErrorWithTagAndMsg(err, "Failed to create yaml for edge\n")
 
 	utils.WaitPrintf("Apply cloud.yaml")
@@ -1024,7 +1024,7 @@ func (masterNode *Node) Demo(isCloud bool) {
 			.spec.template.spec.nodeSelector."apps.openyurt.io/nodepool" = "%s" | 
 			.spec.template.spec.containers[0].image = "docker.io/vhiveease/hello-cloud:latest"' %s > %s`,
 			cloudPoolName, benchmarkFilePath, cloudOutputFile)
-		_, err = masterNode.ExecShellCmd(command)
+		_, err = masterNode.ExecShellCmd("%s", command)
 		utils.CheckErrorWithMsg(err, "cloud benchmark command fail.")
 
 		_, err = masterNode.ExecShellCmd("kubectl apply -f %s", cloudOutputFile)
@@ -1035,7 +1035,7 @@ func (masterNode *Node) Demo(isCloud bool) {
 			.spec.template.spec.nodeSelector."apps.openyurt.io/nodepool" = "%s" | 
 			.spec.template.spec.containers[0].image = "docker.io/vhiveease/hello-edge:latest"' %s > %s`,
 			edgePoolName, benchmarkFilePath, edgeOutputFile)
-		_, err = masterNode.ExecShellCmd(command)
+		_, err = masterNode.ExecShellCmd("%s", command)
 		utils.CheckErrorWithMsg(err, "edge benchmark command fail.")
 		_, err = masterNode.ExecShellCmd("kubectl apply -f %s", edgeOutputFile)
 	}
