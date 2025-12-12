@@ -7,7 +7,7 @@ replace github.com/vhive-serverless/vhive/function-images/tests/save_load_minio/
 require (
 	github.com/containerd/containerd v1.5.2
 	github.com/minio/minio-go/v7 v7.0.10
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.8.3
 	github.com/vhive-serverless/vhive/function-images/tests/save_load_minio/proto v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.54.0
 )
