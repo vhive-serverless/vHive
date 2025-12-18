@@ -45,7 +45,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
 
 ### 4. Go Installation
 
-If you intend to build the setup scripts from source, you need to install go by running: (This will install version `1.25.9`. You can configure the version to install in `configs/setup/system.json` as `GoVersion`)
+If you intend to build the setup scripts from source, you need to install go by running: (This will install version `1.25.3`. You can configure the version to install in `configs/setup/system.json` as `GoVersion`)
 ```bash
 ./scripts/install_go.sh; source /etc/profile
 ```
