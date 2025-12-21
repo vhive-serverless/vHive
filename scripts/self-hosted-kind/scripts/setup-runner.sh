@@ -42,6 +42,7 @@ apt-get install --yes \
     gnupg-agent \
     iproute2 \
     iptables \
+    nftables \
     ipvsadm \
     jq \
     libicu67 \
