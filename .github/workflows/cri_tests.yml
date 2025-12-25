@@ -57,9 +57,6 @@ jobs:
       - name: Setup System
         run: ./scripts/setup_tool setup_system
 
-      - name: Create Devmapper
-        run: ./scripts/setup_tool create_devmapper
-
       - name: Setup Node
         run: ./scripts/setup_tool setup_node ${{ inputs.sandbox }}
 
