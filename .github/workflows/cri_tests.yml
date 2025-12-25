@@ -63,6 +63,23 @@ jobs:
       - name: Setup vHive CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
 
+      - name: Debug - Check vHive orchestrator status
+        if: failure()
+        run: |
+          echo "=== Checking if vHive socket exists ==="
+          ls -la /etc/vhive-cri/ || echo "vhive-cri directory doesn't exist"
+          echo "=== Checking vHive process ==="
+          ps aux | grep vhive || echo "No vhive process found"
+          echo "=== Checking orchestrator logs ==="
+          cat /tmp/ctrd-logs/${{ github.run_id }}/orch.out || echo "No orch.out"
+          cat /tmp/ctrd-logs/${{ github.run_id }}/orch.err || echo "No orch.err"
+          echo "=== Checking containerd logs ==="
+          cat /tmp/ctrd-logs/${{ github.run_id }}/ctrd.out || echo "No ctrd.out"
+          cat /tmp/ctrd-logs/${{ github.run_id }}/ctrd.err || echo "No ctrd.err"
+          echo "=== Checking firecracker-containerd logs ==="
+          cat /tmp/ctrd-logs/${{ github.run_id }}/fccd.out || echo "No fccd.out"
+          cat /tmp/ctrd-logs/${{ github.run_id }}/fccd.err || echo "No fccd.err"
+
       - name: Run vHive CRI tests
         run: source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
 
