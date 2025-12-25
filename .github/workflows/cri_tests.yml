@@ -66,22 +66,20 @@ jobs:
       - name: Debug - Check vHive orchestrator status
         if: failure()
         run: |
+          echo "=== Checking kubelet status ==="
+          sudo systemctl status kubelet || echo "Kubelet not running"
+          echo "=== Checking kubelet logs ==="
+          sudo journalctl -xeu kubelet --no-pager -n 200 || echo "No kubelet logs"
+          echo "=== Checking CRI containers ==="
+          sudo crictl --runtime-endpoint unix:///etc/vhive-cri/vhive-cri.sock ps -a || echo "Can't list containers"
           echo "=== Checking if vHive socket exists ==="
           ls -la /etc/vhive-cri/ || echo "vhive-cri directory doesn't exist"
           echo "=== Checking vHive process ==="
           ps aux | grep vhive || echo "No vhive process found"
-          echo "=== Checking orchestrator logs ==="
-          cat /tmp/ctrd-logs/${{ github.run_id }}/orch.out || echo "No orch.out"
+          echo "=== Checking orchestrator logs (last 50 lines) ==="
+          tail -50 /tmp/ctrd-logs/${{ github.run_id }}/orch.out || echo "No orch.out"
           echo "=== Checking orchestrator ERROR logs ==="
           cat /tmp/ctrd-logs/${{ github.run_id }}/orch.err || echo "No orch.err"
-          echo "=== Testing if CRI socket responds ==="
-          sudo crictl --runtime-endpoint unix:///etc/vhive-cri/vhive-cri.sock version || echo "CRI socket not responding"
-          echo "=== Checking containerd logs ==="
-          cat /tmp/ctrd-logs/${{ github.run_id }}/ctrd.out || echo "No ctrd.out"
-          cat /tmp/ctrd-logs/${{ github.run_id }}/ctrd.err || echo "No ctrd.err"
-          echo "=== Checking firecracker-containerd logs ==="
-          cat /tmp/ctrd-logs/${{ github.run_id }}/fccd.out || echo "No fccd.out"
-          cat /tmp/ctrd-logs/${{ github.run_id }}/fccd.err || echo "No fccd.err"
 
       - name: Run vHive CRI tests
         run: source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
