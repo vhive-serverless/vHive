@@ -60,6 +60,9 @@ jobs:
       - name: Create Devmapper
         run: ./scripts/setup_tool create_devmapper
 
+      - name: Setup Node
+        run: ./scripts/setup_tool setup_node ${{ inputs.sandbox }}
+
       - name: Setup vHive CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
 
