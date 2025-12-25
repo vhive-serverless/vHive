@@ -91,10 +91,6 @@ jobs:
       with:
         python-version: '3.x'
 
-    - name: Configure perf access
-      run: |
-        sudo sysctl -w kernel.perf_event_paranoid=-1
-
     - name: Build setup scripts
       run: pushd scripts && go build -o setup_tool && popd
       
