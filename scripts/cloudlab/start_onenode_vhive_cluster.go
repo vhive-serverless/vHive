@@ -44,13 +44,15 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 		return &utils.ShellError{Msg: "Sandbox technique not supported!", ExitCode: 1}
 	}
 
-	// Clean up host resources
-	utils.WaitPrintf("Cleaning up host resources if left after previous runs")
-	cleanCriRunnerScriptPath := "scripts/github_runner/clean_cri_runner.sh"
-	_, err := utils.ExecVHiveBashScript(cleanCriRunnerScriptPath, sandbox)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to clean up host resources!\n") {
-		return err
-	}
+	/*
+		// Clean up host resources
+		utils.WaitPrintf("Cleaning up host resources if left after previous runs")
+		cleanCriRunnerScriptPath := "scripts/github_runner/clean_cri_runner.sh"
+		_, err := utils.ExecVHiveBashScript(cleanCriRunnerScriptPath, sandbox)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to clean up host resources!\n") {
+			return err
+		}
+	*/
 
 	// Create Log directory
 	githubRunId := utils.GetEnvironmentVariable("GITHUB_RUN_ID")

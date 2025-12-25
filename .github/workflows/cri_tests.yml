@@ -16,13 +16,24 @@ jobs:
     env:
       GITHUB_RUN_ID: ${{ github.run_id }}
       GITHUB_VHIVE_ARGS: "-dbg"
-    runs-on: ${{ fromJSON(format('["self-hosted", "{0}-cri"]', inputs.sandbox)) }}
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Host Info
         run: |
           echo $HOSTNAME
           echo $GITHUB_RUN_ID
+      
+      # added to enable KVM access as default not enabled on github runners
+      #- name: Enable KVM
+      #  run: |
+      #    echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+      #    sudo udevadm control --reload-rules
+      #    sudo udevadm trigger --name-match=kvm
+      #    # sudo chmod 666 /dev/kvm
+          # Verify KVM is accessible (Debugging purpose)
+      #    ls -la /dev/kvm
+      #    [ -r /dev/kvm ] && [ -w /dev/kvm ] || exit 1
 
       - name: Checkout code
         uses: actions/checkout@v5
@@ -42,6 +53,12 @@ jobs:
 
       - name: Build setup scripts
         run: pushd scripts && go build -o setup_tool && popd
+           
+      - name: Setup System
+        run: ./scripts/setup_tool setup_system
+
+      - name: Create Devmapper
+        run: ./scripts/setup_tool create_devmapper
 
       - name: Setup vHive CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
@@ -62,7 +79,3 @@ jobs:
             /tmp/ctrd-logs/${{ github.run_id }}
             ${{ github.workspace }}/*.log
             ${{ github.workspace }}/scripts/github_runner/*.log
-
-      - name: Cleaning
-        if: ${{ always() }}
-        run: ./scripts/github_runner/clean_cri_runner.sh ${{ inputs.sandbox }}
