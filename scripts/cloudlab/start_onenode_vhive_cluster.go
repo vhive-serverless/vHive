@@ -63,7 +63,7 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 
 	// Run the stock containerd daemon
 	utils.WaitPrintf("Running the stock containerd daemon")
-	_, err = utils.ExecShellCmd("sudo containerd 1>%s/ctrd.out 2>%s/ctrd.err &", ctrdLogDir, ctrdLogDir)
+	_, err := utils.ExecShellCmd("sudo containerd 1>%s/ctrd.out 2>%s/ctrd.err &", ctrdLogDir, ctrdLogDir)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to run the stock containerd daemon!\n") {
 		return err
 	}
