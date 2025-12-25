@@ -68,8 +68,8 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 		return err
 	}
 
-	// Sleep 1 second
-	time.Sleep(1 * time.Second)
+	// Sleep 30 seconds
+	time.Sleep(30 * time.Second)
 
 	// Run the containerd daemon
 	switch sandbox {
@@ -117,7 +117,7 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 		return err
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	utils.InfoPrintf("Create one node cluster\n")
 	if err := cluster.CreateOneNodeCluster(sandbox); err != nil {
