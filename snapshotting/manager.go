@@ -801,9 +801,7 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 		log.Errorf("Failed to upload recipe file: %v", err)
 		return err
 	}
-	log.Infof("Recipe file uploaded successfully, removing local file")
-	os.Remove(recipeFilePath)
-	log.Infof("Local recipe file removed")
+	log.Infof("Recipe file uploaded successfully")
 
 	log.Infof("uploadMemFile for snapshot %s completed in %s, total chunks: %d", snap.GetId(), time.Since(startTime), chunkIndex)
 	return nil
