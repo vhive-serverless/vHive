@@ -15,7 +15,7 @@ jobs:
       matrix:
         image: [grpc, helloworld, chameleon, pyaes, image_rotate_s3, lr_serving, json_serdes_s3, cnn_serving, rnn_serving, lr_training_s3, video_processing_s3, springboot, tests/save_load_minio]
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
       with:
         ref: main
     - name: docker build images
@@ -35,7 +35,7 @@ jobs:
       matrix:
         image: [github_runner, github_runner_cri, cri_dev_env]
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Handle LFS Caching
       uses: ./.github/actions/lfs-cache
       with:
