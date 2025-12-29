@@ -30,7 +30,7 @@ jobs:
       matrix:
         test-name: [test, test-man-bench]
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Handle LFS Caching
       uses: ./.github/actions/lfs-cache
       with:
