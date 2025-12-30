@@ -40,6 +40,7 @@ var (
 	imageMap  map[string]string
 	relayPort = 0
 	mu        = &sync.Mutex{}
+	cleaning  *bool
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -176,11 +177,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			if err := snapMgr.UploadSnapshot(rev); err != nil {
 				log.Errorf("upload error: %v", err)
 			}
-			// snapMgr.DeleteSnapshot(rev)
-			// snapMgr.CleanChunks()
 			log.Debugf("finished snapshotting %s", vmId)
 		}
 		orch.StopSingleVM(ctx, vmId)
+		if *cleaning {
+			snapMgr.DeleteSnapshot(rev)
+			snapMgr.CleanChunks()
+		}
 		// cancel()
 	}()
 }
@@ -210,6 +213,7 @@ func main() {
 	endpoint := flag.String("endpoint", "localhost:8080", "Endpoint for the relay server")
 	chunkSize := flag.Uint64("chunkSize", 512*1024, "Chunk size in bytes for memory file uploads and downloads when chunking is enabled")
 	cacheSize := flag.Uint64("cacheSize", 15000, "Size of the cache for memory file chunks when chunking is enabled")
+	cleaning = flag.Bool("clean", false, "Clean existing snapshots after each invocation")
 	flag.Parse()
 
 	imageMap = make(map[string]string)
