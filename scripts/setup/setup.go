@@ -40,6 +40,12 @@ func SetupFirecrackerContainerd() error {
 		return err
 	}
 
+	// Create snapshot base directory
+	_, err = utils.ExecShellCmd("sudo mkdir -p /fccd && sudo chmod 777 /fccd")
+	if err != nil {
+		return err
+	}
+
 	// Pull LFS in vHive
 	utils.WaitPrintf("Pulling LFS in vHive")
 	if err := utils.CheckVHiveRepo(); !utils.CheckErrorWithMsg(err, "Failed to pull LFS in vHive!\n") {
