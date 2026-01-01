@@ -39,6 +39,31 @@ $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT start_onenode_vhive_c
 # $VHIVE_ROOT/scripts/cloudlab/start_onenode_vhive_cluster.sh "$SANDBOX"
 sleep 30s
 
+# Fix CoreDNS for external DNS resolution (must run after K8s cluster is created)
+echo "Patching CoreDNS to use host DNS resolver..."
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml > /tmp/coredns-backup.yaml
+
+# Get host DNS server
+HOST_DNS=$(systemd-resolve --status | grep "DNS Servers" | head -n1 | awk '{print $3}')
+if [ -z "$HOST_DNS" ]; then
+  HOST_DNS="8.8.8.8"
+  echo "Could not detect host DNS, using Google DNS: $HOST_DNS"
+else
+  echo "Detected host DNS: $HOST_DNS"
+fi
+
+# Patch CoreDNS ConfigMap to forward to host DNS
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o json | \
+  jq --arg dns "$HOST_DNS" '.data.Corefile |= gsub("forward . /etc/resolv.conf"; "forward . " + $dns)' | \
+  sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f -
+
+echo "Restarting CoreDNS pods..."
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout restart deployment/coredns -n kube-system
+sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout status deployment/coredns -n kube-system --timeout=60s
+
+echo "Waiting for DNS to propagate..."
+sleep 10
+
 # KUBECONFIG=/etc/kubernetes/admin.conf sudo $VHIVE_ROOT/scripts/setup_zipkin.sh
 $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
 
