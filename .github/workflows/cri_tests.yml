@@ -102,23 +102,37 @@ jobs:
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml | grep -A5 "forward"
           
           echo ""
-          echo "=== Applying CoreDNS fix ==="
+          echo "=== Detecting usable DNS server ==="
+          # GitHub blocks outbound UDP:53, so we need to use their internal DNS
+          # Try to find a DNS that's actually accessible
           
-          # Use Google DNS as it's guaranteed to be reachable
-          HOST_DNS="8.8.8.8"
-          echo "Using Google DNS: $HOST_DNS"
+          # First, get what the host is using
+          HOST_DNS=$(grep "^nameserver" /etc/resolv.conf | head -n1 | awk '{print $2}')
+          echo "Host uses: $HOST_DNS"
+          
+          # If it's 127.0.0.53, get the real upstream from systemd-resolved
+          if [ "$HOST_DNS" = "127.0.0.53" ] && [ -f /run/systemd/resolve/resolv.conf ]; then
+            UPSTREAM_DNS=$(grep "^nameserver" /run/systemd/resolve/resolv.conf | head -n1 | awk '{print $2}')
+            echo "Upstream DNS from systemd-resolved: $UPSTREAM_DNS"
+            # Use the upstream DNS if it's not localhost
+            if [ "$UPSTREAM_DNS" != "127.0.0.53" ] && [ -n "$UPSTREAM_DNS" ]; then
+              HOST_DNS="$UPSTREAM_DNS"
+            fi
+          fi
+          
+          echo "Using DNS server: $HOST_DNS"
           
           # Backup original config
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml > /tmp/coredns-original.yaml
           
-          # Patch CoreDNS ConfigMap
+          # Patch CoreDNS ConfigMap with force_tcp option to work around UDP blocking
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o json | \
-            jq --arg dns "$HOST_DNS" '.data.Corefile |= gsub("forward . /etc/resolv.conf"; "forward . " + $dns)' | \
+            jq --arg dns "$HOST_DNS" '.data.Corefile |= gsub("forward . /etc/resolv.conf"; "forward . " + $dns + " {\n       force_tcp\n    }")' | \
             sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f -
           
           echo ""
           echo "=== Verifying CoreDNS configuration after patch ==="
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml | grep -A5 "forward"
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml | grep -A7 "forward"
           
           # Restart CoreDNS
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout restart deployment/coredns -n kube-system
