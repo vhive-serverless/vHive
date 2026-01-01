@@ -80,6 +80,26 @@ jobs:
           # Use crictl to check images from Kubernetes perspective
           sudo crictl images | grep ghcr.io/ease-lab || echo "Note: crictl not showing images yet, but they're in containerd"
 
+      - name: Patch Knative configs for local images
+        run: |
+          echo "=== Adding imagePullPolicy: Never to prevent registry lookups ==="
+          # This prevents Knative from trying to resolve image digests from registries
+          # Since DNS is broken in pods, we must use pre-pulled local images
+          
+          for config in configs/knative_workloads/${{ inputs.sandbox }}/*.yaml; do
+            if [ -f "$config" ]; then
+              echo "Patching $config"
+              # Add imagePullPolicy: Never to all container specs
+              sed -i '/containers:/,/image:/ {
+                /image:/a\          imagePullPolicy: Never
+              }' "$config"
+            fi
+          done
+          
+          echo ""
+          echo "=== Verifying patches ==="
+          grep -A2 "image:" configs/knative_workloads/${{ inputs.sandbox }}/*.yaml
+
       - name: Deploy Knative services
         run: |
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f configs/knative_workloads/${{ inputs.sandbox }}/helloworld.yaml
