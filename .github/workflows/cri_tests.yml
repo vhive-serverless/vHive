@@ -86,8 +86,8 @@ jobs:
           # Knative admission webhook resolves images to digests, which requires DNS
           # Instead, we'll use the digest of the pre-pulled images directly
           
-          HELLOWORLD_DIGEST=$(sudo ctr -n k8s.io images ls -q | grep ghcr.io/ease-lab/helloworld:var_workload | awk -F@ '{print $2}')
-          PYAES_DIGEST=$(sudo ctr -n k8s.io images ls -q | grep ghcr.io/ease-lab/pyaes:var_workload | awk -F@ '{print $2}')
+          HELLOWORLD_DIGEST=$(sudo ctr -n k8s.io images ls | grep "ghcr.io/ease-lab/helloworld:var_workload" | awk '{print $3}' | sed 's/sha256://')
+          PYAES_DIGEST=$(sudo ctr -n k8s.io images ls | grep "ghcr.io/ease-lab/pyaes:var_workload" | awk '{print $3}' | sed 's/sha256://')
           
           echo "Helloworld digest: $HELLOWORLD_DIGEST"
           echo "Pyaes digest: $PYAES_DIGEST"
