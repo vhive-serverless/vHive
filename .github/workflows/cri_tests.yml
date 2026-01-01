@@ -122,7 +122,53 @@ jobs:
 
       - name: Deploy Knative services
         run: |
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f configs/knative_workloads/${{ inputs.sandbox }}/helloworld.yaml
+          echo "=== Applying helloworld service ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f configs/knative_workloads/${{ inputs.sandbox }}/helloworld.yaml &
+          KN_PID=$!
+          
+          # Wait for Kubernetes resources to be created
+          sleep 15
+          
+          echo ""
+          echo "=== Checking Knative Revision status ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get revisions -n default
+          
+          echo ""
+          echo "=== Checking pods ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n default -o wide
+          
+          echo ""
+          echo "=== Checking pod events ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get events -n default --sort-by='.lastTimestamp' | tail -30
+          
+          echo ""
+          echo "=== Checking for image pull issues ==="
+          PROBLEM_PODS=$(sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n default --field-selector=status.phase=Pending -o name 2>/dev/null || true)
+          if [ -n "$PROBLEM_PODS" ]; then
+            echo "Found pending pods: $PROBLEM_PODS"
+            for pod in $PROBLEM_PODS; do
+              echo ""
+              echo "=== Describing $pod ==="
+              sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl describe $pod -n default | tail -40
+            done
+          fi
+          
+          echo ""
+          echo "=== Checking if kn service apply is still running ==="
+          if kill -0 $KN_PID 2>/dev/null; then
+            echo "kn service apply is still running (PID $KN_PID), killing it to see error state..."
+            kill $KN_PID 2>/dev/null || true
+            sleep 2
+          else
+            echo "kn service apply already completed"
+          fi
+          
+          echo ""
+          echo "=== Final service status ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service list
+          
+          echo ""
+          echo "=== Applying remaining services ==="
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f configs/knative_workloads/${{ inputs.sandbox }}/helloworldSerial.yaml
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f configs/knative_workloads/${{ inputs.sandbox }}/pyaes.yaml
           sleep 30s
