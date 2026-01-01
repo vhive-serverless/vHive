@@ -73,11 +73,25 @@ jobs:
           
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl wait --for=condition=Ready pod/dns-test-before --timeout=60s || true
           
-          if sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-before -- timeout 5 nslookup ghcr.io 2>&1 | grep -q "can't resolve"; then
-            echo "✗ DNS BROKEN - CoreDNS cannot forward to /etc/resolv.conf successfully"
-            echo "  (This happens when systemd-resolved has no upstream DNS configured)"
+          echo "Testing external DNS resolution..."
+          FAIL_COUNT=0
+          for registry in ghcr.io docker.io gcr.io; do
+            if sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-before -- nslookup $registry > /dev/null 2>&1; then
+              echo "✓ $registry: Can resolve"
+            else
+              echo "✗ $registry: Cannot resolve"
+              FAIL_COUNT=$((FAIL_COUNT+1))
+            fi
+          done
+          
+          if [ $FAIL_COUNT -eq 0 ]; then
+            echo ""
+            echo "✓ DNS already works - GitHub runners have proper DNS configuration"
+            echo "  CoreDNS fix may not be needed, but we'll apply it for consistency"
           else
-            echo "✓ DNS works - systemd-resolved has proper upstream DNS configured"
+            echo ""
+            echo "✗ DNS broken - CoreDNS cannot resolve external domains"
+            echo "  CoreDNS fix is required"
           fi
           
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl delete pod dns-test-before --wait=false || true
