@@ -52,21 +52,98 @@ jobs:
       - name: Setup Node
         run: ./scripts/setup_tool setup_node ${{ inputs.sandbox }}
 
-      - name: Check cgroup version
+      - name: Setup Kubernetes cluster
         run: |
-          if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
-            echo "ERROR: System is using cgroups v2"
-            echo "gVisor requires cgroups v1"
-            echo "Current cgroup mounts:"
-            mount | grep cgroup
-            exit 1
-          else
-            echo "✓ System is using cgroups v1 - compatible with gVisor"
-            mount | grep cgroup
-          fi
+          # Start vHive cluster (creates Kubernetes + Knative)
+          ./scripts/setup_tool -vhive-repo-dir ${{ github.workspace }} start_onenode_vhive_cluster ${{ inputs.sandbox }}
+          sleep 30s
+          
+          # Setup Zipkin
+          ./scripts/setup_tool -vhive-repo-dir ${{ github.workspace }} setup_zipkin
 
-      - name: Setup vHive CRI test environment
-        run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
+      - name: Test DNS BEFORE fix (expect failures)
+        continue-on-error: true
+        run: |
+          echo "=== Testing DNS resolution BEFORE CoreDNS fix ==="
+          
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl run dns-test-before \
+            --image=busybox:1.36 \
+            --restart=Never \
+            --command -- sleep 300
+          
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl wait --for=condition=Ready pod/dns-test-before --timeout=60s || true
+          
+          if sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-before -- timeout 5 nslookup ghcr.io 2>&1 | grep -q "can't resolve"; then
+            echo "✗ DNS BROKEN - CoreDNS cannot forward to /etc/resolv.conf successfully"
+            echo "  (This happens when systemd-resolved has no upstream DNS configured)"
+          else
+            echo "✓ DNS works - systemd-resolved has proper upstream DNS configured"
+          fi
+          
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl delete pod dns-test-before --wait=false || true
+
+      - name: Apply CoreDNS fix
+        run: |
+          # Get host DNS server
+          HOST_DNS=""
+          if command -v resolvectl &> /dev/null; then
+            HOST_DNS=$(resolvectl status 2>/dev/null | grep "DNS Servers" | head -n1 | awk '{print $3}')
+          fi
+          if [ -z "$HOST_DNS" ] && [ -f /run/systemd/resolve/resolv.conf ]; then
+            HOST_DNS=$(grep "^nameserver" /run/systemd/resolve/resolv.conf | head -n1 | awk '{print $2}')
+          fi
+          if [ -z "$HOST_DNS" ]; then
+            HOST_DNS=$(grep "^nameserver" /etc/resolv.conf | head -n1 | awk '{print $2}')
+          fi
+          if [ -z "$HOST_DNS" ]; then
+            HOST_DNS="8.8.8.8"
+          fi
+          
+          echo "Patching CoreDNS to use: $HOST_DNS"
+          
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o json | \
+            jq --arg dns "$HOST_DNS" '.data.Corefile |= gsub("forward . /etc/resolv.conf"; "forward . " + $dns)' | \
+            sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f -
+          
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout restart deployment/coredns -n kube-system
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout status deployment/coredns -n kube-system --timeout=60s
+          sleep 10
+
+      - name: Test DNS AFTER fix (must succeed)
+        run: |
+          echo "=== Testing DNS resolution AFTER CoreDNS fix ==="
+          
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl run dns-test-after \
+            --image=busybox:1.36 \
+            --restart=Never \
+            --command -- sleep 300
+          
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl wait --for=condition=Ready pod/dns-test-after --timeout=60s
+          
+          PASS=0
+          FAIL=0
+          
+          for registry in ghcr.io docker.io gcr.io; do
+            if sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-after -- nslookup $registry > /dev/null 2>&1; then
+              echo "✓ $registry: SUCCESS"
+              PASS=$((PASS+1))
+            else
+              echo "✗ $registry: FAILED"
+              FAIL=$((FAIL+1))
+            fi
+          done
+          
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl delete pod dns-test-after --wait=false
+          
+          echo "Results: $PASS passed, $FAIL failed"
+          [ $FAIL -eq 0 ] || exit 1
+
+      - name: Deploy Knative services
+        run: |
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f configs/knative_workloads/${{ inputs.sandbox }}/helloworld.yaml
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f configs/knative_workloads/${{ inputs.sandbox }}/helloworldSerial.yaml
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f configs/knative_workloads/${{ inputs.sandbox }}/pyaes.yaml
+          sleep 30s
       
       - name: Run vHive CRI tests
         run: source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
