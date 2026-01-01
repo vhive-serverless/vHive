@@ -54,6 +54,34 @@ jobs:
 
       - name: Setup vHive CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
+
+      - name: Debug network connectivity
+        run: |
+          echo "=== Checking CoreDNS status ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n kube-system -l k8s-app=kube-dns
+          
+          echo "=== Testing pod network connectivity ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl run network-test --image=busybox:1.28 --restart=Never --command -- sleep 3600 || true
+          sleep 15
+          
+          echo "=== DNS resolution test ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec network-test -- nslookup kubernetes.default || echo "Internal DNS failed"
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec network-test -- nslookup docker.io || echo "Docker Hub DNS failed"
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec network-test -- nslookup ghcr.io || echo "ghcr.io DNS failed"
+          
+          echo "=== Network connectivity test ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec network-test -- ping -c 3 8.8.8.8 || echo "Ping to 8.8.8.8 failed"
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec network-test -- wget -T 10 -O- https://index.docker.io/v2/ || echo "HTTPS to Docker Hub failed"
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec network-test -- wget -T 10 -O- https://ghcr.io/v2/ || echo "HTTPS to ghcr.io failed"
+          
+          echo "=== Test pulling actual images used in tests ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec network-test -- wget -T 10 -O- https://registry-1.docker.io/v2/crccheck/hello-world/manifests/latest || echo "Docker Hub crccheck/hello-world pull failed"
+          
+          echo "=== Cleaning up test pod ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl delete pod network-test --force --grace-period=0 || true
+          
+          echo "=== Checking iptables NAT rules ==="
+          sudo iptables -t nat -L POSTROUTING -n -v | grep MASQUERADE || echo "No MASQUERADE rules found"
       
       - name: Run vHive CRI tests
         run: source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
