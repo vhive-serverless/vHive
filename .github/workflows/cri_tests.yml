@@ -16,7 +16,7 @@ jobs:
     env:
       GITHUB_RUN_ID: ${{ github.run_id }}
       GITHUB_VHIVE_ARGS: "-dbg"
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Free up disk space
