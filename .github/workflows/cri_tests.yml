@@ -66,10 +66,9 @@ jobs:
           echo "=== Pre-pulling container images on host ==="
           echo "GitHub runners block port 53 egress from pods, so we must pull images on the host first."
           
-          # Pull all images that Knative services will need
-          # These will be available to containerd and won't need to be pulled again
+          # Pull all unique images that Knative services will need
+          # Note: helloworldSerial also uses helloworld:var_workload
           sudo ctr -n k8s.io images pull ghcr.io/ease-lab/helloworld:var_workload
-          sudo ctr -n k8s.io images pull ghcr.io/ease-lab/helloworldserial:var_workload  
           sudo ctr -n k8s.io images pull ghcr.io/ease-lab/pyaes:var_workload
           
           echo ""
