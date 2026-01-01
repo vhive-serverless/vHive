@@ -138,6 +138,22 @@ jobs:
           
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl wait --for=condition=Ready pod/dns-test-after --timeout=60s
           
+          echo ""
+          echo "=== Pod DNS Configuration ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-after -- cat /etc/resolv.conf
+          
+          echo ""
+          echo "=== Testing Direct IP Connectivity ==="
+          echo "Can pod reach Google DNS directly?"
+          if sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-after -- ping -c 2 8.8.8.8 2>&1 | grep -q "2 packets transmitted"; then
+            echo "✓ Can ping 8.8.8.8"
+          else
+            echo "✗ Cannot ping 8.8.8.8 - network connectivity issue!"
+            sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-after -- ping -c 2 8.8.8.8 || true
+          fi
+          
+          echo ""
+          echo "=== Testing DNS Resolution Through CoreDNS ==="
           PASS=0
           FAIL=0
           
@@ -151,10 +167,22 @@ jobs:
             fi
           done
           
+          echo ""
+          echo "=== CoreDNS Pod Logs (last 20 lines) ==="
+          COREDNS_POD=$(sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n kube-system -l k8s-app=kube-dns -o name | head -1)
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n kube-system $COREDNS_POD --tail=20 || true
+          
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl delete pod dns-test-after --wait=false
           
+          echo ""
           echo "Results: $PASS passed, $FAIL failed"
-          [ $FAIL -eq 0 ] || exit 1
+          
+          if [ $FAIL -gt 0 ]; then
+            echo ""
+            echo "ERROR: DNS resolution still failing after fix!"
+            echo "This indicates a network policy or connectivity issue preventing pods from reaching external DNS servers."
+            exit 1
+          fi
 
       - name: Deploy Knative services
         run: |
