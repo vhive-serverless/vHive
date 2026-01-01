@@ -126,8 +126,9 @@ jobs:
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml > /tmp/coredns-original.yaml
           
           # Patch CoreDNS ConfigMap with force_tcp option to work around UDP blocking
+          # Replace the entire forward block (including the closing brace and options)
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o json | \
-            jq --arg dns "$HOST_DNS" '.data.Corefile |= gsub("forward . /etc/resolv.conf"; "forward . " + $dns + " {\n       force_tcp\n    }")' | \
+            jq --arg dns "$HOST_DNS" '.data.Corefile |= gsub("forward \\. /etc/resolv\\.conf \\{[^}]*\\}"; "forward . " + $dns + " {\n       max_concurrent 1000\n       force_tcp\n    }")' | \
             sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f -
           
           echo ""
