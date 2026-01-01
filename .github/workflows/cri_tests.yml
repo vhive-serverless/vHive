@@ -82,23 +82,43 @@ jobs:
 
       - name: Patch Knative configs for local images
         run: |
-          echo "=== Adding imagePullPolicy: Never to prevent registry lookups ==="
-          # This prevents Knative from trying to resolve image digests from registries
-          # Since DNS is broken in pods, we must use pre-pulled local images
+          echo "=== Getting image digests from pre-pulled images ==="
+          # Knative admission webhook resolves images to digests, which requires DNS
+          # Instead, we'll use the digest of the pre-pulled images directly
           
-          for config in configs/knative_workloads/${{ inputs.sandbox }}/*.yaml; do
+          HELLOWORLD_DIGEST=$(sudo ctr -n k8s.io images ls -q | grep ghcr.io/ease-lab/helloworld:var_workload | awk -F@ '{print $2}')
+          PYAES_DIGEST=$(sudo ctr -n k8s.io images ls -q | grep ghcr.io/ease-lab/pyaes:var_workload | awk -F@ '{print $2}')
+          
+          echo "Helloworld digest: $HELLOWORLD_DIGEST"
+          echo "Pyaes digest: $PYAES_DIGEST"
+          
+          if [ -z "$HELLOWORLD_DIGEST" ] || [ -z "$PYAES_DIGEST" ]; then
+            echo "ERROR: Failed to get image digests"
+            sudo ctr -n k8s.io images ls | grep ghcr.io/ease-lab
+            exit 1
+          fi
+          
+          echo ""
+          echo "=== Replacing image tags with digests in Knative configs ==="
+          # Replace image references with digest-based references
+          
+          for config in configs/knative_workloads/${{ inputs.sandbox }}/helloworld.yaml \
+                        configs/knative_workloads/${{ inputs.sandbox }}/helloworldSerial.yaml; do
             if [ -f "$config" ]; then
-              echo "Patching $config"
-              # Add imagePullPolicy: Never to all container specs
-              sed -i '/containers:/,/image:/ {
-                /image:/a\          imagePullPolicy: Never
-              }' "$config"
+              echo "Patching $config with digest"
+              sed -i "s|ghcr.io/ease-lab/helloworld:var_workload|ghcr.io/ease-lab/helloworld@sha256:$HELLOWORLD_DIGEST|g" "$config"
             fi
           done
           
+          if [ -f configs/knative_workloads/${{ inputs.sandbox }}/pyaes.yaml ]; then
+            echo "Patching pyaes.yaml with digest"
+            sed -i "s|ghcr.io/ease-lab/pyaes:var_workload|ghcr.io/ease-lab/pyaes@sha256:$PYAES_DIGEST|g" \
+              configs/knative_workloads/${{ inputs.sandbox }}/pyaes.yaml
+          fi
+          
           echo ""
           echo "=== Verifying patches ==="
-          grep -A2 "image:" configs/knative_workloads/${{ inputs.sandbox }}/*.yaml
+          grep "image:" configs/knative_workloads/${{ inputs.sandbox }}/*.yaml
 
       - name: Deploy Knative services
         run: |
