@@ -16,7 +16,7 @@ jobs:
     env:
       GITHUB_RUN_ID: ${{ github.run_id }}
       GITHUB_VHIVE_ARGS: "-dbg"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Free up disk space
@@ -51,6 +51,19 @@ jobs:
 
       - name: Setup Node
         run: ./scripts/setup_tool setup_node ${{ inputs.sandbox }}
+
+      - name: Check cgroup version
+        run: |
+          if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
+            echo "ERROR: System is using cgroups v2"
+            echo "gVisor requires cgroups v1"
+            echo "Current cgroup mounts:"
+            mount | grep cgroup
+            exit 1
+          else
+            echo "✓ System is using cgroups v1 - compatible with gVisor"
+            mount | grep cgroup
+          fi
 
       - name: Setup vHive CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
