@@ -61,143 +61,25 @@ jobs:
           # Setup Zipkin
           ./scripts/setup_tool -vhive-repo-dir ${{ github.workspace }} setup_zipkin
 
-      - name: Test DNS BEFORE fix (expect failures)
-        continue-on-error: true
+      - name: Pre-pull images on host
         run: |
-          echo "=== Testing DNS resolution BEFORE CoreDNS fix ==="
+          echo "=== Pre-pulling container images on host ==="
+          echo "GitHub runners block port 53 egress from pods, so we must pull images on the host first."
           
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl run dns-test-before \
-            --image=busybox:1.36 \
-            --restart=Never \
-            --command -- sleep 300
-          
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl wait --for=condition=Ready pod/dns-test-before --timeout=60s || true
-          
-          echo "Testing external DNS resolution..."
-          FAIL_COUNT=0
-          for registry in ghcr.io docker.io gcr.io; do
-            if sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-before -- nslookup $registry > /dev/null 2>&1; then
-              echo "✓ $registry: Can resolve"
-            else
-              echo "✗ $registry: Cannot resolve"
-              FAIL_COUNT=$((FAIL_COUNT+1))
-            fi
-          done
-          
-          if [ $FAIL_COUNT -eq 0 ]; then
-            echo ""
-            echo "✓ DNS already works - GitHub runners have proper DNS configuration"
-            echo "  CoreDNS fix may not be needed, but we'll apply it for consistency"
-          else
-            echo ""
-            echo "✗ DNS broken - CoreDNS cannot resolve external domains"
-            echo "  CoreDNS fix is required"
-          fi
-          
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl delete pod dns-test-before --wait=false || true
-
-      - name: Apply CoreDNS fix
-        run: |
-          echo "=== Checking current CoreDNS configuration ==="
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml | grep -A5 "forward"
+          # Pull all images that Knative services will need
+          # These will be available to containerd and won't need to be pulled again
+          sudo ctr -n k8s.io images pull ghcr.io/ease-lab/helloworld:var_workload
+          sudo ctr -n k8s.io images pull ghcr.io/ease-lab/helloworldserial:var_workload  
+          sudo ctr -n k8s.io images pull ghcr.io/ease-lab/pyaes:var_workload
           
           echo ""
-          echo "=== Detecting usable DNS server ==="
-          # GitHub blocks outbound UDP:53, so we need to use their internal DNS
-          # Try to find a DNS that's actually accessible
-          
-          # First, get what the host is using
-          HOST_DNS=$(grep "^nameserver" /etc/resolv.conf | head -n1 | awk '{print $2}')
-          echo "Host uses: $HOST_DNS"
-          
-          # If it's 127.0.0.53, get the real upstream from systemd-resolved
-          if [ "$HOST_DNS" = "127.0.0.53" ] && [ -f /run/systemd/resolve/resolv.conf ]; then
-            UPSTREAM_DNS=$(grep "^nameserver" /run/systemd/resolve/resolv.conf | head -n1 | awk '{print $2}')
-            echo "Upstream DNS from systemd-resolved: $UPSTREAM_DNS"
-            # Use the upstream DNS if it's not localhost
-            if [ "$UPSTREAM_DNS" != "127.0.0.53" ] && [ -n "$UPSTREAM_DNS" ]; then
-              HOST_DNS="$UPSTREAM_DNS"
-            fi
-          fi
-          
-          echo "Using DNS server: $HOST_DNS"
-          
-          # Backup original config
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml > /tmp/coredns-original.yaml
-          
-          # Patch CoreDNS ConfigMap with force_tcp option to work around UDP blocking
-          # Replace the entire forward block (including the closing brace and options)
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o json | \
-            jq --arg dns "$HOST_DNS" '.data.Corefile |= gsub("forward \\. /etc/resolv\\.conf \\{[^}]*\\}"; "forward . " + $dns + " {\n       max_concurrent 1000\n       force_tcp\n    }")' | \
-            sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f -
+          echo "=== Verifying images are available in k8s.io namespace ==="
+          sudo ctr -n k8s.io images ls | grep ghcr.io/ease-lab
           
           echo ""
-          echo "=== Verifying CoreDNS configuration after patch ==="
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml | grep -A7 "forward"
-          
-          # Restart CoreDNS
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout restart deployment/coredns -n kube-system
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout status deployment/coredns -n kube-system --timeout=60s
-          
-          echo "Waiting for DNS changes to propagate..."
-          sleep 15
-
-      - name: Test DNS AFTER fix (must succeed)
-        run: |
-          echo "=== Testing DNS resolution AFTER CoreDNS fix ==="
-          
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl run dns-test-after \
-            --image=busybox:1.36 \
-            --restart=Never \
-            --command -- sleep 300
-          
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl wait --for=condition=Ready pod/dns-test-after --timeout=60s
-          
-          echo ""
-          echo "=== Pod DNS Configuration ==="
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-after -- cat /etc/resolv.conf
-          
-          echo ""
-          echo "=== Testing Direct IP Connectivity ==="
-          echo "Can pod reach Google DNS directly?"
-          if sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-after -- ping -c 2 8.8.8.8 2>&1 | grep -q "2 packets transmitted"; then
-            echo "✓ Can ping 8.8.8.8"
-          else
-            echo "✗ Cannot ping 8.8.8.8 - network connectivity issue!"
-            sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-after -- ping -c 2 8.8.8.8 || true
-          fi
-          
-          echo ""
-          echo "=== Testing DNS Resolution Through CoreDNS ==="
-          PASS=0
-          FAIL=0
-          
-          for registry in ghcr.io docker.io gcr.io; do
-            if sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec dns-test-after -- nslookup $registry > /dev/null 2>&1; then
-              echo "✓ $registry: SUCCESS"
-              PASS=$((PASS+1))
-            else
-              echo "✗ $registry: FAILED"
-              FAIL=$((FAIL+1))
-            fi
-          done
-          
-          echo ""
-          echo "=== CoreDNS Pod Logs (last 20 lines) ==="
-          COREDNS_POD=$(sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n kube-system -l k8s-app=kube-dns -o name | head -1)
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs -n kube-system $COREDNS_POD --tail=20 || true
-          
-          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl delete pod dns-test-after --wait=false
-          
-          echo ""
-          echo "Results: $PASS passed, $FAIL failed"
-          
-          if [ $FAIL -gt 0 ]; then
-            echo ""
-            echo "ERROR: DNS resolution still failing after fix!"
-            echo "This indicates a network policy or connectivity issue preventing pods from reaching external DNS servers."
-            exit 1
-          fi
+          echo "=== Verifying Kubernetes can see these images ==="
+          # Use crictl to check images from Kubernetes perspective
+          sudo crictl images | grep ghcr.io/ease-lab || echo "Note: crictl not showing images yet, but they're in containerd"
 
       - name: Deploy Knative services
         run: |
