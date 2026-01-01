@@ -98,30 +98,34 @@ jobs:
 
       - name: Apply CoreDNS fix
         run: |
-          # Get host DNS server
-          HOST_DNS=""
-          if command -v resolvectl &> /dev/null; then
-            HOST_DNS=$(resolvectl status 2>/dev/null | grep "DNS Servers" | head -n1 | awk '{print $3}')
-          fi
-          if [ -z "$HOST_DNS" ] && [ -f /run/systemd/resolve/resolv.conf ]; then
-            HOST_DNS=$(grep "^nameserver" /run/systemd/resolve/resolv.conf | head -n1 | awk '{print $2}')
-          fi
-          if [ -z "$HOST_DNS" ]; then
-            HOST_DNS=$(grep "^nameserver" /etc/resolv.conf | head -n1 | awk '{print $2}')
-          fi
-          if [ -z "$HOST_DNS" ]; then
-            HOST_DNS="8.8.8.8"
-          fi
+          echo "=== Checking current CoreDNS configuration ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml | grep -A5 "forward"
           
-          echo "Patching CoreDNS to use: $HOST_DNS"
+          echo ""
+          echo "=== Applying CoreDNS fix ==="
           
+          # Use Google DNS as it's guaranteed to be reachable
+          HOST_DNS="8.8.8.8"
+          echo "Using Google DNS: $HOST_DNS"
+          
+          # Backup original config
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml > /tmp/coredns-original.yaml
+          
+          # Patch CoreDNS ConfigMap
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o json | \
             jq --arg dns "$HOST_DNS" '.data.Corefile |= gsub("forward . /etc/resolv.conf"; "forward . " + $dns)' | \
             sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f -
           
+          echo ""
+          echo "=== Verifying CoreDNS configuration after patch ==="
+          sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml | grep -A5 "forward"
+          
+          # Restart CoreDNS
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout restart deployment/coredns -n kube-system
           sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl rollout status deployment/coredns -n kube-system --timeout=60s
-          sleep 10
+          
+          echo "Waiting for DNS changes to propagate..."
+          sleep 15
 
       - name: Test DNS AFTER fix (must succeed)
         run: |
