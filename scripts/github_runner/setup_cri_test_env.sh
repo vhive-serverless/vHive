@@ -43,8 +43,25 @@ sleep 30s
 echo "Patching CoreDNS to use host DNS resolver..."
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap coredns -n kube-system -o yaml > /tmp/coredns-backup.yaml
 
-# Get host DNS server
-HOST_DNS=$(systemd-resolve --status | grep "DNS Servers" | head -n1 | awk '{print $3}')
+# Get host DNS server - try multiple detection methods
+HOST_DNS=""
+
+# Try resolvectl (newer systemd)
+if command -v resolvectl &> /dev/null; then
+  HOST_DNS=$(resolvectl status 2>/dev/null | grep "DNS Servers" | head -n1 | awk '{print $3}')
+fi
+
+# Try reading systemd's resolved.conf
+if [ -z "$HOST_DNS" ] && [ -f /run/systemd/resolve/resolv.conf ]; then
+  HOST_DNS=$(grep "^nameserver" /run/systemd/resolve/resolv.conf | head -n1 | awk '{print $2}')
+fi
+
+# Try reading /etc/resolv.conf
+if [ -z "$HOST_DNS" ]; then
+  HOST_DNS=$(grep "^nameserver" /etc/resolv.conf | head -n1 | awk '{print $2}')
+fi
+
+# Default to Google DNS if nothing worked
 if [ -z "$HOST_DNS" ]; then
   HOST_DNS="8.8.8.8"
   echo "Could not detect host DNS, using Google DNS: $HOST_DNS"
