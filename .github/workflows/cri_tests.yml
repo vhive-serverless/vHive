@@ -338,6 +338,38 @@ jobs:
           ps aux | grep "runsc" | grep -v grep || echo "No runsc processes running"
           
           echo ""
+          echo "--- Checking containerd-shim-runsc-v1 binary ---"
+          if [ -f /usr/local/bin/containerd-shim-runsc-v1 ]; then
+            echo "✓ containerd-shim-runsc-v1 exists"
+            ls -la /usr/local/bin/containerd-shim-runsc-v1
+            file /usr/local/bin/containerd-shim-runsc-v1
+            echo "Testing shim execution..."
+            /usr/local/bin/containerd-shim-runsc-v1 --version 2>&1 || echo "Shim version command failed"
+          else
+            echo "✗ containerd-shim-runsc-v1 NOT FOUND"
+          fi
+          
+          echo ""
+          echo "--- Testing runsc binary directly ---"
+          if [ -f /usr/local/bin/runsc ]; then
+            echo "✓ runsc exists"
+            ls -la /usr/local/bin/runsc
+            echo "Testing runsc execution..."
+            /usr/local/bin/runsc --version || echo "runsc execution failed"
+            echo "Testing runsc do command..."
+            /usr/local/bin/runsc do echo "test" 2>&1 || echo "runsc do test failed"
+          else
+            echo "✗ runsc NOT FOUND"
+          fi
+          
+          echo ""
+          echo "--- Checking library dependencies ---"
+          echo "Checking runsc dependencies:"
+          ldd /usr/local/bin/runsc 2>&1 || echo "ldd failed (may be static binary)"
+          echo "Checking shim dependencies:"
+          ldd /usr/local/bin/containerd-shim-runsc-v1 2>&1 || echo "ldd failed (may be static binary)"
+          
+          echo ""
           echo "--- Testing direct connection to vhive-cri.sock ---"
           sudo ls -la /etc/vhive-cri/vhive-cri.sock
           sudo timeout 5 crictl --runtime-endpoint unix:///etc/vhive-cri/vhive-cri.sock version || echo "Failed to connect to vhive-cri.sock"
