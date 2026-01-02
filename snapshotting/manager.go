@@ -23,6 +23,7 @@
 package snapshotting
 
 import (
+	"archive/tar"
 	"container/list"
 	"crypto/md5"
 	"encoding/csv"
@@ -51,6 +52,10 @@ const (
 	K               = 3   // TODO: tune
 	deleteBatchSize = 150 // TODO: tune
 )
+
+var imageChunks = map[string]map[[16]byte]bool{}
+var rootfsChunks = map[[16]byte]bool{}
+var imageInit sync.Once
 
 func (mgr *SnapshotManager) GetChunkSize() uint64 {
 	return mgr.chunkSize
@@ -333,6 +338,51 @@ type SnapshotManager struct {
 	storage storage.ObjectStorage
 }
 
+func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool, error) {
+	file, err := os.Open(tarFilePath)
+	if err != nil {
+		log.Errorf("failed to open image file %s: %v", tarFilePath, err)
+		return nil, err
+	}
+	defer file.Close()
+
+	tr := tar.NewReader(file)
+	chunks := make(map[[16]byte]bool)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // End of tar archive
+		}
+		if err != nil {
+			log.Errorf("error reading tar header for image %s: %v", tarFilePath, err)
+			break
+		}
+		if hdr.Typeflag != tar.TypeReg {
+			continue // Skip non-regular files
+		}
+
+		// Read the file content in chunks of chunkSize
+		buffer := make([]byte, chunkSize)
+		for {
+			n, err := io.ReadFull(tr, buffer)
+			if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+				log.Errorf("error reading file %s in tar %s: %v", hdr.Name, tarFilePath, err)
+				break
+			}
+			if n == 0 {
+				break
+			}
+			for i := n; i < len(buffer); i++ {
+				buffer[i] = 0
+			}
+
+			hash := md5.Sum(buffer)
+			chunks[hash] = true
+		}
+	}
+	return chunks, nil
+}
+
 func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64, cacheSize uint64, securityMode string) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
@@ -359,6 +409,26 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 	if skipCleanup {
 		_ = manager.RecoverSnapshots()
 	}
+
+	imageInit.Do(func() {
+		imagesDir := filepath.Join(baseFolder, "..", "images")
+		entries, err := os.ReadDir(imagesDir)
+		if err != nil {
+			log.Errorf("failed to read images directory: %v", err)
+			return
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				image := entry.Name()
+				imageChunks[image], _ = readTarChunkHashes(filepath.Join(imagesDir, image, "container.tar"), chunkSize)
+				log.Debugf("Found image directory: %s", image)
+			}
+		}
+		log.Infof("Loaded chunk hashes for %d images", len(imageChunks))
+
+		rootfsChunks, _ = readTarChunkHashes(filepath.Join(imagesDir, "rootfs.tar"), chunkSize)
+		log.Infof("Loaded rootfs chunk hashes, total %d chunks", len(rootfsChunks))
+	})
 
 	return manager
 }
@@ -642,6 +712,25 @@ func (mgr *SnapshotManager) UploadWSFile(revision string) error {
 	return nil
 }
 
+func isHashSensitiveChunk(hash [16]byte, image string) bool {
+	lastSlash := strings.LastIndex(image, "/")
+	if lastSlash != -1 {
+		image = image[lastSlash+1:]
+	}
+	if colon := strings.Index(image, ":"); colon != -1 {
+		image = image[:colon]
+	}
+	if ok, _ := imageChunks[image][hash]; ok {
+		return false
+	}
+
+	if ok, _ := rootfsChunks[hash]; ok {
+		return false
+	}
+
+	return true
+}
+
 func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 	startTime := time.Now()
 	log.Debugf("starting uploadMemFile for snapshot %s at %v", snap.id, startTime)
@@ -747,6 +836,8 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 
 		hash := md5.Sum(buffer[:n])
 		if mgr.securityMode == "full" {
+			hash = md5.Sum(append(hash[:], []byte(snap.id)...))
+		} else if mgr.securityMode == "partial" && isHashSensitiveChunk(hash, snap.Image) {
 			hash = md5.Sum(append(hash[:], []byte(snap.id)...))
 		}
 		recipe = append(recipe, hash[:]...)
