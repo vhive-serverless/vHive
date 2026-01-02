@@ -58,6 +58,58 @@ jobs:
           ./scripts/setup_tool -vhive-repo-dir ${{ github.workspace }} start_onenode_vhive_cluster ${{ inputs.sandbox }}
           sleep 30s
           
+          echo "=== Verifying gvisor-containerd daemon started ==="
+          ps aux | grep gvisor-containerd | grep -v grep || echo "WARNING: gvisor-containerd not running"
+          
+          # Check socket
+          if [ -S /run/gvisor-containerd/gvisor-containerd.sock ]; then
+            echo "✓ gvisor-containerd socket exists"
+            ls -la /run/gvisor-containerd/gvisor-containerd.sock
+          else
+            echo "✗ gvisor-containerd socket NOT found"
+            ls -la /run/gvisor-containerd/ 2>/dev/null || echo "Directory doesn't exist"
+          fi
+          
+          # Check logs in correct location
+          echo ""
+          echo "=== Checking gvisor-containerd logs in /tmp/ctrd-logs/${{ github.run_id }}/ ==="
+          LOG_DIR="/tmp/ctrd-logs/${{ github.run_id }}"
+          if [ -d "$LOG_DIR" ]; then
+            echo "Log directory exists:"
+            ls -la "$LOG_DIR"
+            echo ""
+            if [ -f "$LOG_DIR/gvisor.out" ]; then
+              echo "--- gvisor.out ---"
+              cat "$LOG_DIR/gvisor.out"
+            else
+              echo "gvisor.out not found"
+            fi
+            if [ -f "$LOG_DIR/gvisor.err" ]; then
+              echo "--- gvisor.err ---"
+              cat "$LOG_DIR/gvisor.err"
+            else
+              echo "gvisor.err not found"
+            fi
+          else
+            echo "Log directory $LOG_DIR does not exist"
+          fi
+          
+          # Check if binary exists and is executable
+          echo ""
+          echo "=== Checking gvisor-containerd binary ==="
+          ls -la /usr/local/bin/gvisor-containerd
+          file /usr/local/bin/gvisor-containerd
+          /usr/local/bin/gvisor-containerd --version 2>&1 || echo "Failed to get version"
+          
+          # Check config file
+          echo ""
+          echo "=== Checking gvisor-containerd config ==="
+          if [ -f /etc/gvisor-containerd/config.toml ]; then
+            cat /etc/gvisor-containerd/config.toml
+          else
+            echo "Config file not found"
+          fi
+          
           # Setup Zipkin
           ./scripts/setup_tool -vhive-repo-dir ${{ github.workspace }} setup_zipkin
 
