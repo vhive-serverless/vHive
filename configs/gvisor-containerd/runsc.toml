@@ -1,0 +1,13 @@
+# runsc configuration for GitHub runners
+# Use host networking to bypass veth creation that requires CAP_NET_ADMIN
+
+[runsc_config]
+  # Use host network namespace instead of creating isolated network
+  # This avoids the need for CAP_NET_ADMIN to create veth pairs
+  network = "host"
+  
+  # Use ptrace platform for better compatibility
+  platform = "ptrace"
+  
+  # Disable network creation
+  disable_host_networking = false
