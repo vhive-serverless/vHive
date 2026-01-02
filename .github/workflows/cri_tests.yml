@@ -343,8 +343,8 @@ jobs:
             echo "✓ containerd-shim-runsc-v1 exists"
             ls -la /usr/local/bin/containerd-shim-runsc-v1
             file /usr/local/bin/containerd-shim-runsc-v1
-            echo "Testing shim execution..."
-            /usr/local/bin/containerd-shim-runsc-v1 --version 2>&1 || echo "Shim version command failed"
+            echo "Testing shim execution (correct flag is -v)..."
+            /usr/local/bin/containerd-shim-runsc-v1 -v 2>&1 || echo "Shim version command failed"
           else
             echo "✗ containerd-shim-runsc-v1 NOT FOUND"
           fi
@@ -356,18 +356,43 @@ jobs:
             ls -la /usr/local/bin/runsc
             echo "Testing runsc execution..."
             /usr/local/bin/runsc --version || echo "runsc execution failed"
-            echo "Testing runsc do command..."
-            /usr/local/bin/runsc do echo "test" 2>&1 || echo "runsc do test failed"
+            echo "Testing runsc do command (with networking)..."
+            /usr/local/bin/runsc do echo "test" 2>&1 || echo "runsc do with networking failed"
+            echo "Testing runsc with ptrace platform (no networking)..."
+            /usr/local/bin/runsc --platform=ptrace do echo "ptrace test" 2>&1 || echo "runsc do with ptrace failed"
           else
             echo "✗ runsc NOT FOUND"
           fi
           
           echo ""
-          echo "--- Checking library dependencies ---"
-          echo "Checking runsc dependencies:"
-          ldd /usr/local/bin/runsc 2>&1 || echo "ldd failed (may be static binary)"
-          echo "Checking shim dependencies:"
-          ldd /usr/local/bin/containerd-shim-runsc-v1 2>&1 || echo "ldd failed (may be static binary)"
+          echo "--- Checking capabilities and permissions ---"
+          echo "Checking runsc capabilities:"
+          sudo getcap /usr/local/bin/runsc || echo "No capabilities set on runsc"
+          echo "Checking shim capabilities:"
+          sudo getcap /usr/local/bin/containerd-shim-runsc-v1 || echo "No capabilities set on shim"
+          
+          echo ""
+          echo "--- Checking security restrictions ---"
+          echo "User namespace support:"
+          sysctl kernel.unprivileged_userns_clone 2>&1 || echo "kernel.unprivileged_userns_clone not available"
+          
+          echo "AppArmor status:"
+          if command -v aa-status &> /dev/null; then
+            sudo aa-status 2>&1 | grep -E "(apparmor module|profiles are loaded)" || echo "AppArmor info not available"
+          else
+            echo "aa-status command not found"
+          fi
+          
+          echo "Checking for AppArmor denials in dmesg:"
+          sudo dmesg | grep -i apparmor | tail -20 || echo "No recent AppArmor messages"
+          
+          echo "Checking for seccomp denials in dmesg:"
+          sudo dmesg | grep -i seccomp | tail -20 || echo "No recent seccomp messages"
+          
+          echo ""
+          echo "--- Testing network capability with sudo ---"
+          echo "Testing if runsc works with sudo (to verify it's a permission issue):"
+          sudo /usr/local/bin/runsc do echo "sudo test" 2>&1 || echo "Even sudo runsc failed"
           
           echo ""
           echo "--- Testing direct connection to vhive-cri.sock ---"
