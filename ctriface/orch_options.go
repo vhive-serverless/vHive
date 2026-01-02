@@ -185,3 +185,9 @@ func WithMinioSecretKey(minioSecretKey string) OrchestratorOption {
 		o.minioSecretKey = minioSecretKey
 	}
 }
+
+func WithSecurityMode(securityMode string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.securityMode = securityMode
+	}
+}

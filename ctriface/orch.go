@@ -319,6 +319,8 @@ type Orchestrator struct {
 	minioSecretKey string
 
 	memoryManager *manager.MemoryManager
+
+	securityMode string
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -400,7 +402,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 			log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", snapshotsBucket)
 		}
 	}
-	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, false, o.isLazyMode, o.isWSPulling, o.chunkSize, o.cacheSize)
+	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, false, o.isLazyMode, o.isWSPulling, o.chunkSize, o.cacheSize, o.securityMode)
 
 	return o
 }

@@ -214,6 +214,7 @@ func main() {
 	chunkSize := flag.Uint64("chunkSize", 512*1024, "Chunk size in bytes for memory file uploads and downloads when chunking is enabled")
 	cacheSize := flag.Uint64("cacheSize", 15000, "Size of the cache for memory file chunks when chunking is enabled")
 	cleaning = flag.Bool("clean", false, "Clean existing snapshots after each invocation")
+	security := flag.String("security", "none", "Snapshot security mode: none, full")
 	flag.Parse()
 
 	imageMap = make(map[string]string)
@@ -281,6 +282,7 @@ func main() {
 		ctriface.WithSnapshotsStorage(snapDir),
 		ctriface.WithShimPoolSize(5),
 		ctriface.WithCacheSize(*cacheSize),
+		ctriface.WithSecurityMode(*security),
 	)
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()

@@ -327,12 +327,13 @@ type SnapshotManager struct {
 	wsPulling     bool
 	chunkSize     uint64
 	cacheSize     uint64
+	securityMode  string
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64, cacheSize uint64) *SnapshotManager {
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64, cacheSize uint64, securityMode string) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
 		baseFolder:    baseFolder,
@@ -343,6 +344,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		wsPulling:     wsPulling,
 		lazy:          lazy,
 		cacheSize:     cacheSize,
+		securityMode:  strings.ToLower(securityMode),
 	}
 	manager.chunkRegistry = NewChunkRegistry(manager, K)
 
@@ -744,6 +746,9 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 		}
 
 		hash := md5.Sum(buffer[:n])
+		if mgr.securityMode == "full" {
+			hash = md5.Sum(append(hash[:], []byte(snap.id)...))
+		}
 		recipe = append(recipe, hash[:]...)
 		chunkHash := hex.EncodeToString(hash[:])
 
