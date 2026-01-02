@@ -1,6 +1,6 @@
 module github.com/vhive-serverless/vhive/scripts/openyurt_deployer
 
-go 1.22.9
+go 1.25.3
 
 require (
 	github.com/sfreiberg/simplessh v0.0.0-20220719182921-185eafd40485
