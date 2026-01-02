@@ -52,6 +52,26 @@ jobs:
       - name: Setup Node
         run: ./scripts/setup_tool setup_node ${{ inputs.sandbox }}
 
+      - name: Set runsc capabilities for network operations
+        run: |
+          echo "=== Checking runsc binary before capability setup ==="
+          ls -la /usr/local/bin/runsc
+          echo ""
+          echo "Current capabilities (should be empty):"
+          getcap /usr/local/bin/runsc || echo "No capabilities set"
+          
+          echo ""
+          echo "=== Setting CAP_NET_ADMIN capability on runsc for veth interface creation ==="
+          sudo setcap cap_net_admin,cap_net_raw+ep /usr/local/bin/runsc
+          
+          echo ""
+          echo "=== Verifying capabilities were applied ==="
+          getcap /usr/local/bin/runsc
+          
+          echo ""
+          echo "=== Testing runsc with new capabilities ==="
+          /usr/local/bin/runsc do echo "capability test" 2>&1 && echo "✓ runsc can create network interfaces" || echo "✗ runsc still cannot create network interfaces"
+
       - name: Setup Kubernetes cluster
         run: |
           # Start vHive cluster (creates Kubernetes + Knative)
