@@ -110,6 +110,47 @@ jobs:
             echo "Config file not found"
           fi
           
+          echo ""
+          echo "=== Checking stock containerd config for gVisor runtime ==="
+          echo "Stock containerd needs to be configured to use gVisor for pods..."
+          if grep -A5 "runsc" /etc/containerd/config.toml; then
+            echo "✓ runsc runtime found in stock containerd config"
+          else
+            echo "✗ runsc runtime NOT found in stock containerd config"
+            echo "This means Kubernetes pods will use runc instead of runsc!"
+          fi
+          
+          echo ""
+          echo "=== Checking for Kubernetes RuntimeClass ==="
+          kubectl get runtimeclass -A || echo "No RuntimeClass defined"
+          
+          echo ""
+          echo "=== Checking vHive CRI socket ==="
+          if [ -S /etc/vhive-cri/vhive-cri.sock ]; then
+            echo "✓ vhive-cri.sock exists"
+            ls -la /etc/vhive-cri/vhive-cri.sock
+          else
+            echo "✗ vhive-cri.sock NOT found"
+            ls -la /etc/vhive-cri/ || echo "Directory doesn't exist"
+          fi
+          
+          echo ""
+          echo "=== Checking what CRI socket kubelet is using ==="
+          ps aux | grep kubelet | grep -o 'container-runtime-endpoint=[^ ]*' || echo "No container-runtime-endpoint found"
+          sudo systemctl cat kubelet | grep -i "container-runtime" || echo "No runtime config in kubelet service"
+          
+          echo ""
+          echo "=== Checking vHive orchestrator status ==="
+          ps aux | grep "./vhive" | grep -v grep || echo "vHive orchestrator not running"
+          if [ -f /tmp/ctrd-logs/${{ github.run_id }}/orch.out ]; then
+            echo "--- Last 20 lines of orch.out ---"
+            tail -20 /tmp/ctrd-logs/${{ github.run_id }}/orch.out
+          fi
+          if [ -f /tmp/ctrd-logs/${{ github.run_id }}/orch.err ]; then
+            echo "--- orch.err ---"
+            cat /tmp/ctrd-logs/${{ github.run_id }}/orch.err
+          fi
+          
           # Setup Zipkin
           ./scripts/setup_tool -vhive-repo-dir ${{ github.workspace }} setup_zipkin
 
