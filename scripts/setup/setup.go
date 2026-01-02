@@ -135,7 +135,7 @@ func SetupFirecrackerContainerd() error {
 // Set up gvisor containerd
 func SetupGvisorContainerd() error {
 	// Create required directory
-	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/gvisor-containerd && sudo mkdir -p /etc/cni/net.d")
+	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/cni/net.d")
 	if err != nil {
 		return err
 	}
@@ -154,12 +154,10 @@ func SetupGvisorContainerd() error {
 	utils.WaitPrintf("Copying required files")
 	dstDir := "/usr/local/bin"
 	binsDir := "bin"
-	ctrdConfigsDir := "configs/gvisor-containerd"
 	cniConfigsDir := "configs/cni"
 
 	binLists := []string{
 		"containerd-shim-runsc-v1",
-		"gvisor-containerd",
 	}
 	for _, bin := range binLists {
 		src, err := utils.GetVHiveFilePath(path.Join(binsDir, bin))
@@ -170,15 +168,6 @@ func SetupGvisorContainerd() error {
 		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
 			return err
 		}
-	}
-
-	configFilePath, err := utils.GetVHiveFilePath(path.Join(ctrdConfigsDir, "config.toml"))
-	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-		return err
-	}
-	err = utils.CopyToDir(configFilePath, "/etc/gvisor-containerd/", true)
-	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-		return err
 	}
 
 	dstDir = "/etc/cni/net.d"

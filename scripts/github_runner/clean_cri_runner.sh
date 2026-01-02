@@ -52,7 +52,6 @@ fi
 if [ "$SANDBOX" == "gvisor" ]; then
     sudo pkill -INT vhive
     sudo pkill -9 containerd
-    sudo pkill -9 -f gvisor-containerd
     sudo pkill -9 -f runsc
 fi
 
@@ -90,13 +89,8 @@ if [ "$SANDBOX" == "firecracker" ]; then
 fi
 
 if [ "$SANDBOX" == "gvisor" ]; then
-    echo Cleaning /run/gvisor-containerd/*
-    sudo umount /run/gvisor-containerd/io.containerd.runtime.v2.task/default/*/rootfs
-    sudo rm -rf /run/gvisor-containerd/*
-
-    echo Cleaning /var/lib/gvisor-containerd/*
-    sudo rm -rf /var/lib/gvisor-containerd/*
-
+    echo Cleaning gvisor containers from stock containerd
+    # gVisor containers now run through stock containerd, no separate directories to clean
 fi
 
 if [ "$SANDBOX" == "firecracker" ]; then

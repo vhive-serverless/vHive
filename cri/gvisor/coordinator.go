@@ -44,7 +44,7 @@ import (
 )
 
 const (
-	gvisorContainerdAddress = "/run/gvisor-containerd/gvisor-containerd.sock"
+	gvisorContainerdAddress = "/run/containerd/containerd.sock" // Use stock containerd socket
 	gvisorRuntime           = "io.containerd.runsc.v1"
 	namespaceName           = "default"
 	bridgeConfFile          = "/etc/cni/net.d/10-bridge.conf"

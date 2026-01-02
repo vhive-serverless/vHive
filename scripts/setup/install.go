@@ -108,6 +108,11 @@ func InstallContainerd() error {
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to modify containerd config!\n") {
 		return err
 	}
+	// Add runsc runtime configuration for gVisor support
+	_, err = utils.ExecShellCmd(`sudo sed -i '/\[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc\]/a \\n  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]\n    runtime_type = "io.containerd.runsc.v1"' /etc/containerd/config.toml`)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to add runsc runtime to containerd config!\n") {
+		return err
+	}
 	return nil
 }
 
