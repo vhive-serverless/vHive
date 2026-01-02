@@ -46,6 +46,13 @@ $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
 if [ "$SANDBOX" = "gvisor" ]; then
     echo "Creating gVisor RuntimeClass..."
     sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f $VHIVE_ROOT/configs/knative_workloads/gvisor/runtimeclass-gvisor.yaml
+    
+    # Enable runtimeClassName feature in Knative by patching config-features
+    echo "Enabling Knative runtimeClassName feature..."
+    sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl patch configmap/config-features \
+      -n knative-serving \
+      --type merge \
+      -p '{"data":{"kubernetes.podspec-runtimeclassname":"enabled"}}'
 fi
 
 # FIXME (gh-709)
