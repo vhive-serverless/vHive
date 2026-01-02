@@ -303,6 +303,59 @@ jobs:
           sudo journalctl -u containerd --no-pager -n 30 | grep -i "runsc\|gvisor\|error" || echo "No relevant containerd errors"
           
           echo ""
+          echo "=========================================="
+          echo "=== ROOT CAUSE ANALYSIS ==="
+          echo "=========================================="
+          
+          echo ""
+          echo "--- Kubelet logs (last 100 lines) ---"
+          sudo journalctl -u kubelet --no-pager -n 100 | grep -A 5 -B 5 "helloworld\|CreateContainerError\|connection refused\|dial unix" || echo "No kubelet errors found"
+          
+          echo ""
+          echo "--- vHive orchestrator logs (last 100 lines of orch.out) ---"
+          if [ -f /tmp/ctrd-logs/${{ github.run_id }}/orch.out ]; then
+            tail -100 /tmp/ctrd-logs/${{ github.run_id }}/orch.out | grep -A 3 -B 3 "error\|Error\|failed\|Failed\|CreateContainer\|RunPodSandbox" || echo "No errors in orch.out"
+          fi
+          
+          echo ""
+          echo "--- vHive orchestrator error log (full orch.err) ---"
+          if [ -f /tmp/ctrd-logs/${{ github.run_id }}/orch.err ]; then
+            cat /tmp/ctrd-logs/${{ github.run_id }}/orch.err
+          fi
+          
+          echo ""
+          echo "--- gvisor-containerd detailed logs (last 200 lines) ---"
+          if [ -f /tmp/ctrd-logs/${{ github.run_id }}/gvisor.err ]; then
+            tail -200 /tmp/ctrd-logs/${{ github.run_id }}/gvisor.err | grep -A 5 -B 5 "error\|Error\|failed\|Failed\|shim\|runsc" || echo "No errors in gvisor.err"
+          fi
+          
+          echo ""
+          echo "--- Checking containerd shim processes ---"
+          ps aux | grep "containerd-shim" | grep -v grep || echo "No containerd shim processes running"
+          
+          echo ""
+          echo "--- Checking for runsc processes ---"
+          ps aux | grep "runsc" | grep -v grep || echo "No runsc processes running"
+          
+          echo ""
+          echo "--- Testing direct connection to vhive-cri.sock ---"
+          sudo ls -la /etc/vhive-cri/vhive-cri.sock
+          sudo timeout 5 crictl --runtime-endpoint unix:///etc/vhive-cri/vhive-cri.sock version || echo "Failed to connect to vhive-cri.sock"
+          
+          echo ""
+          echo "--- Testing direct connection to gvisor-containerd.sock ---"
+          sudo ls -la /run/gvisor-containerd/gvisor-containerd.sock
+          sudo timeout 5 ctr -a /run/gvisor-containerd/gvisor-containerd.sock version || echo "Failed to connect to gvisor-containerd.sock"
+          
+          echo ""
+          echo "--- Checking for UC-ip error in vHive code ---"
+          echo "The 'no UC-ip for this pod present' error suggests vHive coordinator issue"
+          echo "Searching for recent vHive CRI operations..."
+          if [ -f /tmp/ctrd-logs/${{ github.run_id }}/orch.out ]; then
+            tail -50 /tmp/ctrd-logs/${{ github.run_id }}/orch.out | grep -i "helloworld\|RunPodSandbox\|CreateContainer\|StartContainer"
+          fi
+          
+          echo ""
           echo "=== Checking if kn service apply is still running ==="
           if kill -0 $KN_PID 2>/dev/null; then
             echo "kn service apply is still running (PID $KN_PID), killing it to see error state..."
