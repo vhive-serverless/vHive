@@ -5,6 +5,7 @@ metadata:
 spec:
   template:
     spec:
+      runtimeClassName: gvisor
       containers:
         - image: ghcr.io/ease-lab/pyaes:var_workload
           ports:

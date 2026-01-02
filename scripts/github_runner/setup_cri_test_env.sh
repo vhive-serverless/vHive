@@ -42,6 +42,12 @@ sleep 30s
 # KUBECONFIG=/etc/kubernetes/admin.conf sudo $VHIVE_ROOT/scripts/setup_zipkin.sh
 $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
 
+# Create RuntimeClass for gVisor (only for gvisor sandbox)
+if [ "$SANDBOX" = "gvisor" ]; then
+    echo "Creating gVisor RuntimeClass..."
+    sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f $VHIVE_ROOT/configs/knative_workloads/gvisor/runtimeclass-gvisor.yaml
+fi
+
 # FIXME (gh-709)
 #source etc/profile && go run $VHIVE_ROOT/examples/registry/populate_registry.go -imageFile $VHIVE_ROOT/examples/registry/images.txt
 
