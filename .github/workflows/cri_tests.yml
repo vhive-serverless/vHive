@@ -260,6 +260,41 @@ jobs:
           fi
           
           echo ""
+          echo "=== Getting ALL helloworld pods (any status) ==="
+          HELLOWORLD_PODS=$(sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n default -l serving.knative.dev/service=helloworld -o name 2>/dev/null || true)
+          if [ -n "$HELLOWORLD_PODS" ]; then
+            echo "Found helloworld pods:"
+            echo "$HELLOWORLD_PODS"
+            for pod in $HELLOWORLD_PODS; do
+              POD_NAME=$(echo $pod | cut -d'/' -f2)
+              echo ""
+              echo "=========================================="
+              echo "=== Full details for $POD_NAME ==="
+              echo "=========================================="
+              
+              echo ""
+              echo "--- Pod Status ---"
+              sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pod $POD_NAME -n default -o wide
+              
+              echo ""
+              echo "--- Pod YAML (status section) ---"
+              sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pod $POD_NAME -n default -o yaml | grep -A 30 "^status:"
+              
+              echo ""
+              echo "--- Pod Events ---"
+              sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl describe pod $POD_NAME -n default | grep -A 50 "^Events:"
+              
+              echo ""
+              echo "--- Pod Logs (if container started) ---"
+              sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs $POD_NAME -n default --all-containers=true 2>&1 || echo "Container not started yet or logs unavailable"
+            done
+          else
+            echo "⚠ No helloworld pods found!"
+            echo "Checking all pods in default namespace:"
+            sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n default -o wide
+          fi
+          
+          echo ""
           echo "=== Checking gvisor-containerd logs ==="
           sudo journalctl -u gvisor-containerd --no-pager -n 50 || echo "No gvisor-containerd logs available"
           
