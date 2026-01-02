@@ -79,6 +79,19 @@ jobs:
           echo "=== Verifying Kubernetes can see these images ==="
           # Use crictl to check images from Kubernetes perspective
           sudo crictl images | grep ghcr.io/ease-lab || echo "Note: crictl not showing images yet, but they're in containerd"
+          
+          echo ""
+          echo "=== Checking gVisor runtime status ==="
+          echo "Checking if gvisor-containerd is running..."
+          sudo systemctl status gvisor-containerd --no-pager || echo "gvisor-containerd service not found or not running"
+          
+          echo ""
+          echo "Checking containerd runtime configuration..."
+          sudo ctr -n k8s.io plugin ls | grep runsc || echo "runsc plugin not found"
+          
+          echo ""
+          echo "Checking runsc binary..."
+          which runsc && runsc --version || echo "runsc binary not found"
 
       - name: Patch Knative configs for local images
         run: |
@@ -152,6 +165,14 @@ jobs:
               sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl describe $pod -n default | tail -40
             done
           fi
+          
+          echo ""
+          echo "=== Checking gvisor-containerd logs ==="
+          sudo journalctl -u gvisor-containerd --no-pager -n 50 || echo "No gvisor-containerd logs available"
+          
+          echo ""
+          echo "=== Checking containerd logs for runsc errors ==="
+          sudo journalctl -u containerd --no-pager -n 30 | grep -i "runsc\|gvisor\|error" || echo "No relevant containerd errors"
           
           echo ""
           echo "=== Checking if kn service apply is still running ==="
