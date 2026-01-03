@@ -49,6 +49,9 @@ jobs:
       - name: Build setup scripts
         run: pushd scripts && go build -o setup_tool && popd
 
+      - name: Setup system
+        run: ./scripts/setup_tool setup_node ${{ inputs.sandbox }}
+
       - name: Pre-pull images and patch configs
         run: ./scripts/github_runner/prepull_and_patch_images.sh ${{ inputs.sandbox }}
 
