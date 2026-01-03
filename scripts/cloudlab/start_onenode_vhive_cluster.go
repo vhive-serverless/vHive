@@ -72,12 +72,7 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 	// Run the containerd daemon
 	switch sandbox {
 	case "gvisor":
-		utils.WaitPrintf("Running the gvisor-containerd daemon")
-		_, err := utils.ExecShellCmd("sudo /usr/local/bin/gvisor-containerd --address /run/gvisor-containerd/gvisor-containerd.sock --config /etc/gvisor-containerd/config.toml 1>%s/gvisor.out 2>%s/gvisor.err &",
-			ctrdLogDir, ctrdLogDir)
-		if !utils.CheckErrorWithTagAndMsg(err, "Failed to run the gvisor-containerd daemon!\n") {
-			return err
-		}
+		utils.WaitPrintf("gVisor uses stock containerd with runsc runtime - no separate daemon needed")
 	case "firecracker":
 		utils.WaitPrintf("Running the firecracker-containerd daemon")
 		_, err := utils.ExecShellCmd("sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>%s/fccd.out 2>%s/fccd.err &",

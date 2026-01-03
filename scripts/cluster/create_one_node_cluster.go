@@ -39,7 +39,7 @@ func CreateOneNodeCluster(stockContainerd string) error {
 
 	var criSock string
 
-	if stockContainerd == "stock-only" {
+	if stockContainerd == "stock-only" || stockContainerd == "gvisor" {
 		criSock = "/run/containerd/containerd.sock"
 	} else {
 		criSock = "/etc/vhive-cri/vhive-cri.sock"

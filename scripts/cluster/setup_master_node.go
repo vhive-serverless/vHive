@@ -60,6 +60,14 @@ func SetupMasterNode(stockContainerd string) error {
 		return err
 	}
 
+	// Setup gVisor RuntimeClass and enable Knative feature
+	if stockContainerd == "gvisor" {
+		err = SetupGvisorRuntimeClass()
+		if err != nil {
+			return err
+		}
+	}
+
 	err = InstallLocalClusterRegistry()
 	if err != nil {
 		return err
@@ -395,5 +403,24 @@ func InstallBrokerLayer() error {
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install a Broker layer!\n") {
 		return err
 	}
+	return nil
+}
+
+// Create and enable Knative RuntimeClass 
+func SetupGvisorRuntimeClass() error {
+	utils.WaitPrintf("Creating gVisor RuntimeClass")
+
+	runtimeClassPath := path.Join(configs.VHive.VHiveRepoPath, "configs/knative_workloads/gvisor/runtimeclass-gvisor.yaml")
+	_, err := utils.ExecShellCmd("kubectl apply -f %s", runtimeClassPath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create gVisor RuntimeClass!\n") {
+		return err
+	}
+	
+	utils.WaitPrintf("Enabling Knative runtimeClassName feature")
+	_, err = utils.ExecShellCmd(`kubectl patch configmap/config-features -n knative-serving --type merge -p '{"data":{"kubernetes.podspec-runtimeclassname":"enabled"}}'`)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to enable Knative runtimeClassName feature!\n") {
+		return err
+	}
+	
 	return nil
 }
