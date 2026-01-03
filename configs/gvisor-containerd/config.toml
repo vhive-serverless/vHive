@@ -7,11 +7,6 @@ state = "/run/gvisor-containerd"
   shim_debug = true
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
   runtime_type = "io.containerd.runsc.v1"
-  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc.options]
-    # Use host networking to avoid veth creation that requires CAP_NET_ADMIN
-    # This allows gVisor to work on GitHub runners with restricted permissions
-    TypeUrl = "io.containerd.runsc.v1.options"
-    ConfigPath = "/etc/gvisor-containerd/runsc.toml"
 
 [debug]
   level = "debug"
