@@ -416,6 +416,12 @@ func SetupGvisorRuntimeClass() error {
 		return err
 	}
 
+	utils.WaitPrintf("Waiting for Knative webhook to be ready")
+	_, err = utils.ExecShellCmd("kubectl wait --for=condition=Ready pod -l app=webhook -n knative-serving --timeout=120s")
+	if !utils.CheckErrorWithTagAndMsg(err, "Knative webhook not ready!\n") {
+		return err
+	}
+
 	utils.WaitPrintf("Enabling Knative runtimeClassName feature")
 	_, err = utils.ExecShellCmd(`kubectl patch configmap/config-features -n knative-serving --type merge -p '{"data":{"kubernetes.podspec-runtimeclassname":"enabled"}}'`)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to enable Knative runtimeClassName feature!\n") {
