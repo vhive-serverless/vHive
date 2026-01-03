@@ -90,6 +90,31 @@ if [ -n "$HELLOWORLD_POD" ]; then
     
     echo "Getting container logs (if available)..."
     sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl logs "$HELLOWORLD_POD" -n default --all-containers=true --prefix=true || echo "Logs not available yet"
+    
+    echo ""
+    echo "=== CRI Layer Diagnostics ==="
+    echo "Checking containerd status..."
+    systemctl status containerd --no-pager | head -20
+    
+    echo ""
+    echo "Checking kubelet logs (last 50 lines)..."
+    journalctl -u kubelet --no-pager -n 50 | tail -30
+    
+    echo ""
+    echo "Checking containerd logs for errors..."
+    journalctl -u containerd --no-pager -n 50 | grep -i "error\|fail\|denied" || echo "No errors in recent containerd logs"
+    
+    echo ""
+    echo "Checking if runsc shim is spawning..."
+    ps aux | grep containerd-shim-runsc-v1 | grep -v grep || echo "No runsc shim processes found!"
+    
+    echo ""
+    echo "Checking crictl containers..."
+    sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a || echo "Failed to query containers"
+    
+    echo ""
+    echo "Checking if images are in containerd..."
+    sudo ctr -n k8s.io images ls | grep -E "helloworld|queue" || echo "Images not found in containerd!"
 else
     echo "ERROR: No helloworld pod found!"
 fi
