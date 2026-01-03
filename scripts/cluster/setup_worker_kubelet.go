@@ -29,7 +29,7 @@ import (
 
 func SetupWorkerKubelet(stockContainerd string) error {
 	var criSock string
-	if stockContainerd == "stock-only" || stockContainerd == "gvisor" {
+	if stockContainerd == "stock-only" {
 		criSock = "/run/containerd/containerd.sock"
 	} else {
 		criSock = "/etc/vhive-cri/vhive-cri.sock"

@@ -5,7 +5,6 @@ metadata:
 spec:
   template:
     spec:
-      runtimeClassName: gvisor
       containerConcurrency: 1
       containers:
         - image: ghcr.io/ease-lab/helloworld:var_workload
