@@ -114,11 +114,14 @@ func (c *coordinator) startContainer(ctx context.Context, imageName string, envi
 	}()
 
 	// create a task from the container
+	// Note: Using cio.NullIO because runsc guest containers are accessed via network, not stdio
 	log.Debugf("Creating task for gVisor container %s", ctrID)
-	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
+	task, err := container.NewTask(ctx, cio.NullIO)
 	if err != nil {
+		log.Errorf("NewTask failed for gVisor container %s: %v", ctrID, err)
 		return nil, err
 	}
+	log.Debugf("Task created successfully for gVisor container %s (PID: %d)", ctrID, task.Pid())
 	defer func() {
 		if retErr != nil {
 			if err := task.Kill(ctx, syscall.SIGTERM); err != nil {
@@ -127,8 +130,9 @@ func (c *coordinator) startContainer(ctx context.Context, imageName string, envi
 		}
 	}()
 
-	log.Debugf("Waiting for task exit channel for gVisor container %s", ctrID)
+	log.Debugf("About to call task.Wait() for gVisor container %s", ctrID)
 	exitStatusC, err := task.Wait(ctx)
+	log.Debugf("task.Wait() returned for gVisor container %s (err: %v)", ctrID, err)
 	if err != nil {
 		return nil, err
 	}
