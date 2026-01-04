@@ -100,6 +100,7 @@ func InstallContainerd() error {
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create containerd config!\n") {
 		return err
 	}
+	// Generate default config and modify for SystemdCgroup and runsc runtime
 	_, err = utils.ExecShellCmd("containerd config default | sudo tee /etc/containerd/config.toml")
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to create containerd config!\n") {
 		return err
@@ -110,8 +111,8 @@ func InstallContainerd() error {
 	}
 	// Add runsc runtime configuration for gVisor support
 	runscConfig := `
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
-    	runtime_type = "io.containerd.runsc.v1"
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+          runtime_type = "io.containerd.runsc.v1"
 `
 	_, err = utils.ExecShellCmd("echo '%s' | sudo tee -a /etc/containerd/config.toml > /dev/null", runscConfig)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to add runsc runtime to containerd config!\n") {

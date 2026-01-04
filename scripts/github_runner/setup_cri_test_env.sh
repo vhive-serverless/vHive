@@ -119,8 +119,23 @@ else
     echo "ERROR: No helloworld pod found!"
 fi
 
-# Wait for background kn command to finish
-wait $HELLOWORLD_PID
+# Wait for background kn command to finish (with timeout)
+echo "Waiting for helloworld deployment to complete (60s timeout)..."
+WAIT_COUNT=0
+WAIT_TIMEOUT=60
+while kill -0 $HELLOWORLD_PID 2>/dev/null; do
+    if [ $WAIT_COUNT -ge $WAIT_TIMEOUT ]; then
+        echo "WARNING: Helloworld deployment timed out after ${WAIT_TIMEOUT}s, proceeding with other services..."
+        kill $HELLOWORLD_PID 2>/dev/null || true
+        break
+    fi
+    sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
+
+if [ $WAIT_COUNT -lt $WAIT_TIMEOUT ]; then
+    echo "Helloworld deployment completed in ${WAIT_COUNT}s"
+fi
 
 echo "Deploying remaining services..."
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/helloworldSerial.yaml
