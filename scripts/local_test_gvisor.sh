@@ -84,7 +84,7 @@ else
 fi
 
 echo ""
-echo "--- 5. Verification: Binary & Configuration ---"
+echo "--- 5. Verification: Binary & Configuration (Pre-Start) ---"
 echo "Checking containerd-shim-runsc-v1 binary..."
 if [ -f "/usr/local/bin/containerd-shim-runsc-v1" ]; then
     ls -lh /usr/local/bin/containerd-shim-runsc-v1
@@ -120,26 +120,7 @@ else
 fi
 
 echo ""
-echo "Checking stock containerd status..."
-sudo systemctl status containerd --no-pager | head -10
-
-echo ""
-echo "--- 6. Pre-pull Container Images ---"
-echo "Pre-pulling images into containerd..."
-./scripts/github_runner/prepull_and_patch_images.sh "$SANDBOX"
-PREPULL_EXIT=$?
-if [ $PREPULL_EXIT -ne 0 ]; then
-    echo "⚠ WARNING: Image pre-pull had issues (continuing...)"
-else
-    echo "✓ Images pre-pulled successfully"
-fi
-
-echo ""
-echo "Verifying images in containerd..."
-sudo ctr -n k8s.io images ls | grep -E "helloworld|pyaes|queue" || echo "⚠ Some images may be missing"
-
-echo ""
-echo "--- 7. Setup vHive CRI Test Environment ---"
+echo "--- 6. Setup vHive CRI Test Environment ---"
 echo "Setting up vHive orchestrator, cluster, and Knative workloads..."
 ./scripts/github_runner/setup_cri_test_env.sh "$SANDBOX"
 CRI_SETUP_EXIT=$?
@@ -165,7 +146,23 @@ else
 fi
 
 echo ""
-echo "--- 8. Post-Setup Verification ---"
+echo "--- 7. Post-Setup Verification ---"
+echo "Checking stock containerd status..."
+ps aux | grep "containerd" | grep -v "firecracker-containerd" | grep -v grep || echo "⚠ Stock containerd not running!"
+
+echo ""
+echo "Checking containerd socket..."
+if [ -S "/run/containerd/containerd.sock" ]; then
+    echo "✓ Containerd socket exists"
+    sudo ls -la /run/containerd/containerd.sock
+else
+    echo "✗ ERROR: Containerd socket not found at /run/containerd/containerd.sock"
+fi
+
+echo ""
+echo "Note: Images will be pre-pulled by setup_cri_test_env.sh before deployment"
+
+echo ""
 echo "Checking vHive orchestrator..."
 ps aux | grep "./vhive" | grep -v grep || echo "⚠ vHive orchestrator not found"
 
@@ -195,7 +192,7 @@ else
 fi
 
 echo ""
-echo "--- 9. Wait for Pods to be Ready ---"
+echo "--- 8. Wait for Pods to be Ready ---"
 echo "Waiting up to 120s for helloworld pod to be ready..."
 for i in {1..24}; do
     POD_STATUS=$(sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n default -l serving.knative.dev/service=helloworld -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
@@ -239,7 +236,7 @@ go test ./cri -v -race -cover -timeout 60m
 TEST_EXIT_CODE=$?
 
 echo ""
-echo "--- 11. Post-Test Verification ---"
+echo "--- 10. Post-Test Verification ---"
 echo "Checking shim processes after test..."
 SHIM_COUNT=$(ps aux | grep "containerd-shim-runsc-v1" | grep -v grep | wc -l || echo "0")
 echo "Found $SHIM_COUNT shim processes"
@@ -254,7 +251,7 @@ echo "Checking pod status after tests..."
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n default -o wide
 
 echo ""
-echo "--- 12. Test Summary ---"
+echo "--- 11. Test Summary ---"
 echo "========================================="
 if [ $TEST_EXIT_CODE -eq 0 ]; then
     echo "✓✓✓ ALL TESTS PASSED ✓✓✓"
@@ -291,7 +288,7 @@ echo "========================================="
 echo "Logs: /tmp/ctrd-logs/$GITHUB_RUN_ID"
 
 echo ""
-echo "--- 13. Cleanup ---"
+echo "--- 12. Cleanup ---"
 read -p "Do you want to clean up the test environment? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then

@@ -39,6 +39,18 @@ $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT start_onenode_vhive_c
 # $VHIVE_ROOT/scripts/cloudlab/start_onenode_vhive_cluster.sh "$SANDBOX"
 sleep 30s
 
+echo "=== Pre-pulling Container Images ==="
+echo "Pre-pulling images into containerd before deployment..."
+$VHIVE_ROOT/scripts/github_runner/prepull_and_patch_images.sh "$SANDBOX"
+if [ $? -ne 0 ]; then
+    echo "WARNING: Image pre-pull had issues (continuing...)"
+else
+    echo "✓ Images pre-pulled successfully"
+fi
+
+echo "Verifying images in containerd..."
+sudo ctr -n k8s.io images ls | grep -E "helloworld|pyaes|queue" || echo "WARNING: Some images may be missing"
+
 # KUBECONFIG=/etc/kubernetes/admin.conf sudo $VHIVE_ROOT/scripts/setup_zipkin.sh
 $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
 
