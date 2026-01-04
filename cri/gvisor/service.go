@@ -99,32 +99,44 @@ func (gs *GVisorService) createUserContainer(ctx context.Context, r *criapi.Crea
 	go func() {
 		defer close(stockDone)
 		stockResp, stockErr = gs.stockRuntimeClient.CreateContainer(ctx, r)
+		if stockErr != nil {
+			log.WithError(stockErr).Error("stock containerd CreateContainer failed")
+		} else {
+			log.Debugf("stock containerd CreateContainer succeeded: %s", stockResp.GetContainerId())
+		}
 	}()
 
 	config := r.GetConfig()
 	guestImage, err := getEnvVal(guestImageEnv, config)
 	if err != nil {
-		log.WithError(err).Error()
+		log.WithError(err).Error("failed to get guest image env")
+		<-stockDone // Wait for goroutine to complete before returning
 		return nil, err
 	}
 
 	environment := cri.ToStringArray(config.GetEnvs())
+	log.Debugf("Starting gVisor guest container with image: %s", guestImage)
 	ctr, err := gs.coor.startContainer(ctx, guestImage, environment)
 	if err != nil {
 		log.WithError(err).Error("failed to start container")
+		<-stockDone // Wait for goroutine to complete before returning
 		return nil, err
 	}
+	log.Debugf("gVisor guest container started with IP: %s", ctr.ip)
 
 	guestPort, err := getEnvVal(guestPortEnv, config)
 	if err != nil {
-		log.WithError(err).Error()
+		log.WithError(err).Error("failed to get guest port env")
+		<-stockDone // Wait for goroutine to complete before returning
 		return nil, err
 	}
 
 	ctrConfig := &ctrConfig{guestIP: ctr.ip, guestPort: guestPort}
 	gs.insertCtrConfig(r.GetPodSandboxId(), ctrConfig)
 
+	log.Debugf("Waiting for stock containerd CreateContainer to complete...")
 	<-stockDone
+	log.Debugf("Stock containerd CreateContainer completed")
 	gs.coor.insertActive(stockResp.GetContainerId(), ctr)
 	return stockResp, stockErr
 }

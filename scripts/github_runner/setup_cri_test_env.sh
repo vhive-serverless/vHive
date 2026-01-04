@@ -105,16 +105,20 @@ if [ -n "$HELLOWORLD_POD" ]; then
     
     echo ""
     echo "=== CRI Layer Diagnostics ==="
-    echo "Checking containerd status..."
-    systemctl status containerd --no-pager | head -20
+    echo "Checking containerd process..."
+    ps aux | grep "[c]ontainerd" | grep -v "firecracker-containerd" || echo "⚠ Containerd process not found"
     
     echo ""
     echo "Checking kubelet logs (last 50 lines)..."
     journalctl -u kubelet --no-pager -n 50 | tail -30
     
     echo ""
-    echo "Checking containerd logs for errors..."
-    journalctl -u containerd --no-pager -n 50 | grep -i "error\|fail\|denied" || echo "No errors in recent containerd logs"
+    echo "Checking containerd logs (direct logs, not systemd)..."
+    if [ -d "/tmp/ctrd-logs/$GITHUB_RUN_ID" ]; then
+        tail -50 "/tmp/ctrd-logs/$GITHUB_RUN_ID/ctrd.err" 2>/dev/null | grep -i "error\|fail\|denied" || echo "No errors in recent containerd logs"
+    else
+        echo "Containerd logs not found in /tmp/ctrd-logs/$GITHUB_RUN_ID"
+    fi
     
     echo ""
     echo "Checking if runsc shim is spawning..."
