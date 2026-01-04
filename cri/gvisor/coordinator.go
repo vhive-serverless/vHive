@@ -86,10 +86,12 @@ func newCoordinator() (*coordinator, error) {
 func (c *coordinator) startContainer(ctx context.Context, imageName string, environment []string) (_ *gvContainer, retErr error) {
 	ctx = namespaces.WithNamespace(ctx, namespaceName)
 	ctrID := strconv.Itoa(int(atomic.AddUint64(&c.nextID, 1)))
+	log.Debugf("Getting image for gVisor container: %s", imageName)
 	image, err := c.getImage(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("Creating gVisor container %s", ctrID)
 	container, err := c.client.NewContainer(
 		ctx,
 		ctrID,
@@ -112,6 +114,7 @@ func (c *coordinator) startContainer(ctx context.Context, imageName string, envi
 	}()
 
 	// create a task from the container
+	log.Debugf("Creating task for gVisor container %s", ctrID)
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
 	if err != nil {
 		return nil, err
@@ -124,17 +127,20 @@ func (c *coordinator) startContainer(ctx context.Context, imageName string, envi
 		}
 	}()
 
+	log.Debugf("Waiting for task exit channel for gVisor container %s", ctrID)
 	exitStatusC, err := task.Wait(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	netns := fmt.Sprintf("/proc/%v/ns/net", task.Pid())
+	log.Debugf("Setting up CNI network for gVisor container %s (netns: %s)", ctrID, netns)
 	result, err := c.network.Setup(ctx, ctrID, netns)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
+	log.Debugf("CNI network setup complete for gVisor container %s", ctrID)
 	defer func() {
 		if retErr != nil {
 			if err := c.network.Remove(ctx, ctrID, netns); err != nil {
@@ -144,7 +150,9 @@ func (c *coordinator) startContainer(ctx context.Context, imageName string, envi
 	}()
 
 	ip := result.Interfaces["eth0"].IPConfigs[0].IP.String()
+	log.Debugf("Assigned IP %s to gVisor container %s", ip, ctrID)
 
+	log.Debugf("Starting task for gVisor container %s", ctrID)
 	if err := task.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -156,6 +164,7 @@ func (c *coordinator) startContainer(ctx context.Context, imageName string, envi
 		}
 	}()
 
+	log.Debugf("Task started successfully for gVisor container %s", ctrID)
 	return &gvContainer{ip: ip, container: container, task: task, taskC: exitStatusC}, nil
 }
 
