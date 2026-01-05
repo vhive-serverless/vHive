@@ -579,7 +579,7 @@ func (mgr *SnapshotManager) InitSnapshot(revision, image string) (*Snapshot, err
 	if snp, present := mgr.snapshots[revision]; present {
 		ready := snp.ready
 		mgr.Unlock()
-		return nil, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists and its ready is %v", revision, ready))
+		return snp, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists and its ready is %v", revision, ready))
 	}
 
 	// Create snapshot object and move into creating state

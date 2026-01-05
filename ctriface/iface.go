@@ -282,21 +282,39 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, imageName str
 	return &StartVMResponse{VMID: vmID, GuestIP: vm.GetIP()}, startVMMetric, nil
 }
 
-func (o *Orchestrator) prepareBaseSnapshot(ctx context.Context) (_ *snapshotting.Snapshot, retErr error) {
+func (o *Orchestrator) PrepareBaseSnapshot(ctx context.Context) (_ *snapshotting.Snapshot, retErr error) {
 	if o.snapshotter != "proxy" {
 		return nil, errors.New("base snapshot can be prepared only with proxy snapshotter")
 	}
 
-	if _, err := os.Stat(filepath.Join(baseSnapDir, "base", "info_file")); err == nil {
-		log.Infoln("Snapshot already exists:", filepath.Join(baseSnapDir, "base"))
-		snp := snapshotting.NewSnapshot("base", baseSnapDir, "")
-		err = snp.LoadSnapInfo(filepath.Join(baseSnapDir, "base", "info_file"))
+	base_snap_name := "base"
+
+	if snp, err := o.snapshotManager.AcquireSnapshot(base_snap_name); err == nil {
+		log.Infoln("Base snapshot already local:", filepath.Join(baseSnapDir, base_snap_name))
 		return snp, err
 	}
 
-	log.Infoln("Creating base snapshot in:", filepath.Join(baseSnapDir, "base"))
+	if ok, err := o.snapshotManager.SnapshotExists(base_snap_name); err == nil && ok { // remote case
+		log.Debugf("Pulling base snap from remote")
+		snap, err := o.snapshotManager.DownloadSnapshot(base_snap_name)
+		if err != nil {
+			log.Errorf("DownloadSnapshot error is %v", err)
+		}
+		if snap == nil {
+			log.Errorf("DownloadSnapshot snap is nil without error!")
+		}
 
-	vmID := "base"
+		return snap, err
+	}
+
+	log.Infoln("Creating base snapshot in:", filepath.Join(baseSnapDir, base_snap_name))
+
+	// Acquire a VM ID from the shim pool
+	vmID, err := o.AcquireShimFromPool(ctx)
+	if err != nil {
+		log.WithError(err).Error("failed to acquire VM ID from shim pool")
+		return nil, err
+	}
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("starting VM for base snapshot")
@@ -332,34 +350,40 @@ func (o *Orchestrator) prepareBaseSnapshot(ctx context.Context) (_ *snapshotting
 	}()
 
 	o.PauseVM(ctx, vmID)
-	snp := snapshotting.NewSnapshot("base", baseSnapDir, "")
-	snp.CreateSnapDir()
+	snp, err := o.snapshotManager.InitSnapshot(base_snap_name, "")
+	if err != nil && strings.Contains(err.Error(), "Snapshot") && strings.Contains(err.Error(), "already exists") {
+		return snp, nil
+	}
 	o.CreateSnapshot(ctx, vmID, snp)
+	o.snapshotManager.CommitSnapshot(base_snap_name)
+	if err := o.snapshotManager.UploadSnapshot(base_snap_name); err != nil {
+		log.Errorf("upload error: %v", err)
+	}
 
 	o.StopSingleVM(ctx, vmID)
 
 	return snp, nil
 }
 
-func (o *Orchestrator) StartWithBaseSnapshot(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, retErr error) {
+func (o *Orchestrator) StartWithBaseSnapshot(ctx context.Context, imageName string, environmentVariables, args []string) (_ *StartVMResponse, retErr error) {
 	if o.snapshotter != "proxy" {
 		return nil, errors.New("base snapshot can be prepared only with proxy snapshotter")
 	}
 
-	snap, err := o.prepareBaseSnapshot(ctx)
+	snap, err := o.PrepareBaseSnapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
-	logger.Debug("StartVM: Received StartVM")
+	logger := log.WithFields(log.Fields{"image": imageName})
+	logger.Debug("StartVM: Received StartVM with base snapshot")
 
 	// Start the VM with the base snapshot
-	resp, _, err := o.LoadSnapshot(ctx, snap, false, true)
+	resp, _, err := o.LoadSnapshot(ctx, snap, false, false)
 	if err != nil {
 		return nil, err
 	}
-	vmID = resp.VMID // Get the VM ID from the response
+	vmID := resp.VMID // Get the VM ID from the response
 	logger = log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	_, err = o.ResumeVM(ctx, vmID)
 	if err != nil {
@@ -400,6 +424,14 @@ func (o *Orchestrator) StartWithBaseSnapshot(ctx context.Context, vmID, imageNam
 	// The firecrackeroci variation instructs the firecracker-containerd agent that runs inside the VM to perform those UID/GID lookups because
 	// it has access to the container's filesystem
 	specOpts = append(specOpts, firecrackeroci.WithVMLocalImageConfig(*vm.Image))
+	if len(args) > 0 {
+		specOpts = append(specOpts, func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
+			if s.Process != nil {
+				s.Process.Args = append(s.Process.Args, args...)
+			}
+			return nil
+		})
+	}
 
 	container, err := o.client.NewContainer(
 		ctx,
@@ -474,7 +506,7 @@ func (o *Orchestrator) StartWithBaseSnapshot(ctx context.Context, vmID, imageNam
 
 	logger.Debug("Successfully started a VM")
 
-	return &StartVMResponse{GuestIP: vm.GetIP()}, nil
+	return &StartVMResponse{GuestIP: vm.GetIP(), VMID: vmID}, nil
 }
 
 func stripImageName(imageName string) string {
@@ -517,7 +549,7 @@ func (o *Orchestrator) prepareImageSnapshot(ctx context.Context, vmID, imageName
 		return snp, err
 	}
 
-	snap, err := o.prepareBaseSnapshot(ctx)
+	snap, err := o.PrepareBaseSnapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1062,7 +1094,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		}
 		go func() {
 			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, o.isLazyMode, o.snapshotManager)
-			if err != nil {	
+			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil {
 				logger.Debugf("Uploading WS file for snap %s after UFFD handler finished", snap.GetId())

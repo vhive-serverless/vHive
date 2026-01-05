@@ -41,6 +41,7 @@ var (
 	relayPort = 0
 	mu        = &sync.Mutex{}
 	cleaning  *bool
+	baseSnap  *bool
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -104,6 +105,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Debugf("Snapshot Load Result: metric: %p", metric)
 		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
+	} else if *baseSnap { // start from base snapshot case
+		log.Debugf("No snapshot for rev %s, starting from base snapshot", rev)
+		resp, err = orch.StartWithBaseSnapshot(ctx, image, envArr, argsArr)
+		time.Sleep(2 * time.Second)
 	} else { // boot case
 		log.Debugf("No snapshot for rev %s, starting from image", rev)
 		resp, _, err = orch.StartVMWithEnvironment(ctx, image, envArr, argsArr)
@@ -215,6 +220,7 @@ func main() {
 	cacheSize := flag.Uint64("cacheSize", 15000, "Size of the cache for memory file chunks when chunking is enabled")
 	cleaning = flag.Bool("clean", false, "Clean existing snapshots after each invocation")
 	security := flag.String("security", "none", "Snapshot security mode: none, full")
+	baseSnap = flag.Bool("baseSnap", false, "Use base snapshot of booted VM for snapshot creation")
 	flag.Parse()
 
 	imageMap = make(map[string]string)
@@ -287,6 +293,10 @@ func main() {
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()
 	time.Sleep(1 * time.Second) // Wait for orchestrator to fully initialize
+
+	if *baseSnap {
+		orch.PrepareBaseSnapshot(context.Background())
+	}
 
 	s := &http.Server{Addr: *endpoint, Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{})}
 	s.ListenAndServe()
