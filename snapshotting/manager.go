@@ -24,6 +24,7 @@ package snapshotting
 
 import (
 	"archive/tar"
+	"container/heap"
 	"container/list"
 	"crypto/md5"
 	"encoding/csv"
@@ -65,8 +66,78 @@ func (mgr *SnapshotManager) GetChunkSize() uint64 {
 type ChunkEntry struct {
 	hash           string
 	accessTimes    []time.Time
-	element        *list.Element
-	containingList *list.List
+	element        *list.Element // used when in coldList
+	containingList *list.List    // nil when in hotHeap
+	heapIndex      int           // index in hotHeap, -1 when in coldList
+}
+
+// HotHeap implements heap.Interface for ChunkEntry items
+// Min-heap based on the K-th most recent access time (oldest = highest priority for eviction)
+type HotHeap struct {
+	entries []*ChunkEntry
+	k       int
+}
+
+func NewHotHeap(k int) *HotHeap {
+	return &HotHeap{
+		entries: make([]*ChunkEntry, 0),
+		k:       k,
+	}
+}
+
+func (h *HotHeap) Len() int { return len(h.entries) }
+
+func (h *HotHeap) Less(i, j int) bool {
+	// Min-heap: entry with older K-th access time has higher priority (comes first)
+	iAccessTimes := h.entries[i].accessTimes
+	jAccessTimes := h.entries[j].accessTimes
+	iTime := iAccessTimes[len(iAccessTimes)-h.k]
+	jTime := jAccessTimes[len(jAccessTimes)-h.k]
+	return iTime.Before(jTime)
+}
+
+func (h *HotHeap) Swap(i, j int) {
+	h.entries[i], h.entries[j] = h.entries[j], h.entries[i]
+	h.entries[i].heapIndex = i
+	h.entries[j].heapIndex = j
+}
+
+func (h *HotHeap) Push(x interface{}) {
+	entry := x.(*ChunkEntry)
+	entry.heapIndex = len(h.entries)
+	h.entries = append(h.entries, entry)
+}
+
+func (h *HotHeap) Pop() interface{} {
+	old := h.entries
+	n := len(old)
+	entry := old[n-1]
+	old[n-1] = nil // avoid memory leak
+	entry.heapIndex = -1
+	h.entries = old[0 : n-1]
+	return entry
+}
+
+// Peek returns the entry with the oldest K-th access time without removing it
+func (h *HotHeap) Peek() *ChunkEntry {
+	if len(h.entries) == 0 {
+		return nil
+	}
+	return h.entries[0]
+}
+
+// Update re-establishes heap ordering after an entry's access times have changed
+func (h *HotHeap) Update(entry *ChunkEntry) {
+	if entry.heapIndex >= 0 && entry.heapIndex < len(h.entries) {
+		heap.Fix(h, entry.heapIndex)
+	}
+}
+
+// Remove removes a specific entry from the heap
+func (h *HotHeap) Remove(entry *ChunkEntry) {
+	if entry.heapIndex >= 0 && entry.heapIndex < len(h.entries) {
+		heap.Remove(h, entry.heapIndex)
+	}
 }
 
 type ChunkStats struct {
@@ -83,7 +154,7 @@ type ChunkRegistry struct {
 	snpMgr   *SnapshotManager
 	K        int
 	capacity uint64
-	hotList  *list.List // TODO: possibly change to heap implementation
+	hotHeap  *HotHeap // min-heap ordered by K-th most recent access time
 	coldList *list.List
 	items    sync.Map
 	stats    sync.Map
@@ -99,11 +170,12 @@ func NewChunkRegistry(snpMgr *SnapshotManager, K int) *ChunkRegistry {
 		snpMgr:              snpMgr,
 		K:                   K,
 		capacity:            snpMgr.cacheSize,
-		hotList:             list.New(),
+		hotHeap:             NewHotHeap(K),
 		coldList:            list.New(),
 		deleteBatchSize:     deleteBatchSize,
 		deleteLoopScheduled: false,
 	}
+	heap.Init(cr.hotHeap)
 	return cr
 }
 
@@ -154,7 +226,7 @@ func (cr *ChunkRegistry) GetHitStats() map[string]ChunkStats {
 
 // Assumes caller holds hash's per-chunk lock and the RdeletionLock
 func (cr *ChunkRegistry) AddAccess(hash string) error {
-	cr.statsLock.Lock() // makes accesses to coldList and hotList and stats operations concurrency-safe
+	cr.statsLock.Lock() // makes accesses to coldList and hotHeap and stats operations concurrency-safe
 	defer cr.statsLock.Unlock()
 
 	now := time.Now()
@@ -167,6 +239,7 @@ func (cr *ChunkRegistry) AddAccess(hash string) error {
 
 			element:        nil,
 			containingList: cr.coldList,
+			heapIndex:      -1,
 		}
 		cr.items.Store(hash, entry)
 		entry.element = cr.coldList.PushFront(entry)
@@ -185,15 +258,21 @@ func (cr *ChunkRegistry) AddAccess(hash string) error {
 	entry.accessTimes = append(entry.accessTimes, now)
 
 	if entry.containingList == cr.coldList {
+		// Entry is in cold list
 		if len(entry.accessTimes) == cr.K {
+			// Promote to hot heap
 			cr.coldList.Remove(entry.element)
-			entry.element = cr.hotList.PushFront(entry)
-			entry.containingList = cr.hotList
+			entry.element = nil
+			entry.containingList = nil
+			heap.Push(cr.hotHeap, entry)
 		} else if len(entry.accessTimes) < cr.K {
 			cr.coldList.MoveToFront(entry.element)
 		} else {
 			return errors.New(fmt.Sprintf("chunk %s is on cold list but has K or more accesses!", hash))
 		}
+	} else if entry.heapIndex >= 0 {
+		// Entry is in hot heap, update its position after access time change
+		cr.hotHeap.Update(entry)
 	}
 	return nil
 }
@@ -258,7 +337,7 @@ func (cr *ChunkRegistry) getVictimChunk() (string, error) {
 	// for selected > 0 {
 	// 	head = head.Next()
 	// 	if head == nil {
-	// 		head = cr.hotList.Front()
+	// 		head = cr.hotHeap.Peek()
 	// 	}
 	// 	selected -= 1
 	// }
@@ -266,8 +345,9 @@ func (cr *ChunkRegistry) getVictimChunk() (string, error) {
 
 	var hotLRU, coldLRU *ChunkEntry = nil, nil
 
-	if cr.hotList.Len() > 0 {
-		hotLRU = cr.getHotLRU().Value.(*ChunkEntry)
+	// O(1) access to LRU entry in hot heap
+	if cr.hotHeap.Len() > 0 {
+		hotLRU = cr.hotHeap.Peek()
 	}
 	if cr.coldList.Len() > 0 {
 		coldLRU = cr.coldList.Back().Value.(*ChunkEntry)
@@ -289,24 +369,21 @@ func (cr *ChunkRegistry) getVictimChunk() (string, error) {
 	return to_remove, nil
 }
 
-func (cr *ChunkRegistry) getHotLRU() *list.Element {
-	var max *list.Element = nil
-	for e := cr.hotList.Front(); e != nil; e = e.Next() {
-		eAccessTimes := e.Value.(*ChunkEntry).accessTimes
-		if max == nil || max.Value.(*ChunkEntry).accessTimes[len(max.Value.(*ChunkEntry).accessTimes)-K].After(eAccessTimes[len(eAccessTimes)-K]) {
-			max = e
-		}
-	}
-	return max
-}
-
 // assumes caller holds lock for hash, the WdeletionLock, and statsLock; does NOT remove chunk from disk
 func (cr *ChunkRegistry) UnregisterChunk(hash string) error {
 	entryIface, ok := cr.items.Load(hash)
 	if ok {
 		entry := entryIface.(*ChunkEntry)
-		if entry.containingList.Remove(entry.element) == nil {
-			return errors.New(fmt.Sprintf("UnregisterChunk: chunk to delete (%s) not in hotList against expectation", hash))
+		if entry.containingList != nil {
+			// Entry is in cold list
+			if entry.containingList.Remove(entry.element) == nil {
+				return errors.New(fmt.Sprintf("UnregisterChunk: chunk to delete (%s) not in coldList against expectation", hash))
+			}
+		} else if entry.heapIndex >= 0 {
+			// Entry is in hot heap
+			cr.hotHeap.Remove(entry)
+		} else {
+			return errors.New(fmt.Sprintf("UnregisterChunk: chunk (%s) not in any container", hash))
 		}
 		cr.items.Delete(hash)
 		return nil
@@ -317,7 +394,7 @@ func (cr *ChunkRegistry) UnregisterChunk(hash string) error {
 
 // assumes statsLock is held
 func (cr *ChunkRegistry) GetLength() uint64 {
-	return uint64(cr.coldList.Len() + cr.hotList.Len())
+	return uint64(cr.coldList.Len() + cr.hotHeap.Len())
 }
 
 // SnapshotManager manages snapshots stored on the node.
