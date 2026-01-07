@@ -1104,7 +1104,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 				// o.snapshotManager.CleanChunks()
 			}
 		}()
-		time.Sleep(time.Second)
+		// time.Sleep(time.Second)
 	} else {
 		conf.MemBackend = &proto.MemoryBackend{
 			BackendType: "File",

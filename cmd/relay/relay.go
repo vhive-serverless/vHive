@@ -153,7 +153,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	log.Debugf("Sending invocation to %s", vmId)
