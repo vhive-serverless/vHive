@@ -57,7 +57,6 @@ const (
 var imageChunks = map[string]map[[16]byte]bool{}
 var rootfsChunks = map[[16]byte]bool{}
 var baseSnapChunks = map[[16]byte]bool{}
-var imageInit sync.Once
 
 func (mgr *SnapshotManager) GetChunkSize() uint64 {
 	return mgr.chunkSize
@@ -488,7 +487,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		_ = manager.RecoverSnapshots()
 	}
 
-	imageInit.Do(func() {
+	go func() {
 		if !chunking {
 			return
 		}
@@ -510,39 +509,46 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 
 		rootfsChunks, _ = readTarChunkHashes(filepath.Join(imagesDir, "rootfs.tar"), chunkSize)
 		log.Infof("Loaded rootfs chunk hashes, total %d chunks", len(rootfsChunks))
-
-		if manager.snapshots["base"] != nil {
-			baseSnapChunks = make(map[[16]byte]bool)
-			baseSnap, err := os.Open(manager.snapshots["base"].GetRecipeFilePath())
-			if err != nil {
-				log.Errorf("failed to open base snapshot recipe file: %v", err)
-				return
-			}
-			defer baseSnap.Close()
-			buffer := make([]byte, 16)
-			for {
-				n, err := baseSnap.Read(buffer)
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					log.Errorf("error reading base snapshot recipe: %v", err)
-					return
-				}
-				if n != 16 {
-					log.Errorf("incomplete hash in base snapshot recipe")
-					return
-				}
-				var hash [16]byte
-				copy(hash[:], buffer)
-				baseSnapChunks[hash] = true
-			}
-
-			log.Debugf("Base snapshot chunk hashes updated, total %d chunks", len(baseSnapChunks))
-		}
-	})
+	}()
 
 	return manager
+}
+
+func (mgr *SnapshotManager) PrepareBaseSnapshotChunks() {
+	if len(baseSnapChunks) > 0 {
+		return
+	}
+	if !mgr.chunking {
+		return
+	}
+
+	baseSnapChunks = make(map[[16]byte]bool)
+	baseSnap, err := os.Open(mgr.snapshots["base"].GetRecipeFilePath())
+	if err != nil {
+		log.Errorf("failed to open base snapshot recipe file: %v", err)
+		return
+	}
+	defer baseSnap.Close()
+	buffer := make([]byte, 16)
+	for {
+		n, err := baseSnap.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Errorf("error reading base snapshot recipe: %v", err)
+			return
+		}
+		if n != 16 {
+			log.Errorf("incomplete hash in base snapshot recipe")
+			return
+		}
+		var hash [16]byte
+		copy(hash[:], buffer)
+		baseSnapChunks[hash] = true
+	}
+
+	log.Debugf("Base snapshot chunk hashes updated, total %d chunks", len(baseSnapChunks))
 }
 
 func (mgr *SnapshotManager) WriteHitStatsToCSV(filePath string) error {
@@ -1080,37 +1086,6 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 
 	if err := mgr.CommitSnapshot(revision); err != nil {
 		return nil, errors.Wrap(err, "committing snapshot")
-	}
-
-	if revision == "base" {
-		log.Debugf("Base snapshot downloaded, updating base snapshot chunk hashes")
-		baseSnapChunks = make(map[[16]byte]bool)
-		baseSnap, err := os.Open(snap.GetRecipeFilePath())
-		if err != nil {
-			log.Errorf("failed to open base snapshot recipe file: %v", err)
-			return nil, err
-		}
-		defer baseSnap.Close()
-		buffer := make([]byte, 16)
-		for {
-			n, err := baseSnap.Read(buffer)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Errorf("error reading base snapshot recipe: %v", err)
-				return nil, err
-			}
-			if n != 16 {
-				log.Errorf("incomplete hash in base snapshot recipe")
-				return nil, errors.New("incomplete hash in base snapshot recipe")
-			}
-			var hash [16]byte
-			copy(hash[:], buffer)
-			baseSnapChunks[hash] = true
-		}
-
-		log.Debugf("Base snapshot chunk hashes updated, total %d chunks", len(baseSnapChunks))
 	}
 
 	return snap, nil

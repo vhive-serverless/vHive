@@ -287,6 +287,8 @@ func (o *Orchestrator) PrepareBaseSnapshot(ctx context.Context) (_ *snapshotting
 		return nil, errors.New("base snapshot can be prepared only with proxy snapshotter")
 	}
 
+	defer o.snapshotManager.PrepareBaseSnapshotChunks()
+
 	base_snap_name := "base"
 
 	if snp, err := o.snapshotManager.AcquireSnapshot(base_snap_name); err == nil {
