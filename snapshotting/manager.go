@@ -537,6 +537,8 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 				copy(hash[:], buffer)
 				baseSnapChunks[hash] = true
 			}
+
+			log.Debugf("Base snapshot chunk hashes updated, total %d chunks", len(baseSnapChunks))
 		}
 	})
 
@@ -1081,7 +1083,7 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 	}
 
 	if revision == "base" {
-		log.Infof("Base snapshot downloaded, updating base snapshot chunk hashes")
+		log.Debugf("Base snapshot downloaded, updating base snapshot chunk hashes")
 		baseSnapChunks = make(map[[16]byte]bool)
 		baseSnap, err := os.Open(snap.GetRecipeFilePath())
 		if err != nil {
@@ -1107,6 +1109,8 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 			copy(hash[:], buffer)
 			baseSnapChunks[hash] = true
 		}
+
+		log.Debugf("Base snapshot chunk hashes updated, total %d chunks", len(baseSnapChunks))
 	}
 
 	return snap, nil
