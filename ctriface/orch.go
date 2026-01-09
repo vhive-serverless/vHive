@@ -436,6 +436,9 @@ func (o *Orchestrator) Cleanup() {
 		log.Panic("failed to delete snapshots dir", err)
 	}
 
+	o.snapshotManager.WriteHitStatsToCSV(o.snapshotsStorage + "/hit_rates.csv")
+	o.snapshotManager.WriteAccessHistoryToTextFile(o.snapshotsStorage + "/access.txt")
+
 	o.StopActiveVMs()
 }
 
