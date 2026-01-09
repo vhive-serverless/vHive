@@ -191,3 +191,9 @@ func WithSecurityMode(securityMode string) OrchestratorOption {
 		o.securityMode = securityMode
 	}
 }
+
+func WithThreads(threads int) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.threads = threads
+	}
+}

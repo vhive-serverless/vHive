@@ -1095,7 +1095,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			wsPath = ""
 		}
 		go func() {
-			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, o.isLazyMode, o.snapshotManager)
+			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, o.isLazyMode, o.snapshotManager, o.threads)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil {

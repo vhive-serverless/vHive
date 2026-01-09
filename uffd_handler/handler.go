@@ -143,11 +143,12 @@ type PageOperations struct {
 	mappedChunks       sync.Map
 	keyLocks           sync.Map
 	snapMgr            *snapshotting.SnapshotManager
+	threads            int
 }
 
 // NewPageOperations creates a new PageOperations instance
 // TODO: Remove mappedChunks from signature: it's obsolete
-func NewPageOperations(backingBuffer uintptr, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager) *PageOperations {
+func NewPageOperations(backingBuffer uintptr, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) *PageOperations {
 	return &PageOperations{
 		backingBuffer:      backingBuffer,
 		pageSize:           pageSize,
@@ -155,6 +156,7 @@ func NewPageOperations(backingBuffer uintptr, pageSize uint64, workingSet []uint
 		firstPageFaultOnce: &sync.Once{},
 		lazy:               lazy,
 		snapMgr:            snapMgr,
+		threads:            threads,
 	}
 }
 
@@ -242,11 +244,10 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 	}
 	close(pfnCh)
 
-	numWorkers := 8 // TODO: tune
 	var wg sync.WaitGroup
-	wg.Add(numWorkers)
+	wg.Add(po.threads)
 
-	for w := 0; w < numWorkers; w++ {
+	for w := 0; w < po.threads; w++ {
 		go func() {
 			defer wg.Done()
 			for pfn := range pfnCh {
@@ -604,7 +605,7 @@ type Runtime struct {
 }
 
 // NewRuntime creates a new runtime
-func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager) (*Runtime, error) {
+func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) (*Runtime, error) {
 	fileInfo, err := backingFile.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file metadata: %w", err)
@@ -656,7 +657,7 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 
 	// Create PageOperations with a reasonable default page size
 	// The actual page size will be validated when handlers are created
-	pageOps := NewPageOperations(backingMemoryPtr, 4096, ws, lazy, snapMgr)
+	pageOps := NewPageOperations(backingMemoryPtr, 4096, ws, lazy, snapMgr, threads)
 
 	rt := &Runtime{
 		stream:             conn,
@@ -812,7 +813,7 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 	return body, -1, nil
 }
 
-func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, wsFilePath string, lazy bool, snapMgr *snapshotting.SnapshotManager) error {
+func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, wsFilePath string, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) error {
 	log.Debugf("Starting handler at %s", uffdSockPath)
 
 	// Open the memory file
@@ -863,7 +864,7 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 	}
 
 	// Create runtime
-	runtime, err := NewRuntime(conn, file, wsFile, tracer, lazy, snapMgr)
+	runtime, err := NewRuntime(conn, file, wsFile, tracer, lazy, snapMgr, threads)
 	if err != nil {
 		return fmt.Errorf("failed to create runtime: %w", err)
 	}

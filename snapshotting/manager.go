@@ -410,6 +410,7 @@ type SnapshotManager struct {
 	chunkSize     uint64
 	cacheSize     uint64
 	securityMode  string
+	threads       int
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
@@ -460,7 +461,7 @@ func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool
 	return chunks, nil
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64, cacheSize uint64, securityMode string) *SnapshotManager {
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64, cacheSize uint64, securityMode string, threads int) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
 		baseFolder:    baseFolder,
@@ -472,6 +473,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		lazy:          lazy,
 		cacheSize:     cacheSize,
 		securityMode:  strings.ToLower(securityMode),
+		threads:       threads,
 	}
 	manager.chunkRegistry = NewChunkRegistry(manager, K)
 
@@ -881,10 +883,8 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 	jobs := make(chan chunkJob, 128) // buffered channel, TODO: tune length
 	errCh := make(chan error, 128)   // TODO: tune length
 	var wg sync.WaitGroup
-	numWorkers := 8 // TODO: tune number
 
-	// Worker goroutines for upload
-	for w := 0; w < numWorkers; w++ {
+	for w := 0; w < mgr.threads; w++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -1145,9 +1145,8 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 
 	var wg sync.WaitGroup
 	jobs := make(chan job, len(hashes))
-	numWorkers := 8 // TODO: tune based on CPU/network
 
-	for w := 0; w < numWorkers; w++ {
+	for w := 0; w < mgr.threads; w++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -1385,9 +1384,8 @@ func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 
 	var wg sync.WaitGroup
 	jobs := make(chan string, len(chunksToLoad))
-	numWorkers := 8 // TODO: tune based on CPU/network
 
-	for w := 0; w < numWorkers; w++ {
+	for w := 0; w < mgr.threads; w++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

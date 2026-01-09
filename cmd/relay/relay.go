@@ -217,6 +217,7 @@ func main() {
 	cleaning = flag.Bool("clean", false, "Clean existing snapshots after each invocation")
 	security := flag.String("security", "none", "Snapshot security mode: none, full")
 	baseSnap = flag.Bool("baseSnap", false, "Use base snapshot of booted VM for snapshot creation")
+	threads := flag.Int("j", 8, "How many concurrent uploads/downloads to run when transferring snapshots")
 	flag.Parse()
 
 	imageMap = make(map[string]string)
@@ -285,6 +286,7 @@ func main() {
 		ctriface.WithShimPoolSize(5),
 		ctriface.WithCacheSize(*cacheSize),
 		ctriface.WithSecurityMode(*security),
+		ctriface.WithThreads(*threads),
 	)
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()
