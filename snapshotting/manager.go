@@ -1198,6 +1198,7 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading cached chunk %s", hash)
 		}
+		mgr.chunkRegistry.AddAccess(hash)
 		return data, nil
 	}
 
