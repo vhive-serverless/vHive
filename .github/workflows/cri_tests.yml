@@ -33,7 +33,7 @@ jobs:
           docker system prune -af --volumes
 
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Go version in go.mod file
         uses: actions/setup-go@v6
