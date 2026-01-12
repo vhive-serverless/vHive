@@ -1091,7 +1091,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			memPath = snap.GetRecipeFilePath()
 		}
 		wsPath := snap.GetWSFilePath()
-		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil || !o.isWSPulling {
+		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil || !o.isWSPulling || snap.GetId() == "base" {
 			wsPath = ""
 		}
 		go func() {
