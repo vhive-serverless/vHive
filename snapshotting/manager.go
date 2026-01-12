@@ -26,6 +26,8 @@ import (
 	"archive/tar"
 	"container/heap"
 	"container/list"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
 	"encoding/csv"
 	"encoding/hex"
@@ -57,6 +59,7 @@ const (
 var imageChunks = map[string]map[[16]byte]bool{}
 var rootfsChunks = map[[16]byte]bool{}
 var baseSnapChunks = map[[16]byte]bool{}
+var EncryptionKey = []byte("vhive-snapshot-enc") // 16 bytes key for AES-128
 
 func (mgr *SnapshotManager) GetChunkSize() uint64 {
 	return mgr.chunkSize
@@ -411,6 +414,7 @@ type SnapshotManager struct {
 	cacheSize     uint64
 	securityMode  string
 	threads       int
+	encryption    bool
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
@@ -461,7 +465,8 @@ func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool
 	return chunks, nil
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool, chunkSize uint64, cacheSize uint64, securityMode string, threads int) *SnapshotManager {
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool,
+	chunkSize uint64, cacheSize uint64, securityMode string, threads int, encryption bool) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
 		baseFolder:    baseFolder,
@@ -474,6 +479,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		cacheSize:     cacheSize,
 		securityMode:  strings.ToLower(securityMode),
 		threads:       threads,
+		encryption:    encryption,
 	}
 	manager.chunkRegistry = NewChunkRegistry(manager, K)
 
@@ -923,7 +929,23 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 					break
 				}
 
-				if _, err := chunkFile.Write(job.data); err != nil {
+				encryptedData := []byte{}
+				if mgr.encryption {
+					block, err := aes.NewCipher(EncryptionKey[:16])
+					if err != nil {
+						errCh <- fmt.Errorf("creating cipher for chunk: %w", err)
+						lock.Unlock()
+						mgr.chunkRegistry.deletionLock.RUnlock()
+						break
+					}
+					stream := cipher.NewCTR(block, make([]byte, 16))
+					encryptedData = make([]byte, len(job.data))
+					stream.XORKeyStream(encryptedData, job.data)
+				} else {
+					encryptedData = job.data
+				}
+
+				if _, err := chunkFile.Write(encryptedData); err != nil {
 					chunkFile.Close()
 					errCh <- fmt.Errorf("writing chunk %d: %w", job.idx, err)
 					lock.Unlock()
@@ -1230,6 +1252,20 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 
 	// Mark as downloaded
 	mgr.chunkRegistry.AddAccess(hash)
+
+	if mgr.encryption {
+		block, err := aes.NewCipher(EncryptionKey[:16])
+		if err != nil {
+			return nil, fmt.Errorf("failed to create cipher: %w", err)
+		}
+
+		if len(data) < aes.BlockSize {
+			return nil, fmt.Errorf("chunk content too short for IV")
+		}
+
+		stream := cipher.NewCTR(block, make([]byte, 16))
+		stream.XORKeyStream(data, data)
+	}
 
 	return data, nil
 }

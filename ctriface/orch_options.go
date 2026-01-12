@@ -197,3 +197,9 @@ func WithThreads(threads int) OrchestratorOption {
 		o.threads = threads
 	}
 }
+
+func WithEncryption(encryption bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.encryption = encryption
+	}
+}

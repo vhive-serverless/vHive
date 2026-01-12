@@ -218,6 +218,7 @@ func main() {
 	security := flag.String("security", "none", "Snapshot security mode: none, full")
 	baseSnap = flag.Bool("baseSnap", false, "Use base snapshot of booted VM for snapshot creation")
 	threads := flag.Int("j", 8, "How many concurrent uploads/downloads to run when transferring snapshots")
+	encryption := flag.Bool("encryption", false, "Enable snapshot encryption")
 	flag.Parse()
 
 	imageMap = make(map[string]string)
@@ -287,6 +288,7 @@ func main() {
 		ctriface.WithCacheSize(*cacheSize),
 		ctriface.WithSecurityMode(*security),
 		ctriface.WithThreads(*threads),
+		ctriface.WithEncryption(*encryption),
 	)
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()
