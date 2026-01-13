@@ -1220,6 +1220,21 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 			return nil, errors.Wrapf(err, "reading cached chunk %s", hash)
 		}
 		mgr.chunkRegistry.AddAccess(hash)
+
+		if mgr.encryption {
+			block, err := aes.NewCipher(EncryptionKey[:16])
+			if err != nil {
+				return nil, fmt.Errorf("failed to create cipher: %w", err)
+			}
+
+			if len(data) < aes.BlockSize {
+				return nil, fmt.Errorf("chunk content too short for IV")
+			}
+
+			stream := cipher.NewCTR(block, make([]byte, 16))
+			stream.XORKeyStream(data, data)
+		}
+
 		return data, nil
 	}
 
