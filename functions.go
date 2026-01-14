@@ -242,7 +242,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 		serveMetric *metrics.Metric = metrics.NewMetric()
 		tStart      time.Time
 		syncID      int64 = -1 // default is no synchronization
-		isColdStart bool  = false
+		isColdStart       = false
 	)
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})

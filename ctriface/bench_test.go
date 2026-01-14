@@ -31,7 +31,6 @@ import (
 	"testing"
 	"time"
 
-	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -44,7 +43,7 @@ const (
 
 func TestBenchmarkStart(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: log.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 
