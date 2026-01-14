@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"sync"
@@ -43,10 +42,12 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", "test")
 	}
-	cache := snapshotting.NewSnapshotManager(snapDir, objectStore, true, false, true, true, *chunkSize, *cacheSize, "none", *threads, *encryption)
+	cache := snapshotting.NewSnapshotManager(snapDir, objectStore, true, true, true, true, *chunkSize, *cacheSize, "none", *threads, *encryption)
 
-	for i := 0; i < *chunkCount; i++ {
-		objectStore.UploadObject(fmt.Sprintf("_chunks/te/test_chunk_%d", i), bytes.NewReader(make([]byte, *chunkSize)), int64(*chunkSize))
+	for i := *chunkCount - 1; i >= 0; i-- {
+		if ok, err := objectStore.Exists(fmt.Sprintf("_chunks/te/test_chunk_%d", i)); err == nil && ok {
+			break
+		}
 		cache.DownloadChunk(fmt.Sprintf("test_chunk_%d", i))
 	}
 
@@ -65,9 +66,9 @@ func main() {
 	for range *threads {
 		go func() {
 			defer wg.Done()
-			for _ = range tasks {
+			for t := range tasks {
 				// log.Info("Starting upload/download of chunk")
-				cache.DownloadAndReturnChunk("test_chunk")
+				cache.DownloadAndReturnChunk(t)
 			}
 		}()
 	}
@@ -88,9 +89,9 @@ func main() {
 	for range *threads {
 		go func() {
 			defer wg.Done()
-			for _ = range tasks {
+			for t := range tasks {
 				// log.Info("Starting upload/download of chunk")
-				cache.DownloadAndReturnChunk("test_chunk")
+				cache.DownloadAndReturnChunk(t)
 			}
 		}()
 	}
