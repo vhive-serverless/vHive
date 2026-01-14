@@ -1,12 +1,23 @@
 version = 2
 root = "/var/lib/gvisor-containerd/containerd"
 state = "/run/gvisor-containerd"
+
 [grpc]
   address = "/run/gvisor-containerd/containerd.sock"
-[plugins."io.containerd.runtime.v1.linux"]
-  shim_debug = true
-[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
-  runtime_type = "io.containerd.runsc.v1"
+  
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  systemd_cgroup = true
+  default_runtime_name = "runsc"
+
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+    runtime_type = "io.containerd.runsc.v1"
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc.options]
+      SystemdCgroup = true
+
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    runtime_type = "io.containerd.runc.v2"
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+      SystemdCgroup = true
 
 [debug]
   level = "debug"

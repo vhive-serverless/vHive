@@ -6,7 +6,7 @@
 	"ContainerdSystemdProfileDownloadUrl": "https://raw.githubusercontent.com/containerd/containerd/main/containerd.service",
 	"RuncVersion": "1.1.4",
 	"RuncDownloadUrlTemplate": "https://github.com/opencontainers/runc/releases/download/v%s/runc.%s",
-	"RunscVersion": "20210622",
+	"RunscVersion": "20251215",
 	"RunscDownloadUrlTemplate": "https://storage.googleapis.com/gvisor/releases/release/%s/%s/runsc",
 	"CniPluginsVersion": "1.2.0",
 	"CniPluginsDownloadUrlTemplate": "https://github.com/containernetworking/plugins/releases/download/v%s/cni-plugins-linux-%s-v%s.tgz",
