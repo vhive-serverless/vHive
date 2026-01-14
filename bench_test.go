@@ -417,7 +417,7 @@ func appendMemFootprint(outFileName string, memFootprint float64) {
 		log.Println(err)
 	}
 	defer f.Close()
-	if _, err := f.WriteString(fmt.Sprintf("MemFootprint\t%12.1f\n", memFootprint)); err != nil {
+	if _, err := fmt.Fprintf(f, "MemFootprint\t%12.1f\n", memFootprint); err != nil {
 		log.Println(err)
 	}
 }
