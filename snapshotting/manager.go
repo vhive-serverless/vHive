@@ -670,7 +670,18 @@ func (mgr *SnapshotManager) RecoverSnapshots() error {
 		logger.Infof("Recovered snapshot for revision %s", revision)
 	}
 
-	logger.Infof("Recovered %d snapshot(s)", len(mgr.snapshots))
+	prefixes, err := os.ReadDir(mgr.baseFolder + "/" + chunkPrefix)
+	for _, prefix := range prefixes {
+		chunks, err := os.ReadDir(mgr.baseFolder + "/" + chunkPrefix + "/" + prefix.Name())
+		if err != nil {
+			return err
+		}
+		for _, chunk := range chunks {
+			mgr.chunkRegistry.AddAccess(chunk.Name())
+		}
+	}
+
+	logger.Infof("Recovered %d snapshot(s), %d chunks", len(mgr.snapshots), mgr.chunkRegistry.GetLength())
 	return nil
 }
 
