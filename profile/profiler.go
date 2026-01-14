@@ -198,7 +198,7 @@ func (p *Profiler) readCSV() (map[string]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Read File into a Variable
 	reader := csv.NewReader(f)
@@ -353,7 +353,7 @@ func GetCPUInfo() (CPUInfo, error) {
 	if err != nil {
 		return cpuInfo, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

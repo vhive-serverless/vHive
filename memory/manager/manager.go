@@ -238,7 +238,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	state.processMetrics()
 
-	state.userFaultFD.Close()
+	_ = state.userFaultFD.Close()
 	if !state.isRecordReady && !state.IsLazyMode {
 		state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath)
 	}
@@ -409,7 +409,7 @@ func writeUPFPageStats(metricsOutFilePath string, statHeader, stats []string) er
 		log.Error("Failed to create csv file for writing stats")
 		return err
 	}
-	defer csvFile.Close()
+	defer func() { _ = csvFile.Close() }()
 
 	writer := csv.NewWriter(csvFile)
 	defer writer.Flush()

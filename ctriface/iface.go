@@ -25,7 +25,6 @@ package ctriface
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/snapshotting"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +32,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	log "github.com/sirupsen/logrus"
 
@@ -404,9 +405,9 @@ func (o *Orchestrator) StopActiveVMs() error {
 	log.Info("waiting done")
 
 	log.Info("Closing fcClient")
-	o.fcClient.Close()
+	_ = o.fcClient.Close()
 	log.Info("Closing containerd client")
-	o.client.Close()
+	_ = o.client.Close()
 
 	return nil
 }

@@ -178,7 +178,7 @@ func PlotStackCharts(xStep int, metricFile, inFilePath, inFile, xLable string) {
 		if err != nil {
 			log.Fatalf("Failed creating png file: %v", err)
 		}
-		defer pngFile.Close()
+		defer func() { _ = pngFile.Close() }()
 		err = graph.Render(chart.PNG, pngFile)
 		if err != nil {
 			log.Fatalf("Failed redering graph: %v", err)
@@ -336,7 +336,7 @@ func loadMetrics(fileName string) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer jsonFile.Close()
+	defer func() { _ = jsonFile.Close() }()
 
 	byteValue, _ := io.ReadAll(jsonFile)
 	err = json.Unmarshal([]byte(byteValue), &result)
@@ -354,7 +354,7 @@ func readResultCSV(filePath, inFile string) [][]string {
 	if err != nil {
 		log.Fatalf("Failed opening file: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	r := csv.NewReader(f)
 

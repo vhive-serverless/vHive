@@ -24,10 +24,13 @@ package cri
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
@@ -40,26 +43,46 @@ const (
 )
 
 func NewStockImageServiceClient() (criapi.ImageServiceClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
+	conn, err := grpc.NewClient(stockCtrdSockAddr, getDialOpts()...)
 	if err != nil {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+	defer cancel()
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			break
+		}
+		if !conn.WaitForStateChange(ctx, state) {
+			_ = conn.Close()
+			err = fmt.Errorf("failed to connect to %s: %w", stockCtrdSockAddr, ctx.Err())
+			return nil, err
+		}
+	}
 	return criapi.NewImageServiceClient(conn), nil
 }
 
 func NewStockRuntimeServiceClient() (criapi.RuntimeServiceClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
+	conn, err := grpc.NewClient(stockCtrdSockAddr, getDialOpts()...)
 	if err != nil {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+	defer cancel()
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			break
+		}
+		if !conn.WaitForStateChange(ctx, state) {
+			_ = conn.Close()
+			err = fmt.Errorf("failed to connect to %s: %w", stockCtrdSockAddr, ctx.Err())
+			return nil, err
+		}
+	}
 	return criapi.NewRuntimeServiceClient(conn), nil
 }
 
@@ -69,7 +92,7 @@ func dialer(ctx context.Context, addr string) (net.Conn, error) {
 
 func getDialOpts() []grpc.DialOption {
 	return []grpc.DialOption{
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialer),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
 	}
