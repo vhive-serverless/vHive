@@ -12,6 +12,9 @@ linters:
         - "all"
         - "-ST1005" # Disable: error strings should not be capitalized
         - "-QF1011" # Disable: could omit type from declaration (redundant type)
+        - "-ST1023" # Disable: omit type from declaration (redundant type)
+        - "-SA1019" # Disable: using deprecated function
+        - "-ST1003" # Disable: Naming of specific names to be in capslock
 
   exclusions:
     presets:
