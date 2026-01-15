@@ -89,7 +89,7 @@ func (mgr *SnapshotManager) InitSnapshot(revision, image string) (*Snapshot, err
 
 	// Create snapshot object and move into creating state
 	snap := NewSnapshot(revision, mgr.baseFolder, image)
-	mgr.snapshots[snap.GetId()] = snap
+	mgr.snapshots[snap.GetID()] = snap
 	mgr.Unlock()
 
 	// Create directory to store snapshot data

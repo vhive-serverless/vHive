@@ -192,7 +192,7 @@ func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.S
 		return nil, err
 	}
 
-	fi := newFuncInstance(vmID, snap.GetImage(), snap.GetId(), true, resp)
+	fi := newFuncInstance(vmID, snap.GetImage(), snap.GetID(), true, resp)
 	logger.Debug("successfully loaded instance from snapshot")
 	return fi, nil
 }

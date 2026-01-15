@@ -13,6 +13,12 @@ linters:
         - "-ST1005" # Disable: error strings should not be capitalized
         - "-QF1011" # Disable: could omit type from declaration (redundant type)
 
+  exclusions:
+    presets:
+      - common-false-positives
+      - legacy # Simutate v1 golangci-lint behavior
+      - std-error-handling
+
 formatters:
   enable:
     - gofmt

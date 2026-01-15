@@ -66,7 +66,7 @@ func (snp *Snapshot) GetImage() string {
 	return snp.Image
 }
 
-func (snp *Snapshot) GetId() string {
+func (snp *Snapshot) GetID() string {
 	return snp.id
 }
 
