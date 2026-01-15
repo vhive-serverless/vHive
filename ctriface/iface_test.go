@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -60,7 +61,7 @@ func TestMain(m *testing.M) {
 
 func TestStartSnapStopLoad(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: log.RFC3339NanoFixed,
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -114,7 +115,7 @@ func TestStartSnapStopLoad(t *testing.T) {
 
 func TestPauseSnapResume(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: log.RFC3339NanoFixed,
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -164,7 +165,7 @@ func TestPauseSnapResume(t *testing.T) {
 
 func TestStartStopSerial(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: log.RFC3339NanoFixed,
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -199,7 +200,7 @@ func TestStartStopSerial(t *testing.T) {
 
 func TestPauseResumeSerial(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: log.RFC3339NanoFixed,
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -240,7 +241,7 @@ func TestPauseResumeSerial(t *testing.T) {
 
 func TestStartStopParallel(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: log.RFC3339NanoFixed,
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -304,7 +305,7 @@ func TestStartStopParallel(t *testing.T) {
 
 func TestPauseResumeParallel(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: log.RFC3339NanoFixed,
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
