@@ -42,6 +42,23 @@ var (
 	baseSnap  *bool
 )
 
+// statusRecorder wraps http.ResponseWriter to capture the status code
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *statusRecorder) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("request received, image %s, revision %s", r.Header.Get("image"), r.Header.Get("revision"))
 
@@ -163,11 +180,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return net.Dial(network, addr)
 		},
 	}
-	proxy.ServeHTTP(w, r)
+	recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+	proxy.ServeHTTP(recorder, r)
 
 	go func() {
 		log.Debugf("removing %s", vmId)
-		if snap == nil {
+		if snap == nil && err == nil && recorder.status == http.StatusOK {
 			snap, err = snapMgr.InitSnapshot(rev, image)
 			if err != nil && strings.Contains(err.Error(), "Snapshot") && strings.Contains(err.Error(), "already exists") {
 				return
