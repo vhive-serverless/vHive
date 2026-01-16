@@ -57,13 +57,13 @@ func testSnapshotManager(t *testing.T, mgr *snapshotting.SnapshotManager, revisi
 	_, err = mgr.InitSnapshot(revision, imageName)
 	require.Error(t, err, fmt.Sprintf("Init should fail when a snapshot has already been created for %s", revision))
 
-	err = mgr.CommitSnapshot(snap.GetId())
+	err = mgr.CommitSnapshot(snap.GetID())
 	require.NoError(t, err, fmt.Sprintf("Failed to commit snapshot for %s", revision))
-	err = mgr.CommitSnapshot(snap.GetId())
+	err = mgr.CommitSnapshot(snap.GetID())
 	require.Error(t, err, fmt.Sprintf("Commit should fail when no snapshots are created for %s", revision))
 
 	// Use snapshot
-	_, err = mgr.AcquireSnapshot(snap.GetId())
+	_, err = mgr.AcquireSnapshot(snap.GetID())
 	require.NoError(t, err, fmt.Sprintf("Failed to acquire snapshot for %s", imageName))
 	_, err = mgr.AcquireSnapshot("non-existing-revision")
 	require.Error(t, err, fmt.Sprintf("Acquire should fail when no snapshots are available for %s", imageName))

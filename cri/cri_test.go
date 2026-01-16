@@ -23,6 +23,7 @@
 package cri
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -35,8 +36,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -161,7 +163,7 @@ func invoke(t *testing.T, functionURL string) {
 
 	client, conn, err := getClient(functionURL)
 	require.NoError(t, err, "Failed to dial function URL")
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
 	defer cancel()
 
@@ -185,9 +187,23 @@ func parallelInvoke(t *testing.T, functionURL string) {
 }
 
 func getClient(functionURL string) (hpb.GreeterClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(functionURL, grpc.WithBlock(), grpc.WithInsecure())
+	conn, err := grpc.NewClient(functionURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			break
+		}
+		if !conn.WaitForStateChange(ctx, state) {
+			_ = conn.Close()
+			err = fmt.Errorf("dial tcp %s: %w", functionURL, ctx.Err())
+			return nil, nil, err
+		}
 	}
 	return hpb.NewGreeterClient(conn), conn, nil
 }

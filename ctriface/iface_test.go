@@ -30,7 +30,6 @@ import (
 	"testing"
 	"time"
 
-	ctrdlog "github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -41,7 +40,7 @@ import (
 var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
-	//nolint:deadcode,unused,varcheck
+	//nolint:unused
 	isWithCache       = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	snapshotter       = flag.String("ss", "devmapper", "Snapshotter to use")
 	dockerCredentials = flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM")
@@ -61,7 +60,7 @@ func TestMain(m *testing.M) {
 
 func TestStartSnapStopLoad(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: log.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -115,7 +114,7 @@ func TestStartSnapStopLoad(t *testing.T) {
 
 func TestPauseSnapResume(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: log.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -165,7 +164,7 @@ func TestPauseSnapResume(t *testing.T) {
 
 func TestStartStopSerial(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: log.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -200,7 +199,7 @@ func TestStartStopSerial(t *testing.T) {
 
 func TestPauseResumeSerial(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: log.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -241,7 +240,7 @@ func TestPauseResumeSerial(t *testing.T) {
 
 func TestStartStopParallel(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: log.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging
@@ -305,7 +304,7 @@ func TestStartStopParallel(t *testing.T) {
 
 func TestPauseResumeParallel(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: log.RFC3339NanoFixed,
 		FullTimestamp:   true,
 	})
 	//log.SetReportCaller(true) // FIXME: make sure it's false unless debugging

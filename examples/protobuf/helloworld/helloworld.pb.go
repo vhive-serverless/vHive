@@ -161,7 +161,7 @@ func (m *FwdHelloReq) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_FwdHelloReq proto.InternalMessageInfo
 
-func (m *FwdHelloReq) GetId() string {
+func (m *FwdHelloReq) GetID() string {
 	if m != nil {
 		return m.Id
 	}

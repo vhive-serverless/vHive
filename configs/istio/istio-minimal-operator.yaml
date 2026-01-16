@@ -5,18 +5,16 @@ spec:
     global:
       proxy:
         autoInject: disabled
-      useMCP: false
       # The third-party-jwt is not enabled on all k8s.
       # See: https://istio.io/docs/ops/best-practices/security/#configure-third-party-service-account-tokens
       jwtPolicy: third-party-jwt
 
-  addonComponents:
-    pilot:
-      enabled: true
-    prometheus:
-      enabled: false
+  meshConfig:
+    enablePrometheusMerge: true 
 
   components:
+    pilot:
+      enabled: true
     ingressGateways:
       - name: istio-ingressgateway
         enabled: true

@@ -25,7 +25,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/ctriface"
 	"math/rand"
 	"net"
 	"os"
@@ -35,10 +34,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/vhive-serverless/vhive/ctriface"
+
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
 	"github.com/pkg/errors"
@@ -239,7 +242,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 		serveMetric *metrics.Metric = metrics.NewMetric()
 		tStart      time.Time
 		syncID      int64 = -1 // default is no synchronization
-		isColdStart bool  = false
+		isColdStart       = false
 	)
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})
@@ -532,20 +535,30 @@ func (f *Function) getFuncClient() (hpb.GreeterClient, error) {
 	}
 
 	gopts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithInsecure(),
-		grpc.FailOnNonTempDialError(true),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithConnectParams(connParams),
 		grpc.WithContextDialer(contextDialer),
 	}
 
 	//  This timeout must be large enough for all functions to start up (e.g., ML training takes few seconds)
-	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctxx, f.guestIP+":50051", gopts...)
-	f.conn = conn
+	conn, err := grpc.NewClient(f.guestIP+":50051", gopts...)
 	if err != nil {
 		return nil, err
+	}
+	f.conn = conn
+
+	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			break
+		}
+		if !conn.WaitForStateChange(ctxx, state) {
+			_ = conn.Close()
+			err = fmt.Errorf("function at %s:50051 failed to become ready: %w", f.guestIP, ctxx.Err())
+			return nil, err
+		}
 	}
 	return hpb.NewGreeterClient(conn), nil
 }
@@ -611,7 +624,7 @@ func timeoutDialer(address string, timeout time.Duration) (net.Conn, error) {
 		go func() {
 			dr := <-synC
 			if dr != nil && dr.c != nil {
-				dr.c.Close()
+				_ = dr.c.Close()
 			}
 		}()
 		return nil, errors.Errorf("dial %s: timeout", address)

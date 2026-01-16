@@ -112,7 +112,7 @@ func main() {
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
 	}
-	defer flog.Close()
+	defer func() { _ = flog.Close() }()
 
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
@@ -222,7 +222,7 @@ func fwdServe() {
 // StartVM, StopSingleVM and StopVMs are legacy functions that manage functions and VMs
 // Should be used only to bootstrap an experiment (e.g., quick parallel start of many functions)
 func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMResp, error) {
-	fID := in.GetId()
+	fID := in.GetID()
 	imageName := in.GetImage()
 	log.WithFields(log.Fields{"fID": fID, "image": imageName}).Info("Received direct StartVM")
 
@@ -237,7 +237,7 @@ func (s *server) StartVM(ctx context.Context, in *pb.StartVMReq) (*pb.StartVMRes
 }
 
 func (s *server) StopSingleVM(ctx context.Context, in *pb.StopSingleVMReq) (*pb.Status, error) {
-	fID := in.GetId()
+	fID := in.GetID()
 	isSync := true
 	log.WithFields(log.Fields{"fID": fID}).Info("Received direct StopVM")
 	message, err := funcPool.RemoveInstance(fID, "bogus imageName", isSync)
@@ -261,7 +261,7 @@ func (s *server) StopVMs(ctx context.Context, in *pb.StopVMsReq) (*pb.Status, er
 }
 
 func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.FwdHelloResp, error) {
-	fID := in.GetId()
+	fID := in.GetID()
 	imageName := in.GetImage()
 	payload := in.GetPayload()
 

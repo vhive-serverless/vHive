@@ -87,7 +87,7 @@ func (m *StartVMReq) GetImage() string {
 	return ""
 }
 
-func (m *StartVMReq) GetId() string {
+func (m *StartVMReq) GetID() string {
 	if m != nil {
 		return m.Id
 	}
@@ -165,7 +165,7 @@ func (m *StopSingleVMReq) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_StopSingleVMReq proto.InternalMessageInfo
 
-func (m *StopSingleVMReq) GetId() string {
+func (m *StopSingleVMReq) GetID() string {
 	if m != nil {
 		return m.Id
 	}
