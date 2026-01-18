@@ -1,6 +1,6 @@
 module github.com/vhive-serverless/vhive
 
-go 1.25.3
+go 1.24.11
 
 replace (
 	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20251220120737-a3dabeb332c7
