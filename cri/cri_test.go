@@ -23,6 +23,7 @@
 package cri
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -34,9 +35,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"context"
+
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -185,10 +189,31 @@ func parallelInvoke(t *testing.T, functionURL string) {
 }
 
 func getClient(functionURL string) (hpb.GreeterClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(functionURL, grpc.WithBlock(), grpc.WithInsecure())
+	conn, err := grpc.NewClient(functionURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Manually wait for the connection to be ready
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	conn.Connect()
+
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			break
+		}
+		if !conn.WaitForStateChange(ctx, state) {
+			err := ctx.Err()
+			if err == nil {
+				err = errors.New("connection closed or state change failed")
+			}
+			return nil, nil, fmt.Errorf("grpc connection failed: %w (last state: %s)", err, state)
+		}
+	}
+
 	return hpb.NewGreeterClient(conn), conn, nil
 }
 

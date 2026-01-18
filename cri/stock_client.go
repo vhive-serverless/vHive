@@ -24,10 +24,14 @@ package cri
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
@@ -40,24 +44,56 @@ const (
 )
 
 func NewStockImageServiceClient() (criapi.ImageServiceClient, error) {
+	conn, err := grpc.NewClient("passthrough:///"+stockCtrdSockAddr, getDialOpts()...)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
-	if err != nil {
-		return nil, err
+	conn.Connect()
+
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			break
+		}
+		if !conn.WaitForStateChange(ctx, state) {
+			err := ctx.Err()
+			if err == nil {
+				err = errors.New("connection closed or state change failed")
+			}
+			return nil, fmt.Errorf("grpc connection failed: %w (last state: %s)", err, state)
+		}
 	}
 
 	return criapi.NewImageServiceClient(conn), nil
 }
 
 func NewStockRuntimeServiceClient() (criapi.RuntimeServiceClient, error) {
+	conn, err := grpc.NewClient("passthrough:///"+stockCtrdSockAddr, getDialOpts()...)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
-	if err != nil {
-		return nil, err
+	conn.Connect()
+
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			break
+		}
+		if !conn.WaitForStateChange(ctx, state) {
+			err := ctx.Err()
+			if err == nil {
+				err = errors.New("connection closed or state change failed")
+			}
+			return nil, fmt.Errorf("grpc connection failed: %w (last state: %s)", err, state)
+		}
 	}
 
 	return criapi.NewRuntimeServiceClient(conn), nil
@@ -69,7 +105,7 @@ func dialer(ctx context.Context, addr string) (net.Conn, error) {
 
 func getDialOpts() []grpc.DialOption {
 	return []grpc.DialOption{
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialer),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
 	}
