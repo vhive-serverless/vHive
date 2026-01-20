@@ -346,10 +346,11 @@ type PageFaultTracer struct {
 	file    *os.File
 	writer  *csv.Writer
 	counter uint64
+	logger  *log.Entry
 }
 
 // NewPageFaultTracer creates a new page fault tracer
-func NewPageFaultTracer(filePath string) (*PageFaultTracer, error) {
+func NewPageFaultTracer(filePath string, logger *log.Entry) (*PageFaultTracer, error) {
 	if filePath == "" {
 		return nil, nil
 	}
@@ -372,6 +373,7 @@ func NewPageFaultTracer(filePath string) (*PageFaultTracer, error) {
 		file:    file,
 		writer:  writer,
 		counter: 0,
+		logger:  logger,
 	}, nil
 }
 
@@ -398,7 +400,7 @@ func (t *PageFaultTracer) Close() error {
 	if t == nil {
 		return nil
 	}
-	log.Debugf("Handled %d page faults", t.counter)
+	t.logger.Debugf("Handled %d page faults", t.counter)
 	if t.writer != nil {
 		t.writer.Flush()
 	}
@@ -602,10 +604,11 @@ type Runtime struct {
 	lazy               bool
 	snapMgr            *snapshotting.SnapshotManager
 	pageOps            *PageOperations
+	logger             *log.Entry
 }
 
 // NewRuntime creates a new runtime
-func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) (*Runtime, error) {
+func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
 	fileInfo, err := backingFile.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file metadata: %w", err)
@@ -671,6 +674,7 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 		lazy:               lazy,
 		snapMgr:            snapMgr,
 		pageOps:            pageOps,
+		logger:             logger,
 	}
 
 	// Retrieve the underlying file descriptor for the UnixConn without
@@ -709,7 +713,7 @@ func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 			if err == unix.EINTR {
 				continue
 			}
-			log.Errorf("Could not poll for events: %v", err)
+			r.logger.Errorf("Could not poll for events: %v", err)
 		}
 
 		for i := 0; i < len(pollfds) && nready > 0; i++ {
@@ -718,13 +722,13 @@ func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 				if pollfds[i].Fd == int32(r.streamFd) {
 					// Handle new uffd from stream
 					handler, err := NewUffdHandler(r.stream, r.pageOps, r.backingMemorySize, r.tracer)
-					log.Debugf("Created new UFFD handler: %v", handler)
+					r.logger.Debugf("Created new UFFD handler: %v", handler)
 					if err != nil {
 						if strings.Contains(err.Error(), "EOF") {
-							log.Infof("Peer terminated, shutting down gracefully")
+							r.logger.Infof("Peer terminated, shutting down gracefully")
 							return
 						}
-						log.Errorf("Failed to create UFFD handler: %v", err)
+						r.logger.Errorf("Failed to create UFFD handler: %v", err)
 					}
 
 					pollfds = append(pollfds, unix.PollFd{
@@ -838,7 +842,7 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 	}
 	defer conn.Close()
 
-	tracer, err := NewPageFaultTracer(traceFilePath)
+	tracer, err := NewPageFaultTracer(traceFilePath, log.WithField("uffd", uffdSockPath))
 	if err != nil {
 		return fmt.Errorf("failed to create tracer: %w", err)
 	}
@@ -864,7 +868,7 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 	}
 
 	// Create runtime
-	runtime, err := NewRuntime(conn, file, wsFile, tracer, lazy, snapMgr, threads)
+	runtime, err := NewRuntime(conn, file, wsFile, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
 	if err != nil {
 		return fmt.Errorf("failed to create runtime: %w", err)
 	}
