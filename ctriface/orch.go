@@ -26,6 +26,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -393,9 +395,24 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 
 	var objectStore storage.ObjectStorage
 	if o.GetSnapshotMode() == "remote" {
+		transport := &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          1000,
+			MaxIdleConnsPerHost:   1000, // Increase from default 2 to support massive concurrency
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
 		minioClient, _ := minio.New(o.GetMinioAddr(), &minio.Options{
-			Creds:  credentials.NewStaticV4(o.GetMinioAccessKey(), o.GetMinioSecretKey(), ""),
-			Secure: false,
+			Creds:     credentials.NewStaticV4(o.GetMinioAccessKey(), o.GetMinioSecretKey(), ""),
+			Secure:    false,
+			Transport: transport,
 		})
 
 		var err error
