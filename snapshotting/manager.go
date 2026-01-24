@@ -418,6 +418,7 @@ type SnapshotManager struct {
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
+	initWg  sync.WaitGroup
 }
 
 func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool, error) {
@@ -495,7 +496,9 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		_ = manager.RecoverSnapshots()
 	}
 
+	manager.initWg.Add(1)
 	go func() {
+		defer manager.initWg.Done()
 		if !chunking {
 			return
 		}
@@ -520,6 +523,10 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 	}()
 
 	return manager
+}
+
+func (mgr *SnapshotManager) WaitForInit() {
+	mgr.initWg.Wait()
 }
 
 func (mgr *SnapshotManager) PrepareBaseSnapshotChunks() {
@@ -1516,4 +1523,8 @@ func (mgr *SnapshotManager) getObjectKey(revision, fileName string) string {
 		return fmt.Sprintf("%s/%s/%s", revision, fileName[:2], fileName)
 	}
 	return fmt.Sprintf("%s/%s", revision, fileName)
+}
+
+func (mgr *SnapshotManager) IsChunkSensitive(hash [16]byte, image string) bool {
+	return isHashSensitiveChunk(hash, image)
 }

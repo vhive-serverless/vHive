@@ -34,4 +34,7 @@ type ObjectStorage interface {
 
 	// Exists checks if an object exists
 	Exists(objectKey string) (bool, error)
+
+	// ListObjects lists objects with a prefix
+	ListObjects(prefix string, recursive bool) ([]string, error)
 }

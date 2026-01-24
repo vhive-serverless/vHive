@@ -91,3 +91,22 @@ func (m *MinioStorage) Exists(objectKey string) (bool, error) {
 	}
 	return true, nil
 }
+
+func (m *MinioStorage) ListObjects(prefix string, recursive bool) ([]string, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	objectCh := m.client.ListObjects(ctx, m.bucketName, minio.ListObjectsOptions{
+		Prefix:    prefix,
+		Recursive: recursive,
+	})
+
+	var objects []string
+	for object := range objectCh {
+		if object.Err != nil {
+			return nil, object.Err
+		}
+		objects = append(objects, object.Key)
+	}
+	return objects, nil
+}
