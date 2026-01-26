@@ -106,7 +106,7 @@ func createData() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	lines := []string{"Timestamp,CPUs,Area,Value,Unit,Description,Sample,Stddev,Multiplex,Bottleneck,Idle",
 		"0.503247704,C0,Frontend_Bound,1,% Slots <,,,0.0,3.99,,Y",

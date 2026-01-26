@@ -25,7 +25,6 @@ package ctriface
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/snapshotting"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +32,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	log "github.com/sirupsen/logrus"
 
@@ -83,7 +84,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 
 func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
-		startVMMetric *metrics.Metric = metrics.NewMetric()
+		startVMMetric = metrics.NewMetric()
 		tStart        time.Time
 	)
 
@@ -404,9 +405,10 @@ func (o *Orchestrator) StopActiveVMs() error {
 	log.Info("waiting done")
 
 	log.Info("Closing fcClient")
-	o.fcClient.Close()
+	defer func() { _ = o.fcClient.Close() }()
+
 	log.Info("Closing containerd client")
-	o.client.Close()
+	defer func() { _ = o.client.Close() }()
 
 	return nil
 }
@@ -429,7 +431,7 @@ func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) error {
 // ResumeVM Resumes a VM
 func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metric, error) {
 	var (
-		resumeVMMetric *metrics.Metric = metrics.NewMetric()
+		resumeVMMetric = metrics.NewMetric()
 		tStart         time.Time
 	)
 
@@ -494,7 +496,7 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
-		loadSnapshotMetric   *metrics.Metric = metrics.NewMetric()
+		loadSnapshotMetric   = metrics.NewMetric()
 		tStart               time.Time
 		loadErr, activateErr error
 		loadDone             = make(chan int)

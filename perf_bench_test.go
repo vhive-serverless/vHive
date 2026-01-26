@@ -93,10 +93,10 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 		pinnedFuncNum int
 		startVMID     int
 		servedTh      uint64
-		isSyncOffload bool = true
-		metrFile           = "bench.csv"
-		images             = getImages(t)
-		metrics            = make([]map[string]float64, *maxVMNum / *vmIncrStep)
+		isSyncOffload = true
+		metrFile      = "bench.csv"
+		images        = getImages(t)
+		metrics       = make([]map[string]float64, *maxVMNum / *vmIncrStep)
 	)
 	log.SetLevel(log.InfoLevel)
 
@@ -139,8 +139,8 @@ func TestProfileSingleConfiguration(t *testing.T) {
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
-		isSyncOffload bool = true
-		images             = getImages(t)
+		isSyncOffload = true
+		images        = getImages(t)
 	)
 
 	log.SetLevel(log.InfoLevel)
@@ -166,10 +166,10 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 	var (
 		servedTh      uint64
 		pinnedFuncNum int
-		isSyncOffload bool = true
-		metrFile           = "bench.csv"
-		images             = getImages(t)
-		metrics            = make([]map[string]float64, 2)
+		isSyncOffload = true
+		metrFile      = "bench.csv"
+		images        = getImages(t)
+		metrics       = make([]map[string]float64, 2)
 	)
 
 	log.SetLevel(log.InfoLevel)
@@ -215,8 +215,8 @@ func TestBindSocket(t *testing.T) {
 		procStr, sep  string
 		servedTh      uint64
 		pinnedFuncNum int
-		isSyncOffload bool = true
-		testImage          = []string{"ghcr.io/ease-lab/helloworld:var_workload"}
+		isSyncOffload = true
+		testImage     = []string{"ghcr.io/ease-lab/helloworld:var_workload"}
 	)
 
 	type testCase struct {
@@ -557,7 +557,7 @@ func dumpMetrics(t *testing.T, metrics []map[string]float64, outfile string) {
 
 	f, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY, 0666)
 	require.NoError(t, err, "Failed opening file")
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	headerSet := make(map[string]bool)
 	for _, metric := range metrics {

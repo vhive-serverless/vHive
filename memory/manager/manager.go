@@ -107,7 +107,7 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 
 	if state.isActive {
 		logger.Error("Failed to deactivate, VM still active")
-		return errors.New("Failed to deactivate, VM still active")
+		return errors.New("failed to deactivate, VM still active")
 	}
 
 	delete(m.instances, vmID)
@@ -124,7 +124,7 @@ func (m *MemoryManager) Activate(vmID string) error {
 	var (
 		ok      bool
 		state   *SnapshotState
-		readyCh chan int = make(chan int)
+		readyCh = make(chan int)
 	)
 
 	m.Lock()
@@ -238,7 +238,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	state.processMetrics()
 
-	state.userFaultFD.Close()
+	defer func() { _ = state.userFaultFD.Close() }()
 	if !state.isRecordReady && !state.IsLazyMode {
 		state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath)
 	}
@@ -273,12 +273,12 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 
 	if state.isActive {
 		logger.Error("Cannot get stats while VM is active")
-		return errors.New("Cannot get stats while VM is active")
+		return errors.New("cannot get stats while VM is active")
 	}
 
 	if !m.MetricsModeOn || !state.metricsModeOn {
 		logger.Error("Metrics mode is not on")
-		return errors.New("Metrics mode is not on")
+		return errors.New("metrics mode is not on")
 	}
 
 	if state.IsLazyMode {
@@ -309,12 +309,12 @@ func (m *MemoryManager) DumpUPFLatencyStats(vmID, functionName, latencyOutFilePa
 
 	if state.isActive {
 		logger.Error("Cannot get stats while VM is active")
-		return errors.New("Cannot get stats while VM is active")
+		return errors.New("cannot get stats while VM is active")
 	}
 
 	if !m.MetricsModeOn || !state.metricsModeOn {
 		logger.Error("Metrics mode is not on")
-		return errors.New("Metrics mode is not on")
+		return errors.New("metrics mode is not on")
 	}
 
 	return metrics.PrintMeanStd(latencyOutFilePath, functionName, state.latencyMetrics...)
@@ -340,12 +340,12 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 
 	if state.isActive {
 		logger.Error("Cannot get stats while VM is active")
-		return nil, errors.New("Cannot get stats while VM is active")
+		return nil, errors.New("cannot get stats while VM is active")
 	}
 
 	if !m.MetricsModeOn || !state.metricsModeOn {
 		logger.Error("Metrics mode is not on")
-		return nil, errors.New("Metrics mode is not on")
+		return nil, errors.New("metrics mode is not on")
 	}
 
 	return state.latencyMetrics, nil
@@ -409,7 +409,7 @@ func writeUPFPageStats(metricsOutFilePath string, statHeader, stats []string) er
 		log.Error("Failed to create csv file for writing stats")
 		return err
 	}
-	defer csvFile.Close()
+	defer func() { _ = csvFile.Close() }()
 
 	writer := csv.NewWriter(csvFile)
 	defer writer.Flush()

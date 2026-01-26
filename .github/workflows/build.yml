@@ -22,7 +22,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go: ['1.24','1.25']
+        go: ['1.25']
       # Build all variants regardless of failures
       fail-fast: false
 
@@ -42,7 +42,7 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Check code
-      uses: golangci/golangci-lint-action@v6.5.0
+      uses: golangci/golangci-lint-action@v9.2.0
       with:
         args: --timeout 5m
 

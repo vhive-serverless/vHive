@@ -112,7 +112,7 @@ func main() {
 	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
 		panic(err)
 	}
-	defer flog.Close()
+	defer func() { _ = flog.Close() }()
 
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,

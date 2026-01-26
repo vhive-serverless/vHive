@@ -1,3 +1,3 @@
 module github.com/vhive-serverless/vhive/power_manager
 
-go 1.24.11
+go 1.25.5

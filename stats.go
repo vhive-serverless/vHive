@@ -52,7 +52,7 @@ func NewStats() *Stats {
 // CreateStats Creates stats for a function
 func (cs *Stats) CreateStats(fID string) error {
 	if _, isPresent := cs.statMap[fID]; isPresent {
-		return errors.New("Stat exists")
+		return errors.New("stat exists")
 	}
 
 	cs.statMap[fID] = new(FuncStat)
