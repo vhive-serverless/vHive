@@ -23,9 +23,9 @@ sudo wget -O /etc/systemd/system/stargz-snapshotter.service https://raw.githubus
 sudo systemctl enable --now stargz-snapshotter
 
 # Check if containerd process is running and stop if true
-if sudo screen -list | grep "containerd"; then
-    sudo screen -XS containerd quit
-fi
+# if sudo screen -list | grep "containerd"; then
+#     sudo screen -XS containerd quit
+# fi
 
 # Start containerd
-sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
+# sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
