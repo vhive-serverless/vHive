@@ -7,7 +7,7 @@ This guide describes how to make changes to Knative Serving and use the changed 
       wget -qO- https://github.com/google/ko/releases/download/v0.15.1/ko_0.15.1_Linux_x86_64.tar.gz | sudo tar -C /usr/bin/ -xz ko
       sudo chmod +x /usr/bin/ko
       ```
-   2. Install `go` (1.22 or later).
+   2. Install `go` (1.24 or later).
    3. Install `git`; already installed on CloudLab.
 4. Login to Docker Hub account that the Knative images will be pushed to.
    ```sh

@@ -30,7 +30,7 @@ import (
 	"sync"
 	"testing"
 
-	ctrdlog "github.com/containerd/containerd/log"
+	ctrdlog "github.com/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	ctriface "github.com/vhive-serverless/vhive/ctriface"

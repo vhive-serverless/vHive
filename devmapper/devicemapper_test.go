@@ -25,17 +25,18 @@ package devmapper_test
 import (
 	"context"
 	"fmt"
-	"github.com/containerd/containerd"
-	ctrdlog "github.com/containerd/containerd/log"
-	"github.com/containerd/containerd/namespaces"
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
-	"github.com/vhive-serverless/vhive/ctriface/image"
-	"github.com/vhive-serverless/vhive/devmapper"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/namespaces"
+	ctrdlog "github.com/containerd/log"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+	"github.com/vhive-serverless/vhive/ctriface/image"
+	"github.com/vhive-serverless/vhive/devmapper"
 )
 
 const (

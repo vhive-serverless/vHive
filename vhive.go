@@ -31,7 +31,7 @@ import (
 	"os"
 	"runtime"
 
-	ctrdlog "github.com/containerd/containerd/log"
+	ctrdlog "github.com/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	fccri "github.com/vhive-serverless/vhive/cri/firecracker"

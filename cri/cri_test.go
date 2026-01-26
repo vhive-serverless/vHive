@@ -23,6 +23,7 @@
 package cri
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -34,9 +35,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/vhive-serverless/vhive/common"
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -185,10 +187,15 @@ func parallelInvoke(t *testing.T, functionURL string) {
 }
 
 func getClient(functionURL string) (hpb.GreeterClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(functionURL, grpc.WithBlock(), grpc.WithInsecure())
+	conn, err := grpc.NewClient(functionURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if err := common.WaitForConnectionReady(conn, 10*time.Second); err != nil {
+		return nil, nil, err
+	}
+
 	return hpb.NewGreeterClient(conn), conn, nil
 }
 

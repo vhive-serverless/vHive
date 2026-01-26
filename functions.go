@@ -25,7 +25,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/vhive-serverless/vhive/ctriface"
 	"math/rand"
 	"net"
 	"os"
@@ -35,14 +34,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/vhive-serverless/vhive/ctriface"
+
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/vhive-serverless/vhive/common"
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/snapshotting"
@@ -532,21 +535,22 @@ func (f *Function) getFuncClient() (hpb.GreeterClient, error) {
 	}
 
 	gopts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithInsecure(),
-		grpc.FailOnNonTempDialError(true),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithConnectParams(connParams),
 		grpc.WithContextDialer(contextDialer),
 	}
 
-	//  This timeout must be large enough for all functions to start up (e.g., ML training takes few seconds)
-	ctxx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctxx, f.guestIP+":50051", gopts...)
-	f.conn = conn
+	conn, err := grpc.NewClient(f.guestIP+":50051", gopts...)
 	if err != nil {
 		return nil, err
 	}
+	f.conn = conn
+
+	// This timeout must be large enough for all functions to start up (e.g., ML training takes few seconds)
+	if err := common.WaitForConnectionReady(conn, 60*time.Second); err != nil {
+		return nil, err
+	}
+
 	return hpb.NewGreeterClient(conn), nil
 }
 
