@@ -28,7 +28,10 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1"
+
+	"github.com/vhive-serverless/vhive/common"
 )
 
 const (
@@ -40,11 +43,12 @@ const (
 )
 
 func NewStockImageServiceClient() (criapi.ImageServiceClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
+	conn, err := grpc.NewClient("passthrough:///"+stockCtrdSockAddr, getDialOpts()...)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := common.WaitForConnectionReady(conn, dialTimeout); err != nil {
 		return nil, err
 	}
 
@@ -52,11 +56,12 @@ func NewStockImageServiceClient() (criapi.ImageServiceClient, error) {
 }
 
 func NewStockRuntimeServiceClient() (criapi.RuntimeServiceClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, stockCtrdSockAddr, getDialOpts()...)
+	conn, err := grpc.NewClient("passthrough:///"+stockCtrdSockAddr, getDialOpts()...)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := common.WaitForConnectionReady(conn, dialTimeout); err != nil {
 		return nil, err
 	}
 
@@ -69,7 +74,7 @@ func dialer(ctx context.Context, addr string) (net.Conn, error) {
 
 func getDialOpts() []grpc.DialOption {
 	return []grpc.DialOption{
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialer),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
 	}

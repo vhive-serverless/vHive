@@ -193,7 +193,7 @@ func deployNodes(deployerConfFile string) {
 	nodesName := masterNode.GetAllNodes()
 	utils.InfoPrintf("All nodes within the cluster: [")
 	for _, name := range nodesName {
-		utils.InfoPrintf(name)
+		utils.InfoPrintf("%s", name)
 	}
 	utils.InfoPrintf("]\n")
 }

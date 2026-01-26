@@ -28,6 +28,7 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/vhive-serverless/vhive/common"
 	"github.com/vhive-serverless/vhive/cri"
 	"github.com/vhive-serverless/vhive/ctriface"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -117,7 +118,7 @@ func (fs *FirecrackerService) createUserContainer(ctx context.Context, r *criapi
 		return nil, err
 	}
 
-	environment := cri.ToStringArray(config.GetEnvs())
+	environment := common.ToStringArray(config.GetEnvs())
 	funcInst, err := fs.coordinator.startVMWithEnvironment(context.Background(), guestImage, revision, environment)
 	if err != nil {
 		log.WithError(err).Error("failed to start VM")

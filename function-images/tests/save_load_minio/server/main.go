@@ -31,7 +31,7 @@ import (
 	"os"
 	"strings"
 
-	ctrdlog "github.com/containerd/containerd/log"
+	ctrdlog "github.com/containerd/log"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/minio/minio-go/v7"
