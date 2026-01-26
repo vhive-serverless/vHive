@@ -41,7 +41,7 @@ import (
 var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
-	//nolint:deadcode,unused,varcheck
+	//nolint:unused
 	isWithCache       = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	snapshotter       = flag.String("ss", "devmapper", "Snapshotter to use")
 	dockerCredentials = flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM")

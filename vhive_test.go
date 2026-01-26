@@ -151,7 +151,7 @@ func TestStartSendStopTwice(t *testing.T) {
 	fID := "3"
 	var (
 		servedTh      uint64 = 1
-		pinnedFuncNum int    = 2
+		pinnedFuncNum        = 2
 	)
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
@@ -176,7 +176,7 @@ func TestStatsNotNumericFunction(t *testing.T) {
 	fID := "not-cld"
 	var (
 		servedTh      uint64 = 1
-		pinnedFuncNum int    = 2
+		pinnedFuncNum        = 2
 	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
@@ -197,7 +197,7 @@ func TestStatsNotColdFunction(t *testing.T) {
 	fID := "4"
 	var (
 		servedTh      uint64 = 1
-		pinnedFuncNum int    = 4
+		pinnedFuncNum        = 4
 	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
@@ -218,7 +218,7 @@ func TestSaveMemorySerial(t *testing.T) {
 	fID := "5"
 	var (
 		servedTh      uint64 = 40
-		pinnedFuncNum int    = 2
+		pinnedFuncNum        = 2
 	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 
@@ -239,7 +239,7 @@ func TestSaveMemoryParallel(t *testing.T) {
 	fID := "6"
 	var (
 		servedTh      uint64 = 40
-		pinnedFuncNum int    = 2
+		pinnedFuncNum        = 2
 	)
 	funcPool = NewFuncPool(isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
 

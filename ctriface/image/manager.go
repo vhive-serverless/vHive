@@ -199,7 +199,7 @@ func isEstargzImage(ctx context.Context, client *containerd.Client, imageName st
 	if err != nil {
 		return false, err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	manifestBytes, err := io.ReadAll(rc)
 	if err != nil {

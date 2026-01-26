@@ -239,10 +239,10 @@ func NewFunction(fID, imageName string, Stats *Stats, servedTh uint64, isToPin b
 //     c. Instance shutdown is performed asynchronously because all instances have unique IDs.
 func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string) (*hpb.FwdHelloResp, *metrics.Metric, error) {
 	var (
-		serveMetric *metrics.Metric = metrics.NewMetric()
+		serveMetric = metrics.NewMetric()
 		tStart      time.Time
 		syncID      int64 = -1 // default is no synchronization
-		isColdStart bool  = false
+		isColdStart       = false
 	)
 
 	logger := log.WithFields(log.Fields{"fID": f.fID})
@@ -615,7 +615,7 @@ func timeoutDialer(address string, timeout time.Duration) (net.Conn, error) {
 		go func() {
 			dr := <-synC
 			if dr != nil && dr.c != nil {
-				dr.c.Close()
+				defer func() { _ = dr.c.Close() }()
 			}
 		}()
 		return nil, errors.Errorf("dial %s: timeout", address)

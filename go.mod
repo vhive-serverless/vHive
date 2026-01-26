@@ -1,6 +1,6 @@
 module github.com/vhive-serverless/vhive
 
-go 1.24.11
+go 1.25.5
 
 replace (
 	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20251220120737-a3dabeb332c7
@@ -10,6 +10,7 @@ replace (
 require (
 	github.com/containerd/containerd v1.7.29
 	github.com/containerd/go-cni v1.1.9
+	github.com/containerd/log v0.1.0
 	github.com/containerd/stargz-snapshotter v0.11.3
 	github.com/davecgh/go-spew v1.1.1
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
@@ -27,7 +28,6 @@ require (
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
-	golang.org/x/net v0.47.0
 	golang.org/x/sync v0.18.0
 	golang.org/x/sys v0.38.0
 	gonum.org/v1/gonum v0.15.1
@@ -52,7 +52,6 @@ require (
 	github.com/containerd/errdefs v0.3.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
-	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/containerd/ttrpc v1.2.7 // indirect
 	github.com/containerd/typeurl/v2 v2.2.0 // indirect
@@ -91,6 +90,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/image v0.21.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect

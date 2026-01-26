@@ -76,7 +76,7 @@ func (t *Trace) WriteTrace() {
 	if err != nil {
 		log.Fatalf("Failed to open trace file for writing: %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
@@ -92,13 +92,13 @@ func (t *Trace) WriteTrace() {
 
 // readTrace Reads all the records from a CSV file
 //
-//nolint:deadcode,unused
+//nolint:unused
 func (t *Trace) readTrace() {
 	f, err := os.Open(t.traceFileName)
 	if err != nil {
 		log.Fatalf("Failed to open trace file for reading: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	lines, err := csv.NewReader(f).ReadAll()
 	if err != nil {
@@ -113,7 +113,7 @@ func (t *Trace) readTrace() {
 
 // readRecord Parses a record from a line
 //
-//nolint:deadcode,unused
+//nolint:unused
 func readRecord(line []string) Record {
 	offset, err := strconv.ParseUint(line[0], 16, 64)
 	if err != nil {
@@ -166,12 +166,12 @@ func (t *Trace) writeWorkingSetPagesToFile(guestMemFileName, WorkingSetPath stri
 	if err != nil {
 		log.Fatalf("Failed to open guest memory file for reading")
 	}
-	defer fSrc.Close()
+	defer func() { _ = fSrc.Close() }()
 	fDst, err := os.Create(WorkingSetPath)
 	if err != nil {
 		log.Fatalf("Failed to open ws file for writing")
 	}
-	defer fDst.Close()
+	defer func() { _ = fDst.Close() }()
 
 	var (
 		dstOffset int64

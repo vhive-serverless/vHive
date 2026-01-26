@@ -97,7 +97,7 @@ func createTestFile(filePath string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	records := [][]string{
 		{"field1", "field2", "field/3"},

@@ -96,7 +96,7 @@ func (snp *Snapshot) SerializeSnapInfo() error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to create snapinfo file")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	encoder := gob.NewEncoder(file)
 
@@ -113,7 +113,7 @@ func (snp *Snapshot) LoadSnapInfo(infoPath string) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to open snapinfo file")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	encoder := gob.NewDecoder(file)
 

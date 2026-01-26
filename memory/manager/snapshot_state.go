@@ -141,7 +141,7 @@ func (s *SnapshotState) getUFFD() error {
 			continue
 		}
 
-		defer c.Close()
+		defer func() { _ = c.Close() }()
 
 		sendfdConn := c.(*net.UnixConn)
 
@@ -281,7 +281,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 
 	logger.Debug("Starting polling loop")
 
-	defer syscall.Close(s.epfd)
+	defer func() { _ = syscall.Close(s.epfd) }()
 
 	readyCh <- 0
 
@@ -513,7 +513,7 @@ func wake(fd int, startAddress uint64, len int) {
 	}
 }
 
-//nolint:deadcode,unused
+//nolint:unused
 func registerForUpf(startAddress []byte, len uint64) int {
 	return int(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
 }

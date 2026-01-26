@@ -107,11 +107,11 @@ func PrintMeanStd(resultsPath, funcName string, metricsList ...*Metric) error {
 		mean, std   float64
 		f           *os.File
 		err         error
-		agg         map[string][]float64 = make(map[string][]float64)
-		totals      []float64            = make([]float64, 0, len(metricsList))
-		keys        []string             = make([]string, 0)
-		forPrinting []string             = make([]string, 0)
-		header                           = []string{"FuncName"}
+		agg         = make(map[string][]float64)
+		totals      = make([]float64, 0, len(metricsList))
+		keys        = make([]string, 0)
+		forPrinting = make([]string, 0)
+		header      = []string{"FuncName"}
 	)
 
 	if len(metricsList) == 0 {
@@ -145,7 +145,7 @@ func PrintMeanStd(resultsPath, funcName string, metricsList ...*Metric) error {
 			log.Error("Failed to open metrics output file")
 			return err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 	}
 
 	w := csv.NewWriter(f)
