@@ -503,7 +503,7 @@ func (node *Node) KubeMasterInit() (string, string, string, string) {
 
 	// Install Calico network add-on
 	configs.Kube.CalicoVersion = node.Configs.Kube.CalicoVersion // TODO: @jchua99, pls fix
-	cluster.InstallCalico()
+	cluster.InstallCalico(false)
 
 	// Extract master node information from logs
 	utils.WaitPrintf("Extracting master node information from logs")

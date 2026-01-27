@@ -30,7 +30,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func StartOnenodeVhiveCluster(sandbox string) error {
+func StartOnenodeVhiveCluster(sandbox string, useIptables bool) error {
 
 	// Arguments check
 	if sandbox == "" {
@@ -118,11 +118,11 @@ func StartOnenodeVhiveCluster(sandbox string) error {
 	time.Sleep(1 * time.Second)
 
 	utils.InfoPrintf("Create one node cluster\n")
-	if err := cluster.CreateOneNodeCluster(sandbox); err != nil {
+	if err := cluster.CreateOneNodeCluster(sandbox, useIptables); err != nil {
 		return err
 	}
 
-	if err = cluster.SetupMasterNode(sandbox); err != nil {
+	if err = cluster.SetupMasterNode(sandbox, useIptables); err != nil {
 		return err
 	}
 
