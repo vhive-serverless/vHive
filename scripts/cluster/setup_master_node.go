@@ -30,10 +30,10 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func SetupMasterNode(stockContainerd string, useIptables bool) error {
+func SetupMasterNode(stockContainerd string, useNFTables bool) error {
 	// Original Bash Scripts: scripts/cluster/setup_master_node.sh
 
-	err := InstallCalico(useIptables)
+	err := InstallCalico(useNFTables)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func SetupMasterNode(stockContainerd string, useIptables bool) error {
 }
 
 // Install Calico network add-on
-func InstallCalico(useIptables bool) error {
+func InstallCalico(useNFTables bool) error {
 	utils.WaitPrintf("Installing pod network")
 
 	_, err := utils.ExecShellCmd("wget -nc https://raw.githubusercontent.com/projectcalico/calico/v%s/manifests/calico.yaml -P %s",
@@ -130,7 +130,7 @@ func InstallCalico(useIptables bool) error {
 	}
 
 	iptablesBackend := "NFT"
-	if useIptables {
+	if !useNFTables {
 		iptablesBackend = "Legacy"
 	}
 	_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and

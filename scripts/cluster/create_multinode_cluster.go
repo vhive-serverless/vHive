@@ -32,7 +32,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func CreateMultinodeCluster(stockContainerd string, useIptables bool) error {
+func CreateMultinodeCluster(stockContainerd string, useNFTables bool) error {
 	// Original Bash Scripts: scripts/cluster/create_multinode_cluster.sh
 
 	if err := CreateMasterKubeletService(); err != nil {
@@ -43,7 +43,7 @@ func CreateMultinodeCluster(stockContainerd string, useIptables bool) error {
 		return err
 	}
 
-	if !useIptables {
+	if useNFTables {
 		if err := EnableNftablesForKubeProxy(); err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ func CreateMultinodeCluster(stockContainerd string, useIptables bool) error {
 
 	// Set up master node
 	utils.InfoPrintf("Set up master node\n")
-	if err := SetupMasterNode(stockContainerd, useIptables); err != nil {
+	if err := SetupMasterNode(stockContainerd, useNFTables); err != nil {
 		utils.FatalPrintf("Failed to set up master node!\n")
 		return err
 	}

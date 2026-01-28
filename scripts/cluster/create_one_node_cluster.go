@@ -29,7 +29,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func CreateOneNodeCluster(stockContainerd string, useIptables bool) error {
+func CreateOneNodeCluster(stockContainerd string, useNFTables bool) error {
 	// Original Bash Scripts: scripts/cluster/create_one_node_cluster.sh
 
 	err := SetupWorkerKubelet(stockContainerd)
@@ -45,7 +45,7 @@ func CreateOneNodeCluster(stockContainerd string, useIptables bool) error {
 		criSock = "/etc/vhive-cri/vhive-cri.sock"
 	}
 
-	err = CreateOneNodeKubernetes(criSock, useIptables)
+	err = CreateOneNodeKubernetes(criSock, useNFTables)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func CreateOneNodeCluster(stockContainerd string, useIptables bool) error {
 }
 
 // Deploy one node kubernetes cluster
-func CreateOneNodeKubernetes(criSock string, useIptables bool) error {
+func CreateOneNodeKubernetes(criSock string, useNFTables bool) error {
 	// When executed inside a docker container, this command returns the container ID of the container.
 	// on a non container environment, this returns "/".
 	containerId, err := utils.ExecShellCmd("basename $(cat /proc/1/cpuset)")
@@ -96,7 +96,7 @@ func CreateOneNodeKubernetes(criSock string, useIptables bool) error {
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to create cluster!\n") {
 			return err
 		}
-		if !useIptables {
+		if useNFTables {
 			// Enable nftables for kube-proxy
 			utils.WaitPrintf("Configuring kube-proxy to use nftables")
 			_, err = utils.ExecShellCmd(`sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system get configmap kube-proxy -o yaml | sed 's/mode: ""/mode: "nftables"/' | sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f - && sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system delete pod -l k8s-app=kube-proxy`)
