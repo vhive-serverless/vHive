@@ -97,10 +97,7 @@ func CreateOneNodeKubernetes(criSock string, useNFTables bool) error {
 			return err
 		}
 		if useNFTables {
-			// Enable nftables for kube-proxy
-			utils.WaitPrintf("Configuring kube-proxy to use nftables")
-			_, err = utils.ExecShellCmd(`sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system get configmap kube-proxy -o yaml | sed 's/mode: ""/mode: "nftables"/' | sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f - && sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system delete pod -l k8s-app=kube-proxy`)
-			if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure nftables!\n") {
+			if err := EnableNftablesForKubeProxy(); err != nil {
 				return err
 			}
 		}

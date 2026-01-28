@@ -54,7 +54,7 @@ func main() {
 	setupFlags.StringVar(&configs.VHive.VHiveRepoBranch, "vhive-repo-branch", configs.VHive.VHiveRepoBranch, "vHive repo branch (valid only when using online repo)")
 	setupFlags.StringVar(&configs.VHive.VHiveRepoUrl, "vhive-repo-url", configs.VHive.VHiveRepoUrl, "vHive repo url (valid only when using online repo)")
 	setupFlags.BoolVar(&configs.VHive.ForceRemote, "force-remote", configs.VHive.ForceRemote, "Force scripts to use the online repo")
-	setupFlags.BoolVar(&useNFTables, "nftables", true, "Use nftables for networking (use --nftables=false for iptables)")
+	setupFlags.BoolVar(&useNFTables, "nftables", false, "Use nftables for networking (default: iptables, use --nftables for nftables)")
 	setupFlags.BoolVar(&help, "help", false, "Show help")
 	setupFlags.BoolVar(&help, "h", false, "Show help")
 

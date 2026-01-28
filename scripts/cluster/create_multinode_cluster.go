@@ -130,27 +130,6 @@ func DeployKubernetes() error {
 	return nil
 }
 
-// Enable nftables for kube-proxy
-func EnableNftablesForKubeProxy() error {
-	utils.WaitPrintf("Configuring kube-proxy to use nftables")
-	kubeconfig := "/etc/kubernetes/admin.conf"
-	kubectlCmd := fmt.Sprintf("sudo kubectl --kubeconfig=%s", kubeconfig)
-
-	// Patch the configmap
-	_, err := utils.ExecShellCmd(`%s -n kube-system get configmap kube-proxy -o yaml | sed 's/mode: .*/mode: "nftables"/' | %s apply -f -`, kubectlCmd, kubectlCmd)
-	if err != nil {
-		return err
-	}
-
-	// Restart kube-proxy pods
-	_, err = utils.ExecShellCmd(`%s -n kube-system delete pod -l k8s-app=kube-proxy`, kubectlCmd)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure nftables!\n") {
-		return err
-	}
-
-	return nil
-}
-
 // Make kubectl work for non-root user
 func KubectlForNonRoot() error {
 	utils.WaitPrintf("Making kubectl work for non-root user")
@@ -256,5 +235,27 @@ func IncreaseLogSizePerContainer() error {
 	}
 
 	time.Sleep(15 * time.Second)
+	return nil
+}
+
+// Configures kube-proxy to use nftables mode instead of iptables
+func EnableNftablesForKubeProxy() error {
+	utils.WaitPrintf("Configuring kube-proxy to use nftables")
+	kubeconfig := "/etc/kubernetes/admin.conf"
+	kubectlCmd := fmt.Sprintf("sudo kubectl --kubeconfig=%s", kubeconfig)
+
+	// Patch the configmap
+	_, err := utils.ExecShellCmd(`%s -n kube-system get configmap kube-proxy -o yaml | yq eval '.data."config.conf" |= (fromyaml | .mode = "nftables" | toyaml)' | %s apply -f -`, kubectlCmd, kubectlCmd)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch kube-proxy ConfigMap with nftables mode! \n") {
+		return err
+	}
+
+	// Restart kube-proxy pods to pick up the new configuration
+	utils.WaitPrintf("Restarting kube-proxy pods")
+	_, err = utils.ExecShellCmd(`%s -n kube-system delete pod -l k8s-app=kube-proxy`, kubectlCmd)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to restart kube-proxy pods!\n") {
+		return err
+	}
+
 	return nil
 }
