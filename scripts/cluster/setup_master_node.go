@@ -129,14 +129,14 @@ func InstallCalico(useNFTables bool) error {
 		return err
 	}
 
-	iptablesBackend := "NFT"
-	if !useNFTables {
-		iptablesBackend = "Legacy"
+	networkBackend := "Legacy"
+	if useNFTables {
+		networkBackend = "Legacy"
 	}
 	_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
 	.spec.template.spec.containers[].name == "calico-node") |
 	.spec.template.spec.containers[].env) += {"name": "FELIX_IPTABLESBACKEND", "value": "%s"}' %s`,
-		iptablesBackend, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
+		networkBackend, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico configuration!\n") {
 		return err
 	}
