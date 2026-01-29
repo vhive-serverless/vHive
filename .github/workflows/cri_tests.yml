@@ -53,6 +53,13 @@ jobs:
       - name: Setup system
         run: ./scripts/setup_tool setup_node ${{ inputs.sandbox }}
 
+      - name: Start containerd and vHive services
+        run: |
+          sudo screen -dmS containerd containerd; sleep 5;
+          sudo PATH=$PATH screen -dmS firecracker /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml; sleep 5;
+          source /etc/profile && go build;
+          sudo screen -dmS vhive ./vhive; sleep 5;
+
       - name: Setup CRI test environment
         run: ./scripts/github_runner/setup_cri_test_env.sh ${{ inputs.sandbox }}
              
