@@ -1,11 +1,9 @@
 module github.com/vhive-serverless/vhive/networking
 
-go 1.24.0
-
-toolchain go1.24.10
+go 1.25.5
 
 require (
-	github.com/containerd/containerd v1.7.29
+	github.com/containerd/log v0.1.0
 	github.com/google/nftables v0.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
@@ -16,7 +14,6 @@ require (
 )
 
 require (
-	github.com/containerd/log v0.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42 // indirect

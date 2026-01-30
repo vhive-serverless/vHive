@@ -5,6 +5,7 @@ go 1.25.5
 replace (
 	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20251220120737-a3dabeb332c7
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
+	github.com/vhive-serverless/vhive/networking => ./networking
 )
 
 require (
@@ -17,7 +18,6 @@ require (
 	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
 	github.com/golang/protobuf v1.5.4
-	github.com/google/nftables v0.3.0
 	github.com/google/uuid v1.6.0
 	github.com/montanaflynn/stats v0.7.1
 	github.com/opencontainers/image-spec v1.1.0
@@ -25,8 +25,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
-	github.com/vishvananda/netlink v1.3.1
-	github.com/vishvananda/netns v0.0.5
+	github.com/vhive-serverless/vhive/networking v0.0.0-00010101000000-000000000000
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.40.0
@@ -69,6 +68,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/nftables v0.3.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42 // indirect
@@ -84,6 +84,8 @@ require (
 	github.com/opencontainers/selinux v1.13.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
+	github.com/vishvananda/netlink v1.3.1 // indirect
+	github.com/vishvananda/netns v0.0.5 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
