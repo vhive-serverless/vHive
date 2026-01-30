@@ -46,6 +46,7 @@ func main() {
 
 	// Set up arguments
 	var help bool
+	var useNFTables bool
 	setupFlagsName := os.Args[0]
 	setupFlags := flag.NewFlagSet(setupFlagsName, flag.ExitOnError)
 	setupFlags.StringVar(&configs.VHive.VHiveSetupConfigPath, "setup-configs-dir", configs.VHive.VHiveSetupConfigPath, "Config directory for setting up vHive (left blank to use default configs in vHive repo)")
@@ -53,6 +54,7 @@ func main() {
 	setupFlags.StringVar(&configs.VHive.VHiveRepoBranch, "vhive-repo-branch", configs.VHive.VHiveRepoBranch, "vHive repo branch (valid only when using online repo)")
 	setupFlags.StringVar(&configs.VHive.VHiveRepoUrl, "vhive-repo-url", configs.VHive.VHiveRepoUrl, "vHive repo url (valid only when using online repo)")
 	setupFlags.BoolVar(&configs.VHive.ForceRemote, "force-remote", configs.VHive.ForceRemote, "Force scripts to use the online repo")
+	setupFlags.BoolVar(&useNFTables, "nftables", false, "Use nftables for networking (default: iptables, use --nftables for nftables)")
 	setupFlags.BoolVar(&help, "help", false, "Show help")
 	setupFlags.BoolVar(&help, "h", false, "Show help")
 
@@ -151,7 +153,7 @@ func main() {
 			os.Exit(1)
 		}
 		utils.InfoPrintf("Create multinode cluster\n")
-		err = cluster.CreateMultinodeCluster(setupFlags.Args()[1])
+		err = cluster.CreateMultinodeCluster(setupFlags.Args()[1], useNFTables)
 	case "create_one_node_cluster":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
@@ -159,10 +161,10 @@ func main() {
 			os.Exit(1)
 		}
 		utils.InfoPrintf("Create one-node Cluster\n")
-		err = cluster.CreateOneNodeCluster(setupFlags.Args()[1])
+		err = cluster.CreateOneNodeCluster(setupFlags.Args()[1], useNFTables)
 		if err == nil {
 			utils.InfoPrintf("Set up master node\n")
-			err = cluster.SetupMasterNode(setupFlags.Args()[1])
+			err = cluster.SetupMasterNode(setupFlags.Args()[1], useNFTables)
 		}
 	case "prepare_one_node_cluster":
 		if setupFlags.NArg() < 2 {
@@ -171,7 +173,7 @@ func main() {
 			os.Exit(1)
 		}
 		utils.InfoPrintf("Create one-node Cluster\n")
-		err = cluster.CreateOneNodeCluster(setupFlags.Args()[1])
+		err = cluster.CreateOneNodeCluster(setupFlags.Args()[1], useNFTables)
 	case "setup_master_node":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
@@ -179,7 +181,7 @@ func main() {
 			os.Exit(1)
 		}
 		utils.InfoPrintf("Set up master node\n")
-		err = cluster.SetupMasterNode(setupFlags.Args()[1])
+		err = cluster.SetupMasterNode(setupFlags.Args()[1], useNFTables)
 	case "setup_worker_kubelet":
 		if setupFlags.NArg() < 2 {
 			utils.FatalPrintf("Missing parameters: %s <stock-containerd>\n", subCmd)
@@ -209,7 +211,7 @@ func main() {
 			os.Exit(1)
 		}
 		utils.InfoPrintf("Start one-node vHive cluster\n")
-		err = cloudlab.StartOnenodeVhiveCluster(setupFlags.Args()[1])
+		err = cloudlab.StartOnenodeVhiveCluster(setupFlags.Args()[1], useNFTables)
 		// Original scripts from `scripts/cloudlab` directory
 	case "setup_nvidia_gpu":
 		utils.InfoPrintf("Set up Nvidia gpu\n")

@@ -30,10 +30,10 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func SetupMasterNode(stockContainerd string) error {
+func SetupMasterNode(stockContainerd string, useNFTables bool) error {
 	// Original Bash Scripts: scripts/cluster/setup_master_node.sh
 
-	err := InstallCalico()
+	err := InstallCalico(useNFTables)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func SetupMasterNode(stockContainerd string) error {
 }
 
 // Install Calico network add-on
-func InstallCalico() error {
+func InstallCalico(useNFTables bool) error {
 	utils.WaitPrintf("Installing pod network")
 
 	_, err := utils.ExecShellCmd("wget -nc https://raw.githubusercontent.com/projectcalico/calico/v%s/manifests/calico.yaml -P %s",
@@ -127,6 +127,16 @@ func InstallCalico() error {
 		path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico for IP detection!\n") {
 		return err
+	}
+
+	if useNFTables {
+		_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
+		.spec.template.spec.containers[].name == "calico-node") |
+		.spec.template.spec.containers[].env) += {"name": "FELIX_NFTABLESMODE", "value": "Enabled"}' %s`,
+			path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico configuration!\n") {
+			return err
+		}
 	}
 
 	utils.SuccessPrintf("All nodes are ready!\n")

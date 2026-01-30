@@ -29,7 +29,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func CreateOneNodeCluster(stockContainerd string) error {
+func CreateOneNodeCluster(stockContainerd string, useNFTables bool) error {
 	// Original Bash Scripts: scripts/cluster/create_one_node_cluster.sh
 
 	err := SetupWorkerKubelet(stockContainerd)
@@ -45,7 +45,7 @@ func CreateOneNodeCluster(stockContainerd string) error {
 		criSock = "/etc/vhive-cri/vhive-cri.sock"
 	}
 
-	err = CreateOneNodeKubernetes(criSock)
+	err = CreateOneNodeKubernetes(criSock, useNFTables)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func CreateOneNodeCluster(stockContainerd string) error {
 }
 
 // Deploy one node kubernetes cluster
-func CreateOneNodeKubernetes(criSock string) error {
+func CreateOneNodeKubernetes(criSock string, useNFTables bool) error {
 	// When executed inside a docker container, this command returns the container ID of the container.
 	// on a non container environment, this returns "/".
 	containerId, err := utils.ExecShellCmd("basename $(cat /proc/1/cpuset)")
@@ -95,6 +95,11 @@ func CreateOneNodeKubernetes(criSock string) error {
 		_, err = utils.ExecShellCmd(`sudo kubeadm init --ignore-preflight-errors=all --cri-socket unix://%s --pod-network-cidr=%s --kubernetes-version %s`, criSock, configs.Kube.PodNetworkCidr, configs.Kube.K8sVersion)
 		if !utils.CheckErrorWithTagAndMsg(err, "Failed to create cluster!\n") {
 			return err
+		}
+		if useNFTables {
+			if err := EnableNftablesForKubeProxy(); err != nil {
+				return err
+			}
 		}
 	}
 
