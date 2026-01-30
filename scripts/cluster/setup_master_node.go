@@ -129,16 +129,14 @@ func InstallCalico(useNFTables bool) error {
 		return err
 	}
 
-	networkBackend := "Auto"
 	if useNFTables {
-		networkBackend = "Auto"
-	}
-	_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
-	.spec.template.spec.containers[].name == "calico-node") |
-	.spec.template.spec.containers[].env) += {"name": "FELIX_IPTABLESBACKEND", "value": "%s"}' %s`,
-		networkBackend, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico configuration!\n") {
-		return err
+		_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
+		.spec.template.spec.containers[].name == "calico-node") |
+		.spec.template.spec.containers[].env) += {"name": "FELIX_NFTABLESMODE", "value": "Enabled"}' %s`,
+			path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico configuration!\n") {
+			return err
+		}
 	}
 
 	utils.SuccessPrintf("All nodes are ready!\n")
