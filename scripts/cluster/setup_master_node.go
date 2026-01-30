@@ -129,9 +129,9 @@ func InstallCalico(useNFTables bool) error {
 		return err
 	}
 
-	networkBackend := "Legacy"
+	networkBackend := "Auto"
 	if useNFTables {
-		networkBackend = "Legacy"
+		networkBackend = "Auto"
 	}
 	_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
 	.spec.template.spec.containers[].name == "calico-node") |
