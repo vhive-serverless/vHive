@@ -25,6 +25,7 @@ package ctriface
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -104,6 +105,7 @@ type Orchestrator struct {
 	snapshotsDir     string
 	isMetricsMode    bool
 	netPoolSize      int
+	dns              []string
 
 	vethPrefix  string
 	clonePrefix string
@@ -122,6 +124,8 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.netPoolSize = 10
 	o.vethPrefix = "172.17"
 	o.clonePrefix = "172.18"
+
+	o.dns = getK8sDNS()
 
 	for _, opt := range opts {
 		opt(o)
@@ -164,6 +168,24 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
 
 	return o
+}
+
+func getK8sDNS() []string {
+	//using googleDNS as a backup
+	dnsIPs := []string{"8.8.8.8"}
+	//get k8s DNS clusterIP
+	cmd := exec.Command(
+		"kubectl", "get", "service", "-n", "kube-system", "kube-dns", "-o=custom-columns=:.spec.clusterIP", "--no-headers",
+	)
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Warnf("Failed to Fetch k8s dns clusterIP %v\n%s\n", err, stdoutStderr)
+		log.Warnf("Using google dns %s\n", dnsIPs[0])
+	} else {
+		//adding k8s DNS clusterIP to the list
+		dnsIPs = []string{strings.TrimSpace(string(stdoutStderr)), dnsIPs[0]}
+	}
+	return dnsIPs
 }
 
 func (o *Orchestrator) setupCloseHandler() {
