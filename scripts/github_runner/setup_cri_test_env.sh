@@ -35,7 +35,7 @@ fi
 SANDBOX=$1
 VHIVE_ROOT="$(git rev-parse --show-toplevel)"
 
-$VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT start_onenode_vhive_cluster $SANDBOX
+$VHIVE_ROOT/scripts/setup_tool --nftables -vhive-repo-dir $VHIVE_ROOT start_onenode_vhive_cluster $SANDBOX
 # $VHIVE_ROOT/scripts/cloudlab/start_onenode_vhive_cluster.sh "$SANDBOX"
 sleep 30s
 
