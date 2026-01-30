@@ -32,7 +32,7 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-func CreateMultinodeCluster(stockContainerd string) error {
+func CreateMultinodeCluster(stockContainerd string, useNFTables bool) error {
 	// Original Bash Scripts: scripts/cluster/create_multinode_cluster.sh
 
 	if err := CreateMasterKubeletService(); err != nil {
@@ -41,6 +41,12 @@ func CreateMultinodeCluster(stockContainerd string) error {
 
 	if err := DeployKubernetes(); err != nil {
 		return err
+	}
+
+	if useNFTables {
+		if err := EnableNftablesForKubeProxy(); err != nil {
+			return err
+		}
 	}
 
 	if err := KubectlForNonRoot(); err != nil {
@@ -63,7 +69,7 @@ func CreateMultinodeCluster(stockContainerd string) error {
 
 	// Set up master node
 	utils.InfoPrintf("Set up master node\n")
-	if err := SetupMasterNode(stockContainerd); err != nil {
+	if err := SetupMasterNode(stockContainerd, useNFTables); err != nil {
 		utils.FatalPrintf("Failed to set up master node!\n")
 		return err
 	}
@@ -229,5 +235,27 @@ func IncreaseLogSizePerContainer() error {
 	}
 
 	time.Sleep(15 * time.Second)
+	return nil
+}
+
+// Configures kube-proxy to use nftables mode instead of iptables
+func EnableNftablesForKubeProxy() error {
+	utils.WaitPrintf("Configuring kube-proxy to use nftables")
+	kubeconfig := "/etc/kubernetes/admin.conf"
+	kubectlCmd := fmt.Sprintf("sudo kubectl --kubeconfig=%s", kubeconfig)
+
+	// Patch the configmap
+	_, err := utils.ExecShellCmd(`%s -n kube-system get configmap kube-proxy -o yaml | yq eval '.data."config.conf" |= (fromyaml | .mode = "nftables" | toyaml)' | %s apply -f -`, kubectlCmd, kubectlCmd)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch kube-proxy ConfigMap with nftables mode! \n") {
+		return err
+	}
+
+	// Restart kube-proxy pods to pick up the new configuration
+	utils.WaitPrintf("Restarting kube-proxy pods")
+	_, err = utils.ExecShellCmd(`%s -n kube-system delete pod -l k8s-app=kube-proxy`, kubectlCmd)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to restart kube-proxy pods!\n") {
+		return err
+	}
+
 	return nil
 }
