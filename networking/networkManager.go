@@ -55,7 +55,7 @@ type NetworkManager struct {
 // using the supplied interface. If no interface is supplied, the default interface is used. To take the network
 // setup of the critical path of a function creation, the network manager tries to maintain a pool of ready to use
 // network configurations of size at least poolSize.
-func NewNetworkManager(hostIfaceName string, experimentIfaceName string, poolSize int, vethPrefix, clonePrefix string) (*NetworkManager, error) {
+func NewNetworkManager(hostIfaceName string, experimentIfaceName string, poolSize int, vethPrefix, clonePrefix string, setExpIface bool) (*NetworkManager, error) {
 	manager := new(NetworkManager)
 
 	manager.hostIfaceName = hostIfaceName
@@ -68,8 +68,12 @@ func NewNetworkManager(hostIfaceName string, experimentIfaceName string, poolSiz
 		}
 	}
 
-	manager.experimentIfaceName = experimentIfaceName
-	if manager.experimentIfaceName == "" {
+	// Experiment interface is optional. If experiment interface name is provided, use it.
+	// Otherwise, try to get it only if setExpIface is true.
+	// If experiment interface is set to be used but cannot be determined, return an error.
+	if experimentIfaceName != "" {
+		manager.experimentIfaceName = experimentIfaceName
+	} else if manager.experimentIfaceName == "" && setExpIface {
 		experimentIface, err := getExperimentIfaceName()
 		if err != nil {
 			return nil, err
