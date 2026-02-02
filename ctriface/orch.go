@@ -108,6 +108,8 @@ type Orchestrator struct {
 	vethPrefix  string
 	clonePrefix string
 
+	setExpIface bool
+
 	memoryManager *manager.MemoryManager
 }
 
@@ -127,7 +129,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		opt(o)
 	}
 
-	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize, o.vethPrefix, o.clonePrefix)
+	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize, o.vethPrefix, o.clonePrefix, o.setExpIface)
 
 	if _, err := os.Stat(o.snapshotsDir); err != nil {
 		if !os.IsNotExist(err) {

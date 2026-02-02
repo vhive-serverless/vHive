@@ -199,12 +199,14 @@ func (cfg *NetworkConfig) createHostNetwork() error {
 		return err
 	}
 
-	// B.4. Create experiment interface
-	if err := setupForwardRules(cfg.getVeth1Name(), cfg.experimentIfaceName); err != nil {
-		return err
-	}
-	if err := setupMasquerade(cfg.getVeth1Name(), cfg.experimentIfaceName); err != nil {
-		return err
+	// B.4. Create experiment interface if specified
+	if cfg.experimentIfaceName != "" {
+		if err := setupForwardRules(cfg.getVeth1Name(), cfg.experimentIfaceName); err != nil {
+			return err
+		}
+		if err := setupMasquerade(cfg.getVeth1Name(), cfg.experimentIfaceName); err != nil {
+			return err
+		}
 	}
 
 	return nil
