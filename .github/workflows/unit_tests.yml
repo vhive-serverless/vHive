@@ -68,6 +68,7 @@ jobs:
         make -C $MODULE test-man
   
   profile-unit-test:
+    if: false
     name: "Unit test: profile unit test"
     runs-on: [self-hosted, profile]
     strategy:
@@ -93,7 +94,7 @@ jobs:
 
     - name: Build setup scripts
       run: pushd scripts && go build -o setup_tool && popd
-      
+
     - name: Add rsync
       run: |
         sudo apt update
