@@ -37,32 +37,37 @@ const (
 	defaultGatewayCIDR   = "172.16.0.1/24"
 	defaultContainerTap  = "tap0"
 	defaultContainerMac  = "06:00:AC:10:00:02"
+	defaultGatewayTapMac = "06:00:AC:10:00:01"
 )
 
 // NetworkConfig represents the network devices, IPs, namespaces, routes and filter rules to connect a uVM
 // to the network. The network config ID is deterministically mapped to IP addresses to be used for the uVM.
 // Note that due to the current allocation of IPs at most 2^14 VMs can be simultaneously be available on a single host.
 type NetworkConfig struct {
-	id            int
-	containerCIDR string // Container IP address (CIDR notation)
-	gatewayCIDR   string // Container gateway IP address (CIDR notation)
-	containerTap  string // Container tap name
-	containerMac  string // Container Mac address
-	hostIfaceName string // Host network interface name
+	id                  int
+	containerCIDR       string // Container IP address (CIDR notation)
+	gatewayCIDR         string // Container gateway IP address (CIDR notation)
+	containerTap        string // Container tap name
+	containerMac        string // Container Mac address
+	gatewayTapMac       string // TAP device Mac address (gateway)
+	hostIfaceName       string // Host network interface name
+	experimentIfaceName string // Experiment network interface name
 
 	vethPrefix  string // Prefix for IP addresses of veth devices
 	clonePrefix string // Prefix for IP addresses of clone devices
 }
 
 // NewNetworkConfig creates a new network config with a given id and default host interface
-func NewNetworkConfig(id int, hostIfaceName string, vethPrefix, clonePrefix string) *NetworkConfig {
+func NewNetworkConfig(id int, hostIfaceName string, experimentIfaceName string, vethPrefix, clonePrefix string) *NetworkConfig {
 	return &NetworkConfig{
-		id:            id,
-		containerCIDR: defaultContainerCIDR,
-		gatewayCIDR:   defaultGatewayCIDR,
-		containerTap:  defaultContainerTap,
-		containerMac:  defaultContainerMac,
-		hostIfaceName: hostIfaceName,
+		id:                  id,
+		containerCIDR:       defaultContainerCIDR,
+		gatewayCIDR:         defaultGatewayCIDR,
+		containerTap:        defaultContainerTap,
+		containerMac:        defaultContainerMac,
+		gatewayTapMac:       defaultGatewayTapMac,
+		hostIfaceName:       hostIfaceName,
+		experimentIfaceName: experimentIfaceName,
 
 		vethPrefix:  vethPrefix,
 		clonePrefix: clonePrefix,
@@ -144,7 +149,7 @@ func (cfg *NetworkConfig) createVmNetwork(hostNsHandle netns.NsHandle) error {
 	defer func() { _ = vmNsHandle.Close() }()
 
 	// A.2. Create tap device for uVM
-	if err := createTap(cfg.containerTap, cfg.gatewayCIDR, cfg.getNamespaceName()); err != nil {
+	if err := createTap(cfg.containerTap, cfg.gatewayCIDR, cfg.getNamespaceName(), cfg.gatewayTapMac); err != nil {
 		return err
 	}
 
@@ -193,6 +198,17 @@ func (cfg *NetworkConfig) createHostNetwork() error {
 	if err := setupMasquerade(cfg.getVeth1Name(), cfg.hostIfaceName); err != nil {
 		return err
 	}
+
+	// B.4. Create experiment interface if specified
+	if cfg.experimentIfaceName != "" {
+		if err := setupForwardRules(cfg.getVeth1Name(), cfg.experimentIfaceName); err != nil {
+			return err
+		}
+		if err := setupMasquerade(cfg.getVeth1Name(), cfg.experimentIfaceName); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
