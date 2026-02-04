@@ -92,7 +92,7 @@ func SetupFirecrackerContainerd() error {
 
 	// kernel image
 	// https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter-getting-started.md#build-a-linux-kernel-with-fuse-support
-	kernelImgPath, err := utils.GetVHiveFilePath(path.Join(binsDir, "vmlinux-6.1.155"))
+	kernelImgPath, err := utils.GetVHiveFilePath(path.Join(binsDir, "vmlinux-6.1.141"))
 	if !utils.CheckErrorWithMsg(err, "Failed to find kernel image!\n") {
 		return err
 	}

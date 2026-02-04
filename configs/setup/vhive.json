@@ -1,4 +1,4 @@
 {
-	"FirecrackerKernelImgDownloadUrl": "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.14/x86_64/vmlinux-6.1.155",
+	"FirecrackerKernelImgDownloadUrl": "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.13/x86_64/vmlinux-6.1.141",
 	"StargzVersion": "0.13.0"
 }
