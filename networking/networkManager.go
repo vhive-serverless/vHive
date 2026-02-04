@@ -49,13 +49,16 @@ type NetworkManager struct {
 
 	// Network configs that are being created
 	inCreation sync.WaitGroup
+
+	// Set portforwarding from uvm net ns to experiment interface
+	portForward bool
 }
 
 // NewNetworkManager creates and returns a new network manager that connects function instances to the network
 // using the supplied interface. If no interface is supplied, the default interface is used. To take the network
 // setup of the critical path of a function creation, the network manager tries to maintain a pool of ready to use
 // network configurations of size at least poolSize.
-func NewNetworkManager(hostIfaceName string, experimentIfaceName string, poolSize int, vethPrefix, clonePrefix string) (*NetworkManager, error) {
+func NewNetworkManager(hostIfaceName string, experimentIfaceName string, poolSize int, vethPrefix, clonePrefix string, portForward bool) (*NetworkManager, error) {
 	manager := new(NetworkManager)
 
 	manager.hostIfaceName = hostIfaceName
@@ -91,6 +94,16 @@ func NewNetworkManager(hostIfaceName string, experimentIfaceName string, poolSiz
 	manager.poolCond = sync.NewCond(new(sync.Mutex))
 	manager.vethPrefix = vethPrefix
 	manager.clonePrefix = clonePrefix
+
+	manager.portForward = portForward
+
+	// Set up DNAT chains if port forwarding is enabled
+	if portForward {
+		if err := setupDNATChains(); err != nil {
+			log.WithFields(log.Fields{"error": err}).Warn("Failed to setup DNAT chains")
+		}
+	}
+
 	manager.initConfigPool(poolSize)
 	manager.poolSize = poolSize
 
@@ -123,7 +136,7 @@ func (mgr *NetworkManager) addNetConfig() {
 	mgr.inCreation.Add(1)
 	mgr.Unlock()
 
-	netCfg := NewNetworkConfig(id, mgr.hostIfaceName, mgr.experimentIfaceName, mgr.vethPrefix, mgr.clonePrefix)
+	netCfg := NewNetworkConfig(id, mgr.hostIfaceName, mgr.experimentIfaceName, mgr.vethPrefix, mgr.clonePrefix, mgr.portForward)
 	if err := netCfg.CreateNetwork(); err != nil {
 		log.Errorf("failed to create network %s:", err)
 	}
@@ -280,6 +293,17 @@ func (mgr *NetworkManager) Cleanup() error {
 	wg.Wait()
 	mgr.networkPool = make([]*NetworkConfig, 0)
 	mgr.poolCond.L.Unlock()
+
+	// Cleanup DNAT chains if port forwarding was enabled
+	if mgr.portForward {
+		log.Debug("Cleaning up DNAT chains")
+		if err := flushDNATChains(); err != nil {
+			log.WithFields(log.Fields{"error": err}).Warn("Failed to flush DNAT chains")
+		}
+		if err := deleteDNATChains(); err != nil {
+			log.WithFields(log.Fields{"error": err}).Warn("Failed to delete DNAT chains")
+		}
+	}
 
 	return nil
 }

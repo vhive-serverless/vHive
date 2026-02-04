@@ -38,6 +38,8 @@ const (
 	defaultContainerTap  = "tap0"
 	defaultContainerMac  = "06:00:AC:10:00:02"
 	defaultGatewayTapMac = "06:00:AC:10:00:01"
+	baseRPCPort          = 20000
+	rpcDataPort          = 40003
 )
 
 // NetworkConfig represents the network devices, IPs, namespaces, routes and filter rules to connect a uVM
@@ -55,10 +57,12 @@ type NetworkConfig struct {
 
 	vethPrefix  string // Prefix for IP addresses of veth devices
 	clonePrefix string // Prefix for IP addresses of clone devices
+
+	portForward bool
 }
 
 // NewNetworkConfig creates a new network config with a given id and default host interface
-func NewNetworkConfig(id int, hostIfaceName string, experimentIfaceName string, vethPrefix, clonePrefix string) *NetworkConfig {
+func NewNetworkConfig(id int, hostIfaceName string, experimentIfaceName string, vethPrefix, clonePrefix string, portForward bool) *NetworkConfig {
 	return &NetworkConfig{
 		id:                  id,
 		containerCIDR:       defaultContainerCIDR,
@@ -71,6 +75,8 @@ func NewNetworkConfig(id int, hostIfaceName string, experimentIfaceName string, 
 
 		vethPrefix:  vethPrefix,
 		clonePrefix: clonePrefix,
+
+		portForward: portForward,
 	}
 }
 
@@ -134,6 +140,14 @@ func (cfg *NetworkConfig) getContainerIP() string {
 func (cfg *NetworkConfig) GetGatewayIP() string {
 	ip, _, _ := net.ParseCIDR(cfg.gatewayCIDR)
 	return ip.String()
+}
+
+func (cfg *NetworkConfig) GetRPCIncomingPort() string {
+	return fmt.Sprintf("%d", baseRPCPort+uint32(cfg.id))
+}
+
+func (cfg *NetworkConfig) GetRPCVMDataPort() string {
+	return fmt.Sprintf("%d", rpcDataPort)
 }
 
 // createVmNetwork creates network devices, namespaces, routes and filter rules for the uVM at the
@@ -210,6 +224,65 @@ func (cfg *NetworkConfig) createHostNetwork() error {
 	return nil
 }
 
+func (cfg *NetworkConfig) createRPCPortForwarding() error {
+	logger := log.WithFields(log.Fields{
+		"networkID":       cfg.id,
+		"experimentIface": cfg.experimentIfaceName,
+		"rpcIncomingPort": cfg.GetRPCIncomingPort(),
+		"cloneIP":         cfg.GetCloneIP(),
+		"rpcVMDataPort":   cfg.GetRPCVMDataPort(),
+	})
+
+	// Skip if no experiment interface configured
+	if cfg.experimentIfaceName == "" {
+		logger.Debug("No experiment interface configured, skipping port forwarding")
+		return nil
+	}
+
+	// Get experiment interface IP
+	experimentIP, err := getExperimentIP(cfg.experimentIfaceName)
+	if err != nil {
+		return err
+	}
+
+	logger = logger.WithFields(log.Fields{"experimentIP": experimentIP})
+	logger.Debug("Setting up RPC port forwarding")
+
+	// Parse ports
+	rpcIncomingPort := int(baseRPCPort + uint32(cfg.id))
+	rpcVMDataPort := int(rpcDataPort)
+
+	// Add DNAT rule to forward from experiment interface to VM's clone IP
+	if err := addDNATRule(experimentIP, rpcIncomingPort,
+		cfg.GetCloneIP(), rpcVMDataPort, cfg.id); err != nil {
+		return err
+	}
+
+	logger.Debug("Successfully set up RPC port forwarding")
+	return nil
+}
+
+func (cfg *NetworkConfig) deleteRPCPortForwarding() error {
+	logger := log.WithFields(log.Fields{"networkID": cfg.id})
+
+	// Skip if no experiment interface configured or port forwarding disabled
+	if cfg.experimentIfaceName == "" || !cfg.portForward {
+		logger.Debug("Port forwarding not configured, skipping deletion")
+		return nil
+	}
+
+	logger.Debug("Removing RPC port forwarding")
+
+	// Delete DNAT rules for this VM
+	if err := deleteDNATRule(cfg.id); err != nil {
+		logger.WithFields(log.Fields{"error": err}).Warn("Failed to delete DNAT rules")
+		return err
+	}
+
+	logger.Debug("Successfully removed RPC port forwarding")
+	return nil
+}
+
 // CreateNetwork creates the necessary network devices, namespaces, routes and filter rules to connect the uVM to the
 // network. The networking is created as described in the Firecracker documentation on providing networking for clones
 // (https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/network-for-clones.md)
@@ -245,12 +318,26 @@ func (cfg *NetworkConfig) CreateNetwork() error {
 		return err
 	}
 
+	// 6. If port forwarding is enabled, set up port forwarding from experiment interface to uVM
+	if cfg.portForward {
+		if err := cfg.createRPCPortForwarding(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 // CreateNetwork removes the necessary network devices, namespaces, routes and filter rules to connect the
 // function instance to the network
 func (cfg *NetworkConfig) RemoveNetwork() error {
+	// Delete port forwarding if enabled
+	if cfg.portForward {
+		if err := cfg.deleteRPCPortForwarding(); err != nil {
+			log.WithFields(log.Fields{"vmID": cfg.id}).Warn("Failed to delete port forwarding, continuing cleanup")
+		}
+	}
+
 	// Delete nat to route traffic out of veth device
 	if err := deleteMasquerade(cfg.getVeth1Name()); err != nil {
 		return err

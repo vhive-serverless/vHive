@@ -631,6 +631,29 @@ func deleteRoute(destIp, gatewayIp string) error {
 	return nil
 }
 
+// getExperimentIP returns the IPv4 address assigned to the given interface name
+func getExperimentIP(ifaceName string) (string, error) {
+	iface, err := net.InterfaceByName(ifaceName)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting interface %s", ifaceName)
+	}
+
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return "", errors.Wrapf(err, "getting addresses for interface %s", ifaceName)
+	}
+
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok {
+			if ipv4 := ipnet.IP.To4(); ipv4 != nil {
+				return ipv4.String(), nil
+			}
+		}
+	}
+
+	return "", errors.Errorf("no IPv4 address found for interface %s", ifaceName)
+}
+
 // getNetworkStartID fetches the
 func getNetworkStartID() (int, error) {
 	entries, err := os.ReadDir("/run/netns")
