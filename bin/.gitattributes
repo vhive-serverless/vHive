@@ -9,4 +9,4 @@ grpcurl filter=lfs diff=lfs merge=lfs -text
 gvisor-containerd filter=lfs diff=lfs merge=lfs -text
 http-address-resolver filter=lfs diff=lfs merge=lfs -text
 jailer filter=lfs diff=lfs merge=lfs -text
-vmlinux-5.10.186 filter=lfs diff=lfs merge=lfs -text
+vmlinux-6.1.141 filter=lfs diff=lfs merge=lfs -text

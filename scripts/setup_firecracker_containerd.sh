@@ -47,7 +47,7 @@ done
 sudo cp $BINS/default-rootfs.img /var/lib/firecracker-containerd/runtime/
 
 # kernel image
-sudo cp $BINS/vmlinux-5.10.186 /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin
+sudo cp $BINS/vmlinux-6.1.141 /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin
 
 sudo cp $CONFIGS/config.toml /etc/firecracker-containerd/
 
