@@ -22,7 +22,7 @@ sudo iptables -t nat -D POSTROUTING -o "$HOST_IFACE" -j MASQUERADE || true
 sudo iptables -t nat -A POSTROUTING -o "$HOST_IFACE" -j MASQUERADE
 
 API_SOCKET="/tmp/firecracker.socket"
-LOGFILE="$HOME/firecracker.log"
+LOGFILE="/tmp/firecracker.log"
 
 # Set machine configuration
 sudo curl -X PUT --unix-socket "${API_SOCKET}" \

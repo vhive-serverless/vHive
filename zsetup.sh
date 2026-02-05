@@ -51,6 +51,9 @@ if ! grep -q "/usr/local/go/bin" ~/.bashrc; then
     echo 'export PATH=/usr/local/go/bin:$PATH' >> ~/.bashrc
 fi
 
+echo "--- 6. Setting executable permissions ---"
+chmod +x "$WORKSPACE_DIR/zstart.sh" "$WORKSPACE_DIR/zboot.sh" 2>/dev/null || true
+
 echo ""
 echo "========================================="
 echo "Setup Complete!"
