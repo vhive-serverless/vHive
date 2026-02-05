@@ -22,7 +22,7 @@ sudo iptables -t nat -D POSTROUTING -o "$HOST_IFACE" -j MASQUERADE || true
 sudo iptables -t nat -A POSTROUTING -o "$HOST_IFACE" -j MASQUERADE
 
 API_SOCKET="/tmp/firecracker.socket"
-LOGFILE="./firecracker.log"
+LOGFILE="$HOME/firecracker.log"
 
 # Set machine configuration
 sudo curl -X PUT --unix-socket "${API_SOCKET}" \
@@ -49,7 +49,7 @@ sudo curl -X PUT --unix-socket "${API_SOCKET}" \
 
 
 VSOCK_DIR="/tmp/v.sock"
-sudo rm ${VSOCK_DIR}
+sudo rm -f ${VSOCK_DIR}
 sudo curl --unix-socket "${API_SOCKET}" -i \
     -X PUT 'http://localhost/vsock' \
     -H 'Accept: application/json' \

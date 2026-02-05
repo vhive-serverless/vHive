@@ -10,9 +10,10 @@ LOGFILE="./firecracker.log"
 sudo rm -f $LOGFILE
 
 # Run firecracker (installed by vHive setup at /usr/local/bin/firecracker)
-if ! command -v firecracker &> /dev/null; then
-    echo "ERROR: firecracker binary not found. Run setup_node first."
+FIRECRACKER_BIN="/usr/local/bin/firecracker"
+if [ ! -f "$FIRECRACKER_BIN" ]; then
+    echo "ERROR: firecracker binary not found at $FIRECRACKER_BIN. Run setup_node first."
     exit 1
 fi
 
-sudo firecracker --api-sock "${API_SOCKET}" --enable-pci
+sudo "$FIRECRACKER_BIN" --api-sock "${API_SOCKET}" --enable-pci
