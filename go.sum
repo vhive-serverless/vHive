@@ -928,8 +928,8 @@ github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtX
 github.com/urfave/cli v1.22.2/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/urfave/cli v1.22.4/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/vbatts/tar-split v0.11.2/go.mod h1:vV3ZuO2yWSVsz+pfFzDG/upWH1JhjOiEaWq6kXyQ3VI=
-github.com/vhive-serverless/firecracker-containerd v0.0.0-20260204032014-61038c6d5b38 h1:N/4EG3EKNFLGFncU2H/sV02H82/XR/mtav7NvC9fGZI=
-github.com/vhive-serverless/firecracker-containerd v0.0.0-20260204032014-61038c6d5b38/go.mod h1:IlWnPBeebJFzQ0G12229J/hy9f4RhfdDTRC2+qAaXh0=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20260205055657-a35b52c279d9 h1:Q2ybUII/hVdXKMA35KX54VLsrmydZ/HxxIKUxI6L31M=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20260205055657-a35b52c279d9/go.mod h1:JDguJbk1e92EIfqyO7VRIeljZy3vw+JsJO62JGsl2i8=
 github.com/vishvananda/netlink v0.0.0-20181108222139-023a6dafdcdf/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYppBueQtXaqoE=
 github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852/go.mod h1:twkDnbuQxJYemMlGd4JFIcuhgX83tXhKS2B/PRMpOho=

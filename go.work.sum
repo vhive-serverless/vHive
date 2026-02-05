@@ -531,8 +531,7 @@ github.com/vbatts/tar-split v0.11.3/go.mod h1:9QlHN18E+fEH7RdG+QAJJcuya3rqT7eXST
 github.com/vektah/gqlparser/v2 v2.4.5/go.mod h1:flJWIR04IMQPGz+BXLrORkrARBxv/rtyIAFvd/MceW0=
 github.com/veraison/go-cose v1.0.0-rc.1/go.mod h1:7ziE85vSq4ScFTg6wyoMXjucIGOf4JkFEZi/an96Ct4=
 github.com/veraison/go-cose v1.1.0/go.mod h1:7ziE85vSq4ScFTg6wyoMXjucIGOf4JkFEZi/an96Ct4=
-github.com/vhive-serverless/firecracker-containerd v0.0.0-20260204032014-61038c6d5b38 h1:N/4EG3EKNFLGFncU2H/sV02H82/XR/mtav7NvC9fGZI=
-github.com/vhive-serverless/firecracker-containerd v0.0.0-20260204032014-61038c6d5b38/go.mod h1:IlWnPBeebJFzQ0G12229J/hy9f4RhfdDTRC2+qAaXh0=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20260205055657-a35b52c279d9/go.mod h1:JDguJbk1e92EIfqyO7VRIeljZy3vw+JsJO62JGsl2i8=
 github.com/vishvananda/netlink v1.2.1-beta.2/go.mod h1:twkDnbuQxJYemMlGd4JFIcuhgX83tXhKS2B/PRMpOho=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
 github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
