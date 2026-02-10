@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"os/exec"
 	"sync"
 	"time"
 
@@ -42,12 +44,13 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", "test")
 	}
-	cache := snapshotting.NewSnapshotManager(snapDir, objectStore, true, true, true, true, *chunkSize, *cacheSize, "none", *threads, *encryption)
+	cache := snapshotting.NewSnapshotManager(snapDir, objectStore, true, false, true, true, *chunkSize, *cacheSize, "none", *threads, *encryption)
 
 	for i := *chunkCount - 1; i >= 0; i-- {
 		if ok, err := objectStore.Exists(fmt.Sprintf("_chunks/te/test_chunk_%d", i)); err == nil && ok {
 			break
 		}
+		objectStore.UploadObject(fmt.Sprintf("_chunks/te/test_chunk_%d", i), bytes.NewReader(make([]byte, *chunkSize)), int64(*chunkSize))
 		cache.DownloadChunk(fmt.Sprintf("test_chunk_%d", i))
 	}
 
@@ -99,4 +102,29 @@ func main() {
 	wg.Wait()
 
 	log.Infof("Completed %d downloads second time in %v", *chunkCount, time.Since(start))
+
+	exec.Command("sudo", "sh", "-c", "echo 3 > /proc/sys/vm/drop_caches").Run()
+
+	start = time.Now()
+
+	tasks = make(chan string, *chunkCount)
+	for i := 0; i < *chunkCount; i++ {
+		tasks <- fmt.Sprintf("test_chunk_%d", i)
+	}
+	close(tasks)
+
+	wg.Add(*threads)
+	for range *threads {
+		go func() {
+			defer wg.Done()
+			for t := range tasks {
+				// log.Info("Starting upload/download of chunk")
+				cache.DownloadAndReturnChunk(t)
+			}
+		}()
+	}
+	log.Info("Waiting for downloads to finish...")
+	wg.Wait()
+
+	log.Infof("Completed %d downloads third time (after dropping page cache) in %v", *chunkCount, time.Since(start))
 }
