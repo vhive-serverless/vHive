@@ -98,6 +98,10 @@ func (snp *Snapshot) GetWSFilePath() string {
 	return filepath.Join(snp.snapDir, "working_set_pages")
 }
 
+func (snp *Snapshot) GetWSContentFilePath() string {
+	return filepath.Join(snp.snapDir, "working_set_pages_content")
+}
+
 // SerializeSnapInfo serializes the snapshot info using gob. This can be useful for remote snapshots
 func (snp *Snapshot) SerializeSnapInfo() error {
 	file, err := os.Create(snp.GetInfoFilePath())

@@ -203,3 +203,9 @@ func WithEncryption(encryption bool) OrchestratorOption {
 		o.encryption = encryption
 	}
 }
+
+func WithWSCoalescing(isWSCoalescing bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.isWSCoalescing = isWSCoalescing
+	}
+}

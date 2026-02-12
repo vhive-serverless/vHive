@@ -410,6 +410,7 @@ type SnapshotManager struct {
 	chunkRegistry *ChunkRegistry
 	lazy          bool
 	wsPulling     bool
+	optimizeWS    bool
 	chunkSize     uint64
 	cacheSize     uint64
 	securityMode  string
@@ -466,7 +467,7 @@ func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool
 	return chunks, nil
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling bool,
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling, optimizeWS bool,
 	chunkSize uint64, cacheSize uint64, securityMode string, threads int, encryption bool) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
@@ -476,6 +477,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		chunkSize:     chunkSize,
 		storage:       store,
 		wsPulling:     wsPulling,
+		optimizeWS:    optimizeWS,
 		lazy:          lazy,
 		cacheSize:     cacheSize,
 		securityMode:  strings.ToLower(securityMode),
@@ -843,7 +845,7 @@ func (mgr *SnapshotManager) UploadSnapshot(revision string) error {
 	return nil
 }
 
-func (mgr *SnapshotManager) UploadWSFile(revision string) error {
+func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 	snap, err := mgr.AcquireSnapshot(revision)
 	if err != nil {
 		return errors.Wrapf(err, "acquiring snapshot")
@@ -851,6 +853,65 @@ func (mgr *SnapshotManager) UploadWSFile(revision string) error {
 
 	if err := mgr.uploadFile(revision, snap.GetWSFilePath()); err != nil {
 		return errors.Wrapf(err, "uploading working set file for snapshot %s", revision)
+	}
+
+	if mgr.optimizeWS && mgr.chunkSize == 4096 {
+		wsFile, err := os.Open(snap.GetWSFilePath())
+		if err != nil {
+			return errors.Wrapf(err, "opening working set file")
+		}
+		defer wsFile.Close()
+
+		memFile, err := os.Open(snap.GetMemFilePath())
+		if err != nil {
+			return errors.Wrapf(err, "opening memory file")
+		}
+		defer memFile.Close()
+
+		contentPath := snap.GetWSContentFilePath()
+		contentFile, err := os.Create(contentPath)
+		if err != nil {
+			return errors.Wrapf(err, "creating working set content file")
+		}
+		defer contentFile.Close()
+
+		reader := csv.NewReader(wsFile)
+		records, err := reader.ReadAll()
+		if err != nil {
+			return errors.Wrapf(err, "reading working set CSV")
+		}
+
+		// Skip header
+		if len(records) > 0 {
+			records = records[1:]
+		}
+
+		page := make([]byte, 4096)
+		for _, record := range records {
+			if len(record) == 0 {
+				continue
+			}
+			pfn, err := strconv.ParseUint(record[0], 10, 64)
+			if err != nil {
+				continue
+			}
+
+			offset := int64(pfn * 4096)
+			if _, err := memFile.Seek(offset, 0); err != nil {
+				return errors.Wrapf(err, "seeking memory file")
+			}
+			if _, err := io.ReadFull(memFile, page); err != nil {
+				return errors.Wrapf(err, "reading page from memory file")
+			}
+			if _, err := contentFile.Write(page); err != nil {
+				return errors.Wrapf(err, "writing page to content file")
+			}
+		}
+		contentFile.Close()
+
+		if err := mgr.uploadFile(revision, contentPath); err != nil {
+			return errors.Wrapf(err, "uploading working set content file")
+		}
 	}
 
 	return nil
@@ -1395,6 +1456,18 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 
 func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 	log.Debugf("start downloadWorkingSet for %s", snap.id)
+
+	if mgr.optimizeWS && mgr.chunkSize == 4096 {
+		wsContentPath := snap.GetWSContentFilePath()
+		// Try to download the monolithic file
+		err := mgr.downloadFile(snap.GetId(), wsContentPath, filepath.Base(wsContentPath))
+		if err == nil {
+			log.Debugf("Downloaded monolithic working set content for %s", snap.id)
+			return nil
+		}
+		log.Warnf("Failed to download monolithic working set content for %s, falling back to chunked download: %v", snap.id, err)
+	}
+
 	wsFile, err := os.Open(snap.GetWSFilePath())
 	if err != nil {
 		return errors.Wrapf(err, "opening working set file for lazy chunked download")

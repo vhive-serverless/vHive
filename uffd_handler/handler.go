@@ -136,6 +136,7 @@ type MappedChunkInfo struct {
 // behavior without duplicating configuration.
 type PageOperations struct {
 	backingBuffer      uintptr
+	wsContentBuffer    uintptr
 	pageSize           uint64
 	workingSet         []uint64
 	firstPageFaultOnce *sync.Once
@@ -148,9 +149,10 @@ type PageOperations struct {
 
 // NewPageOperations creates a new PageOperations instance
 // TODO: Remove mappedChunks from signature: it's obsolete
-func NewPageOperations(backingBuffer uintptr, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) *PageOperations {
+func NewPageOperations(backingBuffer uintptr, wsContentBuffer uintptr, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) *PageOperations {
 	return &PageOperations{
 		backingBuffer:      backingBuffer,
+		wsContentBuffer:    wsContentBuffer,
 		pageSize:           pageSize,
 		workingSet:         workingSet,
 		firstPageFaultOnce: &sync.Once{},
@@ -229,20 +231,22 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 
 	defer func() {
 		mode := ""
-		if po.lazy {
+		if po.wsContentBuffer != 0 {
+			mode = "(Monolithic WS) "
+		} else if po.lazy {
 			mode = "(Lazy Version) "
 		}
 		log.Infof("%sPre-inserting working set of %d pages in %v", mode, atomic.LoadInt32(&counter), time.Since(startTime))
 	}()
 
-	pfnCh := make(chan uint64, len(po.workingSet))
-	for _, pfn := range po.workingSet {
+	idxCh := make(chan int, len(po.workingSet))
+	for i, pfn := range po.workingSet {
 		pageAddr := pfn * po.pageSize
 		if pageAddr >= region.Offset && pageAddr < region.Offset+region.Size {
-			pfnCh <- pfn
+			idxCh <- i
 		}
 	}
-	close(pfnCh)
+	close(idxCh)
 
 	var wg sync.WaitGroup
 	wg.Add(po.threads)
@@ -250,12 +254,15 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 	for w := 0; w < po.threads; w++ {
 		go func() {
 			defer wg.Done()
-			for pfn := range pfnCh {
+			for idx := range idxCh {
+				pfn := po.workingSet[idx]
 				pageAddr := pfn * po.pageSize
 				atomic.AddInt32(&counter, 1)
 
 				var src uintptr
-				if po.lazy {
+				if po.wsContentBuffer != 0 {
+					src = po.wsContentBuffer + uintptr(idx)*uintptr(po.pageSize)
+				} else if po.lazy {
 					recipeOffset := (pageAddr) / po.snapMgr.GetChunkSize() * md5.Size
 					hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
 					var hashKey [md5.Size]byte
@@ -598,6 +605,7 @@ type Runtime struct {
 	backingMemory      uintptr
 	backingMemoryBytes []byte
 	backingMemorySize  uint64
+	wsContentBytes     []byte
 	uffds              map[int]*UffdHandler
 	streamFd           int
 	tracer             *PageFaultTracer
@@ -608,7 +616,7 @@ type Runtime struct {
 }
 
 // NewRuntime creates a new runtime
-func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
+func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, wsContentFile *os.File, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
 	fileInfo, err := backingFile.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file metadata: %w", err)
@@ -656,11 +664,31 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 		}
 	}
 
+	var wsContentBytes []byte
+	var wsContentPtr uintptr
+	if wsContentFile != nil {
+		info, err := wsContentFile.Stat()
+		if err != nil {
+			return nil, fmt.Errorf("failed to stat working set content file: %w", err)
+		}
+		wsContentBytes, err = unix.Mmap(
+			int(wsContentFile.Fd()),
+			0,
+			int(info.Size()),
+			unix.PROT_READ,
+			unix.MAP_PRIVATE|unix.MAP_POPULATE,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("mmap on working set content file failed: %w", err)
+		}
+		wsContentPtr = uintptr(unsafe.Pointer(&wsContentBytes[0]))
+	}
+
 	backingMemoryPtr := uintptr(unsafe.Pointer(&backingMemory[0]))
 
 	// Create PageOperations with a reasonable default page size
 	// The actual page size will be validated when handlers are created
-	pageOps := NewPageOperations(backingMemoryPtr, 4096, ws, lazy, snapMgr, threads)
+	pageOps := NewPageOperations(backingMemoryPtr, wsContentPtr, 4096, ws, lazy, snapMgr, threads)
 
 	rt := &Runtime{
 		stream:             conn,
@@ -668,6 +696,7 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, trace
 		backingMemory:      backingMemoryPtr,
 		backingMemoryBytes: backingMemory,
 		backingMemorySize:  backingMemorySize,
+		wsContentBytes:     wsContentBytes,
 		uffds:              make(map[int]*UffdHandler),
 		streamFd:           -1,
 		tracer:             tracer,
@@ -762,6 +791,12 @@ func (r *Runtime) FreeBackingFile() {
 	if err != nil {
 		log.Fatalf("Failed to unmap memory: %v", err)
 	}
+	if len(r.wsContentBytes) > 0 {
+		err := unix.Munmap(r.wsContentBytes)
+		if err != nil {
+			log.Fatalf("Failed to unmap working set content: %v", err)
+		}
+	}
 }
 
 // Helper functions
@@ -817,7 +852,7 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 	return body, -1, nil
 }
 
-func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, wsFilePath string, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) error {
+func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, wsFilePath string, wsContentFilePath string, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) error {
 	log.Debugf("Starting handler at %s", uffdSockPath)
 
 	// Open the memory file
@@ -867,8 +902,21 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 		}
 	}
 
+	var wsContentFile *os.File
+	if wsContentFilePath != "" {
+		// If working set content file path is provided, check if it exists and load it
+		if stat, err := os.Stat(wsContentFilePath); err == nil && stat != nil {
+			log.Debugf("Loading existing WS content file from %s", wsContentFilePath)
+			wsContentFile, err = os.Open(wsContentFilePath)
+			if err != nil {
+				return fmt.Errorf("cannot open WS content file: %w", err)
+			}
+			defer wsContentFile.Close()
+		}
+	}
+
 	// Create runtime
-	runtime, err := NewRuntime(conn, file, wsFile, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
+	runtime, err := NewRuntime(conn, file, wsFile, wsContentFile, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
 	if err != nil {
 		return fmt.Errorf("failed to create runtime: %w", err)
 	}

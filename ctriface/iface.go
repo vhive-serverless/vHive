@@ -1072,17 +1072,22 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			memPath = snap.GetRecipeFilePath()
 		}
 		wsPath := snap.GetWSFilePath()
+		wsContentPath := snap.GetWSContentFilePath()
 		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil || !o.isWSPulling || snap.GetId() == "base" {
 			wsPath = ""
+			wsContentPath = ""
+		}
+		if !o.isWSCoalescing {
+			wsContentPath = ""
 		}
 		go func() {
-			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, o.isLazyMode, o.snapshotManager, o.threads)
+			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, wsContentPath, o.isLazyMode, o.snapshotManager, o.threads)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil {
 				logger.Debugf("Uploading WS file for snap %s after UFFD handler finished", snap.GetId())
 				os.Rename(memPath+".touched", snap.GetWSFilePath())
-				o.snapshotManager.UploadWSFile(snap.GetId())
+				o.snapshotManager.UploadWorkingSet(snap.GetId())
 				// o.snapshotManager.DeleteSnapshot(snap.GetId())
 				// o.snapshotManager.CleanChunks()
 			}
