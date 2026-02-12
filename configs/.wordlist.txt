@@ -325,6 +325,7 @@ nd
 Netrace
 NEURALWALKER
 neuroevolution
+nftables
 NewServer
 nginx
 Nicopoulos

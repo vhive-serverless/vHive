@@ -8,6 +8,19 @@
 
 ### Fixed
 
+## Release v1.8.2
+
+### Added
+
+- Bump versions of Knative to v1.19, Kubernetes to v1.33, Istio to 1.26.5, Calico to 3.31.0, MetalLB to 0.14.9, Containerd to 1.7.29.
+- Bump Go to 1.25.
+- Add support for nftables as an alternative to iptables in the Network Manager.
+- Bumps of various dependencies to their latest versions.
+
+### Changed
+
+- Migrated self-hosted runners to GitHub Runners.
+
 ## Release v1.8.1
 
 ### Added
