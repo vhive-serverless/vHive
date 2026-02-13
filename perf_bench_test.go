@@ -88,6 +88,11 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 
 	t.Skip("Skipping TestProfileIncrementConfiguration")
 
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	var (
 		idx, rps      int
 		pinnedFuncNum int
@@ -135,6 +140,11 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 func TestProfileSingleConfiguration(t *testing.T) {
 
 	t.Skip("Skipping TestProfileSingleConfiguration")
+
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
 
 	var (
 		servedTh      uint64
@@ -211,6 +221,11 @@ func TestColocateVMsOnSameCPU(t *testing.T) {
 }
 
 func TestBindSocket(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	var (
 		procStr, sep  string
 		servedTh      uint64

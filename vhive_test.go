@@ -25,15 +25,19 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	ctrdlog "github.com/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	ctriface "github.com/vhive-serverless/vhive/ctriface"
+	"github.com/vhive-serverless/vhive/ctriface"
 )
 
 const (
@@ -77,29 +81,16 @@ func TestMain(m *testing.M) {
 	log.Infof("Drop cache: %t", !*isWithCache)
 	log.Infof("Bench dir: %s", *benchDir)
 
-	orch = ctriface.NewOrchestrator(
-		"devmapper",
-		"",
-		ctriface.WithTestModeOn(true),
-		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
-		ctriface.WithUPF(*isUPFEnabledTest),
-		ctriface.WithMetricsMode(*isMetricsModeTest),
-		ctriface.WithLazyMode(*isLazyModeTest),
-	)
-
 	ret := m.Run()
-
-	err := orch.StopActiveVMs()
-	if err != nil {
-		log.Printf("Failed to stop VMs, err: %v\n", err)
-	}
-
-	orch.Cleanup()
-
 	os.Exit(ret)
 }
 
 func TestSendToFunctionSerial(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "1"
 	var (
 		servedTh      uint64
@@ -122,6 +113,11 @@ func TestSendToFunctionSerial(t *testing.T) {
 }
 
 func TestSendToFunctionParallel(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "2"
 	var (
 		servedTh      uint64
@@ -148,6 +144,11 @@ func TestSendToFunctionParallel(t *testing.T) {
 }
 
 func TestStartSendStopTwice(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "3"
 	var (
 		servedTh      uint64 = 1
@@ -173,6 +174,11 @@ func TestStartSendStopTwice(t *testing.T) {
 }
 
 func TestStatsNotNumericFunction(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "not-cld"
 	var (
 		servedTh      uint64 = 1
@@ -194,6 +200,11 @@ func TestStatsNotNumericFunction(t *testing.T) {
 }
 
 func TestStatsNotColdFunction(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "4"
 	var (
 		servedTh      uint64 = 1
@@ -215,6 +226,11 @@ func TestStatsNotColdFunction(t *testing.T) {
 }
 
 func TestSaveMemorySerial(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "5"
 	var (
 		servedTh      uint64 = 40
@@ -236,6 +252,11 @@ func TestSaveMemorySerial(t *testing.T) {
 }
 
 func TestSaveMemoryParallel(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "6"
 	var (
 		servedTh      uint64 = 40
@@ -266,6 +287,11 @@ func TestSaveMemoryParallel(t *testing.T) {
 }
 
 func TestDirectStartStopVM(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
+
 	fID := "7"
 	var (
 		servedTh      uint64
@@ -285,6 +311,10 @@ func TestDirectStartStopVM(t *testing.T) {
 }
 
 func TestAllFunctions(t *testing.T) {
+	if err := initFirecrackerContainerd(); err != nil {
+		t.Fatalf("Failed to initialize firecracker containerd: %v", err)
+	}
+	defer cleanup()
 
 	if testing.Short() {
 		t.Skip("skipping TestAllFunctions in non-nightly runs.")
@@ -339,4 +369,79 @@ func TestAllFunctions(t *testing.T) {
 		}(fID, imageName)
 	}
 	vmGroup.Wait()
+}
+
+func initFirecrackerContainerd() error {
+	firecrackerBin := os.Getenv("FIRECRACKER_BIN")
+	firecrackerConfigPath := os.Getenv("FIRECRACKER_CONFIG_PATH")
+	logOut := os.Getenv("LOG_OUT")
+	logErr := os.Getenv("LOG_ERR")
+
+	logOutFile, err := os.OpenFile(logOut, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open log file %s: %w", logOut, err)
+	}
+	defer logOutFile.Close()
+
+	logErrFile, err := os.OpenFile(logErr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open error log file %s: %w", logErr, err)
+	}
+	defer logErrFile.Close()
+
+	cmd := exec.Command(firecrackerBin, "--config", firecrackerConfigPath)
+	cmd.Stdout = logOutFile
+	cmd.Stderr = logErrFile
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start firecracker containerd: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := waitForContainerd(ctx); err != nil {
+		return fmt.Errorf("failed to connect to containerd: %w", err)
+	}
+
+	orch = ctriface.NewOrchestrator(
+		"devmapper",
+		"",
+		ctriface.WithTestModeOn(true),
+		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
+		ctriface.WithUPF(*isUPFEnabledTest),
+		ctriface.WithMetricsMode(*isMetricsModeTest),
+		ctriface.WithLazyMode(*isLazyModeTest),
+	)
+
+	return nil
+}
+
+func waitForContainerd(ctx context.Context) error {
+	containerdAddress := "/run/firecracker-containerd/containerd.sock"
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if conn, err := net.DialTimeout("unix", containerdAddress, 200*time.Millisecond); err == nil {
+				conn.Close()
+				return nil
+			}
+		}
+	}
+}
+
+func cleanup() {
+	if err := orch.StopActiveVMs(); err != nil {
+		log.Printf("Failed to stop VMs, err: %v\n", err)
+	}
+	orch.Cleanup()
+	err := exec.Command("bash", "scripts/clean_fcctr.sh").Run()
+	if err != nil {
+		log.Printf("Failed to clean up firecracker containerd, err: %v\n", err)
+	}
 }
