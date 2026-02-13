@@ -868,11 +868,27 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 		}
 		defer wsFile.Close()
 
-		memFile, err := os.Open(snap.GetMemFilePath())
-		if err != nil {
-			return errors.Wrapf(err, "opening memory file")
+		var memFile *os.File
+		useChunks := false
+
+		// Check if memory file exists
+		if _, err := os.Stat(snap.GetMemFilePath()); err == nil {
+			memFile, err = os.Open(snap.GetMemFilePath())
+			if err != nil {
+				return errors.Wrapf(err, "opening memory file")
+			}
+			defer memFile.Close()
+		} else {
+			useChunks = true
 		}
-		defer memFile.Close()
+
+		var recipe []byte
+		if useChunks {
+			recipe, err = os.ReadFile(snap.GetRecipeFilePath())
+			if err != nil {
+				return errors.Wrapf(err, "reading recipe file")
+			}
+		}
 
 		contentPath := snap.GetWSContentFilePath()
 		contentFile, err := os.Create(contentPath)
@@ -902,15 +918,39 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 				continue
 			}
 
-			offset := int64(pfn * 4096)
-			if _, err := memFile.Seek(offset, 0); err != nil {
-				return errors.Wrapf(err, "seeking memory file")
-			}
-			if _, err := io.ReadFull(memFile, page); err != nil {
-				return errors.Wrapf(err, "reading page from memory file")
-			}
-			if _, err := contentFile.Write(page); err != nil {
-				return errors.Wrapf(err, "writing page to content file")
+			if !useChunks {
+				offset := int64(pfn * 4096)
+				if _, err := memFile.Seek(offset, 0); err != nil {
+					return errors.Wrapf(err, "seeking memory file")
+				}
+				if _, err := io.ReadFull(memFile, page); err != nil {
+					return errors.Wrapf(err, "reading page from memory file")
+				}
+				if _, err := contentFile.Write(page); err != nil {
+					return errors.Wrapf(err, "writing page to content file")
+				}
+			} else {
+				chunkIndex := int(pfn)
+				hashStart := chunkIndex * md5.Size
+				hashEnd := hashStart + md5.Size
+
+				if hashEnd > len(recipe) {
+					log.Warnf("Page %d (index %d) is beyond recipe size", pfn, chunkIndex)
+					if _, err := contentFile.Write(make([]byte, 4096)); err != nil {
+						return errors.Wrapf(err, "writing zero page to content file")
+					}
+					continue
+				}
+
+				hash := hex.EncodeToString(recipe[hashStart:hashEnd])
+				data, err := mgr.DownloadAndReturnChunk(hash)
+				if err != nil {
+					return errors.Wrapf(err, "downloading chunk %s", hash)
+				}
+
+				if _, err := contentFile.Write(data); err != nil {
+					return errors.Wrapf(err, "writing page to content file")
+				}
 			}
 		}
 		contentFile.Close()
@@ -1302,7 +1342,7 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	if mgr.chunkRegistry.ChunkExists(hash) {
 		data, err := os.ReadFile(chunkFilePath)
 		if err == nil {
-			
+
 			mgr.chunkRegistry.AddAccess(hash)
 
 			if mgr.encryption {
