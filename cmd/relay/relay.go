@@ -201,7 +201,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		orch.StopSingleVM(ctx, vmId)
 		if *cleaning {
 			snapMgr.DeleteSnapshot(rev)
-			snapMgr.CleanChunks()
 		}
 		// cancel()
 	}()
