@@ -316,6 +316,7 @@ type Orchestrator struct {
 	cacheSize         uint64
 	threads           int
 	encryption        bool
+	cleanChunks       bool
 	dns               []string
 
 	vethPrefix  string
@@ -427,7 +428,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		}
 	}
 	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, false,
-		o.isLazyMode, o.isWSPulling, o.isWSCoalescing, o.chunkSize, o.cacheSize, o.securityMode, o.threads, o.encryption)
+		o.isLazyMode, o.isWSPulling, o.isWSCoalescing, o.chunkSize, o.cacheSize, o.securityMode, o.threads, o.encryption, o.cleanChunks)
 
 	return o
 }

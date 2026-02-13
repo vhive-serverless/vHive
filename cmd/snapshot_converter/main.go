@@ -47,7 +47,7 @@ func main() {
 
 	// Initialize SnapshotManager to load chunk info
 	smBase := filepath.Join(*baseDir, "vhive", "snapshots")
-	mgr := snapshotting.NewSnapshotManager(smBase, st, true, false, false, false, false, 4096, 128*1024*1024, *targetMode, 1, *encryption)
+	mgr := snapshotting.NewSnapshotManager(smBase, st, true, false, false, false, false, 4096, 128*1024*1024, *targetMode, 1, *encryption, false)
 	log.Info("Waiting for snapshot manager to initialize chunks...")
 	mgr.WaitForInit()
 

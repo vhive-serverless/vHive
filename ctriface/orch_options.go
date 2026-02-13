@@ -209,3 +209,9 @@ func WithWSCoalescing(isWSCoalescing bool) OrchestratorOption {
 		o.isWSCoalescing = isWSCoalescing
 	}
 }
+
+func WithCleanChunks(cleanChunks bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.cleanChunks = cleanChunks
+	}
+}

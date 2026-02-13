@@ -309,6 +309,7 @@ func main() {
 		ctriface.WithSecurityMode(*security),
 		ctriface.WithThreads(*threads),
 		ctriface.WithEncryption(*encryption),
+		ctriface.WithCleanChunks(*cleaning),
 	)
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()

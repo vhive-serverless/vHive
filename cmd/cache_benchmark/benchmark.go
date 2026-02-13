@@ -44,7 +44,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatalf("failed to create MinIO storage for snapshots in bucket %s", "test")
 	}
-	cache := snapshotting.NewSnapshotManager(snapDir, objectStore, true, false, true, true, false, *chunkSize, *cacheSize, "none", *threads, *encryption)
+	cache := snapshotting.NewSnapshotManager(snapDir, objectStore, true, false, true, true, false, *chunkSize, *cacheSize, "none", *threads, *encryption, false)
 
 	for i := *chunkCount - 1; i >= 0; i-- {
 		if ok, err := objectStore.Exists(fmt.Sprintf("_chunks/te/test_chunk_%d", i)); err == nil && ok {

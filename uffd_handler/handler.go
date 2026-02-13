@@ -228,6 +228,7 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapping) {
 	startTime := time.Now()
 	var counter int32
+	var usedChunks sync.Map
 
 	defer func() {
 		mode := ""
@@ -235,6 +236,16 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 			mode = "(Monolithic WS) "
 		} else if po.lazy {
 			mode = "(Lazy Version) "
+			go func() {
+				if po.snapMgr.GetCleanChunks() {
+					usedChunks.Range(func(key, value interface{}) bool {
+						hash := key.(string)
+						_ = po.snapMgr.RemoveChunk(hash)
+
+						return true
+					})
+				}
+			}()
 		}
 		log.Infof("%sPre-inserting working set of %d pages in %v", mode, atomic.LoadInt32(&counter), time.Since(startTime))
 	}()
@@ -273,6 +284,7 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 						log.Errorf("Failed to map chunk: %v", err)
 						continue
 					}
+					usedChunks.Store(hex.EncodeToString(hashKey[:]), true)
 					src = mappedAddr + (uintptr(pageAddr) % uintptr(po.snapMgr.GetChunkSize()))
 				} else {
 					src = po.backingBuffer + uintptr(pageAddr)

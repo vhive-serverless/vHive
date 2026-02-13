@@ -61,6 +61,10 @@ var rootfsChunks = map[[16]byte]bool{}
 var baseSnapChunks = map[[16]byte]bool{}
 var EncryptionKey = []byte("vhive-snapshot-enc") // 16 bytes key for AES-128
 
+func (mgr *SnapshotManager) GetCleanChunks() bool {
+	return mgr.cleanChunks
+}
+
 func (mgr *SnapshotManager) GetChunkSize() uint64 {
 	return mgr.chunkSize
 }
@@ -416,6 +420,7 @@ type SnapshotManager struct {
 	securityMode  string
 	threads       int
 	encryption    bool
+	cleanChunks   bool
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
@@ -468,7 +473,7 @@ func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool
 }
 
 func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling, optimizeWS bool,
-	chunkSize uint64, cacheSize uint64, securityMode string, threads int, encryption bool) *SnapshotManager {
+	chunkSize uint64, cacheSize uint64, securityMode string, threads int, encryption, cleanChunks bool) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
 		baseFolder:    baseFolder,
@@ -483,6 +488,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		securityMode:  strings.ToLower(securityMode),
 		threads:       threads,
 		encryption:    encryption,
+		cleanChunks:   cleanChunks,
 	}
 	manager.chunkRegistry = NewChunkRegistry(manager, K)
 
@@ -1295,26 +1301,27 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	// Return from in-memory registry if already downloaded
 	if mgr.chunkRegistry.ChunkExists(hash) {
 		data, err := os.ReadFile(chunkFilePath)
-		if err != nil {
-			return nil, errors.Wrapf(err, "reading cached chunk %s", hash)
-		}
-		mgr.chunkRegistry.AddAccess(hash)
+		if err == nil {
+			
+			mgr.chunkRegistry.AddAccess(hash)
 
-		if mgr.encryption {
-			block, err := aes.NewCipher(EncryptionKey[:16])
-			if err != nil {
-				return nil, fmt.Errorf("failed to create cipher: %w", err)
+			if mgr.encryption {
+				block, err := aes.NewCipher(EncryptionKey[:16])
+				if err != nil {
+					return nil, fmt.Errorf("failed to create cipher: %w", err)
+				}
+
+				if len(data) < aes.BlockSize {
+					return nil, fmt.Errorf("chunk content too short for IV")
+				}
+
+				stream := cipher.NewCTR(block, make([]byte, 16))
+				stream.XORKeyStream(data, data)
 			}
 
-			if len(data) < aes.BlockSize {
-				return nil, fmt.Errorf("chunk content too short for IV")
-			}
-
-			stream := cipher.NewCTR(block, make([]byte, 16))
-			stream.XORKeyStream(data, data)
+			return data, nil
 		}
-
-		return data, nil
+		// Fallback to download if reading fails (e.g. file deleted)
 	}
 
 	// Download and store chunk
@@ -1325,27 +1332,24 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	}
 	defer obj.Close()
 
-	dir := filepath.Dir(chunkFilePath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		os.MkdirAll(dir, os.ModePerm)
-	}
-	outFile, err := os.Create(chunkFilePath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "creating chunk file %s", chunkFilePath)
-	}
-	defer outFile.Close()
-
 	data, err := io.ReadAll(obj) // read object into memory
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading chunk %s", hash)
 	}
 
-	if _, err := outFile.Write(data); err != nil {
-		return nil, errors.Wrapf(err, "writing chunk %s", hash)
-	}
+	if !mgr.cleanChunks {
+		// Write to file
+		dir := filepath.Dir(chunkFilePath)
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return nil, errors.Wrapf(err, "creating chunk directory %s", dir)
+		}
+		if err := os.WriteFile(chunkFilePath, data, 0644); err != nil {
+			return nil, errors.Wrapf(err, "writing chunk file %s", hash)
+		}
 
-	// Mark as downloaded
-	mgr.chunkRegistry.AddAccess(hash)
+		// Mark as downloaded
+		mgr.chunkRegistry.AddAccess(hash)
+	}
 
 	if mgr.encryption {
 		block, err := aes.NewCipher(EncryptionKey[:16])
