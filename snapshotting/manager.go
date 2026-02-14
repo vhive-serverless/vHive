@@ -318,7 +318,7 @@ func (cr *ChunkRegistry) correctLength() {
 				continue
 			}
 
-			if err := cr.snpMgr.RemoveChunk(to_remove); err != nil {
+			if err := cr.snpMgr.removeChunkFile(to_remove); err != nil {
 				log.Errorf("failed to remove chunk: %s, err: %v", to_remove, err)
 				lock.Unlock()
 				continue
@@ -1441,8 +1441,28 @@ func (mgr *SnapshotManager) DownloadChunk(hash string) error {
 	return nil
 }
 
-// removes the chunk from local disk. assumes chunk lock and deletionLock are held
+// RemoveChunk safely removes the chunk from the registry and disk.
 func (mgr *SnapshotManager) RemoveChunk(hash string) error {
+	mgr.chunkRegistry.deletionLock.Lock()
+	defer mgr.chunkRegistry.deletionLock.Unlock()
+
+	mgr.chunkRegistry.statsLock.Lock()
+	defer mgr.chunkRegistry.statsLock.Unlock()
+
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+	lock := lockI.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
+
+	if err := mgr.chunkRegistry.UnregisterChunk(hash); err != nil {
+		log.Warnf("RemoveChunk: UnregisterChunk failed for %s: %v", hash, err)
+	}
+
+	return mgr.removeChunkFile(hash)
+}
+
+// removes the chunk from local disk. assumes chunk lock and deletionLock are held
+func (mgr *SnapshotManager) removeChunkFile(hash string) error {
 	chunkFilePath := mgr.GetChunkFilePath(hash)
 
 	// Check if file exists
