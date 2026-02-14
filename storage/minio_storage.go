@@ -110,3 +110,25 @@ func (m *MinioStorage) ListObjects(prefix string, recursive bool) ([]string, err
 	}
 	return objects, nil
 }
+
+func (m *MinioStorage) UploadFile(objectKey string, filePath string) error {
+	_, err := m.client.FPutObject(
+		context.Background(),
+		m.bucketName,
+		objectKey,
+		filePath,
+		minio.PutObjectOptions{},
+	)
+	return errors.Wrapf(err, "uploading file %s", filePath)
+}
+
+func (m *MinioStorage) DownloadFile(objectKey string, filePath string) error {
+	err := m.client.FGetObject(
+		context.Background(),
+		m.bucketName,
+		objectKey,
+		filePath,
+		minio.GetObjectOptions{},
+	)
+	return errors.Wrapf(err, "downloading object %s to %s", objectKey, filePath)
+}

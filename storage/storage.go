@@ -37,4 +37,10 @@ type ObjectStorage interface {
 
 	// ListObjects lists objects with a prefix
 	ListObjects(prefix string, recursive bool) ([]string, error)
+
+	// UploadFile uploads a file
+	UploadFile(objectKey string, filePath string) error
+
+	// DownloadFile downloads an object to a file
+	DownloadFile(objectKey string, filePath string) error
 }

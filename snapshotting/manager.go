@@ -1366,29 +1366,38 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 
 	// Download and store chunk
 	objectKey := mgr.getObjectKey(chunkPrefix, hash)
-	obj, err := mgr.storage.DownloadObject(objectKey)
-	if err != nil {
-		return nil, errors.Wrapf(err, "downloading chunk %s", hash)
-	}
-	defer obj.Close()
 
-	data, err := io.ReadAll(obj) // read object into memory
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading chunk %s", hash)
-	}
+	var data []byte
+	var err error
 
 	if !mgr.cleanChunks {
 		// Write to file
 		dir := filepath.Dir(chunkFilePath)
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			return nil, errors.Wrapf(err, "creating chunk directory %s", dir)
 		}
-		if err := os.WriteFile(chunkFilePath, data, 0644); err != nil {
-			return nil, errors.Wrapf(err, "writing chunk file %s", hash)
+		if err = mgr.storage.DownloadFile(objectKey, chunkFilePath); err != nil {
+			return nil, errors.Wrapf(err, "downloading chunk file %s", hash)
 		}
 
 		// Mark as downloaded
 		mgr.chunkRegistry.AddAccess(hash)
+
+		data, err = os.ReadFile(chunkFilePath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading chunk %s", hash)
+		}
+	} else {
+		obj, err := mgr.storage.DownloadObject(objectKey)
+		if err != nil {
+			return nil, errors.Wrapf(err, "downloading chunk %s", hash)
+		}
+		defer obj.Close()
+
+		data, err = io.ReadAll(obj) // read object into memory
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading chunk %s", hash)
+		}
 	}
 
 	if mgr.encryption {
@@ -1458,44 +1467,20 @@ func (mgr *SnapshotManager) GetChunkFilePath(hash string) string {
 
 // uploadFile uploads a single file to MinIO under the specified revision and file name.
 func (mgr *SnapshotManager) uploadFile(revision, filePath string) error {
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		return errors.Wrapf(err, "getting file info for %s", filePath)
-	}
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		return errors.Wrapf(err, "opening file %s", filePath)
-	}
-	defer file.Close()
-
 	objectKey := mgr.getObjectKey(revision, filepath.Base(filePath))
-	return mgr.storage.UploadObject(objectKey, file, fileInfo.Size())
+	return mgr.storage.UploadFile(objectKey, filePath)
 }
 
 // downloadFile Downloads a file from MinIO and save it to the specified path
 func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) error {
 	objectKey := mgr.getObjectKey(revision, fileName)
-	obj, err := mgr.storage.DownloadObject(objectKey)
-	if err != nil {
-		return err
-	}
-	defer obj.Close()
 
 	dir := filepath.Dir(filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		os.MkdirAll(dir, os.ModePerm)
 	}
-	outFile, err := os.Create(filePath)
-	if err != nil {
-		return errors.Wrap(err, "creating output file")
-	}
-	defer outFile.Close()
 
-	if _, err := io.Copy(outFile, obj); err != nil {
-		return errors.Wrap(err, "writing file")
-	}
-	return nil
+	return mgr.storage.DownloadFile(objectKey, filePath)
 }
 
 func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
