@@ -30,7 +30,7 @@ type ObjectStorage interface {
 	UploadObject(objectKey string, reader io.Reader, size int64) error
 
 	// DownloadObject downloads an object
-	DownloadObject(objectKey string) (io.ReadCloser, error)
+	DownloadObject(objectKey string) ([]byte, error)
 
 	// Exists checks if an object exists
 	Exists(objectKey string) (bool, error)

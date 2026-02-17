@@ -62,7 +62,7 @@ func (m *MinioStorage) UploadObject(objectKey string, reader io.Reader, size int
 	return errors.Wrapf(err, "uploading object %s", objectKey)
 }
 
-func (m *MinioStorage) DownloadObject(objectKey string) (io.ReadCloser, error) {
+func (m *MinioStorage) DownloadObject(objectKey string) ([]byte, error) {
 	obj, err := m.client.GetObject(
 		context.Background(),
 		m.bucketName,
@@ -72,7 +72,13 @@ func (m *MinioStorage) DownloadObject(objectKey string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting object %s", objectKey)
 	}
-	return obj, nil
+	defer obj.Close()
+
+	data, err := io.ReadAll(obj)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading object %s", objectKey)
+	}
+	return data, nil
 }
 
 func (m *MinioStorage) Exists(objectKey string) (bool, error) {

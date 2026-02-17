@@ -1388,15 +1388,9 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 			return nil, errors.Wrapf(err, "reading chunk %s", hash)
 		}
 	} else {
-		obj, err := mgr.storage.DownloadObject(objectKey)
+		data, err = mgr.storage.DownloadObject(objectKey)
 		if err != nil {
 			return nil, errors.Wrapf(err, "downloading chunk %s", hash)
-		}
-		defer obj.Close()
-
-		data, err = io.ReadAll(obj) // read object into memory
-		if err != nil {
-			return nil, errors.Wrapf(err, "reading chunk %s", hash)
 		}
 	}
 

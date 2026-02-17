@@ -24,14 +24,14 @@ package storage_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/storage"
-	"io"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func setupMinioClient(t *testing.T) *storage.MinioStorage {
@@ -83,11 +83,7 @@ func TestMinioStorage_UploadAndDownload(t *testing.T) {
 	require.NoError(t, err)
 
 	// Download
-	reader, err := storage.DownloadObject(objectKey)
-	require.NoError(t, err)
-	defer reader.Close()
-
-	downloaded, err := io.ReadAll(reader)
+	downloaded, err := storage.DownloadObject(objectKey)
 	require.NoError(t, err)
 	require.Equal(t, content, downloaded)
 }

@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"io"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -106,15 +105,14 @@ func processSnapshot(st storage.ObjectStorage, mgr *snapshotting.SnapshotManager
 
 	// 1. Get Image Name
 	infoKey := fmt.Sprintf("%s/info_file", snapID)
-	infoReader, err := st.DownloadObject(infoKey)
+	infoData, err := st.DownloadObject(infoKey)
 	if err != nil {
 		log.Warnf("Skipping %s: no info_file: %v", snapID, err)
 		return
 	}
-	defer infoReader.Close()
 
 	var tempSnap snapshotting.Snapshot
-	dec := gob.NewDecoder(infoReader)
+	dec := gob.NewDecoder(bytes.NewReader(infoData))
 	if err := dec.Decode(&tempSnap); err != nil {
 		log.Warnf("Skipping %s: failed to decode info_file: %v", snapID, err)
 		return
@@ -123,16 +121,9 @@ func processSnapshot(st storage.ObjectStorage, mgr *snapshotting.SnapshotManager
 
 	// 2. Process Recipe
 	recipeKey := fmt.Sprintf("%s/recipe_file", snapID)
-	recipeReader, err := st.DownloadObject(recipeKey)
+	recipeData, err := st.DownloadObject(recipeKey)
 	if err != nil {
 		log.Warnf("Skipping %s: no recipe_file: %v", snapID, err)
-		return
-	}
-
-	recipeData, err := io.ReadAll(recipeReader)
-	recipeReader.Close()
-	if err != nil {
-		log.Warnf("Skipping %s: failed to read recipe: %v", snapID, err)
 		return
 	}
 
@@ -178,16 +169,9 @@ func processSnapshot(st storage.ObjectStorage, mgr *snapshotting.SnapshotManager
 
 				// log.Debugf("Migrating chunk %s -> %s", currentHashStr, newHashStr)
 
-				obj, err := st.DownloadObject(oldChunkPath)
+				data, err := st.DownloadObject(oldChunkPath)
 				if err != nil {
 					log.Warnf("Failed to download old chunk %s: %v", oldChunkPath, err)
-					continue
-				}
-
-				data, err := io.ReadAll(obj)
-				obj.Close()
-				if err != nil {
-					log.Warnf("Failed to read old chunk %s: %v", oldChunkPath, err)
 					continue
 				}
 
