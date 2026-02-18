@@ -1496,13 +1496,33 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 	return mgr.storage.DownloadFile(objectKey, filePath)
 }
 
+func (mgr *SnapshotManager) fastDownloadFile(revision, filePath, fileName string) error {
+	objectKey := mgr.getObjectKey(revision, fileName)
+
+	dir := filepath.Dir(filePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.MkdirAll(dir, os.ModePerm)
+	}
+
+	data, err := mgr.storage.DownloadObject(objectKey)
+	if err != nil {
+		return errors.Wrapf(err, "downloading object %s for fast download", objectKey)
+	}
+
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return errors.Wrapf(err, "writing file %s for fast download", filePath)
+	}
+
+	return nil
+}
+
 func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 	log.Debugf("start downloadWorkingSet for %s", snap.id)
 
 	if mgr.optimizeWS && mgr.chunkSize == 4096 {
 		wsContentPath := snap.GetWSContentFilePath()
 		// Try to download the monolithic file
-		err := mgr.downloadFile(snap.GetId(), wsContentPath, filepath.Base(wsContentPath))
+		err := mgr.fastDownloadFile(snap.GetId(), wsContentPath, filepath.Base(wsContentPath))
 		if err == nil {
 			log.Debugf("Downloaded monolithic working set content for %s", snap.id)
 			return nil
