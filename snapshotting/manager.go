@@ -1056,16 +1056,8 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 
 				encryptedData := []byte{}
 				if mgr.encryption {
-					block, err := aes.NewCipher(EncryptionKey[:16])
-					if err != nil {
-						errCh <- fmt.Errorf("creating cipher for chunk: %w", err)
-						lock.Unlock()
-						mgr.chunkRegistry.deletionLock.RUnlock()
-						break
-					}
-					stream := cipher.NewCTR(block, make([]byte, 16))
 					encryptedData = make([]byte, len(job.data))
-					stream.XORKeyStream(encryptedData, job.data)
+					EncryptData(job.data, encryptedData, EncryptionKey[:16])
 				} else {
 					encryptedData = job.data
 				}
@@ -1346,17 +1338,7 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 			mgr.chunkRegistry.AddAccess(hash)
 
 			if mgr.encryption {
-				block, err := aes.NewCipher(EncryptionKey[:16])
-				if err != nil {
-					return nil, fmt.Errorf("failed to create cipher: %w", err)
-				}
-
-				if len(data) < aes.BlockSize {
-					return nil, fmt.Errorf("chunk content too short for IV")
-				}
-
-				stream := cipher.NewCTR(block, make([]byte, 16))
-				stream.XORKeyStream(data, data)
+				EncryptData(data, data, EncryptionKey[:16])
 			}
 
 			return data, nil
@@ -1367,48 +1349,65 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	// Download and store chunk
 	objectKey := mgr.getObjectKey(chunkPrefix, hash)
 
-	var data []byte
-	var err error
+	data, err := mgr.storage.DownloadObject(objectKey)
+	if err != nil {
+		return nil, errors.Wrapf(err, "downloading chunk %s", hash)
+	}
 
 	if !mgr.cleanChunks {
-		// Write to file
-		dir := filepath.Dir(chunkFilePath)
-		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
-			return nil, errors.Wrapf(err, "creating chunk directory %s", dir)
-		}
-		if err = mgr.storage.DownloadFile(objectKey, chunkFilePath); err != nil {
-			return nil, errors.Wrapf(err, "downloading chunk file %s", hash)
-		}
+		// Write to file in background
+		go func(data []byte, hash string) {
+			// Acquire lock for this specific chunk since we're writing to disk/updating registry
+			mgr.chunkRegistry.deletionLock.RLock()
+			defer mgr.chunkRegistry.deletionLock.RUnlock()
 
-		// Mark as downloaded
-		mgr.chunkRegistry.AddAccess(hash)
+			lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+			lock := lockI.(*sync.Mutex)
+			lock.Lock()
+			defer lock.Unlock()
 
-		data, err = os.ReadFile(chunkFilePath)
-		if err != nil {
-			return nil, errors.Wrapf(err, "reading chunk %s", hash)
-		}
-	} else {
-		data, err = mgr.storage.DownloadObject(objectKey)
-		if err != nil {
-			return nil, errors.Wrapf(err, "downloading chunk %s", hash)
-		}
+			// Double check if already exists/written by another thread
+			if mgr.chunkRegistry.ChunkExists(hash) {
+				return
+			}
+
+			chunkFilePath := mgr.GetChunkFilePath(hash)
+			dir := filepath.Dir(chunkFilePath)
+			if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+				log.Errorf("creating chunk directory %s: %v", dir, err)
+				return
+			}
+
+			if err := os.WriteFile(chunkFilePath, data, 0644); err != nil {
+				log.Errorf("writing chunk file %s: %v", hash, err)
+				return
+			}
+
+			// Mark as downloaded
+			mgr.chunkRegistry.AddAccess(hash)
+		}(data, hash)
 	}
 
 	if mgr.encryption {
-		block, err := aes.NewCipher(EncryptionKey[:16])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create cipher: %w", err)
-		}
-
-		if len(data) < aes.BlockSize {
-			return nil, fmt.Errorf("chunk content too short for IV")
-		}
-
-		stream := cipher.NewCTR(block, make([]byte, 16))
-		stream.XORKeyStream(data, data)
+		EncryptData(data, data, EncryptionKey[:16])
 	}
 
 	return data, nil
+}
+
+func EncryptData(data, out []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cipher: %w", err)
+	}
+
+	if len(data) < aes.BlockSize {
+		return nil, fmt.Errorf("chunk content too short for IV")
+	}
+
+	stream := cipher.NewCTR(block, make([]byte, 16))
+	stream.XORKeyStream(out, data)
+	return out, nil
 }
 
 func (mgr *SnapshotManager) DownloadChunk(hash string) error {

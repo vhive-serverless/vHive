@@ -24,13 +24,14 @@ package snapshotting_test
 
 import (
 	"context"
+	"os"
+	"testing"
+
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/snapshotting"
 	"github.com/vhive-serverless/vhive/storage"
-	"os"
-	"testing"
 )
 
 func setupMinioClient(t *testing.T) *storage.MinioStorage {
@@ -64,7 +65,7 @@ func TestSnapshotMinioUploadDownload(t *testing.T) {
 	image := "testImage"
 
 	storage := setupMinioClient(t)
-	manager := snapshotting.NewSnapshotManager(snapshotsDir, storage, false)
+	manager := snapshotting.NewSnapshotManager(snapshotsDir, storage, false, false, false, false, false, 0, 1000, "none", 1, false, false)
 
 	// Test snapshot doesn't exist remotely before upload
 	exists, err := manager.SnapshotExists(revision)

@@ -24,13 +24,14 @@ package snapshotting_test
 
 import (
 	"fmt"
+	"os"
+	"sync"
+	"testing"
+
 	ctrdlog "github.com/containerd/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/snapshotting"
-	"os"
-	"sync"
-	"testing"
 )
 
 const snapshotsDir = "/fccd/test/snapshots"
@@ -71,7 +72,7 @@ func testSnapshotManager(t *testing.T, mgr *snapshotting.SnapshotManager, revisi
 
 func TestSnapshotManagerSingle(t *testing.T) {
 	// Create snapshot manager
-	mgr := snapshotting.NewSnapshotManager(snapshotsDir, nil, false)
+	mgr := snapshotting.NewSnapshotManager(snapshotsDir, nil, false, false, false, false, false, 0, 1000, "none", 1, false, false)
 
 	revision := "myrevision-1" // Snap id = revision
 	imageName := "testImage"
@@ -81,7 +82,7 @@ func TestSnapshotManagerSingle(t *testing.T) {
 
 func TestSnapshotManagerConcurrent(t *testing.T) {
 	// Create snapshot manager
-	mgr := snapshotting.NewSnapshotManager(snapshotsDir, nil, false)
+	mgr := snapshotting.NewSnapshotManager(snapshotsDir, nil, false, false, false, false, false, 0, 1000, "none", 1, false, false)
 
 	var wg sync.WaitGroup
 	concurrency := 20

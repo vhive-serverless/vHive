@@ -25,6 +25,7 @@ package storage
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/pkg/errors"
@@ -63,21 +64,66 @@ func (m *MinioStorage) UploadObject(objectKey string, reader io.Reader, size int
 }
 
 func (m *MinioStorage) DownloadObject(objectKey string) ([]byte, error) {
-	obj, err := m.client.GetObject(
+	stat, err := m.client.StatObject(
 		context.Background(),
 		m.bucketName,
 		objectKey,
-		minio.GetObjectOptions{},
+		minio.StatObjectOptions{},
 	)
-	if err != nil {
+
+	data := make([]byte, stat.Size)
+
+	concurrency := 10
+	if stat.Size < 1024*1024 { // For small objects, use single connection to avoid overhead
+		concurrency = 1
+	}
+
+	fail := false
+	wg := sync.WaitGroup{}
+	for i := range concurrency {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			start := int64(i) * (stat.Size / int64(concurrency))
+			end := start + (stat.Size / int64(concurrency))
+			if i == concurrency-1 {
+				end = stat.Size
+			}
+
+			opts := minio.GetObjectOptions{}
+			opts.SetRange(start, end-1)
+
+			obj, err := m.client.GetObject(
+				context.Background(),
+				m.bucketName,
+				objectKey,
+				opts,
+			)
+			if err != nil {
+				fail = true
+				return
+			}
+			defer obj.Close()
+
+			n, err := obj.Read(data[start:end])
+			if err != nil && err != io.EOF || n != int(end-start) {
+				fail = true
+				return
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	if fail {
 		return nil, errors.Wrapf(err, "getting object %s", objectKey)
 	}
-	defer obj.Close()
 
-	data, err := io.ReadAll(obj)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading object %s", objectKey)
-	}
+	// data, err := io.ReadAll(obj)
+	// if err != nil {
+	// 	return nil, errors.Wrapf(err, "reading object %s", objectKey)
+	// }
 	return data, nil
 }
 
