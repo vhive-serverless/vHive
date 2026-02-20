@@ -1,5 +1,6 @@
 {
     "ghcr.io/vhive-serverless/invitro_trace_function:latest": "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
+    "": "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
     "docker.io/vhiveease/fibonacci-go-mod:latest": "ghcr.io/leokondrashov/fibonacci-go-mod:esgz",
     "docker.io/vhiveease/fibonacci-nodejs-mod:latest": "ghcr.io/leokondrashov/fibonacci-nodejs-mod:esgz",
     "docker.io/vhiveease/fibonacci-python-mod:latest": "ghcr.io/leokondrashov/fibonacci-python-mod:esgz",
@@ -17,5 +18,8 @@
     "docker.io/vhiveease/onlineshop-adservice:latest": "ghcr.io/leokondrashov/onlineshop-adservice:esgz",
     "docker.io/vhiveease/onlineshop-emailservice:latest": "ghcr.io/leokondrashov/onlineshop-emailservice:esgz",
     "docker.io/vhiveease/onlineshop-cartservice:latest": "ghcr.io/leokondrashov/onlineshop-cartservice:esgz",
-    "": "ghcr.io/leokondrashov/auth-go:esgz"
+    "docker.io/vhiveease/onlineshop-shippingservice:latest": "ghcr.io/leokondrashov/onlineshop-shippingservice:esgz",
+    "docker.io/vhiveease/onlineshop-productcatalogservice:latest": "ghcr.io/leokondrashov/onlineshop-productcatalogservice:esgz",
+    "docker.io/vhiveease/onlineshop-paymentservice:latest": "ghcr.io/leokondrashov/onlineshop-paymentservice:esgz",
+    "docker.io/vhiveease/onlineshop-currencyservice:latest": "ghcr.io/leokondrashov/onlineshop-currencyservice:esgz"
 }
