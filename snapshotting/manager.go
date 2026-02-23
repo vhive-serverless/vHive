@@ -1520,14 +1520,7 @@ func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 	log.Debugf("start downloadWorkingSet for %s", snap.id)
 
 	if mgr.optimizeWS && mgr.chunkSize == 4096 {
-		wsContentPath := snap.GetWSContentFilePath()
-		// Try to download the monolithic file
-		err := mgr.fastDownloadFile(snap.GetId(), wsContentPath, filepath.Base(wsContentPath))
-		if err == nil {
-			log.Debugf("Downloaded monolithic working set content for %s", snap.id)
-			return nil
-		}
-		log.Warnf("Failed to download monolithic working set content for %s, falling back to chunked download: %v", snap.id, err)
+		return nil
 	}
 
 	wsFile, err := os.Open(snap.GetWSFilePath())
@@ -1612,6 +1605,42 @@ func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
 	log.Infof("Finished downloading working set for snapshot %s, %d chunks downloaded", snap.GetId(), len(chunksToLoad))
 
 	return nil
+}
+
+func (mgr *SnapshotManager) GetWorkingSetContent(snap *Snapshot) ([]byte, error) {
+	wsContentPath := snap.GetWSContentFilePath()
+
+	// Check if file exists on disk
+	if stat, err := os.Stat(wsContentPath); err == nil && stat != nil {
+		log.Debugf("Loading existing WS content file from %s", wsContentPath)
+		data, err := os.ReadFile(wsContentPath)
+		if err == nil {
+			return data, nil
+		}
+		log.Warnf("Failed to read existing WS content file %s: %v", wsContentPath, err)
+	}
+
+	// Download from storage
+	objectKey := mgr.getObjectKey(snap.GetId(), filepath.Base(wsContentPath))
+	data, err := mgr.storage.DownloadObject(objectKey)
+	if err != nil {
+		return nil, errors.Wrapf(err, "downloading object %s for fast download", objectKey)
+	}
+
+	// Persist in background
+	if !mgr.cleanChunks {
+		go func() {
+			dir := filepath.Dir(wsContentPath)
+			if _, err := os.Stat(dir); os.IsNotExist(err) {
+				os.MkdirAll(dir, os.ModePerm)
+			}
+			if err := os.WriteFile(wsContentPath, data, 0644); err != nil {
+				log.Warnf("Failed to write WS content file %s in background: %v", wsContentPath, err)
+			}
+		}()
+	}
+
+	return data, nil
 }
 
 // SnapshotExists checks if all required snapshot files exist in remote storage

@@ -628,7 +628,7 @@ type Runtime struct {
 }
 
 // NewRuntime creates a new runtime
-func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, wsContentFile *os.File, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
+func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, wsContent []byte, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
 	fileInfo, err := backingFile.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file metadata: %w", err)
@@ -676,24 +676,9 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, wsCon
 		}
 	}
 
-	var wsContentBytes []byte
 	var wsContentPtr uintptr
-	if wsContentFile != nil {
-		info, err := wsContentFile.Stat()
-		if err != nil {
-			return nil, fmt.Errorf("failed to stat working set content file: %w", err)
-		}
-		wsContentBytes, err = unix.Mmap(
-			int(wsContentFile.Fd()),
-			0,
-			int(info.Size()),
-			unix.PROT_READ,
-			unix.MAP_PRIVATE|unix.MAP_POPULATE,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("mmap on working set content file failed: %w", err)
-		}
-		wsContentPtr = uintptr(unsafe.Pointer(&wsContentBytes[0]))
+	if len(wsContent) > 0 {
+		wsContentPtr = uintptr(unsafe.Pointer(&wsContent[0]))
 	}
 
 	backingMemoryPtr := uintptr(unsafe.Pointer(&backingMemory[0]))
@@ -708,7 +693,7 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, wsCon
 		backingMemory:      backingMemoryPtr,
 		backingMemoryBytes: backingMemory,
 		backingMemorySize:  backingMemorySize,
-		wsContentBytes:     wsContentBytes,
+		wsContentBytes:     wsContent,
 		uffds:              make(map[int]*UffdHandler),
 		streamFd:           -1,
 		tracer:             tracer,
@@ -803,12 +788,6 @@ func (r *Runtime) FreeBackingFile() {
 	if err != nil {
 		log.Fatalf("Failed to unmap memory: %v", err)
 	}
-	if len(r.wsContentBytes) > 0 {
-		err := unix.Munmap(r.wsContentBytes)
-		if err != nil {
-			log.Fatalf("Failed to unmap working set content: %v", err)
-		}
-	}
 }
 
 // Helper functions
@@ -864,7 +843,7 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 	return body, -1, nil
 }
 
-func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, wsFilePath string, wsContentFilePath string, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) error {
+func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, wsFilePath string, wsContent []byte, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) error {
 	log.Debugf("Starting handler at %s", uffdSockPath)
 
 	// Open the memory file
@@ -914,21 +893,8 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 		}
 	}
 
-	var wsContentFile *os.File
-	if wsContentFilePath != "" {
-		// If working set content file path is provided, check if it exists and load it
-		if stat, err := os.Stat(wsContentFilePath); err == nil && stat != nil {
-			log.Debugf("Loading existing WS content file from %s", wsContentFilePath)
-			wsContentFile, err = os.Open(wsContentFilePath)
-			if err != nil {
-				return fmt.Errorf("cannot open WS content file: %w", err)
-			}
-			defer wsContentFile.Close()
-		}
-	}
-
 	// Create runtime
-	runtime, err := NewRuntime(conn, file, wsFile, wsContentFile, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
+	runtime, err := NewRuntime(conn, file, wsFile, wsContent, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
 	if err != nil {
 		return fmt.Errorf("failed to create runtime: %w", err)
 	}

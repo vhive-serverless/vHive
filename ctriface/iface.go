@@ -1072,16 +1072,17 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			memPath = snap.GetRecipeFilePath()
 		}
 		wsPath := snap.GetWSFilePath()
-		wsContentPath := snap.GetWSContentFilePath()
+		var wsContent []byte
 		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil || !o.isWSPulling || snap.GetId() == "base" {
 			wsPath = ""
-			wsContentPath = ""
-		}
-		if !o.isWSCoalescing {
-			wsContentPath = ""
+		} else if o.isWSCoalescing {
+			wsContent, err = o.snapshotManager.GetWorkingSetContent(snap)
+			if err != nil {
+				logger.Warnf("Failed to get working set content: %v", err)
+			}
 		}
 		go func() {
-			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, wsContentPath, o.isLazyMode, o.snapshotManager, o.threads)
+			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, wsContent, o.isLazyMode, o.snapshotManager, o.threads)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil {
