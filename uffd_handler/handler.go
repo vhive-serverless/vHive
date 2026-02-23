@@ -1,6 +1,7 @@
 package uffd_handler
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/csv"
 	"encoding/hex"
@@ -613,7 +614,6 @@ func (h *UffdHandler) Continue(addr uintptr) bool {
 // Runtime manages the UFFD handler runtime
 type Runtime struct {
 	stream             *net.UnixConn
-	backingFile        *os.File
 	backingMemory      uintptr
 	backingMemoryBytes []byte
 	backingMemorySize  uint64
@@ -628,25 +628,12 @@ type Runtime struct {
 }
 
 // NewRuntime creates a new runtime
-func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, wsContent []byte, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
-	fileInfo, err := backingFile.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get file metadata: %w", err)
+func NewRuntime(conn *net.UnixConn, backingMemory []byte, wsData []byte, wsContent []byte, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
+	if len(backingMemory) == 0 {
+		return nil, fmt.Errorf("backing memory content is empty")
 	}
 
-	backingMemorySize := uint64(fileInfo.Size())
-
-	// Memory map the backing file
-	backingMemory, err := unix.Mmap(
-		int(backingFile.Fd()),
-		0,
-		int(backingMemorySize),
-		unix.PROT_READ,
-		unix.MAP_PRIVATE|unix.MAP_POPULATE,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("mmap on backing file failed: %w", err)
-	}
+	backingMemorySize := uint64(len(backingMemory))
 
 	ws := make([]uint64, 0)
 	if lazy {
@@ -654,9 +641,9 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, wsCon
 		backingMemorySize *= uint64(snapMgr.GetChunkSize()) / uint64(md5.Size)
 	}
 
-	if wsFile != nil {
+	if len(wsData) > 0 {
 		// Read working set file to pre-map pages
-		scanner := csv.NewReader(wsFile)
+		scanner := csv.NewReader(bytes.NewReader(wsData))
 		records, err := scanner.ReadAll()
 		if err != nil {
 			return nil, fmt.Errorf("failed to read working set file: %w", err)
@@ -689,7 +676,6 @@ func NewRuntime(conn *net.UnixConn, backingFile *os.File, wsFile *os.File, wsCon
 
 	rt := &Runtime{
 		stream:             conn,
-		backingFile:        backingFile,
 		backingMemory:      backingMemoryPtr,
 		backingMemoryBytes: backingMemory,
 		backingMemorySize:  backingMemorySize,
@@ -784,10 +770,7 @@ func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 }
 
 func (r *Runtime) FreeBackingFile() {
-	err := unix.Munmap(r.backingMemoryBytes)
-	if err != nil {
-		log.Fatalf("Failed to unmap memory: %v", err)
-	}
+	r.backingMemoryBytes = nil
 }
 
 // Helper functions
@@ -843,15 +826,8 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 	return body, -1, nil
 }
 
-func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath string, wsFilePath string, wsContent []byte, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) error {
+func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string, wsData []byte, wsContent []byte, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) error {
 	log.Debugf("Starting handler at %s", uffdSockPath)
-
-	// Open the memory file
-	file, err := os.Open(memFilePath)
-	if err != nil {
-		return fmt.Errorf("cannot open memfile: %w", err)
-	}
-	defer file.Close()
 
 	// Create and bind Unix domain socket
 	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: uffdSockPath, Net: "unix"})
@@ -878,23 +854,8 @@ func StartUffdHandler(uffdSockPath string, memFilePath string, traceFilePath str
 		}
 	}()
 
-	var wsFile *os.File
-	if wsFilePath != "" {
-		// If working set file path is provided, check if it exists and load it
-		if stat, err := os.Stat(wsFilePath); err == nil && stat != nil {
-			log.Debugf("Loading existing WS file from %s", wsFilePath)
-			wsFile, err = os.Open(wsFilePath)
-			if err != nil {
-				return fmt.Errorf("cannot open WS file: %w", err)
-			}
-			defer wsFile.Close()
-		} else {
-			log.Errorf("Failed to open WS file %s: %v", wsFilePath, err)
-		}
-	}
-
 	// Create runtime
-	runtime, err := NewRuntime(conn, file, wsFile, wsContent, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
+	runtime, err := NewRuntime(conn, memData, wsData, wsContent, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
 	if err != nil {
 		return fmt.Errorf("failed to create runtime: %w", err)
 	}

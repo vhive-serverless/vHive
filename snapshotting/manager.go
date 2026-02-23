@@ -1182,43 +1182,61 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 		}
 	}()
 
-	// Download and save the info file (manifest)
 	infoPath := snap.GetInfoFilePath()
-	infoName := filepath.Base(infoPath)
-	if err := mgr.downloadFile(revision, infoPath, infoName); err != nil {
-		return nil, errors.Wrapf(err, "downloading manifest for snapshot %s", revision)
+	type downloadJob struct {
+		name string
+		run  func() error
+	}
+
+	jobs := []downloadJob{
+		{
+			name: "manifest",
+			run: func() error {
+				return mgr.downloadFile(revision, infoPath, filepath.Base(infoPath))
+			},
+		},
+		{
+			name: "snapshot",
+			run: func() error {
+				snapshotPath := snap.GetSnapshotFilePath()
+				return mgr.downloadFile(revision, snapshotPath, filepath.Base(snapshotPath))
+			},
+		},
+	}
+
+	if !mgr.lazy {
+		jobs = append(jobs, downloadJob{
+			name: "memory",
+			run: func() error {
+				return mgr.downloadMemFile(snap)
+			},
+		})
+	}
+
+	errCh := make(chan error, len(jobs))
+	var wg sync.WaitGroup
+	for _, job := range jobs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if jobErr := job.run(); jobErr != nil {
+				errCh <- errors.Wrapf(jobErr, "downloading %s for snapshot %s", job.name, revision)
+			}
+		}()
+	}
+	wg.Wait()
+	close(errCh)
+
+	for downloadErr := range errCh {
+		if downloadErr != nil {
+			return nil, downloadErr
+		}
 	}
 
 	if err := snap.LoadSnapInfo(infoPath); err != nil {
 		return nil, errors.Wrapf(err, "loading manifest from %s", infoPath)
 	}
 
-	// Download remaining snapshot files
-	files := []string{
-		snap.GetSnapshotFilePath(),
-		// snap.GetMemFilePath(),
-	}
-	for _, filePath := range files {
-		fileName := filepath.Base(filePath)
-		if err := mgr.downloadFile(revision, filePath, fileName); err != nil {
-			return nil, errors.Wrapf(err, "downloading file %s", fileName)
-		}
-	}
-
-	if found, err := mgr.storage.Exists(mgr.getObjectKey(snap.GetId(), filepath.Base(snap.GetWSFilePath()))); err == nil && found {
-		// Download working set file, if it exists
-		wsFilePath := snap.GetWSFilePath()
-		wsFileName := filepath.Base(wsFilePath)
-		if err := mgr.downloadFile(snap.GetId(), wsFilePath, wsFileName); err != nil {
-			return nil, errors.Wrapf(err, "downloading working set file for lazy chunked download")
-		}
-		log.Infof("Downloaded working set file for snapshot %s", snap.GetId())
-	}
-
-	err = mgr.downloadMemFile(snap)
-	if err != nil {
-		return nil, errors.Wrapf(err, "downloading memory file for snapshot %s", revision)
-	}
 	log.Debug("Finished downloading memfile for revision " + revision)
 	// stat, _ := os.Stat(snap.GetMemFilePath())
 	// log.Infof("Downloaded memory file for snapshot %s, size is %d", snap.GetId(), stat.Size())
@@ -1243,17 +1261,6 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 	recipeFileName := filepath.Base(recipeFilePath)
 	if err := mgr.downloadFile(snap.GetId(), recipeFilePath, recipeFileName); err != nil {
 		return errors.Wrapf(err, "downloading recipe file for chunked download")
-	}
-	if mgr.lazy {
-		if !mgr.wsPulling {
-			return nil // nothing more to do in lazy mode without WS pulling
-		}
-		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat.Size() == 0 {
-			log.Infof("No working set file for snapshot %s, skipping WS pulling", snap.GetId())
-			return nil // nothing more to do if no working set file
-		}
-
-		return mgr.downloadWorkingSet(snap)
 	}
 
 	outFile, err := os.Create(snap.GetMemFilePath())
@@ -1496,148 +1503,53 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 	return mgr.storage.DownloadFile(objectKey, filePath)
 }
 
-func (mgr *SnapshotManager) fastDownloadFile(revision, filePath, fileName string) error {
-	objectKey := mgr.getObjectKey(revision, fileName)
-
-	dir := filepath.Dir(filePath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		os.MkdirAll(dir, os.ModePerm)
-	}
-
-	data, err := mgr.storage.DownloadObject(objectKey)
-	if err != nil {
-		return errors.Wrapf(err, "downloading object %s for fast download", objectKey)
-	}
-
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		return errors.Wrapf(err, "writing file %s for fast download", filePath)
-	}
-
-	return nil
-}
-
-func (mgr *SnapshotManager) downloadWorkingSet(snap *Snapshot) error {
-	log.Debugf("start downloadWorkingSet for %s", snap.id)
-
-	if mgr.optimizeWS && mgr.chunkSize == 4096 {
-		return nil
-	}
-
-	wsFile, err := os.Open(snap.GetWSFilePath())
-	if err != nil {
-		return errors.Wrapf(err, "opening working set file for lazy chunked download")
-	}
-	defer wsFile.Close()
-
-	wsPages, err := io.ReadAll(wsFile)
-	if err != nil {
-		return errors.Wrapf(err, "reading working set file for lazy chunked download")
-	}
-
-	recipeFile, err := os.Open(snap.GetRecipeFilePath())
-	if err != nil {
-		return errors.Wrapf(err, "opening recipe file for lazy chunked download")
-	}
-	defer recipeFile.Close()
-
-	recipe, err := io.ReadAll(recipeFile)
-	if err != nil {
-		return errors.Wrapf(err, "reading recipe file for lazy chunked download")
-	}
-
-	// Parse working set pages (skip first entry which is header/total count)
-	lines := strings.Split(string(wsPages), "\n")
-	if len(lines) <= 1 {
-		return errors.New("working set file is empty or invalid")
-	}
-
-	chunksToLoad := make(map[string]bool)
-	for _, line := range lines[1:] {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		// Parse page offset from working set
-		var pageOffset uint64
-		if _, err := fmt.Sscanf(line, "%d", &pageOffset); err != nil {
-			continue // Skip invalid lines
-		}
-
-		// Calculate which chunk this page belongs to
-		byteOffset := pageOffset * 4096 // Assuming 4KB pages
-		chunkIndex := byteOffset / mgr.chunkSize
-
-		// Get chunk hash from recipe
-		hashStart := int(chunkIndex) * md5.Size
-		hashEnd := hashStart + md5.Size
-		if hashEnd > len(recipe) {
-			continue // Page is beyond recipe bounds
-		}
-
-		hash := hex.EncodeToString(recipe[hashStart:hashEnd])
-		chunksToLoad[hash] = true
-	}
-
-	var wg sync.WaitGroup
-	jobs := make(chan string, len(chunksToLoad))
-
-	for w := 0; w < mgr.threads; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for hash := range jobs {
-				err := mgr.DownloadChunk(hash)
-				if err != nil {
-					log.Printf("Error downloading chunk %s: %v", hash, err)
-					continue
-				}
-			}
-		}()
-	}
-
-	for hash := range chunksToLoad {
-		jobs <- hash
-	}
-	close(jobs)
-
-	wg.Wait()
-	log.Infof("Finished downloading working set for snapshot %s, %d chunks downloaded", snap.GetId(), len(chunksToLoad))
-
-	return nil
-}
-
 func (mgr *SnapshotManager) GetWorkingSetContent(snap *Snapshot) ([]byte, error) {
-	wsContentPath := snap.GetWSContentFilePath()
+	return mgr.GetSnapshotFileContent(snap, snap.GetWSContentFilePath())
+}
 
-	// Check if file exists on disk
-	if stat, err := os.Stat(wsContentPath); err == nil && stat != nil {
-		log.Debugf("Loading existing WS content file from %s", wsContentPath)
-		data, err := os.ReadFile(wsContentPath)
+func (mgr *SnapshotManager) GetWorkingSetPages(snap *Snapshot) ([]byte, error) {
+	return mgr.GetSnapshotFileContent(snap, snap.GetWSFilePath())
+}
+
+func (mgr *SnapshotManager) GetUffdMemoryContent(snap *Snapshot, lazy bool) ([]byte, error) {
+	if lazy {
+		return mgr.GetSnapshotFileContent(snap, snap.GetRecipeFilePath())
+	}
+	return mgr.GetSnapshotFileContent(snap, snap.GetMemFilePath())
+}
+
+func (mgr *SnapshotManager) GetSnapshotFileContent(snap *Snapshot, localPath string) ([]byte, error) {
+	return mgr.getFileContent(snap.GetId(), localPath)
+}
+
+func (mgr *SnapshotManager) getFileContent(revision, localPath string) ([]byte, error) {
+	if stat, err := os.Stat(localPath); err == nil && stat != nil {
+		data, err := os.ReadFile(localPath)
 		if err == nil {
 			return data, nil
 		}
-		log.Warnf("Failed to read existing WS content file %s: %v", wsContentPath, err)
+		log.Warnf("Failed to read local file %s: %v", localPath, err)
 	}
 
-	// Download from storage
-	objectKey := mgr.getObjectKey(snap.GetId(), filepath.Base(wsContentPath))
+	objectKey := mgr.getObjectKey(revision, filepath.Base(localPath))
 	data, err := mgr.storage.DownloadObject(objectKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "downloading object %s for fast download", objectKey)
 	}
 
-	// Persist in background
 	if !mgr.cleanChunks {
-		go func() {
-			dir := filepath.Dir(wsContentPath)
+		go func(path string, content []byte) {
+			dir := filepath.Dir(path)
 			if _, err := os.Stat(dir); os.IsNotExist(err) {
-				os.MkdirAll(dir, os.ModePerm)
+				if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+					log.Warnf("Failed to create directory %s for background persist: %v", dir, err)
+					return
+				}
 			}
-			if err := os.WriteFile(wsContentPath, data, 0644); err != nil {
-				log.Warnf("Failed to write WS content file %s in background: %v", wsContentPath, err)
+			if err := os.WriteFile(path, content, 0644); err != nil {
+				log.Warnf("Failed to write file %s in background: %v", path, err)
 			}
-		}()
+		}(localPath, data)
 	}
 
 	return data, nil

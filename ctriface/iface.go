@@ -1067,29 +1067,48 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		// if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
 		// 	logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		// }
-		memPath := snap.GetMemFilePath()
-		if o.isLazyMode {
-			memPath = snap.GetRecipeFilePath()
+		tStart = time.Now()
+		memData, err := o.snapshotManager.GetUffdMemoryContent(snap, o.isLazyMode)
+		loadSnapshotMetric.MetricMap[metrics.GetUffdMemoryContent] = metrics.ToUS(time.Since(tStart))
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "loading memory content for UFFD")
 		}
-		wsPath := snap.GetWSFilePath()
+
+		memPathForTrace := snap.GetMemFilePath()
+		if o.isLazyMode {
+			memPathForTrace = snap.GetRecipeFilePath()
+		}
+
+		var wsPages []byte
 		var wsContent []byte
-		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil || !o.isWSPulling || snap.GetId() == "base" {
-			wsPath = ""
-		} else if o.isWSCoalescing {
-			tStart := time.Now()
-			wsContent, err = o.snapshotManager.GetWorkingSetContent(snap)
+		hasWSPagesFile := false
+		if o.isWSPulling && snap.GetId() != "base" {
+			tStart = time.Now()
+			wsPages, err = o.snapshotManager.GetWorkingSetPages(snap)
+			loadSnapshotMetric.MetricMap[metrics.GetWorkingSetPages] = metrics.ToUS(time.Since(tStart))
 			if err != nil {
-				logger.Warnf("Failed to get working set content: %v", err)
+				logger.Warnf("Failed to get working set pages: %v", err)
+				wsPages = nil
+			} else {
+				hasWSPagesFile = true
 			}
-			loadSnapshotMetric.MetricMap[metrics.GetWorkingSetContent] = metrics.ToUS(time.Since(tStart))
+
+			if o.isWSCoalescing {
+				tStart = time.Now()
+				wsContent, err = o.snapshotManager.GetWorkingSetContent(snap)
+				if err != nil {
+					logger.Warnf("Failed to get working set content: %v", err)
+				}
+				loadSnapshotMetric.MetricMap[metrics.GetWorkingSetContent] = metrics.ToUS(time.Since(tStart))
+			}
 		}
 		go func() {
-			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, wsContent, o.isLazyMode, o.snapshotManager, o.threads)
+			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, o.isLazyMode, o.snapshotManager, o.threads)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
-			} else if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil {
+			} else if !hasWSPagesFile {
 				logger.Debugf("Uploading WS file for snap %s after UFFD handler finished", snap.GetId())
-				os.Rename(memPath+".touched", snap.GetWSFilePath())
+				os.Rename(memPathForTrace+".touched", snap.GetWSFilePath())
 				o.snapshotManager.UploadWorkingSet(snap.GetId())
 				// o.snapshotManager.DeleteSnapshot(snap.GetId())
 				// o.snapshotManager.CleanChunks()

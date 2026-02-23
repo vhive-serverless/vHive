@@ -42,6 +42,10 @@ const (
 
 	// LoadVMM Name of LoadVMM metric
 	LoadVMM = "LoadVMM"
+	// GetUffdMemoryContent Time to fetch memory/recipe bytes for UFFD backend
+	GetUffdMemoryContent = "GetUffdMemoryContent"
+	// GetWorkingSetPages Time to fetch working-set pages CSV content
+	GetWorkingSetPages = "GetWorkingSetPages"
 	// GetWorkingSetContent Time to get working set content for coalescing
 	GetWorkingSetContent = "GetWorkingSetContent"
 
