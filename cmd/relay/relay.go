@@ -97,6 +97,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Using snapshot for rev %s", rev)
 		resp, metric, err = orch.LoadSnapshot(ctx, snap, false, false)
 		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
+		metric.PrintAll()
 	} else if ok, err = snapMgr.SnapshotExists(rev); err == nil && ok { // remote case
 		log.Debugf("Using remote snapshot for rev %s", rev)
 		startDownload := time.Now()
@@ -120,6 +121,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Debugf("Snapshot Load Result: metric: %p", metric)
 		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
+		metric.PrintAll()
 	} else if *baseSnap { // start from base snapshot case
 		log.Debugf("No snapshot for rev %s, starting from base snapshot", rev)
 		resp, err = orch.StartWithBaseSnapshot(ctx, image, envArr, argsArr)

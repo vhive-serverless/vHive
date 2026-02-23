@@ -1076,10 +1076,12 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		if stat, err := os.Stat(snap.GetWSFilePath()); err != nil || stat == nil || !o.isWSPulling || snap.GetId() == "base" {
 			wsPath = ""
 		} else if o.isWSCoalescing {
+			tStart := time.Now()
 			wsContent, err = o.snapshotManager.GetWorkingSetContent(snap)
 			if err != nil {
 				logger.Warnf("Failed to get working set content: %v", err)
 			}
+			loadSnapshotMetric.MetricMap[metrics.GetWorkingSetContent] = metrics.ToUS(time.Since(tStart))
 		}
 		go func() {
 			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memPath, memPath+".touched", wsPath, wsContent, o.isLazyMode, o.snapshotManager, o.threads)

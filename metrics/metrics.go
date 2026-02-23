@@ -42,6 +42,8 @@ const (
 
 	// LoadVMM Name of LoadVMM metric
 	LoadVMM = "LoadVMM"
+	// GetWorkingSetContent Time to get working set content for coalescing
+	GetWorkingSetContent = "GetWorkingSetContent"
 
 	// AddInstance Time to add instance - load snap or start vm
 	AddInstance = "AddInstance"
