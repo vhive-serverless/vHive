@@ -868,6 +868,9 @@ func (mgr *SnapshotManager) UploadSnapshot(revision string) error {
 }
 
 func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
+	if revision == "base" {
+		return nil // base snapshot's working set is not uploaded since it is not used as a base for other snapshots
+	}
 	snap, err := mgr.AcquireSnapshot(revision)
 	if err != nil {
 		return errors.Wrapf(err, "acquiring snapshot")
