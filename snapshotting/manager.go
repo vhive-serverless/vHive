@@ -24,6 +24,7 @@ package snapshotting
 
 import (
 	"archive/tar"
+	"bytes"
 	"container/heap"
 	"container/list"
 	"crypto/aes"
@@ -52,6 +53,8 @@ import (
 
 const (
 	chunkPrefix     = "_chunks"
+	wsSharedPrefix  = "ws_shared"
+	wsBaseRootfsKey = "base_rootfs"
 	K               = 3   // TODO: tune
 	deleteBatchSize = 150 // TODO: tune
 )
@@ -60,6 +63,17 @@ var imageChunks = map[string]map[[16]byte]bool{}
 var rootfsChunks = map[[16]byte]bool{}
 var baseSnapChunks = map[[16]byte]bool{}
 var EncryptionKey = []byte("vhive-snapshot-enc") // 16 bytes key for AES-128
+
+type WorkingSetContentSource struct {
+	Content []byte
+	Index   []byte
+}
+
+type WorkingSetContentSources struct {
+	BaseRootfs WorkingSetContentSource
+	Image      WorkingSetContentSource
+	Private    WorkingSetContentSource
+}
 
 func (mgr *SnapshotManager) GetCleanChunks() bool {
 	return mgr.cleanChunks
@@ -421,6 +435,8 @@ type SnapshotManager struct {
 	threads       int
 	encryption    bool
 	cleanChunks   bool
+	wsBaseCache   *WorkingSetContentSource
+	wsImageCache  sync.Map // image name -> *WorkingSetContentSource
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
@@ -871,7 +887,6 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 		var memFile *os.File
 		useChunks := false
 
-		// Check if memory file exists
 		if _, err := os.Stat(snap.GetMemFilePath()); err == nil {
 			memFile, err = os.Open(snap.GetMemFilePath())
 			if err != nil {
@@ -890,31 +905,36 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 			}
 		}
 
-		contentPath := snap.GetWSContentFilePath()
-		contentFile, err := os.Create(contentPath)
-		if err != nil {
-			return errors.Wrapf(err, "creating working set content file")
-		}
-		defer contentFile.Close()
-
 		reader := csv.NewReader(wsFile)
 		records, err := reader.ReadAll()
 		if err != nil {
 			return errors.Wrapf(err, "reading working set CSV")
 		}
 
-		// Skip header
-		if len(records) > 0 {
-			records = records[1:]
+		type wsSourceBuild struct {
+			pfns    []uint64
+			content []byte
 		}
 
+		appendPage := func(builder *wsSourceBuild, pfn uint64, page []byte) {
+			builder.pfns = append(builder.pfns, pfn)
+			builder.content = append(builder.content, page...)
+		}
+
+		baseBuild := &wsSourceBuild{}
+		imageBuild := &wsSourceBuild{}
+		privateBuild := &wsSourceBuild{}
+
+		imageName := normalizeImageName(snap.GetImage())
 		page := make([]byte, 4096)
-		for _, record := range records {
+
+		for i := 1; i < len(records); i++ {
+			record := records[i]
 			if len(record) == 0 {
 				continue
 			}
-			pfn, err := strconv.ParseUint(record[0], 10, 64)
-			if err != nil {
+			pfn, parseErr := strconv.ParseUint(record[0], 10, 64)
+			if parseErr != nil {
 				continue
 			}
 
@@ -926,38 +946,204 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 				if _, err := io.ReadFull(memFile, page); err != nil {
 					return errors.Wrapf(err, "reading page from memory file")
 				}
-				if _, err := contentFile.Write(page); err != nil {
-					return errors.Wrapf(err, "writing page to content file")
-				}
 			} else {
+				for j := range page {
+					page[j] = 0
+				}
+
 				chunkIndex := int(pfn)
 				hashStart := chunkIndex * md5.Size
 				hashEnd := hashStart + md5.Size
 
 				if hashEnd > len(recipe) {
 					log.Warnf("Page %d (index %d) is beyond recipe size", pfn, chunkIndex)
-					if _, err := contentFile.Write(make([]byte, 4096)); err != nil {
-						return errors.Wrapf(err, "writing zero page to content file")
+				} else {
+					hash := hex.EncodeToString(recipe[hashStart:hashEnd])
+					data, dlErr := mgr.DownloadAndReturnChunk(hash)
+					if dlErr != nil {
+						return errors.Wrapf(dlErr, "downloading chunk %s", hash)
 					}
-					continue
-				}
-
-				hash := hex.EncodeToString(recipe[hashStart:hashEnd])
-				data, err := mgr.DownloadAndReturnChunk(hash)
-				if err != nil {
-					return errors.Wrapf(err, "downloading chunk %s", hash)
-				}
-
-				if _, err := contentFile.Write(data); err != nil {
-					return errors.Wrapf(err, "writing page to content file")
+					copy(page, data)
 				}
 			}
-		}
-		contentFile.Close()
 
-		if err := mgr.uploadFile(revision, contentPath); err != nil {
-			return errors.Wrapf(err, "uploading working set content file")
+			pageCopy := make([]byte, 4096)
+			copy(pageCopy, page)
+			hash := md5.Sum(pageCopy)
+
+			if mgr.isBaseRootfsChunk(hash) {
+				appendPage(baseBuild, pfn, pageCopy)
+			} else if mgr.isImageChunk(hash, imageName) {
+				appendPage(imageBuild, pfn, pageCopy)
+			} else {
+				appendPage(privateBuild, pfn, pageCopy)
+			}
 		}
+
+		privateIndex, err := buildWSIndexCSV(privateBuild.pfns)
+		if err != nil {
+			return errors.Wrapf(err, "building private working set index")
+		}
+		if err := os.WriteFile(snap.GetWSPrivateContentFilePath(), privateBuild.content, 0644); err != nil {
+			return errors.Wrapf(err, "writing private working set content file")
+		}
+		if err := os.WriteFile(snap.GetWSPrivateIndexFilePath(), privateIndex, 0644); err != nil {
+			return errors.Wrapf(err, "writing private working set index file")
+		}
+		if err := mgr.uploadFile(revision, snap.GetWSPrivateContentFilePath()); err != nil {
+			return errors.Wrapf(err, "uploading private working set content file")
+		}
+		if err := mgr.uploadFile(revision, snap.GetWSPrivateIndexFilePath()); err != nil {
+			return errors.Wrapf(err, "uploading private working set index file")
+		}
+
+		if len(baseBuild.pfns) > 0 {
+			baseIndex, idxErr := buildWSIndexCSV(baseBuild.pfns)
+			if idxErr != nil {
+				return errors.Wrapf(idxErr, "building base/rootfs working set index")
+			}
+			if err := mgr.persistSharedWSSource("", baseBuild.content, baseIndex); err != nil {
+				return errors.Wrapf(err, "persisting base/rootfs shared working set source")
+			}
+		}
+
+		if len(imageBuild.pfns) > 0 && imageName != "" {
+			imageIndex, idxErr := buildWSIndexCSV(imageBuild.pfns)
+			if idxErr != nil {
+				return errors.Wrapf(idxErr, "building image working set index")
+			}
+			if err := mgr.persistSharedWSSource(imageName, imageBuild.content, imageIndex); err != nil {
+				return errors.Wrapf(err, "persisting image shared working set source")
+			}
+		}
+	}
+
+	return nil
+}
+
+func normalizeImageName(imageName string) string {
+	imageName = strings.TrimSpace(imageName)
+	if imageName == "" {
+		return ""
+	}
+
+	if at := strings.Index(imageName, "@"); at != -1 {
+		imageName = imageName[:at]
+	}
+
+	lastSlash := strings.LastIndex(imageName, "/")
+	lastColon := strings.LastIndex(imageName, ":")
+	if lastColon > lastSlash {
+		imageName = imageName[:lastColon]
+	}
+
+	if idx := strings.LastIndex(imageName, "/"); idx != -1 {
+		return imageName[idx+1:]
+	}
+	return imageName
+}
+
+func buildWSIndexCSV(pfns []uint64) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	if err := writer.Write([]string{"pfn"}); err != nil {
+		return nil, err
+	}
+	for _, pfn := range pfns {
+		if err := writer.Write([]string{strconv.FormatUint(pfn, 10)}); err != nil {
+			return nil, err
+		}
+	}
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (mgr *SnapshotManager) isBaseRootfsChunk(hash [16]byte) bool {
+	if ok, _ := rootfsChunks[hash]; ok {
+		return true
+	}
+	if ok, _ := baseSnapChunks[hash]; ok {
+		return true
+	}
+	return false
+}
+
+func (mgr *SnapshotManager) isImageChunk(hash [16]byte, imageName string) bool {
+	if imageName == "" {
+		return false
+	}
+	hashes, ok := imageChunks[imageName]
+	if !ok {
+		return false
+	}
+	_, hit := hashes[hash]
+	return hit
+}
+
+func (mgr *SnapshotManager) getSharedWSLocalPaths(imageName string) (string, string) {
+	if imageName == "" {
+		base := filepath.Join(mgr.baseFolder, wsSharedPrefix, wsBaseRootfsKey)
+		return base + "_content", base + "_index"
+	}
+	base := filepath.Join(mgr.baseFolder, wsSharedPrefix, "images", imageName)
+	return base + "_content", base + "_index"
+}
+
+func (mgr *SnapshotManager) getSharedWSObjectKeys(imageName string) (string, string) {
+	if imageName == "" {
+		return fmt.Sprintf("%s/%s/content", wsSharedPrefix, wsBaseRootfsKey), fmt.Sprintf("%s/%s/index", wsSharedPrefix, wsBaseRootfsKey)
+	}
+	return fmt.Sprintf("%s/images/%s/content", wsSharedPrefix, imageName), fmt.Sprintf("%s/images/%s/index", wsSharedPrefix, imageName)
+}
+
+func (mgr *SnapshotManager) persistSharedWSSource(imageName string, content []byte, index []byte) error {
+	contentPath, indexPath := mgr.getSharedWSLocalPaths(imageName)
+	if err := os.MkdirAll(filepath.Dir(contentPath), os.ModePerm); err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(contentPath); os.IsNotExist(err) {
+		if err := os.WriteFile(contentPath, content, 0644); err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+		if err := os.WriteFile(indexPath, index, 0644); err != nil {
+			return err
+		}
+	}
+
+	if mgr.storage != nil {
+		contentObj, indexObj := mgr.getSharedWSObjectKeys(imageName)
+		exists, err := mgr.storage.Exists(contentObj)
+		if err != nil {
+			return errors.Wrapf(err, "checking shared content object %s", contentObj)
+		}
+		if !exists {
+			if err := mgr.storage.UploadFile(contentObj, contentPath); err != nil {
+				return errors.Wrapf(err, "uploading shared content object %s", contentObj)
+			}
+		}
+
+		exists, err = mgr.storage.Exists(indexObj)
+		if err != nil {
+			return errors.Wrapf(err, "checking shared index object %s", indexObj)
+		}
+		if !exists {
+			if err := mgr.storage.UploadFile(indexObj, indexPath); err != nil {
+				return errors.Wrapf(err, "uploading shared index object %s", indexObj)
+			}
+		}
+	}
+
+	source := &WorkingSetContentSource{Content: content, Index: index}
+	if imageName == "" {
+		mgr.wsBaseCache = source
+	} else {
+		mgr.wsImageCache.Store(imageName, source)
 	}
 
 	return nil
@@ -1209,6 +1395,16 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 			name: "memory",
 			run: func() error {
 				return mgr.downloadMemFile(snap)
+			},
+		})
+	}
+
+	if revision == "base" {
+		jobs = append(jobs, downloadJob{
+			name: "recipe",
+			run: func() error {
+				recipePath := snap.GetRecipeFilePath()
+				return mgr.downloadFile(revision, recipePath, filepath.Base(recipePath))
 			},
 		})
 	}
@@ -1504,7 +1700,120 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContent(snap *Snapshot) ([]byte, error) {
+	data, err := mgr.GetSnapshotFileContent(snap, snap.GetWSPrivateContentFilePath())
+	if err == nil {
+		return data, nil
+	}
 	return mgr.GetSnapshotFileContent(snap, snap.GetWSContentFilePath())
+}
+
+func (mgr *SnapshotManager) GetWorkingSetContentSources(snap *Snapshot) (*WorkingSetContentSources, error) {
+	privateContent, err := mgr.GetWorkingSetContent(snap)
+	if err != nil {
+		privateContent = nil
+	}
+
+	privateIndex, err := mgr.GetSnapshotFileContent(snap, snap.GetWSPrivateIndexFilePath())
+	if err != nil {
+		privateIndex = nil
+	}
+
+	baseSource, err := mgr.getSharedWSSource("")
+	if err != nil {
+		return nil, err
+	}
+
+	imageSource, err := mgr.getSharedWSSource(normalizeImageName(snap.GetImage()))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(privateContent) == 0 && len(privateIndex) == 0 && baseSource == nil && imageSource == nil {
+		return nil, nil
+	}
+
+	sources := &WorkingSetContentSources{
+		Private: WorkingSetContentSource{
+			Content: privateContent,
+			Index:   privateIndex,
+		},
+	}
+	if baseSource != nil {
+		sources.BaseRootfs = *baseSource
+	}
+	if imageSource != nil {
+		sources.Image = *imageSource
+	}
+
+	return sources, nil
+}
+
+func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetContentSource, error) {
+	if imageName == "" {
+		if mgr.wsBaseCache != nil {
+			return mgr.wsBaseCache, nil
+		}
+	} else {
+		if cached, ok := mgr.wsImageCache.Load(imageName); ok {
+			return cached.(*WorkingSetContentSource), nil
+		}
+	}
+
+	contentPath, indexPath := mgr.getSharedWSLocalPaths(imageName)
+	contentObj, indexObj := mgr.getSharedWSObjectKeys(imageName)
+
+	content, err := mgr.getOptionalSharedFile(contentPath, contentObj)
+	if err != nil {
+		return nil, err
+	}
+	index, err := mgr.getOptionalSharedFile(indexPath, indexObj)
+	if err != nil {
+		return nil, err
+	}
+	if len(content) == 0 || len(index) == 0 {
+		return nil, nil
+	}
+
+	source := &WorkingSetContentSource{Content: content, Index: index}
+	if imageName == "" {
+		mgr.wsBaseCache = source
+	} else {
+		mgr.wsImageCache.Store(imageName, source)
+	}
+
+	return source, nil
+}
+
+func (mgr *SnapshotManager) getOptionalSharedFile(localPath string, objectKey string) ([]byte, error) {
+	if stat, err := os.Stat(localPath); err == nil && stat != nil {
+		data, readErr := os.ReadFile(localPath)
+		if readErr == nil {
+			return data, nil
+		}
+	}
+
+	if mgr.storage == nil {
+		return nil, nil
+	}
+
+	exists, err := mgr.storage.Exists(objectKey)
+	if err != nil {
+		return nil, errors.Wrapf(err, "checking shared object %s", objectKey)
+	}
+	if !exists {
+		return nil, nil
+	}
+
+	data, err := mgr.storage.DownloadObject(objectKey)
+	if err != nil {
+		return nil, errors.Wrapf(err, "downloading shared object %s", objectKey)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(localPath), os.ModePerm); err == nil {
+		_ = os.WriteFile(localPath, data, 0644)
+	}
+
+	return data, nil
 }
 
 func (mgr *SnapshotManager) GetWorkingSetPages(snap *Snapshot) ([]byte, error) {
@@ -1529,6 +1838,10 @@ func (mgr *SnapshotManager) getFileContent(revision, localPath string) ([]byte, 
 			return data, nil
 		}
 		log.Warnf("Failed to read local file %s: %v", localPath, err)
+	}
+
+	if mgr.storage == nil {
+		return nil, errors.Errorf("file %s not found locally and remote storage is not configured", localPath)
 	}
 
 	objectKey := mgr.getObjectKey(revision, filepath.Base(localPath))

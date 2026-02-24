@@ -305,6 +305,9 @@ func (o *Orchestrator) PrepareBaseSnapshot(ctx context.Context) (_ *snapshotting
 			log.Errorf("DownloadSnapshot snap is nil without error!")
 		}
 
+		// o.snapshotManager.Get
+
+		time.Sleep(100 * time.Millisecond) // the snap would be persisted in background, wait a bit
 		return snap, err
 	}
 
@@ -1081,6 +1084,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 
 		var wsPages []byte
 		var wsContent []byte
+		var wsContentSources *snapshotting.WorkingSetContentSources
 		hasWSPagesFile := false
 		if o.isWSPulling && snap.GetId() != "base" {
 			tStart = time.Now()
@@ -1095,15 +1099,22 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 
 			if o.isWSCoalescing {
 				tStart = time.Now()
-				wsContent, err = o.snapshotManager.GetWorkingSetContent(snap)
+				wsContentSources, err = o.snapshotManager.GetWorkingSetContentSources(snap)
 				if err != nil {
-					logger.Warnf("Failed to get working set content: %v", err)
+					logger.Warnf("Failed to get split working set content: %v", err)
+					wsContentSources = nil
+				}
+				if wsContentSources == nil {
+					wsContent, err = o.snapshotManager.GetWorkingSetContent(snap)
+					if err != nil {
+						logger.Warnf("Failed to get fallback working set content: %v", err)
+					}
 				}
 				loadSnapshotMetric.MetricMap[metrics.GetWorkingSetContent] = metrics.ToUS(time.Since(tStart))
 			}
 		}
 		go func() {
-			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, o.isLazyMode, o.snapshotManager, o.threads)
+			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, wsContentSources, o.isLazyMode, o.snapshotManager, o.threads)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if !hasWSPagesFile {
