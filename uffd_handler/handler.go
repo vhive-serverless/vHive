@@ -133,9 +133,10 @@ type MappedChunkInfo struct {
 }
 
 type WorkingSetSource struct {
-	content    []byte
-	contentPtr uintptr
-	pfnToIndex map[uint64]uint64
+	content     []byte
+	contentPtr  uintptr
+	pfnToIndex  map[uint64]uint64
+	hashToIndex map[string]uint64
 }
 
 // PageOperations encapsulates the page-level operations for UFFD handling.
@@ -373,15 +374,62 @@ func (po *PageOperations) getSourceAddressForPFN(source *WorkingSetSource, pfn u
 	return source.contentPtr + uintptr(pageIdx)*uintptr(po.pageSize), true
 }
 
+func (po *PageOperations) getSourceAddressForHash(source *WorkingSetSource, hash string) (uintptr, bool) {
+	if source == nil || source.contentPtr == 0 {
+		return 0, false
+	}
+	pageIdx, ok := source.hashToIndex[hash]
+	if !ok {
+		return 0, false
+	}
+	return source.contentPtr + uintptr(pageIdx)*uintptr(po.pageSize), true
+}
+
+func (po *PageOperations) hasHashIndexedSources() bool {
+	return (po.baseRootfsSource != nil && len(po.baseRootfsSource.hashToIndex) > 0) ||
+		(po.imageSource != nil && len(po.imageSource.hashToIndex) > 0)
+}
+
+func (po *PageOperations) getBackingPageHash(pageAddr uint64) (string, bool) {
+	if po.pageSize == 0 {
+		return "", false
+	}
+
+	if !po.lazy {
+		pagePtr := unsafe.Pointer(po.backingBuffer + uintptr(pageAddr))
+		page := unsafe.Slice((*byte)(pagePtr), int(po.pageSize))
+		sum := md5.Sum(page)
+		return hex.EncodeToString(sum[:]), true
+	}
+
+	recipeOffset := pageAddr / po.snapMgr.GetChunkSize() * md5.Size
+	hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
+	var hashKey [md5.Size]byte
+	copy(hashKey[:], hashBytes[:])
+	mappedAddr, err := po.mapChunk(hashKey)
+	if err != nil {
+		return "", false
+	}
+	off := uintptr(pageAddr % po.snapMgr.GetChunkSize())
+	page := unsafe.Slice((*byte)(unsafe.Pointer(mappedAddr+off)), int(po.pageSize))
+	sum := md5.Sum(page)
+	return hex.EncodeToString(sum[:]), true
+}
+
 func (po *PageOperations) getWorkingSetSourceAddress(pfn uint64) (uintptr, bool) {
-	if addr, ok := po.getSourceAddressForPFN(po.baseRootfsSource, pfn); ok {
-		return addr, true
-	}
-	if addr, ok := po.getSourceAddressForPFN(po.imageSource, pfn); ok {
-		return addr, true
-	}
 	if addr, ok := po.getSourceAddressForPFN(po.privateSource, pfn); ok {
 		return addr, true
+	}
+	if po.hasHashIndexedSources() {
+		pageAddr := pfn * po.pageSize
+		if hash, ok := po.getBackingPageHash(pageAddr); ok {
+			if addr, hit := po.getSourceAddressForHash(po.baseRootfsSource, hash); hit {
+				return addr, true
+			}
+			if addr, hit := po.getSourceAddressForHash(po.imageSource, hash); hit {
+				return addr, true
+			}
+		}
 	}
 	return 0, false
 }
@@ -676,11 +724,14 @@ type Runtime struct {
 	logger             *log.Entry
 }
 
-func parseWSIndex(indexData []byte) (map[uint64]uint64, error) {
+func parseWSPFNIndex(indexData []byte) (map[uint64]uint64, error) {
 	reader := csv.NewReader(bytes.NewReader(indexData))
 	records, err := reader.ReadAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read ws source index: %w", err)
+	}
+	if len(records) == 0 || len(records[0]) == 0 || records[0][0] != "pfn" {
+		return nil, fmt.Errorf("unexpected ws source index format: expected pfn header")
 	}
 
 	pfnToIndex := make(map[uint64]uint64, len(records))
@@ -698,7 +749,32 @@ func parseWSIndex(indexData []byte) (map[uint64]uint64, error) {
 	return pfnToIndex, nil
 }
 
-func buildWorkingSetSource(content []byte, index []byte) (*WorkingSetSource, error) {
+func parseWSHashIndex(indexData []byte) (map[string]uint64, error) {
+	reader := csv.NewReader(bytes.NewReader(indexData))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ws source hash index: %w", err)
+	}
+	if len(records) == 0 || len(records[0]) == 0 || records[0][0] != "hash" {
+		return nil, fmt.Errorf("unexpected ws source index format: expected hash header")
+	}
+
+	hashToIndex := make(map[string]uint64, len(records))
+	for i := 1; i < len(records); i++ {
+		if len(records[i]) == 0 {
+			continue
+		}
+		hash := records[i][0]
+		if hash == "" {
+			continue
+		}
+		hashToIndex[hash] = uint64(i - 1)
+	}
+
+	return hashToIndex, nil
+}
+
+func buildWorkingSetSourceByPFN(content []byte, index []byte) (*WorkingSetSource, error) {
 	if len(content) == 0 {
 		return nil, nil
 	}
@@ -706,7 +782,7 @@ func buildWorkingSetSource(content []byte, index []byte) (*WorkingSetSource, err
 		return nil, nil
 	}
 
-	pfnToIndex, err := parseWSIndex(index)
+	pfnToIndex, err := parseWSPFNIndex(index)
 	if err != nil {
 		return nil, err
 	}
@@ -716,6 +792,28 @@ func buildWorkingSetSource(content []byte, index []byte) (*WorkingSetSource, err
 		content:    content,
 		contentPtr: contentPtr,
 		pfnToIndex: pfnToIndex,
+	}, nil
+}
+
+func buildWorkingSetSourceByHash(content []byte, index []byte) (*WorkingSetSource, error) {
+	if len(content) == 0 {
+		return nil, nil
+	}
+	if len(index) == 0 {
+		return nil, nil
+	}
+
+	hashToIndex, err := parseWSHashIndex(index)
+	if err != nil {
+		log.Warnf("Skipping shared WS source with unsupported index format: %v", err)
+		return nil, nil
+	}
+
+	contentPtr := uintptr(unsafe.Pointer(&content[0]))
+	return &WorkingSetSource{
+		content:     content,
+		contentPtr:  contentPtr,
+		hashToIndex: hashToIndex,
 	}, nil
 }
 
@@ -761,15 +859,15 @@ func NewRuntime(conn *net.UnixConn, backingMemory []byte, wsData []byte, wsConte
 	var err error
 
 	if wsSources != nil {
-		baseRootfsSource, err = buildWorkingSetSource(wsSources.BaseRootfs.Content, wsSources.BaseRootfs.Index)
+		baseRootfsSource, err = buildWorkingSetSourceByHash(wsSources.BaseRootfs.Content, wsSources.BaseRootfs.Index)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse base/rootfs ws source: %w", err)
 		}
-		imageSource, err = buildWorkingSetSource(wsSources.Image.Content, wsSources.Image.Index)
+		imageSource, err = buildWorkingSetSourceByHash(wsSources.Image.Content, wsSources.Image.Index)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse image ws source: %w", err)
 		}
-		privateSource, err = buildWorkingSetSource(wsSources.Private.Content, wsSources.Private.Index)
+		privateSource, err = buildWorkingSetSourceByPFN(wsSources.Private.Content, wsSources.Private.Index)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private ws source: %w", err)
 		}

@@ -916,13 +916,29 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 			content []byte
 		}
 
+		type wsSharedSourceBuild struct {
+			hashes  []string
+			content []byte
+			seen    map[string]bool
+		}
+
 		appendPage := func(builder *wsSourceBuild, pfn uint64, page []byte) {
 			builder.pfns = append(builder.pfns, pfn)
 			builder.content = append(builder.content, page...)
 		}
 
-		baseBuild := &wsSourceBuild{}
-		imageBuild := &wsSourceBuild{}
+		appendSharedPage := func(builder *wsSharedSourceBuild, hash [md5.Size]byte, page []byte) {
+			hashStr := hex.EncodeToString(hash[:])
+			if builder.seen[hashStr] {
+				return
+			}
+			builder.seen[hashStr] = true
+			builder.hashes = append(builder.hashes, hashStr)
+			builder.content = append(builder.content, page...)
+		}
+
+		baseBuild := &wsSharedSourceBuild{seen: make(map[string]bool)}
+		imageBuild := &wsSharedSourceBuild{seen: make(map[string]bool)}
 		privateBuild := &wsSourceBuild{}
 
 		imageName := normalizeImageName(snap.GetImage())
@@ -972,15 +988,15 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 			hash := md5.Sum(pageCopy)
 
 			if mgr.isBaseRootfsChunk(hash) {
-				appendPage(baseBuild, pfn, pageCopy)
+				appendSharedPage(baseBuild, hash, pageCopy)
 			} else if mgr.isImageChunk(hash, imageName) {
-				appendPage(imageBuild, pfn, pageCopy)
+				appendSharedPage(imageBuild, hash, pageCopy)
 			} else {
 				appendPage(privateBuild, pfn, pageCopy)
 			}
 		}
 
-		privateIndex, err := buildWSIndexCSV(privateBuild.pfns)
+		privateIndex, err := buildWSPFNIndexCSV(privateBuild.pfns)
 		if err != nil {
 			return errors.Wrapf(err, "building private working set index")
 		}
@@ -997,8 +1013,8 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 			return errors.Wrapf(err, "uploading private working set index file")
 		}
 
-		if len(baseBuild.pfns) > 0 {
-			baseIndex, idxErr := buildWSIndexCSV(baseBuild.pfns)
+		if len(baseBuild.hashes) > 0 {
+			baseIndex, idxErr := buildWSHashIndexCSV(baseBuild.hashes)
 			if idxErr != nil {
 				return errors.Wrapf(idxErr, "building base/rootfs working set index")
 			}
@@ -1007,8 +1023,8 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 			}
 		}
 
-		if len(imageBuild.pfns) > 0 && imageName != "" {
-			imageIndex, idxErr := buildWSIndexCSV(imageBuild.pfns)
+		if len(imageBuild.hashes) > 0 && imageName != "" {
+			imageIndex, idxErr := buildWSHashIndexCSV(imageBuild.hashes)
 			if idxErr != nil {
 				return errors.Wrapf(idxErr, "building image working set index")
 			}
@@ -1043,7 +1059,7 @@ func normalizeImageName(imageName string) string {
 	return imageName
 }
 
-func buildWSIndexCSV(pfns []uint64) ([]byte, error) {
+func buildWSPFNIndexCSV(pfns []uint64) ([]byte, error) {
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
 	if err := writer.Write([]string{"pfn"}); err != nil {
@@ -1051,6 +1067,24 @@ func buildWSIndexCSV(pfns []uint64) ([]byte, error) {
 	}
 	for _, pfn := range pfns {
 		if err := writer.Write([]string{strconv.FormatUint(pfn, 10)}); err != nil {
+			return nil, err
+		}
+	}
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func buildWSHashIndexCSV(hashes []string) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	if err := writer.Write([]string{"hash"}); err != nil {
+		return nil, err
+	}
+	for _, hash := range hashes {
+		if err := writer.Write([]string{hash}); err != nil {
 			return nil, err
 		}
 	}
