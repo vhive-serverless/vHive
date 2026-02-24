@@ -391,7 +391,7 @@ func (po *PageOperations) hasHashIndexedSources() bool {
 }
 
 func (po *PageOperations) getBackingPageHash(pageAddr uint64) (string, bool) {
-	if po.pageSize == 0 {
+	if po.pageSize != 4096 {
 		return "", false
 	}
 
@@ -404,16 +404,7 @@ func (po *PageOperations) getBackingPageHash(pageAddr uint64) (string, bool) {
 
 	recipeOffset := pageAddr / po.snapMgr.GetChunkSize() * md5.Size
 	hashBytes := (*[md5.Size]byte)(unsafe.Pointer(po.backingBuffer + uintptr(recipeOffset)))
-	var hashKey [md5.Size]byte
-	copy(hashKey[:], hashBytes[:])
-	mappedAddr, err := po.mapChunk(hashKey)
-	if err != nil {
-		return "", false
-	}
-	off := uintptr(pageAddr % po.snapMgr.GetChunkSize())
-	page := unsafe.Slice((*byte)(unsafe.Pointer(mappedAddr+off)), int(po.pageSize))
-	sum := md5.Sum(page)
-	return hex.EncodeToString(sum[:]), true
+	return hex.EncodeToString(hashBytes[:]), true
 }
 
 func (po *PageOperations) getWorkingSetSourceAddress(pfn uint64) (uintptr, bool) {
