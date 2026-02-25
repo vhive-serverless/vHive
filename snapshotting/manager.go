@@ -914,6 +914,66 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 			return errors.Wrapf(err, "reading working set CSV")
 		}
 
+		if mgr.securityMode == "full" {
+			contentPath := snap.GetWSContentFilePath()
+			contentFile, err := os.Create(contentPath)
+			if err != nil {
+				return errors.Wrapf(err, "creating monolithic working set content file")
+			}
+			defer contentFile.Close()
+
+			page := make([]byte, 4096)
+			for i := 1; i < len(records); i++ {
+				record := records[i]
+				if len(record) == 0 {
+					continue
+				}
+				pfn, parseErr := strconv.ParseUint(record[0], 10, 64)
+				if parseErr != nil {
+					continue
+				}
+
+				if !useChunks {
+					offset := int64(pfn * 4096)
+					if _, err := memFile.Seek(offset, 0); err != nil {
+						return errors.Wrapf(err, "seeking memory file")
+					}
+					if _, err := io.ReadFull(memFile, page); err != nil {
+						return errors.Wrapf(err, "reading page from memory file")
+					}
+				} else {
+					for j := range page {
+						page[j] = 0
+					}
+
+					chunkIndex := int(pfn)
+					hashStart := chunkIndex * md5.Size
+					hashEnd := hashStart + md5.Size
+
+					if hashEnd > len(recipe) {
+						log.Warnf("Page %d (index %d) is beyond recipe size", pfn, chunkIndex)
+					} else {
+						hash := hex.EncodeToString(recipe[hashStart:hashEnd])
+						data, dlErr := mgr.DownloadAndReturnChunk(hash)
+						if dlErr != nil {
+							return errors.Wrapf(dlErr, "downloading chunk %s", hash)
+						}
+						copy(page, data)
+					}
+				}
+
+				if _, err := contentFile.Write(page); err != nil {
+					return errors.Wrapf(err, "writing page to monolithic working set content file")
+				}
+			}
+
+			if err := mgr.uploadFile(revision, contentPath); err != nil {
+				return errors.Wrapf(err, "uploading monolithic working set content file")
+			}
+
+			return nil
+		}
+
 		type wsSourceBuild struct {
 			pfns    []uint64
 			content []byte
@@ -1737,6 +1797,10 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContent(snap *Snapshot) ([]byte, error) {
+	if mgr.securityMode == "full" {
+		return mgr.GetSnapshotFileContent(snap, snap.GetWSContentFilePath())
+	}
+
 	data, err := mgr.GetSnapshotFileContent(snap, snap.GetWSPrivateContentFilePath())
 	if err == nil {
 		return data, nil
@@ -1745,6 +1809,10 @@ func (mgr *SnapshotManager) GetWorkingSetContent(snap *Snapshot) ([]byte, error)
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContentSources(snap *Snapshot) (*WorkingSetContentSources, error) {
+	if mgr.securityMode == "full" {
+		return nil, nil
+	}
+
 	privateContent, err := mgr.GetWorkingSetContent(snap)
 	if err != nil {
 		privateContent = nil
