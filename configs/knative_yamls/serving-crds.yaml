@@ -1,3 +1,6 @@
+../../../vendor/knative.dev/networking/config/certificate.yaml
+
+---
 # Copyright 2019 The Knative Authors
 
 #
@@ -1567,6 +1570,9 @@ spec:
                   format: int64
 
 ---
+../../../vendor/knative.dev/networking/config/domain-claim.yaml
+
+---
 # Copyright 2020 The Knative Authors
 
 #
@@ -1788,6 +1794,9 @@ spec:
     shortNames:
       - dm
   scope: Namespaced
+
+---
+../../../vendor/knative.dev/networking/config/ingress.yaml
 
 ---
 # Copyright 2019 The Knative Authors
@@ -4025,6 +4034,9 @@ spec:
                   type: string
 
 ---
+../../../vendor/knative.dev/networking/config/serverlessservice.yaml
+
+---
 # Copyright 2019 The Knative Authors
 
 #
@@ -5740,5 +5752,8 @@ spec:
                     URL holds the url that will distribute traffic over the provided traffic targets.
                     It generally has the form http[s]://{route-name}.{route-namespace}.{cluster-level-suffix}
                   type: string
+
+---
+../../vendor/knative.dev/caching/config/image.yaml
 
 ---

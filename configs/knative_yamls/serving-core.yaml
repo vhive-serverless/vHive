@@ -488,6 +488,9 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
+../../vendor/knative.dev/caching/config/image.yaml
+
+---
 apiVersion: networking.internal.knative.dev/v1alpha1
 kind: Certificate
 metadata:
@@ -502,6 +505,9 @@ spec:
     - kn-routing
     - data-plane.knative.dev # for reverse-compatibility with net-* implementations that do not work with multi-SANs
   secretName: routing-serving-certs
+
+---
+../../../vendor/knative.dev/networking/config/certificate.yaml
 
 ---
 # Copyright 2019 The Knative Authors
@@ -2073,6 +2079,9 @@ spec:
                   format: int64
 
 ---
+../../../vendor/knative.dev/networking/config/domain-claim.yaml
+
+---
 # Copyright 2020 The Knative Authors
 
 #
@@ -2294,6 +2303,9 @@ spec:
     shortNames:
       - dm
   scope: Namespaced
+
+---
+../../../vendor/knative.dev/networking/config/ingress.yaml
 
 ---
 # Copyright 2019 The Knative Authors
@@ -4529,6 +4541,9 @@ spec:
                     URL holds the url that will distribute traffic over the provided traffic targets.
                     It generally has the form http[s]://{route-name}.{route-namespace}.{cluster-level-suffix}
                   type: string
+
+---
+../../../vendor/knative.dev/networking/config/serverlessservice.yaml
 
 ---
 # Copyright 2019 The Knative Authors
@@ -7529,6 +7544,9 @@ data:
     loglevel.net-contour-controller: "info"
     loglevel.net-kourier-controller: "info"
     loglevel.net-gateway-api-controller: "info"
+
+---
+../../../vendor/knative.dev/networking/config/config-network.yaml
 
 ---
 # Copyright 2018 The Knative Authors

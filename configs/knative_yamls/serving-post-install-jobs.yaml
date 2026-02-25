@@ -1,3 +1,5 @@
+
+---
 # /tmp/tmp.8H4czQaWR6/serving-storage-version-migration.yaml
 # Copyright 2020 The Knative Authors
 
@@ -78,6 +80,7 @@ spec:
             seccompProfile:
               type: RuntimeDefault
 
+---
 ---
 # /tmp/tmp.8H4czQaWR6/cleanup.yaml
 # Copyright 2024 The Knative Authors
