@@ -36,6 +36,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1196,51 +1197,90 @@ func (mgr *SnapshotManager) getSharedWSObjectKeys(imageName string) (string, str
 	return fmt.Sprintf("%s/images/%s/content", wsSharedPrefix, imageName), fmt.Sprintf("%s/images/%s/index", wsSharedPrefix, imageName)
 }
 
+func (mgr *SnapshotManager) getSharedWSChunkLocalDir(imageName string) string {
+	if imageName == "" {
+		return filepath.Join(mgr.baseFolder, wsSharedPrefix, wsBaseRootfsKey, "chunks")
+	}
+	return filepath.Join(mgr.baseFolder, wsSharedPrefix, "images", imageName, "chunks")
+}
+
+func (mgr *SnapshotManager) getSharedWSChunkObjectPrefix(imageName string) string {
+	if imageName == "" {
+		return fmt.Sprintf("%s/%s/chunks", wsSharedPrefix, wsBaseRootfsKey)
+	}
+	return fmt.Sprintf("%s/images/%s/chunks", wsSharedPrefix, imageName)
+}
+
+func parseWSHashIndex(index []byte) ([]string, error) {
+	reader := csv.NewReader(bytes.NewReader(index))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	if len(records) == 0 || len(records[0]) == 0 || records[0][0] != "hash" {
+		return nil, fmt.Errorf("shared index is not hash-indexed")
+	}
+
+	hashes := make([]string, 0, len(records)-1)
+	for i := 1; i < len(records); i++ {
+		if len(records[i]) == 0 || records[i][0] == "" {
+			continue
+		}
+		hashes = append(hashes, records[i][0])
+	}
+
+	return hashes, nil
+}
+
 func (mgr *SnapshotManager) persistSharedWSSource(imageName string, content []byte, index []byte) error {
-	contentPath, indexPath := mgr.getSharedWSLocalPaths(imageName)
-	if err := os.MkdirAll(filepath.Dir(contentPath), os.ModePerm); err != nil {
+	hashes, err := parseWSHashIndex(index)
+	if err != nil {
+		return errors.Wrapf(err, "parsing shared working set index")
+	}
+	if len(hashes) == 0 {
+		return nil
+	}
+
+	if len(content) < len(hashes)*4096 {
+		return errors.Errorf("shared content shorter than expected: have %d, expected at least %d", len(content), len(hashes)*4096)
+	}
+
+	localDir := mgr.getSharedWSChunkLocalDir(imageName)
+	if err := os.MkdirAll(localDir, os.ModePerm); err != nil {
 		return err
 	}
 
-	if _, err := os.Stat(contentPath); os.IsNotExist(err) {
-		if err := os.WriteFile(contentPath, content, 0644); err != nil {
-			return err
-		}
-	}
-	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
-		if err := os.WriteFile(indexPath, index, 0644); err != nil {
-			return err
-		}
-	}
+	objectPrefix := mgr.getSharedWSChunkObjectPrefix(imageName)
+	for i, hash := range hashes {
+		start := i * 4096
+		end := start + 4096
+		page := content[start:end]
 
-	if mgr.storage != nil {
-		contentObj, indexObj := mgr.getSharedWSObjectKeys(imageName)
-		exists, err := mgr.storage.Exists(contentObj)
-		if err != nil {
-			return errors.Wrapf(err, "checking shared content object %s", contentObj)
-		}
-		if !exists {
-			if err := mgr.storage.UploadFile(contentObj, contentPath); err != nil {
-				return errors.Wrapf(err, "uploading shared content object %s", contentObj)
+		localPath := filepath.Join(localDir, hash)
+		if _, statErr := os.Stat(localPath); os.IsNotExist(statErr) {
+			if writeErr := os.WriteFile(localPath, page, 0644); writeErr != nil {
+				return errors.Wrapf(writeErr, "writing shared chunk %s locally", hash)
 			}
 		}
 
-		exists, err = mgr.storage.Exists(indexObj)
-		if err != nil {
-			return errors.Wrapf(err, "checking shared index object %s", indexObj)
-		}
-		if !exists {
-			if err := mgr.storage.UploadFile(indexObj, indexPath); err != nil {
-				return errors.Wrapf(err, "uploading shared index object %s", indexObj)
+		if mgr.storage != nil {
+			objectKey := fmt.Sprintf("%s/%s", objectPrefix, hash)
+			exists, existsErr := mgr.storage.Exists(objectKey)
+			if existsErr != nil {
+				return errors.Wrapf(existsErr, "checking shared chunk object %s", objectKey)
+			}
+			if !exists {
+				if upErr := mgr.storage.UploadObject(objectKey, bytes.NewReader(page), int64(len(page))); upErr != nil {
+					return errors.Wrapf(upErr, "uploading shared chunk object %s", objectKey)
+				}
 			}
 		}
 	}
 
-	source := &WorkingSetContentSource{Content: content, Index: index}
 	if imageName == "" {
-		mgr.wsBaseCache = source
+		mgr.wsBaseCache = nil
 	} else {
-		mgr.wsImageCache.Store(imageName, source)
+		mgr.wsImageCache.Delete(imageName)
 	}
 
 	return nil
@@ -1864,19 +1904,93 @@ func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetCont
 		}
 	}
 
+	chunkMap := make(map[string][]byte)
+
+	// Legacy fallback path (aggregated content/index files)
 	contentPath, indexPath := mgr.getSharedWSLocalPaths(imageName)
 	contentObj, indexObj := mgr.getSharedWSObjectKeys(imageName)
+	legacyContent, err := mgr.getOptionalSharedFile(contentPath, contentObj)
+	if err != nil {
+		return nil, err
+	}
+	legacyIndex, err := mgr.getOptionalSharedFile(indexPath, indexObj)
+	if err != nil {
+		return nil, err
+	}
+	if len(legacyContent) > 0 && len(legacyIndex) > 0 {
+		if hashes, parseErr := parseWSHashIndex(legacyIndex); parseErr == nil {
+			for i, hash := range hashes {
+				start := i * 4096
+				end := start + 4096
+				if end > len(legacyContent) {
+					break
+				}
+				chunkMap[hash] = append([]byte(nil), legacyContent[start:end]...)
+			}
+		}
+	}
 
-	content, err := mgr.getOptionalSharedFile(contentPath, contentObj)
-	if err != nil {
-		return nil, err
+	// New path: merge per-hash chunk objects from local and remote
+	localChunkDir := mgr.getSharedWSChunkLocalDir(imageName)
+	if entries, dirErr := os.ReadDir(localChunkDir); dirErr == nil {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			hash := entry.Name()
+			if _, ok := chunkMap[hash]; ok {
+				continue
+			}
+			data, readErr := os.ReadFile(filepath.Join(localChunkDir, hash))
+			if readErr == nil && len(data) >= 4096 {
+				chunkMap[hash] = append([]byte(nil), data[:4096]...)
+			}
+		}
 	}
-	index, err := mgr.getOptionalSharedFile(indexPath, indexObj)
-	if err != nil {
-		return nil, err
+
+	if mgr.storage != nil {
+		prefix := mgr.getSharedWSChunkObjectPrefix(imageName)
+		objectKeys, listErr := mgr.storage.ListObjects(prefix, true)
+		if listErr != nil {
+			return nil, errors.Wrapf(listErr, "listing shared chunk objects with prefix %s", prefix)
+		}
+
+		for _, objectKey := range objectKeys {
+			hash := filepath.Base(objectKey)
+			if _, ok := chunkMap[hash]; ok {
+				continue
+			}
+
+			data, dlErr := mgr.storage.DownloadObject(objectKey)
+			if dlErr != nil || len(data) < 4096 {
+				continue
+			}
+			chunkMap[hash] = append([]byte(nil), data[:4096]...)
+
+			if mkErr := os.MkdirAll(localChunkDir, os.ModePerm); mkErr == nil {
+				_ = os.WriteFile(filepath.Join(localChunkDir, hash), data[:4096], 0644)
+			}
+		}
 	}
-	if len(content) == 0 || len(index) == 0 {
+
+	if len(chunkMap) == 0 {
 		return nil, nil
+	}
+
+	hashes := make([]string, 0, len(chunkMap))
+	for hash := range chunkMap {
+		hashes = append(hashes, hash)
+	}
+	sort.Strings(hashes)
+
+	index, err := buildWSHashIndexCSV(hashes)
+	if err != nil {
+		return nil, err
+	}
+
+	content := make([]byte, 0, len(hashes)*4096)
+	for _, hash := range hashes {
+		content = append(content, chunkMap[hash]...)
 	}
 
 	source := &WorkingSetContentSource{Content: content, Index: index}
