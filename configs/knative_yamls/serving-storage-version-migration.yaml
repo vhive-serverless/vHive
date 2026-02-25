@@ -1,27 +1,15 @@
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: batch/v1
@@ -51,9 +39,8 @@ spec:
       containers:
         - name: migrate
           # This is the Go import path for the binary that is containerized
-
           # and substituted here.
-          image: docker.io/zj3214/migrate-242d0a35bf580c5b411a545d79618fbf@sha256:8bd23edf6aa3d98192c4fc0b6697df6c3c2a7e486ced02245b8e8719acf83705
+          image: docker.io/zj3214/migrate-242d0a35bf580c5b411a545d79618fbf@sha256:75a7fbe72c3e261301f41e56344c228fe36881fb66af6aa0b7f9a20383e26c77
           args:
             - "services.serving.knative.dev"
             - "configurations.serving.knative.dev"

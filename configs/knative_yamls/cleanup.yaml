@@ -1,27 +1,15 @@
 # Copyright 2024 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: batch/v1
@@ -51,9 +39,8 @@ spec:
       containers:
         - name: cleanup
           # This is the Go import path for the binary that is containerized
-
           # and substituted here.
-          image: docker.io/zj3214/cleanup-f5c13b21c1dd1ddc70fa555ce0b49ebc@sha256:e457912c4e4aa86dbeddf71c2d4e7a39b3600c9ec85ba4214e35a667d202764d
+          image: docker.io/zj3214/cleanup-f5c13b21c1dd1ddc70fa555ce0b49ebc@sha256:55b8e4f335b64a1aeb2c37624c9994a83bf0fd46cad5acbddaa94c7fc7e675e0
           resources:
             requests:
               cpu: 100m

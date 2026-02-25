@@ -1,27 +1,15 @@
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -34,29 +22,17 @@ metadata:
 
 ---
 # Copyright 2023 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 kind: Role
@@ -95,38 +71,24 @@ rules:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 # Use this aggregated ClusterRole when you need readonly access to "Addressables"
-
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   # Named like this to avoid clashing with eventing's existing `addressable-resolver` role
-
   # (which should be identical, but isn't guaranteed to be installed alongside serving).
   name: knative-serving-aggregated-addressable-resolver
   labels:
@@ -145,7 +107,6 @@ metadata:
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
     # Labeled to facilitate aggregated cluster roles that act on Addressables.
-
     duck.knative.dev/addressable: "true"
 # Do not use this role directly. These rules will be added to the "addressable-resolver" role.
 rules:
@@ -163,29 +124,17 @@ rules:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 kind: ClusterRole
@@ -235,29 +184,17 @@ rules:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 kind: ClusterRole
@@ -312,29 +249,17 @@ rules:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 kind: ClusterRole
@@ -345,7 +270,6 @@ metadata:
     app.kubernetes.io/version: devel
     app.kubernetes.io/name: knative-serving
     # Labeled to facilitate aggregated cluster roles that act on PodSpecables.
-
     duck.knative.dev/podspecable: "true"
 # Do not use this role directly. These rules will be added to the "podspecable-binder" role.
 rules:
@@ -361,29 +285,17 @@ rules:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -488,7 +400,163 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
-../../vendor/knative.dev/caching/config/image.yaml
+# Copyright 2018 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: images.caching.internal.knative.dev
+  labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
+    knative.dev/crd-install: "true"
+spec:
+  group: caching.internal.knative.dev
+  names:
+    kind: Image
+    plural: images
+    singular: image
+    categories:
+      - knative-internal
+      - caching
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          description: |-
+            Image is a Knative abstraction that encapsulates the interface by which Knative
+            components express a desire to have a particular image cached.
+          type: object
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the Image (from the client).
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  description: Image is the name of the container image url to cache across the cluster.
+                  type: string
+                imagePullSecrets:
+                  description: |-
+                    ImagePullSecrets contains the names of the Kubernetes Secrets containing login
+                    information used by the Pods which will run this container.
+                  type: array
+                  items:
+                    description: |-
+                      LocalObjectReference contains enough information to let you locate the
+                      referenced object inside the same namespace.
+                    type: object
+                    properties:
+                      name:
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                        default: ""
+                    x-kubernetes-map-type: atomic
+                serviceAccountName:
+                  description: |-
+                    ServiceAccountName is the name of the Kubernetes ServiceAccount as which the Pods
+                    will run this container.  This is potentially used to authenticate the image pull
+                    if the service account has attached pull secrets.  For more information:
+                    https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account
+                  type: string
+            status:
+              description: Status communicates the observed state of the Image (from the controller).
+              type: object
+              properties:
+                annotations:
+                  description: |-
+                    Annotations is additional Status fields for the Resource to save some
+                    additional State as well as convey more information to the user. This is
+                    roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                    richer information outwards.
+                  type: object
+                  additionalProperties:
+                    type: string
+                conditions:
+                  description: Conditions the latest available observations of a resource's current state.
+                  type: array
+                  items:
+                    description: |-
+                      Condition defines a readiness condition for a Knative resource.
+                      See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time the condition transitioned from one status to another.
+                          We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                          differences (all other things held constant).
+                        type: string
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        type: string
+                      severity:
+                        description: |-
+                          Severity with which to treat failures of this type of condition.
+                          When this is not specified, it defaults to Error.
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: Type of condition.
+                        type: string
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the 'Generation' of the Service that
+                    was last processed by the controller.
+                  type: integer
+                  format: int64
+      additionalPrinterColumns:
+        - name: Image
+          type: string
+          jsonPath: .spec.image
 
 ---
 apiVersion: networking.internal.knative.dev/v1alpha1
@@ -507,33 +575,203 @@ spec:
   secretName: routing-serving-certs
 
 ---
-../../../vendor/knative.dev/networking/config/certificate.yaml
+# Copyright 2020 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: certificates.networking.internal.knative.dev
+  labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
+    app.kubernetes.io/version: devel
+    knative.dev/crd-install: "true"
+spec:
+  group: networking.internal.knative.dev
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          description: |-
+            Certificate is responsible for provisioning a SSL certificate for the
+            given hosts. It is a Knative abstraction for various SSL certificate
+            provisioning solutions (such as cert-manager or self-signed SSL certificate).
+          type: object
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: |-
+                Spec is the desired state of the Certificate.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+              type: object
+              required:
+                - dnsNames
+                - secretName
+              properties:
+                dnsNames:
+                  description: |-
+                    DNSNames is a list of DNS names the Certificate could support.
+                    The wildcard format of DNSNames (e.g. *.default.example.com) is supported.
+                  type: array
+                  items:
+                    type: string
+                domain:
+                  description: Domain is the top level domain of the values for DNSNames.
+                  type: string
+                secretName:
+                  description: SecretName is the name of the secret resource to store the SSL certificate in.
+                  type: string
+            status:
+              description: |-
+                Status is the current state of the Certificate.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+              type: object
+              properties:
+                annotations:
+                  description: |-
+                    Annotations is additional Status fields for the Resource to save some
+                    additional State as well as convey more information to the user. This is
+                    roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                    richer information outwards.
+                  type: object
+                  additionalProperties:
+                    type: string
+                conditions:
+                  description: Conditions the latest available observations of a resource's current state.
+                  type: array
+                  items:
+                    description: |-
+                      Condition defines a readiness condition for a Knative resource.
+                      See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time the condition transitioned from one status to another.
+                          We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                          differences (all other things held constant).
+                        type: string
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        type: string
+                      severity:
+                        description: |-
+                          Severity with which to treat failures of this type of condition.
+                          When this is not specified, it defaults to Error.
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: Type of condition.
+                        type: string
+                http01Challenges:
+                  description: |-
+                    HTTP01Challenges is a list of HTTP01 challenges that need to be fulfilled
+                    in order to get the TLS certificate..
+                  type: array
+                  items:
+                    description: |-
+                      HTTP01Challenge defines the status of a HTTP01 challenge that a certificate needs
+                      to fulfill.
+                    type: object
+                    properties:
+                      serviceName:
+                        description: ServiceName is the name of the service to serve HTTP01 challenge requests.
+                        type: string
+                      serviceNamespace:
+                        description: ServiceNamespace is the namespace of the service to serve HTTP01 challenge requests.
+                        type: string
+                      servicePort:
+                        description: ServicePort is the port of the service to serve HTTP01 challenge requests.
+                        anyOf:
+                          - type: integer
+                          - type: string
+                        x-kubernetes-int-or-string: true
+                      url:
+                        description: URL is the URL that the HTTP01 challenge is expected to serve on.
+                        type: string
+                notAfter:
+                  description: |-
+                    The expiration time of the TLS certificate stored in the secret named
+                    by this resource in spec.secretName.
+                  type: string
+                  format: date-time
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the 'Generation' of the Service that
+                    was last processed by the controller.
+                  type: integer
+                  format: int64
+      additionalPrinterColumns:
+        - name: Ready
+          type: string
+          jsonPath: ".status.conditions[?(@.type==\"Ready\")].status"
+        - name: Reason
+          type: string
+          jsonPath: ".status.conditions[?(@.type==\"Ready\")].reason"
+  names:
+    kind: Certificate
+    plural: certificates
+    singular: certificate
+    categories:
+      - knative-internal
+      - networking
+    shortNames:
+      - kcert
+  scope: Namespaced
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 # Note: The schema part of the spec is auto-generated by hack/update-schemas.sh.
@@ -2079,33 +2317,96 @@ spec:
                   format: int64
 
 ---
-../../../vendor/knative.dev/networking/config/domain-claim.yaml
+# Copyright 2020 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterdomainclaims.networking.internal.knative.dev
+  labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
+    app.kubernetes.io/version: devel
+    knative.dev/crd-install: "true"
+spec:
+  group: networking.internal.knative.dev
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          description: ClusterDomainClaim is a cluster-wide reservation for a particular domain name.
+          type: object
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: |-
+                Spec is the desired state of the ClusterDomainClaim.
+                More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+              type: object
+              required:
+                - namespace
+              properties:
+                namespace:
+                  description: |-
+                    Namespace is the namespace which is allowed to create a DomainMapping
+                    using this ClusterDomainClaim's name.
+                  type: string
+  names:
+    kind: ClusterDomainClaim
+    plural: clusterdomainclaims
+    singular: clusterdomainclaim
+    categories:
+      - knative-internal
+      - networking
+    shortNames:
+      - cdc
+  scope: Cluster
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: apiextensions.k8s.io/v1
@@ -2305,33 +2606,405 @@ spec:
   scope: Namespaced
 
 ---
-../../../vendor/knative.dev/networking/config/ingress.yaml
+# Copyright 2020 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: ingresses.networking.internal.knative.dev
+  labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
+    app.kubernetes.io/version: devel
+    knative.dev/crd-install: "true"
+spec:
+  group: networking.internal.knative.dev
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          description: |-
+            Ingress is a collection of rules that allow inbound connections to reach the endpoints defined
+            by a backend. An Ingress can be configured to give services externally-reachable URLs, load
+            balance traffic, offer name based virtual hosting, etc.
+
+            This is heavily based on K8s Ingress https://godoc.org/k8s.io/api/networking/v1beta1#Ingress
+            which some highlighted modifications.
+          type: object
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: |-
+                Spec is the desired state of the Ingress.
+                More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+              type: object
+              properties:
+                httpOption:
+                  description: |-
+                    HTTPOption is the option of HTTP. It has the following two values:
+                    `HTTPOptionEnabled`, `HTTPOptionRedirected`
+                  type: string
+                rules:
+                  description: A list of host rules used to configure the Ingress.
+                  type: array
+                  items:
+                    description: |-
+                      IngressRule represents the rules mapping the paths under a specified host to
+                      the related backend services. Incoming requests are first evaluated for a host
+                      match, then routed to the backend associated with the matching IngressRuleValue.
+                    type: object
+                    properties:
+                      hosts:
+                        description: |-
+                          Host is the fully qualified domain name of a network host, as defined
+                          by RFC 3986. Note the following deviations from the "host" part of the
+                          URI as defined in the RFC:
+                          1. IPs are not allowed. Currently a rule value can only apply to the
+                          	  IP in the Spec of the parent .
+                          2. The `:` delimiter is not respected because ports are not allowed.
+                          	  Currently the port of an Ingress is implicitly :80 for http and
+                          	  :443 for https.
+                          Both these may change in the future.
+                          If the host is unspecified, the Ingress routes all traffic based on the
+                          specified IngressRuleValue.
+                          If multiple matching Hosts were provided, the first rule will take precedent.
+                        type: array
+                        items:
+                          type: string
+                      http:
+                        description: |-
+                          HTTP represents a rule to apply against incoming requests. If the
+                          rule is satisfied, the request is routed to the specified backend.
+                        type: object
+                        required:
+                          - paths
+                        properties:
+                          paths:
+                            description: |-
+                              A collection of paths that map requests to backends.
+
+                              If they are multiple matching paths, the first match takes precedence.
+                            type: array
+                            items:
+                              description: |-
+                                HTTPIngressPath associates a path regex with a backend. Incoming URLs matching
+                                the path are forwarded to the backend.
+                              type: object
+                              required:
+                                - splits
+                              properties:
+                                appendHeaders:
+                                  description: |-
+                                    AppendHeaders allow specifying additional HTTP headers to add
+                                    before forwarding a request to the destination service.
+
+                                    NOTE: This differs from K8s Ingress which doesn't allow header appending.
+                                  type: object
+                                  additionalProperties:
+                                    type: string
+                                headers:
+                                  description: |-
+                                    Headers defines header matching rules which is a map from a header name
+                                    to HeaderMatch which specify a matching condition.
+                                    When a request matched with all the header matching rules,
+                                    the request is routed by the corresponding ingress rule.
+                                    If it is empty, the headers are not used for matching
+                                  type: object
+                                  additionalProperties:
+                                    description: |-
+                                      HeaderMatch represents a matching value of Headers in HTTPIngressPath.
+                                      Currently, only the exact matching is supported.
+                                    type: object
+                                    required:
+                                      - exact
+                                    properties:
+                                      exact:
+                                        type: string
+                                path:
+                                  description: |-
+                                    Path represents a literal prefix to which this rule should apply.
+                                    Currently it can contain characters disallowed from the conventional
+                                    "path" part of a URL as defined by RFC 3986. Paths must begin with
+                                    a '/'. If unspecified, the path defaults to a catch all sending
+                                    traffic to the backend.
+                                  type: string
+                                rewriteHost:
+                                  description: |-
+                                    RewriteHost rewrites the incoming request's host header.
+
+                                    This field is currently experimental and not supported by all Ingress
+                                    implementations.
+                                  type: string
+                                splits:
+                                  description: |-
+                                    Splits defines the referenced service endpoints to which the traffic
+                                    will be forwarded to.
+                                  type: array
+                                  items:
+                                    description: IngressBackendSplit describes all endpoints for a given service and port.
+                                    type: object
+                                    required:
+                                      - serviceName
+                                      - serviceNamespace
+                                      - servicePort
+                                    properties:
+                                      appendHeaders:
+                                        description: |-
+                                          AppendHeaders allow specifying additional HTTP headers to add
+                                          before forwarding a request to the destination service.
+
+                                          NOTE: This differs from K8s Ingress which doesn't allow header appending.
+                                        type: object
+                                        additionalProperties:
+                                          type: string
+                                      percent:
+                                        description: |-
+                                          Specifies the split percentage, a number between 0 and 100.  If
+                                          only one split is specified, we default to 100.
+
+                                          NOTE: This differs from K8s Ingress to allow percentage split.
+                                        type: integer
+                                      serviceName:
+                                        description: Specifies the name of the referenced service.
+                                        type: string
+                                      serviceNamespace:
+                                        description: |-
+                                          Specifies the namespace of the referenced service.
+
+                                          NOTE: This differs from K8s Ingress to allow routing to different namespaces.
+                                        type: string
+                                      servicePort:
+                                        description: Specifies the port of the referenced service.
+                                        anyOf:
+                                          - type: integer
+                                          - type: string
+                                        x-kubernetes-int-or-string: true
+                      visibility:
+                        description: |-
+                          Visibility signifies whether this rule should `ClusterLocal`. If it's not
+                          specified then it defaults to `ExternalIP`.
+                        type: string
+                tls:
+                  description: |-
+                    TLS configuration. Currently Ingress only supports a single TLS
+                    port: 443. If multiple members of this list specify different hosts, they
+                    will be multiplexed on the same port according to the hostname specified
+                    through the SNI TLS extension, if the ingress controller fulfilling the
+                    ingress supports SNI.
+                  type: array
+                  items:
+                    description: IngressTLS describes the transport layer security associated with an Ingress.
+                    type: object
+                    properties:
+                      hosts:
+                        description: |-
+                          Hosts is a list of hosts included in the TLS certificate. The values in
+                          this list must match the name/s used in the tlsSecret. Defaults to the
+                          wildcard host setting for the loadbalancer controller fulfilling this
+                          Ingress, if left unspecified.
+                        type: array
+                        items:
+                          type: string
+                      secretName:
+                        description: SecretName is the name of the secret used to terminate SSL traffic.
+                        type: string
+                      secretNamespace:
+                        description: |-
+                          SecretNamespace is the namespace of the secret used to terminate SSL traffic.
+                          If not set the namespace should be assumed to be the same as the Ingress.
+                          If set the secret should have the same namespace as the Ingress otherwise
+                          the behaviour is undefined and not supported.
+                        type: string
+            status:
+              description: |-
+                Status is the current state of the Ingress.
+                More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+              type: object
+              properties:
+                annotations:
+                  description: |-
+                    Annotations is additional Status fields for the Resource to save some
+                    additional State as well as convey more information to the user. This is
+                    roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                    richer information outwards.
+                  type: object
+                  additionalProperties:
+                    type: string
+                conditions:
+                  description: Conditions the latest available observations of a resource's current state.
+                  type: array
+                  items:
+                    description: |-
+                      Condition defines a readiness condition for a Knative resource.
+                      See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time the condition transitioned from one status to another.
+                          We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                          differences (all other things held constant).
+                        type: string
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        type: string
+                      severity:
+                        description: |-
+                          Severity with which to treat failures of this type of condition.
+                          When this is not specified, it defaults to Error.
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: Type of condition.
+                        type: string
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the 'Generation' of the Service that
+                    was last processed by the controller.
+                  type: integer
+                  format: int64
+                privateLoadBalancer:
+                  description: PrivateLoadBalancer contains the current status of the load-balancer.
+                  type: object
+                  properties:
+                    ingress:
+                      description: |-
+                        Ingress is a list containing ingress points for the load-balancer.
+                        Traffic intended for the service should be sent to these ingress points.
+                      type: array
+                      items:
+                        description: |-
+                          LoadBalancerIngressStatus represents the status of a load-balancer ingress point:
+                          traffic intended for the service should be sent to an ingress point.
+                        type: object
+                        properties:
+                          domain:
+                            description: |-
+                              Domain is set for load-balancer ingress points that are DNS based
+                              (typically AWS load-balancers)
+                            type: string
+                          domainInternal:
+                            description: |-
+                              DomainInternal is set if there is a cluster-local DNS name to access the Ingress.
+
+                              NOTE: This differs from K8s Ingress, since we also desire to have a cluster-local
+                                    DNS name to allow routing in case of not having a mesh.
+                            type: string
+                          ip:
+                            description: |-
+                              IP is set for load-balancer ingress points that are IP based
+                              (typically GCE or OpenStack load-balancers)
+                            type: string
+                          meshOnly:
+                            description: MeshOnly is set if the Ingress is only load-balanced through a Service mesh.
+                            type: boolean
+                publicLoadBalancer:
+                  description: PublicLoadBalancer contains the current status of the load-balancer.
+                  type: object
+                  properties:
+                    ingress:
+                      description: |-
+                        Ingress is a list containing ingress points for the load-balancer.
+                        Traffic intended for the service should be sent to these ingress points.
+                      type: array
+                      items:
+                        description: |-
+                          LoadBalancerIngressStatus represents the status of a load-balancer ingress point:
+                          traffic intended for the service should be sent to an ingress point.
+                        type: object
+                        properties:
+                          domain:
+                            description: |-
+                              Domain is set for load-balancer ingress points that are DNS based
+                              (typically AWS load-balancers)
+                            type: string
+                          domainInternal:
+                            description: |-
+                              DomainInternal is set if there is a cluster-local DNS name to access the Ingress.
+
+                              NOTE: This differs from K8s Ingress, since we also desire to have a cluster-local
+                                    DNS name to allow routing in case of not having a mesh.
+                            type: string
+                          ip:
+                            description: |-
+                              IP is set for load-balancer ingress points that are IP based
+                              (typically GCE or OpenStack load-balancers)
+                            type: string
+                          meshOnly:
+                            description: MeshOnly is set if the Ingress is only load-balanced through a Service mesh.
+                            type: boolean
+      additionalPrinterColumns:
+        - name: Ready
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Ready')].status"
+        - name: Reason
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Ready')].reason"
+  names:
+    kind: Ingress
+    plural: ingresses
+    singular: ingress
+    categories:
+      - knative-internal
+      - networking
+    shortNames:
+      - kingress
+      - king
+  scope: Namespaced
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 # Note: The schema part of the spec is auto-generated by hack/update-schemas.sh.
@@ -2465,29 +3138,17 @@ spec:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 # Note: The schema part of the spec is auto-generated by hack/update-schemas.sh.
@@ -2678,29 +3339,17 @@ spec:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 # Note: The schema part of the spec is auto-generated by hack/update-schemas.sh.
@@ -4260,29 +4909,17 @@ spec:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 # Note: The schema part of the spec is auto-generated by hack/update-schemas.sh.
@@ -4543,33 +5180,241 @@ spec:
                   type: string
 
 ---
-../../../vendor/knative.dev/networking/config/serverlessservice.yaml
+# Copyright 2019 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: serverlessservices.networking.internal.knative.dev
+  labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
+    app.kubernetes.io/version: devel
+    knative.dev/crd-install: "true"
+spec:
+  group: networking.internal.knative.dev
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          description: |-
+            ServerlessService is a proxy for the K8s service objects containing the
+            endpoints for the revision, whether those are endpoints of the activator or
+            revision pods.
+            See: https://knative.page.link/naxz for details.
+          type: object
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: |-
+                Spec is the desired state of the ServerlessService.
+                More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+              type: object
+              required:
+                - objectRef
+                - protocolType
+              properties:
+                mode:
+                  description: Mode describes the mode of operation of the ServerlessService.
+                  type: string
+                numActivators:
+                  description: |-
+                    NumActivators contains number of Activators that this revision should be
+                    assigned.
+                    O means — assign all.
+                  type: integer
+                  format: int32
+                objectRef:
+                  description: |-
+                    ObjectRef defines the resource that this ServerlessService
+                    is responsible for making "serverless".
+                  type: object
+                  properties:
+                    apiVersion:
+                      description: API version of the referent.
+                      type: string
+                    fieldPath:
+                      description: |-
+                        If referring to a piece of an object instead of an entire object, this string
+                        should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].
+                        For example, if the object reference is to a container within a pod, this would take on a value like:
+                        "spec.containers{name}" (where "name" refers to the name of the container that triggered
+                        the event) or if no container name is specified "spec.containers[2]" (container with
+                        index 2 in this pod). This syntax is chosen only to have some well-defined way of
+                        referencing a part of an object.
+                      type: string
+                    kind:
+                      description: |-
+                        Kind of the referent.
+                        More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                      type: string
+                    name:
+                      description: |-
+                        Name of the referent.
+                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      type: string
+                    namespace:
+                      description: |-
+                        Namespace of the referent.
+                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+                      type: string
+                    resourceVersion:
+                      description: |-
+                        Specific resourceVersion to which this reference is made, if any.
+                        More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+                      type: string
+                    uid:
+                      description: |-
+                        UID of the referent.
+                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
+                      type: string
+                  x-kubernetes-map-type: atomic
+                protocolType:
+                  description: |-
+                    The application-layer protocol. Matches `RevisionProtocolType` set on the owning pa/revision.
+                    serving imports networking, so just use string.
+                  type: string
+            status:
+              description: |-
+                Status is the current state of the ServerlessService.
+                More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+              type: object
+              properties:
+                annotations:
+                  description: |-
+                    Annotations is additional Status fields for the Resource to save some
+                    additional State as well as convey more information to the user. This is
+                    roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                    richer information outwards.
+                  type: object
+                  additionalProperties:
+                    type: string
+                conditions:
+                  description: Conditions the latest available observations of a resource's current state.
+                  type: array
+                  items:
+                    description: |-
+                      Condition defines a readiness condition for a Knative resource.
+                      See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time the condition transitioned from one status to another.
+                          We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                          differences (all other things held constant).
+                        type: string
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        type: string
+                      severity:
+                        description: |-
+                          Severity with which to treat failures of this type of condition.
+                          When this is not specified, it defaults to Error.
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: Type of condition.
+                        type: string
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the 'Generation' of the Service that
+                    was last processed by the controller.
+                  type: integer
+                  format: int64
+                privateServiceName:
+                  description: |-
+                    PrivateServiceName holds the name of a core K8s Service resource that
+                    load balances over the user service pods backing this Revision.
+                  type: string
+                serviceName:
+                  description: |-
+                    ServiceName holds the name of a core K8s Service resource that
+                    load balances over the pods backing this Revision (activator or revision).
+                  type: string
+      additionalPrinterColumns:
+        - name: Mode
+          type: string
+          jsonPath: ".spec.mode"
+        - name: Activators
+          type: integer
+          jsonPath: ".spec.numActivators"
+        - name: ServiceName
+          type: string
+          jsonPath: ".status.serviceName"
+        - name: PrivateServiceName
+          type: string
+          jsonPath: ".status.privateServiceName"
+        - name: Ready
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Ready')].status"
+        - name: Reason
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Ready')].reason"
+  names:
+    kind: ServerlessService
+    plural: serverlessservices
+    singular: serverlessservice
+    categories:
+      - knative-internal
+      - networking
+    shortNames:
+      - sks
+  scope: Namespaced
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 # Note: The schema part of the spec is auto-generated by hack/update-schemas.sh.
@@ -6264,29 +7109,17 @@ spec:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: caching.internal.knative.dev/v1alpha1
@@ -6300,35 +7133,22 @@ metadata:
     app.kubernetes.io/version: devel
 spec:
   # This is the Go import path for the binary that is containerized
-
   # and substituted here.
-  image: docker.io/zj3214/queue-39be6f1d08a095bd076a71d288d295b6@sha256:b41c345b3a94baf57f9a33108881c72d4b0b2a3e44e023793359ad6e493d86b0
+  image: docker.io/zj3214/queue-39be6f1d08a095bd076a71d288d295b6@sha256:156da5c7949c791a6536776a8da53f5ae99684eee96988e70e33de4bfdceae3c
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -6529,29 +7349,17 @@ data:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -6611,29 +7419,17 @@ data:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -6778,29 +7574,17 @@ data:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -6816,9 +7600,8 @@ metadata:
     knative.dev/example-checksum: "720ddb97"
 data:
   # This is the Go import path for the binary that is containerized
-
   # and substituted here.
-  queue-sidecar-image: docker.io/zj3214/queue-39be6f1d08a095bd076a71d288d295b6@sha256:b41c345b3a94baf57f9a33108881c72d4b0b2a3e44e023793359ad6e493d86b0
+  queue-sidecar-image: docker.io/zj3214/queue-39be6f1d08a095bd076a71d288d295b6@sha256:156da5c7949c791a6536776a8da53f5ae99684eee96988e70e33de4bfdceae3c
   _example: |-
     ################################
     #                              #
@@ -6918,29 +7701,17 @@ data:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -6995,29 +7766,17 @@ data:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -7268,29 +8027,17 @@ data:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -7380,29 +8127,17 @@ data:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -7454,29 +8189,17 @@ data:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -7546,33 +8269,223 @@ data:
     loglevel.net-gateway-api-controller: "info"
 
 ---
-../../../vendor/knative.dev/networking/config/config-network.yaml
+# Copyright 2018 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-network
+  namespace: knative-serving
+  labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/component: networking
+    app.kubernetes.io/version: devel
+  annotations:
+    knative.dev/example-checksum: "0573e07d"
+data:
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+
+    # This block is not actually functional configuration,
+    # but serves to illustrate the available configuration
+    # options and document them in a way that is accessible
+    # to users that `kubectl edit` this config map.
+    #
+    # These sample configuration options may be copied out of
+    # this example block and unindented to be in the data block
+    # to actually change the configuration.
+
+    # ingress-class specifies the default ingress class
+    # to use when not dictated by Route annotation.
+    #
+    # If not specified, will use the Istio ingress.
+    #
+    # Note that changing the Ingress class of an existing Route
+    # will result in undefined behavior.  Therefore it is best to only
+    # update this value during the setup of Knative, to avoid getting
+    # undefined behavior.
+    ingress-class: "istio.ingress.networking.knative.dev"
+
+    # certificate-class specifies the default Certificate class
+    # to use when not dictated by Route annotation.
+    #
+    # If not specified, will use the Cert-Manager Certificate.
+    #
+    # Note that changing the Certificate class of an existing Route
+    # will result in undefined behavior.  Therefore it is best to only
+    # update this value during the setup of Knative, to avoid getting
+    # undefined behavior.
+    certificate-class: "cert-manager.certificate.networking.knative.dev"
+
+    # namespace-wildcard-cert-selector specifies a LabelSelector which
+    # determines which namespaces should have a wildcard certificate
+    # provisioned.
+    #
+    # Use an empty value to disable the feature (this is the default):
+    #   namespace-wildcard-cert-selector: ""
+    #
+    # Use an empty object to enable for all namespaces
+    #   namespace-wildcard-cert-selector: {}
+    #
+    # Useful labels include the "kubernetes.io/metadata.name" label to
+    # avoid provisioning a certificate for the "kube-system" namespaces.
+    # Use the following selector to match pre-1.0 behavior of using
+    # "networking.knative.dev/disableWildcardCert" to exclude namespaces:
+    #
+    # matchExpressions:
+    # - key: "networking.knative.dev/disableWildcardCert"
+    #   operator: "NotIn"
+    #   values: ["true"]
+    namespace-wildcard-cert-selector: ""
+
+    # domain-template specifies the golang text template string to use
+    # when constructing the Knative service's DNS name. The default
+    # value is "{{.Name}}.{{.Namespace}}.{{.Domain}}".
+    #
+    # Valid variables defined in the template include Name, Namespace, Domain,
+    # Labels, and Annotations. Name will be the result of the tag-template
+    # below, if a tag is specified for the route.
+    #
+    # Changing this value might be necessary when the extra levels in
+    # the domain name generated is problematic for wildcard certificates
+    # that only support a single level of domain name added to the
+    # certificate's domain. In those cases you might consider using a value
+    # of "{{.Name}}-{{.Namespace}}.{{.Domain}}", or removing the Namespace
+    # entirely from the template. When choosing a new value be thoughtful
+    # of the potential for conflicts - for example, when users choose to use
+    # characters such as `-` in their service, or namespace, names.
+    # {{.Annotations}} or {{.Labels}} can be used for any customization in the
+    # go template if needed.
+    # We strongly recommend keeping namespace part of the template to avoid
+    # domain name clashes:
+    # eg. '{{.Name}}-{{.Namespace}}.{{ index .Annotations "sub"}}.{{.Domain}}'
+    # and you have an annotation {"sub":"foo"}, then the generated template
+    # would be {Name}-{Namespace}.foo.{Domain}
+    domain-template: "{{.Name}}.{{.Namespace}}.{{.Domain}}"
+
+    # tag-template specifies the golang text template string to use
+    # when constructing the DNS name for "tags" within the traffic blocks
+    # of Routes and Configuration.  This is used in conjunction with the
+    # domain-template above to determine the full URL for the tag.
+    tag-template: "{{.Tag}}-{{.Name}}"
+
+    # auto-tls is deprecated and replaced by external-domain-tls
+    auto-tls: "Disabled"
+
+    # Controls whether TLS certificates are automatically provisioned and
+    # installed in the Knative ingress to terminate TLS connections
+    # for cluster external domains (like: app.example.com)
+    # - Enabled: enables the TLS certificate provisioning feature for cluster external domains.
+    # - Disabled: disables the TLS certificate provisioning feature for cluster external domains.
+    external-domain-tls: "Disabled"
+
+    # Controls weather TLS certificates are automatically provisioned and
+    # installed in the Knative ingress to terminate TLS connections
+    # for cluster local domains (like: app.namespace.svc.<your-cluster-domain>)
+    # - Enabled: enables the TLS certificate provisioning feature for cluster cluster-local domains.
+    # - Disabled: disables the TLS certificate provisioning feature for cluster cluster local domains.
+    # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
+    #       for now. Use with caution.
+    cluster-local-domain-tls: "Disabled"
+
+    # internal-encryption is deprecated and replaced by system-internal-tls
+    internal-encryption: "false"
+
+    # system-internal-tls controls weather TLS encryption is used for connections between
+    # the internal components of Knative:
+    # - ingress to activator
+    # - ingress to queue-proxy
+    # - activator to queue-proxy
+    #
+    # Possible values for this flag are:
+    # - Enabled: enables the TLS certificate provisioning feature for cluster cluster-local domains.
+    # - Disabled: disables the TLS certificate provisioning feature for cluster cluster local domains.
+    # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
+    #       for now. Use with caution.
+    system-internal-tls: "Disabled"
+
+    # Controls the behavior of the HTTP endpoint for the Knative ingress.
+    # It requires auto-tls to be enabled.
+    # - Enabled: The Knative ingress will be able to serve HTTP connection.
+    # - Redirected: The Knative ingress will send a 301 redirect for all
+    # http connections, asking the clients to use HTTPS.
+    #
+    # "Disabled" option is deprecated.
+    http-protocol: "Enabled"
+
+    # rollout-duration contains the minimal duration in seconds over which the
+    # Configuration traffic targets are rolled out to the newest revision.
+    rollout-duration: "0"
+
+    # autocreate-cluster-domain-claims controls whether ClusterDomainClaims should
+    # be automatically created (and deleted) as needed when DomainMappings are
+    # reconciled.
+    #
+    # If this is "false" (the default), the cluster administrator is
+    # responsible for creating ClusterDomainClaims and delegating them to
+    # namespaces via their spec.Namespace field. This setting should be used in
+    # multitenant environments which need to control which namespace can use a
+    # particular domain name in a domain mapping.
+    #
+    # If this is "true", users are able to associate arbitrary names with their
+    # services via the DomainMapping feature.
+    autocreate-cluster-domain-claims: "false"
+
+    # If true, networking plugins can add additional information to deployed
+    # applications to make their pods directly accessible via their IPs even if mesh is
+    # enabled and thus direct-addressability is usually not possible.
+    # Consumers like Knative Serving can use this setting to adjust their behavior
+    # accordingly, i.e. to drop fallback solutions for non-pod-addressable systems.
+    #
+    # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
+    #       for now. Use with caution.
+    enable-mesh-pod-addressability: "false"
+
+    # mesh-compatibility-mode indicates whether consumers of network plugins
+    # should directly contact Pod IPs (most efficient), or should use the
+    # Cluster IP (less efficient, needed when mesh is enabled unless
+    # `enable-mesh-pod-addressability`, above, is set).
+    # Permitted values are:
+    #  - "auto" (default): automatically determine which mesh mode to use by trying Pod IP and falling back to Cluster IP as needed.
+    #  - "enabled": always use Cluster IP and do not attempt to use Pod IPs.
+    #  - "disabled": always use Pod IPs and do not fall back to Cluster IP on failure.
+    mesh-compatibility-mode: "auto"
+
+    # Defines the scheme used for external URLs if auto-tls is not enabled.
+    # This can be used for making Knative report all URLs as "HTTPS" for example, if you're
+    # fronting Knative with an external loadbalancer that deals with TLS termination and
+    # Knative doesn't know about that otherwise.
+    default-external-scheme: "http"
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -7710,29 +8623,17 @@ data:
 
 ---
 # Copyright 2019 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
@@ -7756,29 +8657,17 @@ data:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: autoscaling/v2
@@ -7804,13 +8693,10 @@ spec:
         target:
           type: Utilization
           # Percentage of the requested CPU
-
           averageUtilization: 100
-
-# Activator PDB. Currently we permit unavailability of 20% of tasks at the same time.
 ---
+# Activator PDB. Currently we permit unavailability of 20% of tasks at the same time.
 # Given the subsetting and that the activators are partially stateful systems, we want
-
 # a slow rollout of the new versions and slow migration during node upgrades.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -7829,29 +8715,17 @@ spec:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: apps/v1
@@ -7891,11 +8765,9 @@ spec:
       containers:
         - name: activator
           # This is the Go import path for the binary that is containerized
-
           # and substituted here.
-          image: docker.io/zj3214/activator-ecd51ca5034883acbe737fde417a3d86@sha256:937a3714301ee097cf515fedbc2443934b4a86b395756a4054240f890913b99d
+          image: docker.io/zj3214/activator-ecd51ca5034883acbe737fde417a3d86@sha256:4ea70dded8a4feca9a9df487b7ed3f666e399be2bbc6dff074022e798ff9b2a3
           # The numbers are based on performance test results from
-
           # https://github.com/knative/serving/issues/1625#issuecomment-511930023
           resources:
             requests:
@@ -7924,9 +8796,8 @@ spec:
               value: config-logging
             - name: CONFIG_OBSERVABILITY_NAME
               value: config-observability
+            # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
             - name: METRICS_DOMAIN
-              # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
-
               value: knative.dev/internal/serving
           securityContext:
             allowPrivilegeEscalation: false
@@ -7958,17 +8829,11 @@ spec:
             failureThreshold: 12
             initialDelaySeconds: 15
       # The activator (often) sits on the dataplane, and may proxy long (e.g.
-
       # streaming, websockets) requests.  We give a long grace period for the
-
       # activator to "lame duck" and drain outstanding requests before we
-
       # forcibly terminate the pod (and outstanding connections).  This value
-
       # should be at least as large as the upper bound on the Revision's
-
       # timeoutSeconds property to avoid servicing events disrupting
-
       # connections.
       terminationGracePeriodSeconds: 600
 ---
@@ -8006,29 +8871,17 @@ spec:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: apps/v1
@@ -8071,9 +8924,8 @@ spec:
       containers:
         - name: autoscaler
           # This is the Go import path for the binary that is containerized
-
           # and substituted here.
-          image: docker.io/zj3214/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:5ddfe25534beb243ae6c3dfe73aad99ae0ad30ee775553e9d4afd5d3481ec10d
+          image: docker.io/zj3214/autoscaler-12c0fa24db31956a7cfa673210e4fa13@sha256:9099fff368282caa7b2ff026acfe6d6e3b7b3668d3b14721b8370f6fe10fba3f
           resources:
             requests:
               cpu: 100m
@@ -8098,9 +8950,8 @@ spec:
               value: config-logging
             - name: CONFIG_OBSERVABILITY_NAME
               value: config-observability
+            # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
             - name: METRICS_DOMAIN
-              # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
-
               value: knative.dev/serving
           securityContext:
             allowPrivilegeEscalation: false
@@ -8153,29 +9004,17 @@ spec:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: apps/v1
@@ -8213,9 +9052,8 @@ spec:
       containers:
         - name: controller
           # This is the Go import path for the binary that is containerized
-
           # and substituted here.
-          image: docker.io/zj3214/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:8e430bd96af89fc26015bc5fdd539c01473e58b77335ff08fc9ab9a7e8b68c70
+          image: docker.io/zj3214/controller-f6fdb41c6acbc726e29a3104ff2ef720@sha256:d4b408642be3b23b6c9366b0a43690b4ae7f9d60f7278f447ce6e493591521de
           resources:
             requests:
               cpu: 100m
@@ -8294,29 +9132,17 @@ spec:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: autoscaling/v2
@@ -8342,11 +9168,9 @@ spec:
         target:
           type: Utilization
           # Percentage of the requested CPU
-
           averageUtilization: 100
-
-# Webhook PDB.
 ---
+# Webhook PDB.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -8364,29 +9188,17 @@ spec:
 
 ---
 # Copyright 2018 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: apps/v1
@@ -8426,9 +9238,8 @@ spec:
       containers:
         - name: webhook
           # This is the Go import path for the binary that is containerized
-
           # and substituted here.
-          image: docker.io/zj3214/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:b8b383c5e8a2f595c8e335a0267fb3772cab9892c2051dfc70cbccc6475352ba
+          image: docker.io/zj3214/webhook-261c6506fca17bc41be50b3461f98f1c@sha256:8422b24da68489f22cfbcdebf1f652390bff8ea68f9c3cc99777387fab4fb19e
           resources:
             requests:
               cpu: 100m
@@ -8485,7 +9296,6 @@ spec:
             failureThreshold: 6
             initialDelaySeconds: 20
       # Our webhook should gracefully terminate by lame ducking first, set this to a sufficiently
-
       # high value that we respect whatever value it has configured for the lame duck grace period.
       terminationGracePeriodSeconds: 300
 ---
@@ -8518,29 +9328,17 @@ spec:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: admissionregistration.k8s.io/v1
@@ -8572,29 +9370,17 @@ webhooks:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: admissionregistration.k8s.io/v1
@@ -8641,29 +9427,17 @@ webhooks:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: admissionregistration.k8s.io/v1
@@ -8711,29 +9485,17 @@ webhooks:
 
 ---
 # Copyright 2020 The Knative Authors
-
 #
-
 # Licensed under the Apache License, Version 2.0 (the "License");
-
 # you may not use this file except in compliance with the License.
-
 # You may obtain a copy of the License at
-
 #
-
 #     https://www.apache.org/licenses/LICENSE-2.0
-
 #
-
 # Unless required by applicable law or agreed to in writing, software
-
 # distributed under the License is distributed on an "AS IS" BASIS,
-
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 # See the License for the specific language governing permissions and
-
 # limitations under the License.
 
 apiVersion: v1
