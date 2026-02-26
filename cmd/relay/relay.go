@@ -33,14 +33,29 @@ const (
 )
 
 var (
-	orch      *ctriface.Orchestrator
-	snapMgr   *snapshotting.SnapshotManager
-	imageMap  map[string]string
-	relayPort = 0
-	mu        = &sync.Mutex{}
-	cleaning  *bool
-	baseSnap  *bool
+	orch       *ctriface.Orchestrator
+	snapMgr    *snapshotting.SnapshotManager
+	imageMap   map[string]string
+	relayPort  = 0
+	mu         = &sync.Mutex{}
+	cleaning   *bool
+	baseSnap   *bool
+	dropCaches *bool
 )
+
+func dropLinuxPageCaches() {
+	if err := exec.Command("sync").Run(); err != nil {
+		log.Warnf("failed to sync before dropping page caches: %v", err)
+		return
+	}
+
+	if err := os.WriteFile("/proc/sys/vm/drop_caches", []byte("3\n"), 0o644); err != nil {
+		log.Warnf("failed to drop page caches (requires privileges): %v", err)
+		return
+	}
+
+	log.Debug("dropped Linux page caches")
+}
 
 // statusRecorder wraps http.ResponseWriter to capture the status code
 type statusRecorder struct {
@@ -204,6 +219,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if *cleaning {
 			snapMgr.DeleteSnapshot(rev)
 		}
+		if *dropCaches {
+			dropLinuxPageCaches()
+		}
 		// cancel()
 	}()
 }
@@ -235,6 +253,7 @@ func main() {
 	chunkSize := flag.Uint64("chunkSize", 512*1024, "Chunk size in bytes for memory file uploads and downloads when chunking is enabled")
 	cacheSize := flag.Uint64("cacheSize", 15000, "Size of the cache for memory file chunks when chunking is enabled")
 	cleaning = flag.Bool("clean", false, "Clean existing snapshots after each invocation")
+	dropCaches = flag.Bool("dropCaches", false, "Drop Linux page caches after each invocation teardown")
 	security := flag.String("security", "none", "Snapshot security mode: none, full")
 	baseSnap = flag.Bool("baseSnap", false, "Use base snapshot of booted VM for snapshot creation")
 	threads := flag.Int("j", 8, "How many concurrent uploads/downloads to run when transferring snapshots")
