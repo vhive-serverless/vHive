@@ -25,8 +25,8 @@ import (
 	pkghttp "knative.dev/serving/pkg/http"
 )
 
-const (
-	homeDir = "/users/lkondras"
+var (
+	homeDir, _ = os.UserHomeDir()
 	// snapDir = "/tmp/snapshots"
 	snapDir  = homeDir + "/snapshots"
 	vhiveDir = homeDir + "/vhive"
