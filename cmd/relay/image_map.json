@@ -1,6 +1,6 @@
 {
-    "ghcr.io/vhive-serverless/invitro_trace_function:latest": "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
-    "": "ghcr.io/andre-j3sus/invitro_trace_function_firecracker:esgz",
+    "ghcr.io/vhive-serverless/invitro_trace_function:latest": "ghcr.io/leokondrashov/invitro_trace_function_firecracker:esgz",
+    "": "ghcr.io/leokondrashov/invitro_trace_function_firecracker:esgz",
     "docker.io/vhiveease/fibonacci-go-mod:latest": "ghcr.io/leokondrashov/fibonacci-go-mod:esgz",
     "docker.io/vhiveease/fibonacci-nodejs-mod:latest": "ghcr.io/leokondrashov/fibonacci-nodejs-mod:esgz",
     "docker.io/vhiveease/fibonacci-python-mod:latest": "ghcr.io/leokondrashov/fibonacci-python-mod:esgz",
