@@ -24,8 +24,9 @@ package misc
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"sync"
+
+	"github.com/google/uuid"
 
 	"github.com/containerd/containerd"
 
@@ -48,6 +49,8 @@ type VM struct {
 type VMPool struct {
 	vmMap          sync.Map
 	networkManager *networking.NetworkManager
+	// preparedMap holds VMs that have been prepared (network configured)
+	preparedMap sync.Map
 }
 
 // NewVM Initialize a VM

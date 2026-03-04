@@ -200,6 +200,8 @@ github.com/vhive-serverless/firecracker-containerd v0.0.0-20230912063208-ad6383f
 github.com/vhive-serverless/firecracker-containerd v0.0.0-20230912063208-ad6383f05e45/go.mod h1:XC5a/4PWbzipD5Ron745odZxoVy/J6d8xFldwTZJbSU=
 github.com/vhive-serverless/firecracker-containerd v0.0.0-20251105131017-f10d8a3dea77 h1:NO6SXo0mPVAYZzYXVVBXEExdYPq2pZL48+Cl6ZsnDzY=
 github.com/vhive-serverless/firecracker-containerd v0.0.0-20251105131017-f10d8a3dea77/go.mod h1:XC5a/4PWbzipD5Ron745odZxoVy/J6d8xFldwTZJbSU=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20260304152437-f7f97e2dec10 h1:xLKB3s6Dn3yFME0yMBBcOP6Uvzfoc+HzT00wbZzrN7o=
+github.com/vhive-serverless/firecracker-containerd v0.0.0-20260304152437-f7f97e2dec10/go.mod h1:XC5a/4PWbzipD5Ron745odZxoVy/J6d8xFldwTZJbSU=
 github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 go.mongodb.org/mongo-driver v1.10.0/go.mod h1:wsihk0Kdgv8Kqu1Anit4sfK+22vSFbUrAVEYRhCXrA8=

@@ -147,7 +147,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
-		http.Error(w, "Server Error", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Server Error: %v", err), http.StatusInternalServerError)
+		log.Errorf("Start VM error: %v", err)
 		// cancel()
 		return
 	}

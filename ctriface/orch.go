@@ -106,16 +106,22 @@ type ShimPool struct {
 	poolSize      int              // Target pool size
 	logger        *log.Entry
 	counter       int // Counter for generating unique VM IDs
+	// Optional callback to obtain a CreateVMRequest for a given vmID
+	getVMConfig func(string) *proto.CreateVMRequest
+	// Optional callback to prepare the VM (create network, etc.) before shim prep
+	prepareVM func(string) error
 }
 
 // NewShimPool creates a new shim pool
-func NewShimPool(fcClient *fcclient.Client, poolSize int) *ShimPool {
+func NewShimPool(fcClient *fcclient.Client, poolSize int, getVMConfig func(string) *proto.CreateVMRequest, prepareVM func(string) error) *ShimPool {
 	return &ShimPool{
 		availableVMID: make([]string, 0, poolSize),
 		fcClient:      fcClient,
 		poolSize:      poolSize,
 		logger:        log.WithField("component", "ShimPool"),
 		counter:       0,
+		getVMConfig:   getVMConfig,
+		prepareVM:     prepareVM,
 	}
 }
 
@@ -173,9 +179,22 @@ func (sp *ShimPool) createShim(ctx context.Context, vmID string) error {
 	sp.logger.WithField("vmID", vmID).Debug("Creating new shim")
 
 	ctx = namespaces.WithNamespace(ctx, vmID)
-	_, err := sp.fcClient.PrepareShim(ctx, &proto.PrepareShimRequest{
+	// Ensure VM structure and network are prepared before preparing shim
+	if sp.prepareVM != nil {
+		if err := sp.prepareVM(vmID); err != nil {
+			sp.logger.WithField("vmID", vmID).WithError(err).Error("Failed to prepare VM for shim")
+			return err
+		}
+	}
+
+	req := &proto.PrepareShimRequest{
 		VMID: vmID,
-	})
+	}
+	if sp.getVMConfig != nil {
+		req.CreateVmRequest = sp.getVMConfig(vmID)
+	}
+
+	_, err := sp.fcClient.PrepareShim(ctx, req)
 	if err != nil {
 		sp.logger.WithField("vmID", vmID).WithError(err).Error("Failed to prepare shim")
 		return err
@@ -204,6 +223,7 @@ func (sp *ShimPool) removeShim(ctx context.Context, vmID string) error {
 
 // refillPool ensures the pool has the target number of pre-created shims
 func (sp *ShimPool) refillPool(ctx context.Context) {
+	time.Sleep(100 * time.Millisecond) // Small delay to avoid overlapping usage with refill
 	sp.mu.Lock()
 	currentSize := len(sp.availableVMID)
 	needed := sp.poolSize - currentSize
@@ -390,7 +410,16 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	// Initialize shim pool
 	if o.shimPoolSize > 0 {
 		log.WithField("poolSize", o.shimPoolSize).Info("Initializing shim pool")
-		o.shimPool = NewShimPool(o.fcClient, o.shimPoolSize)
+		o.shimPool = NewShimPool(o.fcClient, o.shimPoolSize, func(vmID string) *proto.CreateVMRequest {
+			vm, err := o.vmPool.GetVM(vmID)
+			if err != nil {
+				return &proto.CreateVMRequest{VMID: vmID}
+			}
+			return o.getVMConfig(vm)
+		}, func(vmID string) error {
+			_, err := o.vmPool.Prepare(vmID)
+			return err
+		})
 		o.shimPool.InitializePool(context.Background())
 	}
 

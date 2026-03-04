@@ -52,8 +52,16 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 		logger.Panic("Allocate (VM): VM exists in the map")
 	}
 
-	vm := NewVM(vmID)
+	// If a prepared VM exists, move it from preparedMap to vmMap and return it
+	if v, ok := p.preparedMap.Load(vmID); ok {
+		vm := v.(*VM)
+		p.preparedMap.Delete(vmID)
+		p.vmMap.Store(vmID, vm)
+		return vm, nil
+	}
 
+	// No prepared VM available: create a new VM and prepare its network now
+	vm := NewVM(vmID)
 	var err error
 	vm.NetConfig, err = p.networkManager.CreateNetwork(vmID)
 	if err != nil {
@@ -62,7 +70,45 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	}
 
 	p.vmMap.Store(vmID, vm)
+	return vm, nil
+}
 
+// Prepare ensures the VM structure exists and network is prepared. If the VM
+// already exists but has no NetConfig, Prepare will attempt to create the
+// network and populate NetConfig.
+func (p *VMPool) Prepare(vmID string) (*VM, error) {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	// If VM already allocated, return it
+	if v, ok := p.vmMap.Load(vmID); ok {
+		vm := v.(*VM)
+		if vm.NetConfig != nil {
+			return vm, nil
+		}
+		// If allocated but missing NetConfig, try to create it (edge case)
+		netCfg, err := p.networkManager.CreateNetwork(vmID)
+		if err != nil {
+			logger.Warn("VM network creation failed")
+			return nil, err
+		}
+		vm.NetConfig = netCfg
+		p.vmMap.Store(vmID, vm)
+		return vm, nil
+	}
+
+	// If already prepared, return it
+	if v, ok := p.preparedMap.Load(vmID); ok {
+		return v.(*VM), nil
+	}
+
+	// VM does not exist yet; create it and prepare network, but store in preparedMap
+	vm := NewVM(vmID)
+	netCfg, err := p.networkManager.CreateNetwork(vmID)
+	if err != nil {
+		logger.Warn("VM network creation failed")
+		return nil, err
+	}
+	vm.NetConfig = netCfg
+	p.preparedMap.Store(vmID, vm)
 	return vm, nil
 }
 
@@ -102,12 +148,17 @@ func (p *VMPool) GetVMMap() map[string]*VM {
 // GetVM Returns a pointer to the VM
 func (p *VMPool) GetVM(vmID string) (*VM, error) {
 	vm, found := p.vmMap.Load(vmID)
-	if !found {
-		log.WithFields(log.Fields{"vmID": vmID}).Error("VM is not in the VM map")
-		return nil, NonExistErr("GetVM: VM is not in the VM map")
+	if found {
+		return vm.(*VM), nil
 	}
 
-	return vm.(*VM), nil
+	vm, found = p.preparedMap.Load(vmID)
+	if found {
+		return vm.(*VM), nil
+	}
+
+	log.WithFields(log.Fields{"vmID": vmID}).Error("VM is not in the VM map")
+	return nil, NonExistErr("GetVM: VM is not in the VM map")
 }
 
 // CleanupNetwork Removes the networks created by the network manager
