@@ -452,6 +452,7 @@ type PageFaultTracer struct {
 	writer  *csv.Writer
 	counter uint64
 	logger  *log.Entry
+	delay   time.Duration
 }
 
 // NewPageFaultTracer creates a new page fault tracer
@@ -479,6 +480,7 @@ func NewPageFaultTracer(filePath string, logger *log.Entry) (*PageFaultTracer, e
 		writer:  writer,
 		counter: 0,
 		logger:  logger,
+		delay:   0 * time.Second,
 	}, nil
 }
 
@@ -500,12 +502,19 @@ func (t *PageFaultTracer) TracePageFault(address, pfn uint64, eventType string, 
 	t.writer.Flush()
 }
 
+func (t *PageFaultTracer) AddDelay(d time.Duration) {
+	if t == nil {
+		return
+	}
+	t.delay += d
+}
+
 // Close closes the trace file
 func (t *PageFaultTracer) Close() error {
 	if t == nil {
 		return nil
 	}
-	t.logger.Debugf("Handled %d page faults", t.counter)
+	t.logger.Debugf("Handled %d page faults in %v", t.counter, t.delay)
 	if t.writer != nil {
 		t.writer.Flush()
 	}
@@ -654,6 +663,10 @@ func (h *UffdHandler) ServePF(addr uintptr, length uint64) bool {
 
 			// Trace the page fault with the actual PFN from backing file
 			h.tracer.TracePageFault(faultPageAddr, backingFilePfn, "pagefault", false, true)
+			startTime := time.Now()
+			defer func() {
+				h.tracer.AddDelay(time.Since(startTime))
+			}()
 			return h.pageOps.PopulateFromFile(h.uffd, region, faultPageAddr, length)
 		}
 	}
