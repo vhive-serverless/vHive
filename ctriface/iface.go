@@ -389,10 +389,6 @@ func (o *Orchestrator) StartWithBaseSnapshot(ctx context.Context, imageName stri
 	}
 	vmID := resp.VMID // Get the VM ID from the response
 	logger = log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
-	_, err = o.ResumeVM(ctx, vmID)
-	if err != nil {
-		return nil, err
-	}
 	ctx = withNamespace(ctx, o.snapshotter, vmID)
 
 	if _, err = o.fcClient.SetVMMetadata(ctx, &proto.SetVMMetadataRequest{
