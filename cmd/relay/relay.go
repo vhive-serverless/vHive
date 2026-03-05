@@ -76,6 +76,7 @@ func (r *statusRecorder) Flush() {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("request received, image %s, revision %s", r.Header.Get("image"), r.Header.Get("revision"))
+	startTime := time.Now()
 
 	ctx := context.Background()
 	relayCtx, cancel := context.WithCancel(ctx)
@@ -200,6 +201,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 	proxy.ServeHTTP(recorder, r)
+
+	log.Debugf("Invocation to %s completed in %v with status %d", vmId, time.Since(startTime), recorder.status)
 
 	go func() {
 		log.Debugf("removing %s", vmId)
