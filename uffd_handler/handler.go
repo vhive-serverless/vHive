@@ -252,14 +252,21 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 
 	defer func() {
 		mode := ""
+		count := ""
 		if po.baseRootfsSource != nil || po.imageSource != nil || po.privateSource != nil {
 			mode = "(Split WS) "
 		} else if po.legacyWSContentPtr != 0 {
 			mode = "(Monolithic WS) "
 		} else if po.lazy {
 			mode = "(Lazy Version) "
+			cnt := 0
+			usedChunks.Range(func(_, _ interface{}) bool {
+				cnt++
+				return true
+			})
+			count = fmt.Sprintf(", total unique chunks mapped: %d", cnt)
 		}
-		log.Infof("%sPre-inserting working set of %d pages in %v", mode, atomic.LoadInt32(&counter), time.Since(startTime))
+		log.Infof("%sPre-inserting working set of %d pages in %v%s", mode, atomic.LoadInt32(&counter), time.Since(startTime), count)
 	}()
 
 	idxCh := make(chan int, len(po.workingSet))
