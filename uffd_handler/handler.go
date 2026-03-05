@@ -453,7 +453,13 @@ type PageFaultTracer struct {
 	counter uint64
 	logger  *log.Entry
 	delay   time.Duration
+	enabled atomic.Bool
 }
+
+var (
+	tracerBySocketPath sync.Map
+	traceStopRequests  sync.Map
+)
 
 // NewPageFaultTracer creates a new page fault tracer
 func NewPageFaultTracer(filePath string, logger *log.Entry) (*PageFaultTracer, error) {
@@ -475,18 +481,28 @@ func NewPageFaultTracer(filePath string, logger *log.Entry) (*PageFaultTracer, e
 	}
 	writer.Flush()
 
-	return &PageFaultTracer{
+	tracer := &PageFaultTracer{
 		file:    file,
 		writer:  writer,
 		counter: 0,
 		logger:  logger,
 		delay:   0 * time.Second,
-	}, nil
+	}
+	tracer.enabled.Store(true)
+
+	return tracer, nil
+}
+
+func (t *PageFaultTracer) StopCapture() {
+	if t == nil {
+		return
+	}
+	t.enabled.Store(false)
 }
 
 // TracePageFault logs a page fault event
 func (t *PageFaultTracer) TracePageFault(address, pfn uint64, eventType string, isRemoved, regionFound bool) {
-	if t == nil {
+	if t == nil || !t.enabled.Load() {
 		return
 	}
 	t.counter++
@@ -503,10 +519,22 @@ func (t *PageFaultTracer) TracePageFault(address, pfn uint64, eventType string, 
 }
 
 func (t *PageFaultTracer) AddDelay(d time.Duration) {
-	if t == nil {
+	if t == nil || !t.enabled.Load() {
 		return
 	}
 	t.delay += d
+}
+
+func StopTraceCollection(uffdSockPath string) {
+	if uffdSockPath == "" {
+		return
+	}
+
+	traceStopRequests.Store(uffdSockPath, struct{}{})
+	if tracerVal, ok := tracerBySocketPath.Load(uffdSockPath); ok {
+		tracerVal.(*PageFaultTracer).StopCapture()
+		traceStopRequests.Delete(uffdSockPath)
+	}
 }
 
 // Close closes the trace file
@@ -1063,7 +1091,16 @@ func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string,
 	if err != nil {
 		return fmt.Errorf("failed to create tracer: %w", err)
 	}
+	if tracer != nil {
+		tracerBySocketPath.Store(uffdSockPath, tracer)
+		if _, shouldStop := traceStopRequests.Load(uffdSockPath); shouldStop {
+			tracer.StopCapture()
+			traceStopRequests.Delete(uffdSockPath)
+		}
+	}
 	defer func() {
+		tracerBySocketPath.Delete(uffdSockPath)
+		traceStopRequests.Delete(uffdSockPath)
 		if tracer != nil {
 			tracer.Close()
 		}

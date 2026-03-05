@@ -766,6 +766,8 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	//	}
 	//}
 
+	uffd_handler.StopTraceCollection(fmt.Sprintf("/tmp/%s.uffd.sock", vmID))
+
 	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
 		logger.WithError(err).Error("failed to stop firecracker-containerd VM")
 	}
