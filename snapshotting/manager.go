@@ -30,6 +30,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
+	"encoding/gob"
 	"encoding/csv"
 	"encoding/hex"
 	"fmt"
@@ -565,6 +566,9 @@ func (mgr *SnapshotManager) PrepareBaseSnapshotChunks() {
 	baseSnapChunks = make(map[[16]byte]bool)
 	baseSnap, err := os.Open(mgr.snapshots["base"].GetRecipeFilePath())
 	if err != nil {
+		if base, ok := mgr.snapshots["base"]; ok {
+			_ = mgr.uploadMemFile(base)
+		}
 		log.Errorf("failed to open base snapshot recipe file: %v", err)
 		return
 	}
@@ -703,6 +707,10 @@ func (mgr *SnapshotManager) RecoverSnapshots() error {
 	}
 
 	prefixes, err := os.ReadDir(mgr.baseFolder + "/" + chunkPrefix)
+	if err != nil {
+		logger.Infof("Recovered %d snapshot(s) with no chunks", len(mgr.snapshots))
+		return nil
+	}
 	for _, prefix := range prefixes {
 		chunks, err := os.ReadDir(mgr.baseFolder + "/" + chunkPrefix + "/" + prefix.Name())
 		if err != nil {
@@ -1313,6 +1321,17 @@ func isHashSensitiveChunk(hash [16]byte, image string) bool {
 	return true
 }
 
+func (mgr *SnapshotManager) DeriveChunkHash(chunk []byte, revision, image string) [16]byte {
+	hash := md5.Sum(chunk)
+	if mgr.securityMode == "full" {
+		return md5.Sum(append(hash[:], []byte(revision)...))
+	}
+	if mgr.securityMode == "partial" && isHashSensitiveChunk(hash, image) {
+		return md5.Sum(append(hash[:], []byte(revision)...))
+	}
+	return hash
+}
+
 func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 	startTime := time.Now()
 	log.Debugf("starting uploadMemFile for snapshot %s at %v", snap.id, startTime)
@@ -1328,135 +1347,9 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 	}
 	defer file.Close()
 
-	type chunkJob struct {
-		idx  int
-		hash string
-		data []byte
-	}
-
-	jobs := make(chan chunkJob, 128) // buffered channel, TODO: tune length
-	errCh := make(chan error, 128)   // TODO: tune length
-	var wg sync.WaitGroup
-
-	for w := 0; w < mgr.threads; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for job := range jobs {
-				mgr.chunkRegistry.deletionLock.RLock()
-				lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(job.hash, &sync.Mutex{})
-				lock := lockI.(*sync.Mutex)
-
-				// start := time.Now()
-				lock.Lock()
-				// log.Debugf("uploadMemFile: Acquired lock for chunk %s in %v", job.hash, time.Since(start))
-
-				if mgr.chunkRegistry.ChunkExists(job.hash) {
-					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
-					continue
-				}
-
-				if found, err := mgr.storage.Exists(mgr.getObjectKey(chunkPrefix, job.hash)); err == nil && found {
-					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
-					continue
-				}
-
-				chunkFilePath := mgr.GetChunkFilePath(job.hash)
-				dir := filepath.Dir(chunkFilePath)
-				if _, err := os.Stat(dir); os.IsNotExist(err) {
-					os.MkdirAll(dir, os.ModePerm)
-				}
-
-				chunkFile, err := os.Create(chunkFilePath)
-				if err != nil {
-					errCh <- fmt.Errorf("creating chunk %s: %w", chunkFilePath, err)
-					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
-					break
-				}
-
-				encryptedData := []byte{}
-				if mgr.encryption {
-					encryptedData = make([]byte, len(job.data))
-					EncryptData(job.data, encryptedData, EncryptionKey[:16])
-				} else {
-					encryptedData = job.data
-				}
-
-				if _, err := chunkFile.Write(encryptedData); err != nil {
-					chunkFile.Close()
-					errCh <- fmt.Errorf("writing chunk %d: %w", job.idx, err)
-					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
-					break
-				}
-				chunkFile.Close()
-
-				if err := mgr.uploadFile(chunkPrefix, chunkFilePath); err != nil {
-					errCh <- fmt.Errorf("uploading chunk %d: %w", job.idx, err)
-					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
-					continue
-				}
-
-				mgr.chunkRegistry.AddAccess(job.hash)
-				lock.Unlock()
-				mgr.chunkRegistry.deletionLock.RUnlock()
-			}
-		}()
-	}
-
-	buffer := make([]byte, mgr.chunkSize)
-	chunkIndex := 0
-	recipe := make([]byte, 0)
-
-	// Sequential read & hash generation
-	for {
-		n, err := io.ReadFull(file, buffer)
-		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-			return errors.Wrapf(err, "reading chunk %d from memory file", chunkIndex)
-		}
-		if n == 0 {
-			break
-		}
-
-		hash := md5.Sum(buffer[:n])
-		if mgr.securityMode == "full" {
-			hash = md5.Sum(append(hash[:], []byte(snap.id)...))
-		} else if mgr.securityMode == "partial" && isHashSensitiveChunk(hash, snap.Image) {
-			hash = md5.Sum(append(hash[:], []byte(snap.id)...))
-		}
-		recipe = append(recipe, hash[:]...)
-		chunkHash := hex.EncodeToString(hash[:])
-
-		// Send job to worker
-		dataCopy := make([]byte, n)
-		copy(dataCopy, buffer[:n])
-		jobs <- chunkJob{idx: chunkIndex, hash: chunkHash, data: dataCopy}
-
-		chunkIndex++
-
-		if err == io.EOF {
-			break
-		}
-	}
-	close(jobs)
-	wg.Wait()
-	close(errCh)
-
-	// Check for errors
-	var firstErr error
-	for err := range errCh {
-		log.Printf("Chunk upload error: %v", err) // print all errors
-		if firstErr == nil {
-			firstErr = err // remember first error to return
-		}
-	}
-
-	if firstErr != nil {
-		return firstErr
+	recipe, chunkIndex, err := mgr.uploadChunkedMemoryContent(file, snap.id, snap.Image)
+	if err != nil {
+		return err
 	}
 
 	log.Infof("All chunks uploaded, preparing recipe file")
@@ -1489,6 +1382,155 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 
 	log.Infof("uploadMemFile for snapshot %s completed in %s, total chunks: %d", snap.GetId(), time.Since(startTime), chunkIndex)
 	return nil
+}
+
+func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revision, image string) ([]byte, int, error) {
+	if mgr.chunkSize == 0 {
+		return nil, 0, errors.New("chunkSize must be greater than 0")
+	}
+
+	workerCount := mgr.threads
+	if workerCount < 1 {
+		workerCount = 1
+	}
+
+	type chunkJob struct {
+		idx  int
+		hash string
+		data []byte
+	}
+
+	jobs := make(chan chunkJob, 128)
+	errCh := make(chan error, 128)
+	var wg sync.WaitGroup
+
+	for w := 0; w < workerCount; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range jobs {
+				mgr.chunkRegistry.deletionLock.RLock()
+				lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(job.hash, &sync.Mutex{})
+				lock := lockI.(*sync.Mutex)
+				lock.Lock()
+
+				if mgr.chunkRegistry.ChunkExists(job.hash) {
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
+					continue
+				}
+
+				if found, existsErr := mgr.storage.Exists(mgr.getObjectKey(chunkPrefix, job.hash)); existsErr == nil && found {
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
+					continue
+				} else if existsErr != nil {
+					errCh <- fmt.Errorf("checking chunk existence %s: %w", job.hash, existsErr)
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
+					continue
+				}
+
+				chunkFilePath := mgr.GetChunkFilePath(job.hash)
+				dir := filepath.Dir(chunkFilePath)
+				if mkErr := os.MkdirAll(dir, os.ModePerm); mkErr != nil {
+					errCh <- fmt.Errorf("creating chunk dir %s: %w", dir, mkErr)
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
+					continue
+				}
+
+				chunkFile, createErr := os.Create(chunkFilePath)
+				if createErr != nil {
+					errCh <- fmt.Errorf("creating chunk %s: %w", chunkFilePath, createErr)
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
+					continue
+				}
+
+				toWrite := job.data
+				if mgr.encryption {
+					encryptedData := make([]byte, len(job.data))
+					if _, encErr := EncryptData(job.data, encryptedData, EncryptionKey[:16]); encErr != nil {
+						chunkFile.Close()
+						errCh <- fmt.Errorf("encrypting chunk %s: %w", job.hash, encErr)
+						lock.Unlock()
+						mgr.chunkRegistry.deletionLock.RUnlock()
+						continue
+					}
+					toWrite = encryptedData
+				}
+
+				if _, writeErr := chunkFile.Write(toWrite); writeErr != nil {
+					chunkFile.Close()
+					errCh <- fmt.Errorf("writing chunk %d: %w", job.idx, writeErr)
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
+					continue
+				}
+				chunkFile.Close()
+
+				if uploadErr := mgr.uploadFile(chunkPrefix, chunkFilePath); uploadErr != nil {
+					errCh <- fmt.Errorf("uploading chunk %d: %w", job.idx, uploadErr)
+					lock.Unlock()
+					mgr.chunkRegistry.deletionLock.RUnlock()
+					continue
+				}
+
+				_ = mgr.chunkRegistry.AddAccess(job.hash)
+				lock.Unlock()
+				mgr.chunkRegistry.deletionLock.RUnlock()
+			}
+		}()
+	}
+
+	buffer := make([]byte, mgr.chunkSize)
+	chunkIndex := 0
+	recipe := make([]byte, 0)
+
+	for {
+		n, readErr := io.ReadFull(reader, buffer)
+		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+			close(jobs)
+			wg.Wait()
+			close(errCh)
+			return nil, chunkIndex, errors.Wrapf(readErr, "reading chunk %d", chunkIndex)
+		}
+		if n == 0 {
+			break
+		}
+
+		hash := mgr.DeriveChunkHash(buffer[:n], revision, image)
+		recipe = append(recipe, hash[:]...)
+		chunkHash := hex.EncodeToString(hash[:])
+
+		dataCopy := make([]byte, n)
+		copy(dataCopy, buffer[:n])
+		jobs <- chunkJob{idx: chunkIndex, hash: chunkHash, data: dataCopy}
+
+		chunkIndex++
+		if readErr == io.EOF {
+			break
+		}
+	}
+
+	close(jobs)
+	wg.Wait()
+	close(errCh)
+
+	var firstErr error
+	for err := range errCh {
+		log.Printf("Chunk upload error: %v", err)
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
+
+	if firstErr != nil {
+		return nil, chunkIndex, firstErr
+	}
+
+	return recipe, chunkIndex, nil
 }
 
 // DownloadSnapshot downloads a snapshot from MinIO.
@@ -2135,4 +2177,117 @@ func (mgr *SnapshotManager) getObjectKey(revision, fileName string) string {
 
 func (mgr *SnapshotManager) IsChunkSensitive(hash [16]byte, image string) bool {
 	return isHashSensitiveChunk(hash, image)
+}
+
+// EnsureRemoteSnapshotChunked converts an existing remote snapshot to chunked format in-place.
+// If recipe_file already exists, hashes may be rewritten based on current security mode.
+// If recipe_file is missing, the method derives recipe/chunks from mem_file.
+func (mgr *SnapshotManager) EnsureRemoteSnapshotChunked(revision string) error {
+	if !mgr.chunking {
+		return errors.New("chunking must be enabled to convert remote snapshots")
+	}
+	if mgr.storage == nil {
+		return errors.New("storage backend is not configured")
+	}
+
+	infoKey := mgr.getObjectKey(revision, "info_file")
+	infoData, err := mgr.storage.DownloadObject(infoKey)
+	if err != nil {
+		return errors.Wrapf(err, "downloading info_file for %s", revision)
+	}
+
+	var tempSnap Snapshot
+	if decodeErr := gob.NewDecoder(bytes.NewReader(infoData)).Decode(&tempSnap); decodeErr != nil {
+		return errors.Wrapf(decodeErr, "decoding info_file for %s", revision)
+	}
+
+	recipeKey := mgr.getObjectKey(revision, "recipe_file")
+	recipeData, err := mgr.storage.DownloadObject(recipeKey)
+	if err != nil {
+		return mgr.convertRemoteUnchunkedSnapshot(revision, tempSnap.Image)
+	}
+
+	return mgr.rewriteRemoteRecipeForSecurityMode(revision, tempSnap.Image, recipeData)
+}
+
+func (mgr *SnapshotManager) rewriteRemoteRecipeForSecurityMode(revision, image string, recipeData []byte) error {
+	newRecipe := make([]byte, len(recipeData))
+	copy(newRecipe, recipeData)
+
+	modified := false
+	for i := 0; i < len(recipeData); i += md5.Size {
+		if i+md5.Size > len(recipeData) {
+			break
+		}
+
+		var currentHash [md5.Size]byte
+		copy(currentHash[:], recipeData[i:i+md5.Size])
+
+		isSensitive := false
+		if mgr.securityMode == "full" {
+			isSensitive = true
+		} else if mgr.securityMode == "partial" {
+			isSensitive = mgr.IsChunkSensitive(currentHash, image)
+		}
+
+		if !isSensitive {
+			continue
+		}
+
+		newHashBytes := md5.Sum(append(currentHash[:], []byte(revision)...))
+		newHashStr := hex.EncodeToString(newHashBytes[:])
+
+		newChunkKey := mgr.getObjectKey(chunkPrefix, newHashStr)
+		exists, existsErr := mgr.storage.Exists(newChunkKey)
+		if existsErr != nil {
+			return errors.Wrapf(existsErr, "checking chunk existence for %s", newHashStr)
+		}
+
+		if !exists {
+			currentHashStr := hex.EncodeToString(currentHash[:])
+			oldChunkKey := mgr.getObjectKey(chunkPrefix, currentHashStr)
+			data, dlErr := mgr.storage.DownloadObject(oldChunkKey)
+			if dlErr != nil {
+				return errors.Wrapf(dlErr, "downloading source chunk %s", oldChunkKey)
+			}
+
+			if upErr := mgr.storage.UploadObject(newChunkKey, bytes.NewReader(data), int64(len(data))); upErr != nil {
+				return errors.Wrapf(upErr, "uploading rewritten chunk %s", newChunkKey)
+			}
+		}
+
+		copy(newRecipe[i:i+md5.Size], newHashBytes[:])
+		modified = true
+	}
+
+	if !modified {
+		return nil
+	}
+
+	recipeKey := mgr.getObjectKey(revision, "recipe_file")
+	if err := mgr.storage.UploadObject(recipeKey, bytes.NewReader(newRecipe), int64(len(newRecipe))); err != nil {
+		return errors.Wrapf(err, "uploading updated recipe for %s", revision)
+	}
+
+	return nil
+}
+
+func (mgr *SnapshotManager) convertRemoteUnchunkedSnapshot(revision, image string) error {
+	memKey := mgr.getObjectKey(revision, "mem_file")
+	memData, err := mgr.storage.DownloadObject(memKey)
+	if err != nil {
+		return errors.Wrapf(err, "downloading mem_file for %s", revision)
+	}
+
+	recipe, _, err := mgr.uploadChunkedMemoryContent(bytes.NewReader(memData), revision, image)
+	if err != nil {
+		return errors.Wrapf(err, "uploading chunked content for %s", revision)
+	}
+
+	recipeKey := mgr.getObjectKey(revision, "recipe_file")
+	if err := mgr.storage.UploadObject(recipeKey, bytes.NewReader(recipe), int64(len(recipe))); err != nil {
+		return errors.Wrapf(err, "uploading recipe_file for %s", revision)
+	}
+
+	return nil
 }

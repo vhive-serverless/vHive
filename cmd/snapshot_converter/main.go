@@ -1,16 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"crypto/md5"
-	"encoding/gob"
-	"encoding/hex"
 	"flag"
-	"fmt"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -20,13 +16,16 @@ import (
 )
 
 func main() {
-	minioURL := flag.String("minioURL", "localhost:9000", "MinIO URL")
+	minioURL := flag.String("minioURL", "10.0.1.1:9000", "MinIO URL")
 	minioAccessKey := flag.String("minioAccessKey", "minio", "MinIO Access Key")
 	minioSecretKey := flag.String("minioSecretKey", "minio123", "MinIO Secret Key")
-	bucketName := flag.String("bucket", "xsnapshots", "MinIO bucket name")
-	targetMode := flag.String("mode", "full", "Target security mode (full, partial)")
+	bucketName := flag.String("bucket", "snapshots", "MinIO bucket name")
+	targetMode := flag.String("mode", "none", "Target security mode (full, partial, none)")
 	encryption := flag.Bool("encryption", false, "Use encryption")
 	baseDir := flag.String("baseDir", "/tmp", "Base directory containing images folder")
+	wsCoalescing := flag.Bool("wsCoalescing", false, "Enable WS coalescing")
+	chunkSize := flag.Uint64("chunkSize", 4096, "Chunk size for chunking")
+	workers := flag.Int("workers", runtime.NumCPU(), "Number of concurrent snapshot workers")
 	flag.Parse()
 
 	log.SetLevel(log.DebugLevel)
@@ -44,15 +43,29 @@ func main() {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
 
+	*targetMode = strings.ToLower(strings.TrimSpace(*targetMode))
+	if *targetMode != "full" && *targetMode != "partial" && *targetMode != "none" {
+		log.Fatalf("Invalid mode %q. Expected one of: full, partial, none", *targetMode)
+	}
+	if *chunkSize == 0 {
+		log.Fatalf("chunkSize must be greater than 0")
+	}
+	if *workers < 1 {
+		*workers = 1
+	}
+
 	// Initialize SnapshotManager to load chunk info
-	smBase := filepath.Join(*baseDir, "vhive", "snapshots")
-	mgr := snapshotting.NewSnapshotManager(smBase, st, true, false, false, false, false, 4096, 128*1024*1024, *targetMode, 1, *encryption, false)
+	smBase := filepath.Join(*baseDir, "snapshots")
+	mgr := snapshotting.NewSnapshotManager(smBase, st, true, false, false, false, *wsCoalescing, *chunkSize, 128*1024*1024, *targetMode, 1, *encryption, false)
 	log.Info("Waiting for snapshot manager to initialize chunks...")
 	mgr.WaitForInit()
 
 	log.Infof("Preparing base snapshot chunks...")
+	if err := mgr.EnsureRemoteSnapshotChunked("base"); err != nil {
+		log.Warnf("Failed to convert base snapshot: %v", err)
+	}
 	if _, err := mgr.DownloadSnapshot("base"); err != nil {
-		log.Warnf("Failed to download base snapshot: %v", err)
+		log.Warnf("Failed to download base snapshot metadata: %v", err)
 	}
 	mgr.PrepareBaseSnapshotChunks()
 
@@ -69,7 +82,7 @@ func main() {
 		parts := strings.Split(path, "/")
 		if len(parts) > 1 {
 			rev := parts[0]
-			if rev != "_chunks" && rev != "" && rev != "base" {
+			if rev != "_chunks" && rev != "ws_shared" && rev != "" && rev != "base" {
 				snapshots[rev] = true
 			}
 		}
@@ -77,7 +90,7 @@ func main() {
 
 	log.Infof("Found %d snapshots to process", len(snapshots))
 
-	numWorkers := runtime.NumCPU()
+	numWorkers := *workers
 	log.Infof("Starting processing with %d workers", numWorkers)
 
 	var wg sync.WaitGroup
@@ -88,7 +101,19 @@ func main() {
 		go func() {
 			defer wg.Done()
 			for snapID := range snapChan {
-				processSnapshot(st, mgr, snapID, *targetMode)
+				if err := mgr.EnsureRemoteSnapshotChunked(snapID); err != nil {
+					log.Errorf("Failed processing snapshot %s: %v", snapID, err)
+				}
+				snap, err := mgr.DownloadSnapshot(snapID)
+				if err != nil {
+					log.Errorf("Failed downloading snapshot %s: %v", snapID, err)
+					continue
+				}
+				_, _ = mgr.GetWorkingSetPages(snap)
+				time.Sleep(100 * time.Millisecond)
+				if err := mgr.UploadWorkingSet(snapID); err != nil {
+					log.Errorf("Failed uploading working set for snapshot %s: %v", snapID, err)
+				}
 			}
 		}()
 	}
@@ -98,107 +123,4 @@ func main() {
 	}
 	close(snapChan)
 	wg.Wait()
-}
-
-func processSnapshot(st storage.ObjectStorage, mgr *snapshotting.SnapshotManager, snapID, targetMode string) {
-	log.Infof("Processing snapshot: %s", snapID)
-
-	// 1. Get Image Name
-	infoKey := fmt.Sprintf("%s/info_file", snapID)
-	infoData, err := st.DownloadObject(infoKey)
-	if err != nil {
-		log.Warnf("Skipping %s: no info_file: %v", snapID, err)
-		return
-	}
-
-	var tempSnap snapshotting.Snapshot
-	dec := gob.NewDecoder(bytes.NewReader(infoData))
-	if err := dec.Decode(&tempSnap); err != nil {
-		log.Warnf("Skipping %s: failed to decode info_file: %v", snapID, err)
-		return
-	}
-	imageName := tempSnap.Image
-
-	// 2. Process Recipe
-	recipeKey := fmt.Sprintf("%s/recipe_file", snapID)
-	recipeData, err := st.DownloadObject(recipeKey)
-	if err != nil {
-		log.Warnf("Skipping %s: no recipe_file: %v", snapID, err)
-		return
-	}
-
-	newRecipe := make([]byte, len(recipeData))
-	copy(newRecipe, recipeData)
-
-	modified := false
-
-	for i := 0; i < len(recipeData); i += 16 {
-		if i+16 > len(recipeData) {
-			break
-		}
-
-		var currentHash [16]byte
-		copy(currentHash[:], recipeData[i:i+16])
-
-		// Determine sensitivity
-		isSensitive := false
-		if targetMode == "full" {
-			isSensitive = true
-		} else if targetMode == "partial" {
-			isSensitive = mgr.IsChunkSensitive(currentHash, imageName)
-		}
-
-		if isSensitive {
-			// New Hash (mix ID)
-			newHashBytes := md5.Sum(append(currentHash[:], []byte(snapID)...))
-
-			currentHashStr := hex.EncodeToString(currentHash[:])
-			newHashStr := hex.EncodeToString(newHashBytes[:])
-
-			// Check if chunk exists with new hash
-			chunkPath := getChunkPath(newHashStr)
-			exists, err := st.Exists(chunkPath)
-			if err != nil {
-				log.Warnf("Error checking chunk existence %s: %v", newHashStr, err)
-				continue
-			}
-
-			if !exists {
-				// Assumes old chunk is stored with plain hash
-				oldChunkPath := getChunkPath(currentHashStr)
-
-				// log.Debugf("Migrating chunk %s -> %s", currentHashStr, newHashStr)
-
-				data, err := st.DownloadObject(oldChunkPath)
-				if err != nil {
-					log.Warnf("Failed to download old chunk %s: %v", oldChunkPath, err)
-					continue
-				}
-
-				err = st.UploadObject(chunkPath, bytes.NewReader(data), int64(len(data)))
-				if err != nil {
-					log.Errorf("Failed to upload new chunk %s: %v", chunkPath, err)
-					continue
-				}
-			}
-
-			// Update recipe with new hash
-			copy(newRecipe[i:i+16], newHashBytes[:])
-			modified = true
-		}
-	}
-
-	if modified {
-		log.Infof("Updating recipe for %s", snapID)
-		err = st.UploadObject(recipeKey, bytes.NewReader(newRecipe), int64(len(newRecipe)))
-		if err != nil {
-			log.Errorf("Failed to upload updated recipe for %s: %v", snapID, err)
-		}
-	} else {
-		log.Infof("No changes for %s", snapID)
-	}
-}
-
-func getChunkPath(hash string) string {
-	return fmt.Sprintf("_chunks/%s/%s", hash[:2], hash)
 }
