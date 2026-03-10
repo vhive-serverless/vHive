@@ -30,8 +30,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
-	"encoding/gob"
 	"encoding/csv"
+	"encoding/gob"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -1569,7 +1569,7 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 		},
 	}
 
-	if !mgr.lazy {
+	if !mgr.lazy && revision != "base" {
 		jobs = append(jobs, downloadJob{
 			name: "memory",
 			run: func() error {
@@ -1578,7 +1578,7 @@ func (mgr *SnapshotManager) DownloadSnapshot(revision string) (*Snapshot, error)
 		})
 	}
 
-	if revision == "base" {
+	if revision == "base" && mgr.chunking {
 		jobs = append(jobs, downloadJob{
 			name: "recipe",
 			run: func() error {
