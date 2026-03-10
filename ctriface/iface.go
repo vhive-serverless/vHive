@@ -1115,12 +1115,17 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, wsContentSources, o.isLazyMode, o.snapshotManager, o.threads)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
-			} else if !hasWSPagesFile {
-				logger.Debugf("Uploading WS file for snap %s after UFFD handler finished", snap.GetId())
-				os.Rename(memPathForTrace+".touched", snap.GetWSFilePath())
-				o.snapshotManager.UploadWorkingSet(snap.GetId())
-				// o.snapshotManager.DeleteSnapshot(snap.GetId())
-				// o.snapshotManager.CleanChunks()
+			} else if o.isWSRecording && snap.GetId() != "base" {
+				if hasWSPagesFile {
+					logger.Debugf("Updating WS pages files with new accesses for snap %s after UFFD handler finished", snap.GetId())
+					o.snapshotManager.UpdateWorkingSet(snap.GetId(), memPathForTrace+".touched")
+				} else {
+					logger.Debugf("Uploading WS file for snap %s after UFFD handler finished", snap.GetId())
+					os.Rename(memPathForTrace+".touched", snap.GetWSFilePath())
+					o.snapshotManager.UploadWorkingSet(snap.GetId())
+					// o.snapshotManager.DeleteSnapshot(snap.GetId())
+					// o.snapshotManager.CleanChunks()
+				}
 			}
 		}()
 		// time.Sleep(time.Second)

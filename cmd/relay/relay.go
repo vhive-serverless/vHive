@@ -247,6 +247,7 @@ func main() {
 	isLazyMode := flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 	isWSEnabled := flag.Bool("ws", false, "Enable working set pulling for UPFs in lazy mode")
 	isWSCoalescing := flag.Bool("wsCoalescing", false, "Enable coalescing of working set pulls for multiple UPF-enabled VMs")
+	isWSRecording := flag.Bool("wsRecording", false, "Enable recording of working set pages accessed during function execution")
 	hostIface := flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize := flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
@@ -318,6 +319,7 @@ func main() {
 		ctriface.WithLazyMode(*isLazyMode),
 		ctriface.WithWSPulling(*isWSEnabled),
 		ctriface.WithWSCoalescing(*isWSCoalescing),
+		ctriface.WithWSRecording(*isWSRecording),
 		ctriface.WithChunkingEnabled(*isChunkingEnabled),
 		ctriface.WithChunkSize(*chunkSize),
 		ctriface.WithNetPoolSize(*netPoolSize),

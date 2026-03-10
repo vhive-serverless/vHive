@@ -37,6 +37,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -874,6 +875,92 @@ func (mgr *SnapshotManager) UploadSnapshot(revision string) error {
 	}
 
 	return nil
+}
+
+func (mgr *SnapshotManager) UpdateWorkingSet(revision string, diffFile string) error {
+	snap, err := mgr.AcquireSnapshot(revision)
+	if err != nil {
+		return errors.Wrapf(err, "acquiring snapshot")
+	}
+
+	os.Remove(snap.GetWSFilePath())                    // remove old working set file if exists
+	ws_pages_data, err := mgr.GetWorkingSetPages(snap) // get the most up-to-date one
+	if err != nil {
+		return errors.Wrapf(err, "getting working set pages for snapshot %s", revision)
+	}
+
+	reader := csv.NewReader(bytes.NewReader(ws_pages_data))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return errors.Wrapf(err, "parsing working set CSV for snapshot %s", revision)
+	}
+	if len(records) == 0 || len(records[0]) == 0 || records[0][0] != "pfn" {
+		return fmt.Errorf("unexpected ws source index format: expected pfn header")
+	}
+
+	ws_pages := make([]uint64, 0, len(records))
+	for i := 1; i < len(records); i++ {
+		if len(records[i]) == 0 {
+			continue
+		}
+		pfn, err := strconv.ParseUint(records[i][0], 10, 64)
+		if err != nil {
+			continue
+		}
+		ws_pages = append(ws_pages, pfn)
+	}
+
+	df, err := os.Open(diffFile)
+	if err != nil {
+		return errors.Wrapf(err, "opening working set diff file for snapshot %s", revision)
+	}
+	defer df.Close()
+	diffReader := csv.NewReader(io.Reader(df))
+	records, err = diffReader.ReadAll()
+	if err != nil {
+		return errors.Wrapf(err, "parsing working set CSV for snapshot %s", revision)
+	}
+	if len(records) == 0 || len(records[0]) == 0 || records[0][0] != "pfn" {
+		return fmt.Errorf("unexpected ws source index format: expected pfn header")
+	}
+
+	cnt := 0
+	for i := 1; i < len(records); i++ {
+		if len(records[i]) == 0 {
+			continue
+		}
+		pfn, err := strconv.ParseUint(records[i][0], 10, 64)
+		if err != nil {
+			continue
+		}
+
+		if !slices.Contains(ws_pages, pfn) {
+			cnt++
+			ws_pages = append(ws_pages, pfn)
+		}
+	}
+	log.Debugf("UpdateWorkingSet: %d new pages added to working set of snapshot %s", cnt, revision)
+
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	if err := writer.Write([]string{"pfn"}); err != nil {
+		return errors.Wrapf(err, "writing header to working set CSV for snapshot %s", revision)
+	}
+	for _, pfn := range ws_pages {
+		if err := writer.Write([]string{strconv.FormatUint(pfn, 10)}); err != nil {
+			return errors.Wrapf(err, "writing record to working set CSV for snapshot %s", revision)
+		}
+	}
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return errors.Wrapf(err, "finalizing working set CSV for snapshot %s", revision)
+	}
+
+	if err := os.WriteFile(snap.GetWSFilePath(), buf.Bytes(), 0644); err != nil {
+		return errors.Wrapf(err, "writing updated working set CSV for snapshot %s", revision)
+	}
+
+	return mgr.UploadWorkingSet(revision)
 }
 
 func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {

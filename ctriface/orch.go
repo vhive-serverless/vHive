@@ -324,6 +324,7 @@ type Orchestrator struct {
 	isLazyMode        bool
 	isWSPulling       bool
 	isWSCoalescing    bool
+	isWSRecording     bool
 	isChunkingEnabled bool
 	chunkSize         uint64
 	snapshotsDir      string

@@ -210,6 +210,12 @@ func WithWSCoalescing(isWSCoalescing bool) OrchestratorOption {
 	}
 }
 
+func WithWSRecording(isWSRecording bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.isWSRecording = isWSRecording
+	}
+}
+
 func WithCleanChunks(cleanChunks bool) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.cleanChunks = cleanChunks
