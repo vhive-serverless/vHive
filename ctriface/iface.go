@@ -1069,10 +1069,16 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		// 	logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		// }
 		tStart = time.Now()
-		memData, err := o.snapshotManager.GetUffdMemoryContent(snap, o.isLazyMode)
+		memData, memRelease, err := o.snapshotManager.GetUffdMemoryContentManaged(snap, o.isLazyMode)
 		loadSnapshotMetric.MetricMap[metrics.GetUffdMemoryContent] = metrics.ToUS(time.Since(tStart))
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "loading memory content for UFFD")
+		}
+
+		releaseAll := func() {
+			if memRelease != nil {
+				memRelease()
+			}
 		}
 
 		memPathForTrace := snap.GetMemFilePath()
@@ -1086,33 +1092,58 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		hasWSPagesFile := false
 		if o.isWSPulling && snap.GetId() != "base" {
 			tStart = time.Now()
-			wsPages, err = o.snapshotManager.GetWorkingSetPages(snap)
+			var wsPagesRelease func()
+			wsPages, wsPagesRelease, err = o.snapshotManager.GetWorkingSetPagesManaged(snap)
 			loadSnapshotMetric.MetricMap[metrics.GetWorkingSetPages] = metrics.ToUS(time.Since(tStart))
 			if err != nil {
 				logger.Warnf("Failed to get working set pages: %v", err)
 				wsPages = nil
 			} else {
 				hasWSPagesFile = true
+				prevRelease := releaseAll
+				releaseAll = func() {
+					if wsPagesRelease != nil {
+						wsPagesRelease()
+					}
+					prevRelease()
+				}
 			}
 
 			if o.isWSCoalescing {
 				tStart = time.Now()
-				wsContentSources, err = o.snapshotManager.GetWorkingSetContentSources(snap)
+				var wsSourcesRelease func()
+				wsContentSources, wsSourcesRelease, err = o.snapshotManager.GetWorkingSetContentSourcesManaged(snap)
 				if err != nil {
 					logger.Warnf("Failed to get split working set content: %v", err)
 					wsContentSources = nil
 				}
+				if wsSourcesRelease != nil {
+					prevRelease := releaseAll
+					releaseAll = func() {
+						wsSourcesRelease()
+						prevRelease()
+					}
+				}
 				if wsContentSources == nil {
-					wsContent, err = o.snapshotManager.GetWorkingSetContent(snap)
+					var wsContentRelease func()
+					wsContent, wsContentRelease, err = o.snapshotManager.GetWorkingSetContentManaged(snap)
 					if err != nil {
 						logger.Warnf("Failed to get fallback working set content: %v", err)
+					} else {
+						prevRelease := releaseAll
+						releaseAll = func() {
+							if wsContentRelease != nil {
+								wsContentRelease()
+							}
+							prevRelease()
+						}
 					}
 				}
 				loadSnapshotMetric.MetricMap[metrics.GetWorkingSetContent] = metrics.ToUS(time.Since(tStart))
 			}
 		}
 		go func() {
-			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, wsContentSources, o.isLazyMode, o.snapshotManager, o.threads)
+			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, wsContentSources, o.isLazyMode, o.snapshotManager, o.threads, releaseAll)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if o.isWSRecording && snap.GetId() != "base" {

@@ -52,6 +52,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/vhive-serverless/vhive/storage"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -76,6 +77,25 @@ type WorkingSetContentSources struct {
 	BaseRootfs WorkingSetContentSource
 	Image      WorkingSetContentSource
 	Private    WorkingSetContentSource
+}
+
+func combineReleaseFuncs(releaseFuncs ...func()) func() {
+	filtered := make([]func(), 0, len(releaseFuncs))
+	for _, releaseFn := range releaseFuncs {
+		if releaseFn != nil {
+			filtered = append(filtered, releaseFn)
+		}
+	}
+
+	if len(filtered) == 0 {
+		return func() {}
+	}
+
+	return func() {
+		for _, releaseFn := range filtered {
+			releaseFn()
+		}
+	}
 }
 
 func (mgr *SnapshotManager) GetCleanChunks() bool {
@@ -2168,6 +2188,10 @@ func (mgr *SnapshotManager) GetWorkingSetPages(snap *Snapshot) ([]byte, error) {
 	return mgr.GetSnapshotFileContent(snap, snap.GetWSFilePath())
 }
 
+func (mgr *SnapshotManager) GetWorkingSetPagesManaged(snap *Snapshot) ([]byte, func(), error) {
+	return mgr.GetSnapshotFileContentManaged(snap, snap.GetWSFilePath())
+}
+
 func (mgr *SnapshotManager) GetUffdMemoryContent(snap *Snapshot, lazy bool) ([]byte, error) {
 	if lazy {
 		return mgr.GetSnapshotFileContent(snap, snap.GetRecipeFilePath())
@@ -2175,8 +2199,88 @@ func (mgr *SnapshotManager) GetUffdMemoryContent(snap *Snapshot, lazy bool) ([]b
 	return mgr.GetSnapshotFileContent(snap, snap.GetMemFilePath())
 }
 
+func (mgr *SnapshotManager) GetUffdMemoryContentManaged(snap *Snapshot, lazy bool) ([]byte, func(), error) {
+	if lazy {
+		return mgr.GetSnapshotFileContentManaged(snap, snap.GetRecipeFilePath())
+	}
+	return mgr.GetSnapshotFileContentManaged(snap, snap.GetMemFilePath())
+}
+
+func (mgr *SnapshotManager) GetWorkingSetContentManaged(snap *Snapshot) ([]byte, func(), error) {
+	if mgr.securityMode == "full" {
+		return mgr.GetSnapshotFileContentManaged(snap, snap.GetWSContentFilePath())
+	}
+
+	data, releaseFn, err := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSPrivateContentFilePath())
+	if err == nil {
+		return data, releaseFn, nil
+	}
+
+	fallbackData, fallbackRelease, fallbackErr := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSContentFilePath())
+	if fallbackErr == nil {
+		return fallbackData, fallbackRelease, nil
+	}
+
+	return nil, combineReleaseFuncs(releaseFn, fallbackRelease), fallbackErr
+}
+
+func (mgr *SnapshotManager) GetWorkingSetContentSourcesManaged(snap *Snapshot) (*WorkingSetContentSources, func(), error) {
+	if mgr.securityMode == "full" {
+		return nil, func() {}, nil
+	}
+
+	privateContent, privateContentRelease, err := mgr.GetWorkingSetContentManaged(snap)
+	if err != nil {
+		privateContent = nil
+		privateContentRelease = func() {}
+	}
+
+	privateIndex, privateIndexRelease, err := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSPrivateIndexFilePath())
+	if err != nil {
+		privateIndex = nil
+		privateIndexRelease = func() {}
+	}
+
+	baseSource, err := mgr.getSharedWSSource("")
+	if err != nil {
+		combineReleaseFuncs(privateContentRelease, privateIndexRelease)()
+		return nil, func() {}, err
+	}
+
+	imageSource, err := mgr.getSharedWSSource(normalizeImageName(snap.GetImage()))
+	if err != nil {
+		combineReleaseFuncs(privateContentRelease, privateIndexRelease)()
+		return nil, func() {}, err
+	}
+
+	releaseFn := combineReleaseFuncs(privateContentRelease, privateIndexRelease)
+
+	if len(privateContent) == 0 && len(privateIndex) == 0 && baseSource == nil && imageSource == nil {
+		return nil, releaseFn, nil
+	}
+
+	sources := &WorkingSetContentSources{
+		Private: WorkingSetContentSource{
+			Content: privateContent,
+			Index:   privateIndex,
+		},
+	}
+	if baseSource != nil {
+		sources.BaseRootfs = *baseSource
+	}
+	if imageSource != nil {
+		sources.Image = *imageSource
+	}
+
+	return sources, releaseFn, nil
+}
+
 func (mgr *SnapshotManager) GetSnapshotFileContent(snap *Snapshot, localPath string) ([]byte, error) {
 	return mgr.getFileContent(snap.GetId(), localPath)
+}
+
+func (mgr *SnapshotManager) GetSnapshotFileContentManaged(snap *Snapshot, localPath string) ([]byte, func(), error) {
+	return mgr.getFileContentManaged(snap.GetId(), localPath)
 }
 
 func (mgr *SnapshotManager) getFileContent(revision, localPath string) ([]byte, error) {
@@ -2214,6 +2318,69 @@ func (mgr *SnapshotManager) getFileContent(revision, localPath string) ([]byte, 
 	}
 
 	return data, nil
+}
+
+func (mgr *SnapshotManager) getFileContentManaged(revision, localPath string) ([]byte, func(), error) {
+	if stat, err := os.Stat(localPath); err == nil && stat != nil {
+		if stat.Size() == 0 {
+			return []byte{}, func() {}, nil
+		}
+
+		file, openErr := os.Open(localPath)
+		if openErr != nil {
+			log.Warnf("Failed to open local file %s for mmap: %v", localPath, openErr)
+		} else {
+			mapped, mmapErr := unix.Mmap(int(file.Fd()), 0, int(stat.Size()), unix.PROT_READ, unix.MAP_PRIVATE)
+			if closeErr := file.Close(); closeErr != nil {
+				log.Warnf("Failed to close file descriptor for %s after mmap attempt: %v", localPath, closeErr)
+			}
+			if mmapErr == nil {
+				var once sync.Once
+				releaseFn := func() {
+					once.Do(func() {
+						if unmapErr := unix.Munmap(mapped); unmapErr != nil {
+							log.Warnf("Failed to munmap local file %s: %v", localPath, unmapErr)
+						}
+					})
+				}
+				return mapped, releaseFn, nil
+			}
+			log.Warnf("Failed to mmap local file %s: %v", localPath, mmapErr)
+		}
+
+		data, readErr := os.ReadFile(localPath)
+		if readErr == nil {
+			return data, func() {}, nil
+		}
+		log.Warnf("Failed to read local file %s after mmap fallback: %v", localPath, readErr)
+	}
+
+	if mgr.storage == nil {
+		return nil, func() {}, errors.Errorf("file %s not found locally and remote storage is not configured", localPath)
+	}
+
+	objectKey := mgr.getObjectKey(revision, filepath.Base(localPath))
+	data, err := mgr.storage.DownloadObject(objectKey)
+	if err != nil {
+		return nil, func() {}, errors.Wrapf(err, "downloading object %s for fast download", objectKey)
+	}
+
+	if !mgr.cleanChunks {
+		go func(path string, content []byte) {
+			dir := filepath.Dir(path)
+			if _, err := os.Stat(dir); os.IsNotExist(err) {
+				if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+					log.Warnf("Failed to create directory %s for background persist: %v", dir, err)
+					return
+				}
+			}
+			if err := os.WriteFile(path, content, 0644); err != nil {
+				log.Warnf("Failed to write file %s in background: %v", path, err)
+			}
+		}(localPath, data)
+	}
+
+	return data, func() {}, nil
 }
 
 // SnapshotExists checks if all required snapshot files exist in remote storage

@@ -1067,8 +1067,11 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 	return body, -1, nil
 }
 
-func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string, wsData []byte, wsContent []byte, wsSources *snapshotting.WorkingSetContentSources, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) error {
+func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string, wsData []byte, wsContent []byte, wsSources *snapshotting.WorkingSetContentSources, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, release func()) error {
 	log.Debugf("Starting handler at %s", uffdSockPath)
+	if release != nil {
+		defer release()
+	}
 
 	// Create and bind Unix domain socket
 	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: uffdSockPath, Net: "unix"})
