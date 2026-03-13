@@ -546,7 +546,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 	manager.initWg.Add(1)
 	go func() {
 		defer manager.initWg.Done()
-		if !chunking {
+		if !chunking || securityMode != "partial" {
 			return
 		}
 
