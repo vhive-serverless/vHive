@@ -1884,6 +1884,102 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	return data, nil
 }
 
+func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, func(), error) {
+	mgr.chunkRegistry.deletionLock.RLock()
+	defer mgr.chunkRegistry.deletionLock.RUnlock()
+
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+	lock := lockI.(*sync.Mutex)
+
+	lock.Lock()
+	defer lock.Unlock()
+
+	chunkFilePath := mgr.GetChunkFilePath(hash)
+
+	if mgr.chunkRegistry.ChunkExists(hash) {
+		if !mgr.encryption {
+			if stat, statErr := os.Stat(chunkFilePath); statErr == nil && stat.Size() > 0 {
+				file, openErr := os.Open(chunkFilePath)
+				if openErr == nil {
+					mapped, mmapErr := unix.Mmap(int(file.Fd()), 0, int(stat.Size()), unix.PROT_READ, unix.MAP_PRIVATE)
+					if closeErr := file.Close(); closeErr != nil {
+						log.Warnf("Failed to close chunk fd %s after mmap attempt: %v", chunkFilePath, closeErr)
+					}
+					if mmapErr == nil {
+						_ = mgr.chunkRegistry.AddAccess(hash)
+						var once sync.Once
+						releaseFn := func() {
+							once.Do(func() {
+								if unmapErr := unix.Munmap(mapped); unmapErr != nil {
+									log.Warnf("Failed to munmap chunk %s: %v", hash, unmapErr)
+								}
+							})
+						}
+						return mapped, releaseFn, nil
+					}
+					log.Warnf("Failed to mmap chunk %s: %v", hash, mmapErr)
+				}
+			}
+		}
+
+		data, err := os.ReadFile(chunkFilePath)
+		if err == nil {
+			_ = mgr.chunkRegistry.AddAccess(hash)
+			if mgr.encryption {
+				EncryptData(data, data, EncryptionKey[:16])
+			}
+			return data, func() {}, nil
+		}
+	}
+
+	objectKey := mgr.getObjectKey(chunkPrefix, hash)
+	data, err := mgr.storage.DownloadObject(objectKey)
+	if err != nil {
+		return nil, func() {}, errors.Wrapf(err, "downloading chunk %s", hash)
+	}
+
+	if !mgr.cleanChunks {
+		persistData := data
+		if mgr.encryption {
+			persistData = append([]byte(nil), data...)
+		}
+
+		go func(chunkData []byte, hash string) {
+			mgr.chunkRegistry.deletionLock.RLock()
+			defer mgr.chunkRegistry.deletionLock.RUnlock()
+
+			lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+			lock := lockI.(*sync.Mutex)
+			lock.Lock()
+			defer lock.Unlock()
+
+			if mgr.chunkRegistry.ChunkExists(hash) {
+				return
+			}
+
+			chunkFilePath := mgr.GetChunkFilePath(hash)
+			dir := filepath.Dir(chunkFilePath)
+			if mkErr := os.MkdirAll(dir, os.ModePerm); mkErr != nil {
+				log.Errorf("creating chunk directory %s: %v", dir, mkErr)
+				return
+			}
+
+			if writeErr := os.WriteFile(chunkFilePath, chunkData, 0644); writeErr != nil {
+				log.Errorf("writing chunk file %s: %v", hash, writeErr)
+				return
+			}
+
+			_ = mgr.chunkRegistry.AddAccess(hash)
+		}(persistData, hash)
+	}
+
+	if mgr.encryption {
+		EncryptData(data, data, EncryptionKey[:16])
+	}
+
+	return data, func() {}, nil
+}
+
 func EncryptData(data, out []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {

@@ -130,6 +130,7 @@ type UffdIoRange struct {
 type MappedChunkInfo struct {
 	addr         uintptr
 	chunkContent []byte
+	release      func()
 }
 
 type WorkingSetSource struct {
@@ -347,7 +348,7 @@ func (po *PageOperations) mapChunk(hashKey [md5.Size]byte) (uintptr, error) {
 	}
 
 	hash := hex.EncodeToString(hashKey[:])
-	chunkContent, err := po.snapMgr.DownloadAndReturnChunk(hash)
+	chunkContent, releaseFn, err := po.snapMgr.DownloadAndReturnChunkManaged(hash)
 	if err != nil {
 		return 0, fmt.Errorf("failed to download and return chunk file %s: %w", hash, err)
 	}
@@ -356,9 +357,21 @@ func (po *PageOperations) mapChunk(hashKey [md5.Size]byte) (uintptr, error) {
 	po.mappedChunks.Store(hashKey, &MappedChunkInfo{
 		addr:         mappedAddr,
 		chunkContent: chunkContent,
+		release:      releaseFn,
 	})
 
 	return mappedAddr, nil
+}
+
+func (po *PageOperations) releaseMappedChunks() {
+	po.mappedChunks.Range(func(key, value interface{}) bool {
+		info := value.(*MappedChunkInfo)
+		if info.release != nil {
+			info.release()
+		}
+		po.mappedChunks.Delete(key)
+		return true
+	})
 }
 
 func (po *PageOperations) getSourceAddressForPFN(source *WorkingSetSource, pfn uint64) (uintptr, bool) {
@@ -1011,6 +1024,7 @@ func (r *Runtime) Run(pfEventDispatch func(*UffdHandler)) {
 }
 
 func (r *Runtime) FreeBackingFile() {
+	r.pageOps.releaseMappedChunks()
 	r.backingMemoryBytes = nil
 }
 
