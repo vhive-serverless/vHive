@@ -33,8 +33,10 @@ import (
 	"encoding/csv"
 	"encoding/gob"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -67,6 +69,7 @@ var imageChunks = map[string]map[[16]byte]bool{}
 var rootfsChunks = map[[16]byte]bool{}
 var baseSnapChunks = map[[16]byte]bool{}
 var EncryptionKey = []byte("vhive-snapshot-enc") // 16 bytes key for AES-128
+var wsCacheHTTPServerOnce sync.Once
 
 type WorkingSetContentSource struct {
 	Content []byte
@@ -543,6 +546,8 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		_ = manager.RecoverSnapshots()
 	}
 
+	manager.startWorkingSetCacheServer()
+
 	manager.initWg.Add(1)
 	go func() {
 		defer manager.initWg.Done()
@@ -570,6 +575,81 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 	}()
 
 	return manager
+}
+
+func (mgr *SnapshotManager) startWorkingSetCacheServer() {
+	wsCacheHTTPServerOnce.Do(func() {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/cached-working-sets", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+
+			revisions, err := mgr.ListCachedWorkingSetRevisions()
+			if err != nil {
+				log.WithError(err).Error("failed to list cached working-set revisions")
+				http.Error(w, "failed to list cached working-set revisions", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if encodeErr := json.NewEncoder(w).Encode(revisions); encodeErr != nil {
+				log.WithError(encodeErr).Error("failed to encode cached working-set revisions")
+			}
+		})
+
+		go func() {
+			if err := http.ListenAndServe(":8081", mux); err != nil {
+				log.WithError(err).Warn("working-set cache HTTP server stopped")
+			}
+		}()
+	})
+}
+
+func (mgr *SnapshotManager) ListCachedWorkingSetRevisions() ([]string, error) {
+	entries, err := os.ReadDir(mgr.baseFolder)
+	if err != nil {
+		return nil, err
+	}
+
+	revisions := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		revision := entry.Name()
+		if revision == chunkPrefix || revision == wsSharedPrefix {
+			continue
+		}
+
+		revisionDir := filepath.Join(mgr.baseFolder, revision)
+		if hasCachedWorkingSetOnDisk(revisionDir) {
+			revisions = append(revisions, revision)
+		}
+	}
+
+	sort.Strings(revisions)
+	return revisions, nil
+}
+
+func hasCachedWorkingSetOnDisk(revisionDir string) bool {
+	workingSetFiles := []string{
+		"working_set_pages",
+		"working_set_pages_content",
+		"working_set_pages_content_private",
+		"working_set_pages_index_private",
+	}
+
+	for _, file := range workingSetFiles {
+		path := filepath.Join(revisionDir, file)
+		if stat, err := os.Stat(path); err == nil && stat.Size() > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (mgr *SnapshotManager) WaitForInit() {
