@@ -191,6 +191,276 @@ type ChunkStats struct {
 	Calls int64
 }
 
+type WorkingSetEntry struct {
+	revision       string
+	accessTimes    []time.Time
+	sizeInChunks   uint64
+	element        *list.Element
+	containingList *list.List
+	heapIndex      int
+}
+
+type WorkingSetHotHeap struct {
+	entries []*WorkingSetEntry
+	k       int
+}
+
+func NewWorkingSetHotHeap(k int) *WorkingSetHotHeap {
+	return &WorkingSetHotHeap{
+		entries: make([]*WorkingSetEntry, 0),
+		k:       k,
+	}
+}
+
+func (h *WorkingSetHotHeap) Len() int { return len(h.entries) }
+
+func (h *WorkingSetHotHeap) Less(i, j int) bool {
+	iAccessTimes := h.entries[i].accessTimes
+	jAccessTimes := h.entries[j].accessTimes
+	iTime := iAccessTimes[len(iAccessTimes)-h.k]
+	jTime := jAccessTimes[len(jAccessTimes)-h.k]
+	return iTime.Before(jTime)
+}
+
+func (h *WorkingSetHotHeap) Swap(i, j int) {
+	h.entries[i], h.entries[j] = h.entries[j], h.entries[i]
+	h.entries[i].heapIndex = i
+	h.entries[j].heapIndex = j
+}
+
+func (h *WorkingSetHotHeap) Push(x interface{}) {
+	entry := x.(*WorkingSetEntry)
+	entry.heapIndex = len(h.entries)
+	h.entries = append(h.entries, entry)
+}
+
+func (h *WorkingSetHotHeap) Pop() interface{} {
+	old := h.entries
+	n := len(old)
+	entry := old[n-1]
+	old[n-1] = nil
+	entry.heapIndex = -1
+	h.entries = old[0 : n-1]
+	return entry
+}
+
+func (h *WorkingSetHotHeap) Peek() *WorkingSetEntry {
+	if len(h.entries) == 0 {
+		return nil
+	}
+	return h.entries[0]
+}
+
+func (h *WorkingSetHotHeap) Update(entry *WorkingSetEntry) {
+	if entry.heapIndex >= 0 && entry.heapIndex < len(h.entries) {
+		heap.Fix(h, entry.heapIndex)
+	}
+}
+
+func (h *WorkingSetHotHeap) Remove(entry *WorkingSetEntry) {
+	if entry.heapIndex >= 0 && entry.heapIndex < len(h.entries) {
+		heap.Remove(h, entry.heapIndex)
+	}
+}
+
+type WorkingSetRegistry struct {
+	deletionLock        sync.RWMutex
+	statsLock           sync.Mutex
+	deleteLoopScheduled bool
+
+	snpMgr   *SnapshotManager
+	K        int
+	capacity uint64
+	hotHeap  *WorkingSetHotHeap
+	coldList *list.List
+	items    map[string]*WorkingSetEntry
+
+	totalSizeInChunks uint64
+	deleteBatchSize   uint64
+}
+
+func NewWorkingSetRegistry(snpMgr *SnapshotManager, K int) *WorkingSetRegistry {
+	wr := &WorkingSetRegistry{
+		snpMgr:              snpMgr,
+		K:                   K,
+		capacity:            snpMgr.cacheSize,
+		hotHeap:             NewWorkingSetHotHeap(K),
+		coldList:            list.New(),
+		items:               make(map[string]*WorkingSetEntry),
+		totalSizeInChunks:   0,
+		deleteBatchSize:     deleteBatchSize,
+		deleteLoopScheduled: false,
+	}
+	heap.Init(wr.hotHeap)
+	return wr
+}
+
+func (wr *WorkingSetRegistry) AddAccess(revision string) error {
+	wr.statsLock.Lock()
+	defer wr.statsLock.Unlock()
+
+	now := time.Now()
+	sizeInChunks := wr.snpMgr.getWorkingSetSizeInChunks(revision)
+
+	if sizeInChunks == 0 {
+		wr.unregisterWorkingSetLocked(revision)
+		return nil
+	}
+
+	entry, ok := wr.items[revision]
+	if !ok {
+		entry = &WorkingSetEntry{
+			revision:       revision,
+			accessTimes:    []time.Time{now},
+			sizeInChunks:   sizeInChunks,
+			element:        nil,
+			containingList: wr.coldList,
+			heapIndex:      -1,
+		}
+		wr.items[revision] = entry
+		entry.element = wr.coldList.PushFront(entry)
+		wr.totalSizeInChunks += sizeInChunks
+
+		if wr.totalSizeInChunks > wr.capacity+wr.deleteBatchSize && !wr.deleteLoopScheduled {
+			wr.deleteLoopScheduled = true
+			go wr.correctLength()
+		}
+
+		return nil
+	}
+
+	if sizeInChunks != entry.sizeInChunks {
+		if sizeInChunks > entry.sizeInChunks {
+			wr.totalSizeInChunks += sizeInChunks - entry.sizeInChunks
+		} else {
+			wr.totalSizeInChunks -= entry.sizeInChunks - sizeInChunks
+		}
+		entry.sizeInChunks = sizeInChunks
+	}
+
+	entry.accessTimes = append(entry.accessTimes, now)
+	if entry.containingList == wr.coldList {
+		if len(entry.accessTimes) == wr.K {
+			wr.coldList.Remove(entry.element)
+			entry.element = nil
+			entry.containingList = nil
+			heap.Push(wr.hotHeap, entry)
+		} else if len(entry.accessTimes) < wr.K {
+			wr.coldList.MoveToFront(entry.element)
+		} else {
+			return errors.New(fmt.Sprintf("working set for revision %s is on cold list but has K or more accesses", revision))
+		}
+	} else if entry.heapIndex >= 0 {
+		wr.hotHeap.Update(entry)
+	}
+
+	if wr.totalSizeInChunks > wr.capacity+wr.deleteBatchSize && !wr.deleteLoopScheduled {
+		wr.deleteLoopScheduled = true
+		go wr.correctLength()
+	}
+
+	return nil
+}
+
+func (wr *WorkingSetRegistry) correctLength() {
+	wr.deletionLock.Lock()
+	defer wr.deletionLock.Unlock()
+	wr.statsLock.Lock()
+	defer wr.statsLock.Unlock()
+
+	if wr.totalSizeInChunks > wr.capacity+wr.deleteBatchSize {
+		for wr.totalSizeInChunks > wr.capacity {
+			toRemove, err := wr.getVictimWorkingSet()
+			if err != nil {
+				log.Errorf("error while getting the victim working set: %v", err)
+				break
+			}
+
+			if err := wr.unregisterWorkingSetLocked(toRemove); err != nil {
+				log.Errorf("error while unregistering working set for revision %s: %v", toRemove, err)
+				continue
+			}
+
+			if err := wr.snpMgr.removeWorkingSetFiles(toRemove); err != nil {
+				log.Errorf("failed to remove working-set files for revision %s: %v", toRemove, err)
+			}
+		}
+	}
+
+	wr.deleteLoopScheduled = false
+}
+
+func (wr *WorkingSetRegistry) getVictimWorkingSet() (string, error) {
+	if len(wr.items) == 0 {
+		return "", errors.New("working-set registry is empty")
+	}
+
+	var hotLRU, coldLRU *WorkingSetEntry
+	if wr.hotHeap.Len() > 0 {
+		hotLRU = wr.hotHeap.Peek()
+	}
+	if wr.coldList.Len() > 0 {
+		coldLRU = wr.coldList.Back().Value.(*WorkingSetEntry)
+	}
+
+	if hotLRU == nil && coldLRU == nil {
+		return "", errors.New("working-set registry has no removable entry")
+	}
+
+	if hotLRU == nil {
+		return coldLRU.revision, nil
+	}
+	if coldLRU == nil {
+		return hotLRU.revision, nil
+	}
+
+	hotScore := int(time.Since(hotLRU.accessTimes[len(hotLRU.accessTimes)-1]).Milliseconds()) / wr.K
+	coldScore := int(time.Since(coldLRU.accessTimes[len(coldLRU.accessTimes)-1]).Milliseconds()) / len(coldLRU.accessTimes)
+	if hotScore < coldScore {
+		return coldLRU.revision, nil
+	}
+
+	return hotLRU.revision, nil
+}
+
+func (wr *WorkingSetRegistry) unregisterWorkingSetLocked(revision string) error {
+	entry, ok := wr.items[revision]
+	if !ok {
+		return errors.New(fmt.Sprintf("working set for revision %s not in registry", revision))
+	}
+
+	if entry.containingList != nil {
+		if entry.containingList.Remove(entry.element) == nil {
+			return errors.New(fmt.Sprintf("working set for revision %s missing from cold list", revision))
+		}
+	} else if entry.heapIndex >= 0 {
+		wr.hotHeap.Remove(entry)
+	} else {
+		return errors.New(fmt.Sprintf("working set for revision %s not in any container", revision))
+	}
+
+	if wr.totalSizeInChunks >= entry.sizeInChunks {
+		wr.totalSizeInChunks -= entry.sizeInChunks
+	} else {
+		wr.totalSizeInChunks = 0
+	}
+
+	delete(wr.items, revision)
+	return nil
+}
+
+func (wr *WorkingSetRegistry) UnregisterWorkingSet(revision string) {
+	wr.statsLock.Lock()
+	defer wr.statsLock.Unlock()
+	_ = wr.unregisterWorkingSetLocked(revision)
+}
+
+func (wr *WorkingSetRegistry) GetTotalSizeInChunks() uint64 {
+	wr.statsLock.Lock()
+	defer wr.statsLock.Unlock()
+	return wr.totalSizeInChunks
+}
+
 type ChunkRegistry struct {
 	deletionLock        sync.RWMutex // freezes the cache when evictor runs
 	statsLock           sync.Mutex   // protect hotList and coldList and other "stats": only one goroutine can AddAccess at the same time
@@ -452,6 +722,7 @@ type SnapshotManager struct {
 	baseFolder    string
 	chunking      bool
 	chunkRegistry *ChunkRegistry
+	wsRegistry    *WorkingSetRegistry
 	lazy          bool
 	wsPulling     bool
 	optimizeWS    bool
@@ -533,6 +804,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		cleanChunks:   cleanChunks,
 	}
 	manager.chunkRegistry = NewChunkRegistry(manager, K)
+	manager.wsRegistry = NewWorkingSetRegistry(manager, K)
 
 	// Clean & init basefolder unless skipping is requested
 	if !skipCleanup {
@@ -777,7 +1049,7 @@ func (mgr *SnapshotManager) RecoverSnapshots() error {
 		}
 
 		// Skip the chunks directory
-		if entry.Name() == chunkPrefix {
+		if entry.Name() == chunkPrefix || entry.Name() == wsSharedPrefix {
 			continue
 		}
 
@@ -803,6 +1075,7 @@ func (mgr *SnapshotManager) RecoverSnapshots() error {
 		// Mark as ready if all required files exist
 		snap.ready = true
 		mgr.snapshots[revision] = snap
+		_ = mgr.wsRegistry.AddAccess(revision)
 
 		logger.Infof("Recovered snapshot for revision %s", revision)
 	}
@@ -822,7 +1095,7 @@ func (mgr *SnapshotManager) RecoverSnapshots() error {
 		}
 	}
 
-	logger.Infof("Recovered %d snapshot(s), %d chunks", len(mgr.snapshots), mgr.chunkRegistry.GetLength())
+	logger.Infof("Recovered %d snapshot(s), %d chunks, %d working-set cache chunks", len(mgr.snapshots), mgr.chunkRegistry.GetLength(), mgr.wsRegistry.GetTotalSizeInChunks())
 	return nil
 }
 
@@ -907,6 +1180,7 @@ func (mgr *SnapshotManager) DeleteSnapshot(revision string) error {
 	}
 
 	_ = snap.Cleanup()
+	mgr.wsRegistry.UnregisterWorkingSet(revision)
 
 	delete(mgr.snapshots, revision)
 
@@ -1059,6 +1333,7 @@ func (mgr *SnapshotManager) UpdateWorkingSet(revision string, diffFile string) e
 	if err := os.WriteFile(snap.GetWSFilePath(), buf.Bytes(), 0644); err != nil {
 		return errors.Wrapf(err, "writing updated working set CSV for snapshot %s", revision)
 	}
+	_ = mgr.wsRegistry.AddAccess(revision)
 
 	return mgr.UploadWorkingSet(revision)
 }
@@ -1075,6 +1350,7 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 	if err := mgr.uploadFile(revision, snap.GetWSFilePath()); err != nil {
 		return errors.Wrapf(err, "uploading working set file for snapshot %s", revision)
 	}
+	_ = mgr.wsRegistry.AddAccess(revision)
 
 	if mgr.optimizeWS && mgr.chunkSize == 4096 {
 		wsFile, err := os.Open(snap.GetWSFilePath())
@@ -1166,6 +1442,7 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 			if err := mgr.uploadFile(revision, contentPath); err != nil {
 				return errors.Wrapf(err, "uploading monolithic working set content file")
 			}
+			_ = mgr.wsRegistry.AddAccess(revision)
 
 			return nil
 		}
@@ -1271,6 +1548,7 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 		if err := mgr.uploadFile(revision, snap.GetWSPrivateIndexFilePath()); err != nil {
 			return errors.Wrapf(err, "uploading private working set index file")
 		}
+		_ = mgr.wsRegistry.AddAccess(revision)
 
 		if len(baseBuild.hashes) > 0 {
 			baseIndex, idxErr := buildWSHashIndexCSV(baseBuild.hashes)
@@ -2463,6 +2741,7 @@ func (mgr *SnapshotManager) getFileContent(revision, localPath string) ([]byte, 
 	if stat, err := os.Stat(localPath); err == nil && stat != nil {
 		data, err := os.ReadFile(localPath)
 		if err == nil {
+			mgr.registerWorkingSetAccessForPath(localPath)
 			return data, nil
 		}
 		log.Warnf("Failed to read local file %s: %v", localPath, err)
@@ -2489,7 +2768,9 @@ func (mgr *SnapshotManager) getFileContent(revision, localPath string) ([]byte, 
 			}
 			if err := os.WriteFile(path, content, 0644); err != nil {
 				log.Warnf("Failed to write file %s in background: %v", path, err)
+				return
 			}
+			mgr.registerWorkingSetAccessForPath(path)
 		}(localPath, data)
 	}
 
@@ -2499,6 +2780,7 @@ func (mgr *SnapshotManager) getFileContent(revision, localPath string) ([]byte, 
 func (mgr *SnapshotManager) getFileContentManaged(revision, localPath string) ([]byte, func(), error) {
 	if stat, err := os.Stat(localPath); err == nil && stat != nil {
 		if stat.Size() == 0 {
+			mgr.registerWorkingSetAccessForPath(localPath)
 			return []byte{}, func() {}, nil
 		}
 
@@ -2511,6 +2793,7 @@ func (mgr *SnapshotManager) getFileContentManaged(revision, localPath string) ([
 				log.Warnf("Failed to close file descriptor for %s after mmap attempt: %v", localPath, closeErr)
 			}
 			if mmapErr == nil {
+				mgr.registerWorkingSetAccessForPath(localPath)
 				var once sync.Once
 				releaseFn := func() {
 					once.Do(func() {
@@ -2526,6 +2809,7 @@ func (mgr *SnapshotManager) getFileContentManaged(revision, localPath string) ([
 
 		data, readErr := os.ReadFile(localPath)
 		if readErr == nil {
+			mgr.registerWorkingSetAccessForPath(localPath)
 			return data, func() {}, nil
 		}
 		log.Warnf("Failed to read local file %s after mmap fallback: %v", localPath, readErr)
@@ -2552,11 +2836,87 @@ func (mgr *SnapshotManager) getFileContentManaged(revision, localPath string) ([
 			}
 			if err := os.WriteFile(path, content, 0644); err != nil {
 				log.Warnf("Failed to write file %s in background: %v", path, err)
+				return
 			}
+			mgr.registerWorkingSetAccessForPath(path)
 		}(localPath, data)
 	}
 
 	return data, func() {}, nil
+}
+
+func (mgr *SnapshotManager) isWorkingSetCacheFile(localPath string) bool {
+	name := filepath.Base(localPath)
+	return name == "working_set_pages" ||
+		name == "working_set_pages_content" ||
+		name == "working_set_pages_content_private" ||
+		name == "working_set_pages_index_private"
+}
+
+func (mgr *SnapshotManager) registerWorkingSetAccessForPath(localPath string) {
+	if !mgr.isWorkingSetCacheFile(localPath) {
+		return
+	}
+
+	revision := filepath.Base(filepath.Dir(localPath))
+	if revision == "" || revision == "." || revision == chunkPrefix || revision == wsSharedPrefix {
+		return
+	}
+
+	if err := mgr.wsRegistry.AddAccess(revision); err != nil {
+		log.Warnf("failed to register working-set access for revision %s: %v", revision, err)
+	}
+}
+
+func (mgr *SnapshotManager) getWorkingSetSizeInChunks(revision string) uint64 {
+	files := []string{
+		"working_set_pages",
+		"working_set_pages_content",
+		"working_set_pages_content_private",
+		"working_set_pages_index_private",
+	}
+
+	snapDir := filepath.Join(mgr.baseFolder, revision)
+	var totalSize uint64
+	for _, name := range files {
+		path := filepath.Join(snapDir, name)
+		if stat, err := os.Stat(path); err == nil && stat != nil && stat.Size() > 0 {
+			totalSize += uint64(stat.Size())
+		}
+	}
+
+	if totalSize == 0 {
+		return 0
+	}
+
+	unit := mgr.chunkSize
+	if unit == 0 {
+		unit = 4096
+	}
+
+	return (totalSize + unit - 1) / unit
+}
+
+func (mgr *SnapshotManager) removeWorkingSetFiles(revision string) error {
+	files := []string{
+		"working_set_pages",
+		"working_set_pages_content",
+		"working_set_pages_content_private",
+		"working_set_pages_index_private",
+	}
+
+	snapDir := filepath.Join(mgr.baseFolder, revision)
+	var firstErr error
+	for _, name := range files {
+		path := filepath.Join(snapDir, name)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+
+	return firstErr
 }
 
 // SnapshotExists checks if all required snapshot files exist in remote storage
