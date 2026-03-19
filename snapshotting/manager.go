@@ -446,6 +446,7 @@ func (wr *WorkingSetRegistry) unregisterWorkingSetLocked(revision string) error 
 	}
 
 	delete(wr.items, revision)
+	log.Debugf("Unregistered working set for revision %s, size in chunks was %d. Total size in chunks is now %d", revision, entry.sizeInChunks, wr.totalSizeInChunks)
 	return nil
 }
 
