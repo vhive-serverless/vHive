@@ -737,6 +737,7 @@ type SnapshotManager struct {
 	wsBaseCache   *WorkingSetContentSource
 	wsImageCache  sync.Map // image name -> *WorkingSetContentSource
 	wsWarnOnce    sync.Once
+	wsPersistLock sync.Map // image name -> *sync.Mutex
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
@@ -1709,6 +1710,15 @@ func parseWSHashIndex(index []byte) ([]string, error) {
 	return hashes, nil
 }
 
+func (mgr *SnapshotManager) getSharedWSPersistLock(imageName string) *sync.Mutex {
+	key := imageName
+	if key == "" {
+		key = wsBaseRootfsKey
+	}
+	lockIface, _ := mgr.wsPersistLock.LoadOrStore(key, &sync.Mutex{})
+	return lockIface.(*sync.Mutex)
+}
+
 func (mgr *SnapshotManager) persistSharedWSSource(imageName string, content []byte, index []byte) error {
 	hashes, err := parseWSHashIndex(index)
 	if err != nil {
@@ -1722,46 +1732,83 @@ func (mgr *SnapshotManager) persistSharedWSSource(imageName string, content []by
 		return errors.Errorf("shared content shorter than expected: have %d, expected at least %d", len(content), len(hashes)*4096)
 	}
 
+	lock := mgr.getSharedWSPersistLock(imageName)
+	lock.Lock()
+	defer lock.Unlock()
+
 	contentPath, indexPath := mgr.getSharedWSLocalPaths(imageName)
 	contentObj, indexObj := mgr.getSharedWSObjectKeys(imageName)
 
-	if _, statErr := os.Stat(contentPath); os.IsNotExist(statErr) {
-		if mkErr := os.MkdirAll(filepath.Dir(contentPath), os.ModePerm); mkErr != nil {
-			return mkErr
+	pageByHash := make(map[string][]byte, len(hashes))
+	for i, hash := range hashes {
+		start := i * 4096
+		end := start + 4096
+		if end > len(content) {
+			break
 		}
-		if writeErr := os.WriteFile(contentPath, content, 0644); writeErr != nil {
-			return errors.Wrapf(writeErr, "writing shared content file")
+		if _, ok := pageByHash[hash]; ok {
+			continue
+		}
+		pageByHash[hash] = append([]byte(nil), content[start:end]...)
+	}
+
+	existingContent, existingErr := mgr.getOptionalSharedFile(contentPath, contentObj)
+	if existingErr != nil {
+		return errors.Wrapf(existingErr, "loading existing shared content")
+	}
+	existingIndex, existingErr := mgr.getOptionalSharedFile(indexPath, indexObj)
+	if existingErr != nil {
+		return errors.Wrapf(existingErr, "loading existing shared index")
+	}
+	if len(existingContent) > 0 && len(existingIndex) > 0 {
+		existingHashes, parseErr := parseWSHashIndex(existingIndex)
+		if parseErr == nil && len(existingContent) >= len(existingHashes)*4096 {
+			for i, hash := range existingHashes {
+				if _, ok := pageByHash[hash]; ok {
+					continue
+				}
+				start := i * 4096
+				end := start + 4096
+				pageByHash[hash] = append([]byte(nil), existingContent[start:end]...)
+			}
 		}
 	}
 
-	if _, statErr := os.Stat(indexPath); os.IsNotExist(statErr) {
-		if mkErr := os.MkdirAll(filepath.Dir(indexPath), os.ModePerm); mkErr != nil {
-			return mkErr
-		}
-		if writeErr := os.WriteFile(indexPath, index, 0644); writeErr != nil {
-			return errors.Wrapf(writeErr, "writing shared index file")
-		}
+	mergedHashes := make([]string, 0, len(pageByHash))
+	for hash := range pageByHash {
+		mergedHashes = append(mergedHashes, hash)
+	}
+	sort.Strings(mergedHashes)
+
+	mergedContent := make([]byte, 0, len(mergedHashes)*4096)
+	for _, hash := range mergedHashes {
+		mergedContent = append(mergedContent, pageByHash[hash]...)
+	}
+
+	mergedIndex, err := buildWSHashIndexCSV(mergedHashes)
+	if err != nil {
+		return errors.Wrapf(err, "building merged shared hash index")
+	}
+
+	if mkErr := os.MkdirAll(filepath.Dir(contentPath), os.ModePerm); mkErr != nil {
+		return mkErr
+	}
+	if mkErr := os.MkdirAll(filepath.Dir(indexPath), os.ModePerm); mkErr != nil {
+		return mkErr
+	}
+	if writeErr := os.WriteFile(contentPath, mergedContent, 0644); writeErr != nil {
+		return errors.Wrapf(writeErr, "writing merged shared content file")
+	}
+	if writeErr := os.WriteFile(indexPath, mergedIndex, 0644); writeErr != nil {
+		return errors.Wrapf(writeErr, "writing merged shared index file")
 	}
 
 	if mgr.storage != nil {
-		contentExists, existsErr := mgr.storage.Exists(contentObj)
-		if existsErr != nil {
-			return errors.Wrapf(existsErr, "checking shared content object %s", contentObj)
+		if upErr := mgr.storage.UploadObject(contentObj, bytes.NewReader(mergedContent), int64(len(mergedContent))); upErr != nil {
+			return errors.Wrapf(upErr, "uploading merged shared content object %s", contentObj)
 		}
-		if !contentExists {
-			if upErr := mgr.storage.UploadObject(contentObj, bytes.NewReader(content), int64(len(content))); upErr != nil {
-				return errors.Wrapf(upErr, "uploading shared content object %s", contentObj)
-			}
-		}
-
-		indexExists, existsErr := mgr.storage.Exists(indexObj)
-		if existsErr != nil {
-			return errors.Wrapf(existsErr, "checking shared index object %s", indexObj)
-		}
-		if !indexExists {
-			if upErr := mgr.storage.UploadObject(indexObj, bytes.NewReader(index), int64(len(index))); upErr != nil {
-				return errors.Wrapf(upErr, "uploading shared index object %s", indexObj)
-			}
+		if upErr := mgr.storage.UploadObject(indexObj, bytes.NewReader(mergedIndex), int64(len(mergedIndex))); upErr != nil {
+			return errors.Wrapf(upErr, "uploading merged shared index object %s", indexObj)
 		}
 	}
 
