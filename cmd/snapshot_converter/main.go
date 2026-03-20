@@ -24,6 +24,7 @@ func main() {
 	encryption := flag.Bool("encryption", false, "Use encryption")
 	baseDir := flag.String("baseDir", "/tmp", "Base directory containing images folder")
 	wsCoalescing := flag.Bool("wsCoalescing", false, "Enable WS coalescing")
+	wsRecording := flag.Bool("wsRecording", false, "Enable WS recording")
 	chunkSize := flag.Uint64("chunkSize", 4096, "Chunk size for chunking")
 	workers := flag.Int("workers", runtime.NumCPU(), "Number of concurrent snapshot workers")
 	flag.Parse()
@@ -56,7 +57,7 @@ func main() {
 
 	// Initialize SnapshotManager to load chunk info
 	smBase := filepath.Join(*baseDir, "snapshots")
-	mgr := snapshotting.NewSnapshotManager(smBase, st, true, false, false, false, *wsCoalescing, *chunkSize, 128*1024*1024, *targetMode, 1, *encryption, false)
+	mgr := snapshotting.NewSnapshotManager(smBase, st, true, false, false, false, *wsCoalescing, *wsRecording, *chunkSize, 128*1024*1024, *targetMode, 1, *encryption, false)
 	log.Info("Waiting for snapshot manager to initialize chunks...")
 	mgr.WaitForInit()
 

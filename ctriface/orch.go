@@ -458,7 +458,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		}
 	}
 	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, false,
-		o.isLazyMode, o.isWSPulling, o.isWSCoalescing, o.chunkSize, o.cacheSize, o.securityMode, o.threads, o.encryption, o.cleanChunks)
+		o.isLazyMode, o.isWSPulling, o.isWSCoalescing, o.isWSRecording, o.chunkSize, o.cacheSize, o.securityMode, o.threads, o.encryption, o.cleanChunks)
 
 	return o
 }

@@ -727,6 +727,7 @@ type SnapshotManager struct {
 	lazy          bool
 	wsPulling     bool
 	optimizeWS    bool
+	wsRecording   bool
 	chunkSize     uint64
 	cacheSize     uint64
 	securityMode  string
@@ -735,6 +736,7 @@ type SnapshotManager struct {
 	cleanChunks   bool
 	wsBaseCache   *WorkingSetContentSource
 	wsImageCache  sync.Map // image name -> *WorkingSetContentSource
+	wsWarnOnce    sync.Once
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
@@ -786,7 +788,7 @@ func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool
 	return chunks, nil
 }
 
-func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling, optimizeWS bool,
+func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling, optimizeWS, wsRecording bool,
 	chunkSize uint64, cacheSize uint64, securityMode string, threads int, encryption, cleanChunks bool) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
@@ -797,6 +799,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		storage:       store,
 		wsPulling:     wsPulling,
 		optimizeWS:    optimizeWS,
+		wsRecording:   wsRecording,
 		lazy:          lazy,
 		cacheSize:     cacheSize,
 		securityMode:  strings.ToLower(securityMode),
@@ -1719,34 +1722,45 @@ func (mgr *SnapshotManager) persistSharedWSSource(imageName string, content []by
 		return errors.Errorf("shared content shorter than expected: have %d, expected at least %d", len(content), len(hashes)*4096)
 	}
 
-	localDir := mgr.getSharedWSChunkLocalDir(imageName)
-	if err := os.MkdirAll(localDir, os.ModePerm); err != nil {
-		return err
+	contentPath, indexPath := mgr.getSharedWSLocalPaths(imageName)
+	contentObj, indexObj := mgr.getSharedWSObjectKeys(imageName)
+
+	if _, statErr := os.Stat(contentPath); os.IsNotExist(statErr) {
+		if mkErr := os.MkdirAll(filepath.Dir(contentPath), os.ModePerm); mkErr != nil {
+			return mkErr
+		}
+		if writeErr := os.WriteFile(contentPath, content, 0644); writeErr != nil {
+			return errors.Wrapf(writeErr, "writing shared content file")
+		}
 	}
 
-	objectPrefix := mgr.getSharedWSChunkObjectPrefix(imageName)
-	for i, hash := range hashes {
-		start := i * 4096
-		end := start + 4096
-		page := content[start:end]
+	if _, statErr := os.Stat(indexPath); os.IsNotExist(statErr) {
+		if mkErr := os.MkdirAll(filepath.Dir(indexPath), os.ModePerm); mkErr != nil {
+			return mkErr
+		}
+		if writeErr := os.WriteFile(indexPath, index, 0644); writeErr != nil {
+			return errors.Wrapf(writeErr, "writing shared index file")
+		}
+	}
 
-		localPath := filepath.Join(localDir, hash)
-		if _, statErr := os.Stat(localPath); os.IsNotExist(statErr) {
-			if writeErr := os.WriteFile(localPath, page, 0644); writeErr != nil {
-				return errors.Wrapf(writeErr, "writing shared chunk %s locally", hash)
+	if mgr.storage != nil {
+		contentExists, existsErr := mgr.storage.Exists(contentObj)
+		if existsErr != nil {
+			return errors.Wrapf(existsErr, "checking shared content object %s", contentObj)
+		}
+		if !contentExists {
+			if upErr := mgr.storage.UploadObject(contentObj, bytes.NewReader(content), int64(len(content))); upErr != nil {
+				return errors.Wrapf(upErr, "uploading shared content object %s", contentObj)
 			}
 		}
 
-		if mgr.storage != nil {
-			objectKey := fmt.Sprintf("%s/%s", objectPrefix, hash)
-			exists, existsErr := mgr.storage.Exists(objectKey)
-			if existsErr != nil {
-				return errors.Wrapf(existsErr, "checking shared chunk object %s", objectKey)
-			}
-			if !exists {
-				if upErr := mgr.storage.UploadObject(objectKey, bytes.NewReader(page), int64(len(page))); upErr != nil {
-					return errors.Wrapf(upErr, "uploading shared chunk object %s", objectKey)
-				}
+		indexExists, existsErr := mgr.storage.Exists(indexObj)
+		if existsErr != nil {
+			return errors.Wrapf(existsErr, "checking shared index object %s", indexObj)
+		}
+		if !indexExists {
+			if upErr := mgr.storage.UploadObject(indexObj, bytes.NewReader(index), int64(len(index))); upErr != nil {
+				return errors.Wrapf(upErr, "uploading shared index object %s", indexObj)
 			}
 		}
 	}
@@ -2508,33 +2522,41 @@ func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetCont
 		}
 	}
 
-	chunkMap := make(map[string][]byte)
-
-	// Legacy fallback path (aggregated content/index files)
+	// Primary path: read aggregated content/index files.
 	contentPath, indexPath := mgr.getSharedWSLocalPaths(imageName)
 	contentObj, indexObj := mgr.getSharedWSObjectKeys(imageName)
-	legacyContent, err := mgr.getOptionalSharedFile(contentPath, contentObj)
+	sharedContent, err := mgr.getOptionalSharedFile(contentPath, contentObj)
 	if err != nil {
 		return nil, err
 	}
-	legacyIndex, err := mgr.getOptionalSharedFile(indexPath, indexObj)
+	sharedIndex, err := mgr.getOptionalSharedFile(indexPath, indexObj)
 	if err != nil {
 		return nil, err
 	}
-	if len(legacyContent) > 0 && len(legacyIndex) > 0 {
-		if hashes, parseErr := parseWSHashIndex(legacyIndex); parseErr == nil {
-			for i, hash := range hashes {
-				start := i * 4096
-				end := start + 4096
-				if end > len(legacyContent) {
-					break
-				}
-				chunkMap[hash] = append([]byte(nil), legacyContent[start:end]...)
-			}
+	if len(sharedContent) > 0 && len(sharedIndex) > 0 {
+		hashes, parseErr := parseWSHashIndex(sharedIndex)
+		if parseErr != nil {
+			return nil, errors.Wrapf(parseErr, "parsing coalesced shared working set index")
 		}
+		if len(sharedContent) >= len(hashes)*4096 {
+			source := &WorkingSetContentSource{Content: sharedContent, Index: sharedIndex}
+			mgr.warnWSRecordingForCoalescedSharedWS(imageName)
+			if imageName == "" {
+				mgr.wsBaseCache = source
+			} else {
+				mgr.wsImageCache.Store(imageName, source)
+			}
+			return source, nil
+		}
+
+		log.Warnf("Coalesced shared WS content for image=%q is truncated: have %d bytes, expected at least %d; falling back to legacy chunk lookup",
+			imageName,
+			len(sharedContent),
+			len(hashes)*4096)
 	}
 
-	// New path: merge per-hash chunk objects from local and remote
+	// Backward-compatibility fallback: merge legacy per-hash chunk objects.
+	chunkMap := make(map[string][]byte)
 	localChunkDir := mgr.getSharedWSChunkLocalDir(imageName)
 	if entries, dirErr := os.ReadDir(localChunkDir); dirErr == nil {
 		for _, entry := range entries {
@@ -2598,6 +2620,7 @@ func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetCont
 	}
 
 	source := &WorkingSetContentSource{Content: content, Index: index}
+	mgr.warnWSRecordingForCoalescedSharedWS(imageName)
 	if imageName == "" {
 		mgr.wsBaseCache = source
 	} else {
@@ -2605,6 +2628,20 @@ func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetCont
 	}
 
 	return source, nil
+}
+
+func (mgr *SnapshotManager) warnWSRecordingForCoalescedSharedWS(imageName string) {
+	if !mgr.wsRecording {
+		return
+	}
+
+	mgr.wsWarnOnce.Do(func() {
+		target := wsBaseRootfsKey
+		if imageName != "" {
+			target = imageName
+		}
+		log.Warnf("wsRecording=true while loading coalesced shared working set source (%s); coalesced shared WS is treated as immutable and will not be updated after upload", target)
+	})
 }
 
 func (mgr *SnapshotManager) getOptionalSharedFile(localPath string, objectKey string) ([]byte, error) {

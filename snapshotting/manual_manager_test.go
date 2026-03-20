@@ -65,7 +65,7 @@ func TestSnapshotMinioUploadDownload(t *testing.T) {
 	image := "testImage"
 
 	storage := setupMinioClient(t)
-	manager := snapshotting.NewSnapshotManager(snapshotsDir, storage, false, false, false, false, false, 0, 1000, "none", 1, false, false)
+	manager := snapshotting.NewSnapshotManager(snapshotsDir, storage, false, false, false, false, false, false, 0, 1000, "none", 1, false, false)
 
 	// Test snapshot doesn't exist remotely before upload
 	exists, err := manager.SnapshotExists(revision)
