@@ -158,10 +158,12 @@ type PageOperations struct {
 	keyLocks           sync.Map
 	snapMgr            *snapshotting.SnapshotManager
 	threads            int
+	logger             *log.Entry
 }
 
 // NewPageOperations creates a new PageOperations instance
-func NewPageOperations(backingBuffer uintptr, legacyWSContent []byte, baseRootfsSource *WorkingSetSource, imageSource *WorkingSetSource, privateSource *WorkingSetSource, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int) *PageOperations {
+func NewPageOperations(backingBuffer uintptr, legacyWSContent []byte, baseRootfsSource *WorkingSetSource, imageSource *WorkingSetSource,
+	privateSource *WorkingSetSource, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) *PageOperations {
 	legacyWSContentPtr := uintptr(0)
 	if len(legacyWSContent) > 0 {
 		legacyWSContentPtr = uintptr(unsafe.Pointer(&legacyWSContent[0]))
@@ -180,6 +182,7 @@ func NewPageOperations(backingBuffer uintptr, legacyWSContent []byte, baseRootfs
 		lazy:               lazy,
 		snapMgr:            snapMgr,
 		threads:            threads,
+		logger:             logger,
 	}
 }
 
@@ -203,7 +206,7 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 		mappedAddr, err := po.mapChunk(hashKey)
 
 		if err != nil {
-			log.Errorf("Failed to map chunk: %v", err)
+			po.logger.Errorf("Failed to map chunk: %v", err)
 			return false
 		}
 
@@ -232,15 +235,15 @@ func (po *PageOperations) PopulateFromFile(uffd int, region *GuestRegionUffdMapp
 			}
 			_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(uffd), uintptr(UFFDIO_WAKE), uintptr(unsafe.Pointer(&wakeRange)))
 			if errno != 0 {
-				log.Errorf("UFFD wake failed: %v", errno)
+				po.logger.Errorf("UFFD wake failed: %v", errno)
 			}
 			return true
 		}
-		log.Errorf("UFFD copy failed: %v", errno)
+		po.logger.Errorf("UFFD copy failed: %v", errno)
 	}
 
 	if copy.Copy <= 0 {
-		log.Errorf("UFFD copy returned non-positive value: %d", copy.Copy)
+		po.logger.Errorf("UFFD copy returned non-positive value: %d", copy.Copy)
 	}
 
 	return true
@@ -268,7 +271,7 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 			})
 			count = fmt.Sprintf(", total unique chunks mapped: %d", cnt)
 		}
-		log.Infof("%sPre-inserting working set of %d pages in %v%s", mode, atomic.LoadInt32(&counter), time.Since(startTime), count)
+		po.logger.Infof("%sPre-inserting working set of %d pages in %v%s", mode, atomic.LoadInt32(&counter), time.Since(startTime), count)
 	}()
 
 	idxCh := make(chan int, len(po.workingSet))
@@ -304,7 +307,7 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 
 					mappedAddr, err := po.mapChunk(hashKey)
 					if err != nil {
-						log.Errorf("Failed to map chunk: %v", err)
+						po.logger.Errorf("Failed to map chunk: %v", err)
 						continue
 					}
 					usedChunks.Store(hex.EncodeToString(hashKey[:]), true)
@@ -322,7 +325,7 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 
 				_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(uffd), UFFDIO_COPY, uintptr(unsafe.Pointer(&copy)))
 				if errno != 0 && errno != unix.EAGAIN && errno != unix.EEXIST {
-					log.Errorf("UFFD copy failed: %v", errno)
+					po.logger.Errorf("UFFD copy failed: %v", errno)
 				}
 			}
 		}()
@@ -451,7 +454,7 @@ func (po *PageOperations) ZeroOut(uffd int, addr uint64) bool {
 		if errno == unix.EAGAIN {
 			return false
 		}
-		log.Errorf("Unexpected zeropage result: %v", errno)
+		po.logger.Errorf("Unexpected zeropage result: %v", errno)
 	}
 
 	return true
@@ -920,7 +923,7 @@ func NewRuntime(conn *net.UnixConn, backingMemory []byte, wsData []byte, wsConte
 
 	// Create PageOperations with a reasonable default page size
 	// The actual page size will be validated when handlers are created
-	pageOps := NewPageOperations(backingMemoryPtr, wsContent, baseRootfsSource, imageSource, privateSource, 4096, ws, lazy, snapMgr, threads)
+	pageOps := NewPageOperations(backingMemoryPtr, wsContent, baseRootfsSource, imageSource, privateSource, 4096, ws, lazy, snapMgr, threads, logger)
 
 	rt := &Runtime{
 		stream:             conn,
