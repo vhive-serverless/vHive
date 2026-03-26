@@ -1,9 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
+	"fmt"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +19,88 @@ import (
 	"github.com/vhive-serverless/vhive/snapshotting"
 	"github.com/vhive-serverless/vhive/storage"
 )
+
+type ksvcList struct {
+	Items []struct {
+		Metadata struct {
+			Name string `json:"name"`
+		} `json:"metadata"`
+	} `json:"items"`
+}
+
+func functionType(revision string) string {
+	idx := strings.LastIndex(revision, "-")
+	if idx <= 0 || idx == len(revision)-1 {
+		return revision
+	}
+	return revision[:idx]
+}
+
+func chooseRepresentativeByType(revisions map[string]bool) map[string]string {
+	typeToRep := make(map[string]string)
+	for rev := range revisions {
+		fnType := functionType(rev)
+		current, exists := typeToRep[fnType]
+		if !exists || rev < current {
+			typeToRep[fnType] = rev
+		}
+	}
+	return typeToRep
+}
+
+func listKnativeServices() ([]string, error) {
+	cmd := exec.Command("kubectl", "get", "ksvc", "-A", "-o", "json")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var parsed ksvcList
+	if err := json.Unmarshal(out, &parsed); err != nil {
+		return nil, fmt.Errorf("parse ksvc list: %w", err)
+	}
+
+	names := make([]string, 0, len(parsed.Items))
+	for _, item := range parsed.Items {
+		name := strings.TrimSpace(item.Metadata.Name)
+		nameComponents := strings.Split(name, "-")
+		name = strings.Join(nameComponents[:len(nameComponents)-1], "-") // replace dots with dashes to match revision naming
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+func copyRevisionObjects(st storage.ObjectStorage, srcRevision, dstRevision string) error {
+	prefix := srcRevision + "/"
+	objects, err := st.ListObjects(prefix, true)
+	if err != nil {
+		return fmt.Errorf("list objects for %s: %w", srcRevision, err)
+	}
+
+	for _, srcKey := range objects {
+		if !strings.HasPrefix(srcKey, prefix) {
+			continue
+		}
+		suffix := strings.TrimPrefix(srcKey, prefix)
+		if suffix == "" {
+			continue
+		}
+
+		dstKey := dstRevision + "/" + suffix
+		data, dlErr := st.DownloadObject(srcKey)
+		if dlErr != nil {
+			return fmt.Errorf("download source object %s: %w", srcKey, dlErr)
+		}
+		if upErr := st.UploadObject(dstKey, bytes.NewReader(data), int64(len(data))); upErr != nil {
+			return fmt.Errorf("upload copied object %s: %w", dstKey, upErr)
+		}
+	}
+
+	return nil
+}
 
 func main() {
 	minioURL := flag.String("minioURL", "10.0.1.1:9000", "MinIO URL")
@@ -90,12 +177,21 @@ func main() {
 	}
 
 	log.Infof("Found %d snapshots to process", len(snapshots))
+	typeToRep := chooseRepresentativeByType(snapshots)
+	representatives := make([]string, 0, len(typeToRep))
+	for _, rep := range typeToRep {
+		representatives = append(representatives, rep)
+	}
+	sort.Strings(representatives)
+	log.Infof("Processing %d representative snapshots (one per function type)", len(representatives))
 
 	numWorkers := *workers
 	log.Infof("Starting processing with %d workers", numWorkers)
 
 	var wg sync.WaitGroup
-	snapChan := make(chan string, len(snapshots))
+	snapChan := make(chan string, len(representatives))
+	processed := make(map[string]bool, len(representatives))
+	processedMu := sync.Mutex{}
 
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
@@ -114,14 +210,83 @@ func main() {
 				time.Sleep(100 * time.Millisecond)
 				if err := mgr.UploadWorkingSet(snapID); err != nil {
 					log.Errorf("Failed uploading working set for snapshot %s: %v", snapID, err)
+					continue
 				}
+
+				processedMu.Lock()
+				processed[snapID] = true
+				processedMu.Unlock()
 			}
 		}()
 	}
 
-	for snapID := range snapshots {
+	for _, snapID := range representatives {
 		snapChan <- snapID
 	}
 	close(snapChan)
+	wg.Wait()
+
+	processedByType := make(map[string]string, len(processed))
+	for rep := range processed {
+		processedByType[functionType(rep)] = rep
+	}
+
+	services, err := listKnativeServices()
+	if err != nil {
+		log.Warnf("Failed to list knative services via kubectl, skipping service fan-out: %v", err)
+		return
+	}
+	log.Infof("Discovered %d knative services", len(services))
+
+	targets := make([]string, 0)
+	for _, service := range services {
+		if processed[service] {
+			continue
+		}
+		targets = append(targets, service)
+	}
+
+	if len(targets) == 0 {
+		log.Info("No additional services require snapshot fan-out")
+		return
+	}
+
+	log.Infof("Fanning out snapshots to %d additional services", len(targets))
+	targetChan := make(chan string, len(targets))
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for targetRevision := range targetChan {
+				fnType := functionType(targetRevision)
+				sourceRevision, ok := processedByType[fnType]
+				if !ok {
+					log.Warnf("No processed source snapshot for service %s (function type %s)", targetRevision, fnType)
+					continue
+				}
+				if sourceRevision == targetRevision {
+					continue
+				}
+
+				if err := copyRevisionObjects(st, sourceRevision, targetRevision); err != nil {
+					log.Errorf("Failed copying snapshot objects from %s to %s: %v", sourceRevision, targetRevision, err)
+					continue
+				}
+
+				if err := mgr.EnsureRemoteSnapshotChunked(targetRevision); err != nil {
+					log.Errorf("Failed updating recipe/private chunks for %s after copy: %v", targetRevision, err)
+					continue
+				}
+
+				log.Infof("Replicated snapshot from %s to %s and rewrote recipe for target-private chunks", sourceRevision, targetRevision)
+			}
+		}()
+	}
+
+	for _, target := range targets {
+		targetChan <- target
+	}
+	close(targetChan)
 	wg.Wait()
 }
