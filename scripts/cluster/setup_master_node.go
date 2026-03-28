@@ -241,7 +241,7 @@ func InstallIstio() error {
 	if !utils.CheckErrorWithMsg(err, "Failed to find istio operator config!\n") {
 		return err
 	}
-	_, err = utils.ExecShellCmd("/usr/local/istio-%s/bin/istioctl install -y -f %s", configs.Knative.IstioVersion, operatorConfigPath)
+	_, err = utils.ExecShellCmd("/usr/local/istio-%s/bin/istioctl install -y -f %s --set hub=gcr.io/istio-release", configs.Knative.IstioVersion, operatorConfigPath)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy istio operator!\n") {
 		return err
 	}
