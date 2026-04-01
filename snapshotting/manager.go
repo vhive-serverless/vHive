@@ -463,9 +463,8 @@ func (wr *WorkingSetRegistry) GetTotalSizeInChunks() uint64 {
 }
 
 type ChunkRegistry struct {
-	deletionLock        sync.RWMutex // freezes the cache when evictor runs
-	statsLock           sync.Mutex   // protect hotList and coldList and other "stats": only one goroutine can AddAccess at the same time
-	chunkLocks          sync.Map     // protects individual chunks. only one thread can access or change chunk files at the same time
+	statsLock           sync.Mutex // protects hotList and coldList and other "stats": only one goroutine can AddAccess at the same time
+	chunkLocks          sync.Map   // protects individual chunks. only one thread can access or change chunk files at the same time
 	deleteLoopScheduled bool
 
 	snpMgr   *SnapshotManager
@@ -541,7 +540,7 @@ func (cr *ChunkRegistry) GetHitStats() map[string]ChunkStats {
 	return allStats
 }
 
-// Assumes caller holds hash's per-chunk lock and the RdeletionLock
+// Assumes caller holds hash's per-chunk lock.
 func (cr *ChunkRegistry) AddAccess(hash string) error {
 	cr.statsLock.Lock() // makes accesses to coldList and hotHeap and stats operations concurrency-safe
 	defer cr.statsLock.Unlock()
@@ -597,56 +596,74 @@ func (cr *ChunkRegistry) AddAccess(hash string) error {
 // deletes extra chunk. assumes no lock.
 func (cr *ChunkRegistry) correctLength() {
 	start := time.Now()
+	var lockDuration time.Duration
 
-	cr.deletionLock.Lock()
-	defer cr.deletionLock.Unlock()
 	cr.statsLock.Lock()
-	defer cr.statsLock.Unlock()
-
-	lockDuration := time.Since(start)
-
 	firstLength := cr.GetLength()
-	if firstLength > cr.capacity+cr.deleteBatchSize {
-		count := 0
-		for cr.GetLength() > cr.capacity {
-			to_remove, err := cr.getVictimChunk()
-			if err != nil {
-				log.Errorf("error while getting the victim chunk")
-				break
-			}
-
-			cr.historyLock.Lock()
-			cr.accessHistory = append(cr.accessHistory, fmt.Sprintf("%v - %s", time.Now(), to_remove))
-			cr.historyLock.Unlock()
-
-			lockI, _ := cr.chunkLocks.LoadOrStore(to_remove, &sync.Mutex{})
-			lock := lockI.(*sync.Mutex)
-			lock.Lock()
-
-			if err := cr.UnregisterChunk(to_remove); err != nil {
-				log.Errorf("error while unregistering chunk %s: %v", to_remove, err)
-				lock.Unlock()
-				continue
-			}
-
-			if err := cr.snpMgr.removeChunkFile(to_remove); err != nil {
-				log.Errorf("failed to remove chunk: %s, err: %v", to_remove, err)
-				lock.Unlock()
-				continue
-			}
-
-			count += 1
-
-			lock.Unlock()
-		}
-		log.Debugf("deletionLoop ran (firstLength was %d). deleted %d chunks and took %v. Waited %v for locks", firstLength, count, time.Since(start), lockDuration)
-	} else {
+	if firstLength <= cr.capacity+cr.deleteBatchSize {
+		cr.deleteLoopScheduled = false
+		cr.statsLock.Unlock()
 		log.Debugf("deletionLoop short-circuited (firstLength was %d). Waited %v for locks. returning in %v", firstLength, lockDuration, time.Since(start))
+		return
 	}
-	cr.deleteLoopScheduled = false
+	cr.statsLock.Unlock()
+
+	count := 0
+	for {
+		cr.statsLock.Lock()
+		if cr.GetLength() <= cr.capacity {
+			cr.deleteLoopScheduled = false
+			cr.statsLock.Unlock()
+			break
+		}
+		toRemove, err := cr.getVictimChunk()
+		cr.statsLock.Unlock()
+		if err != nil {
+			log.Errorf("error while getting the victim chunk")
+			cr.statsLock.Lock()
+			cr.deleteLoopScheduled = false
+			cr.statsLock.Unlock()
+			break
+		}
+
+		lockI, _ := cr.chunkLocks.LoadOrStore(toRemove, &sync.Mutex{})
+		lock := lockI.(*sync.Mutex)
+		lockStart := time.Now()
+		lock.Lock()
+		lockDuration += time.Since(lockStart)
+
+		cr.statsLock.Lock()
+		if _, ok := cr.items.Load(toRemove); !ok {
+			cr.statsLock.Unlock()
+			lock.Unlock()
+			continue
+		}
+		if err := cr.UnregisterChunk(toRemove); err != nil {
+			cr.statsLock.Unlock()
+			log.Errorf("error while unregistering chunk %s: %v", toRemove, err)
+			lock.Unlock()
+			continue
+		}
+		cr.statsLock.Unlock()
+
+		cr.historyLock.Lock()
+		cr.accessHistory = append(cr.accessHistory, fmt.Sprintf("%v - %s", time.Now(), toRemove))
+		cr.historyLock.Unlock()
+
+		if err := cr.snpMgr.removeChunkFile(toRemove); err != nil {
+			log.Errorf("failed to remove chunk: %s, err: %v", toRemove, err)
+			lock.Unlock()
+			continue
+		}
+
+		count += 1
+		lock.Unlock()
+	}
+
+	log.Debugf("deletionLoop ran (firstLength was %d). deleted %d chunks and took %v. Waited %v for locks", firstLength, count, time.Since(start), lockDuration)
 }
 
-// assumes deletionLock and statsLock are held
+// assumes statsLock is held
 func (cr *ChunkRegistry) getVictimChunk() (string, error) {
 	// total := cr.GetLength()
 	// selected := rand.Intn(total)
@@ -686,7 +703,7 @@ func (cr *ChunkRegistry) getVictimChunk() (string, error) {
 	return to_remove, nil
 }
 
-// assumes caller holds lock for hash, the WdeletionLock, and statsLock; does NOT remove chunk from disk
+// assumes caller holds lock for hash and statsLock; does NOT remove chunk from disk
 func (cr *ChunkRegistry) UnregisterChunk(hash string) error {
 	entryIface, ok := cr.items.Load(hash)
 	if ok {
@@ -1200,24 +1217,17 @@ func (mgr *SnapshotManager) CleanChunks() error {
 	mgr.Lock()
 	defer mgr.Unlock()
 
-	mgr.chunkRegistry.deletionLock.Lock()
-	defer mgr.chunkRegistry.deletionLock.Unlock()
-
-	mgr.chunkRegistry.statsLock.Lock()
-	defer mgr.chunkRegistry.statsLock.Unlock()
-
 	hashes := []string{}
 
 	mgr.chunkRegistry.items.Range(func(key, value interface{}) bool {
 		hash := key.(string)
-		entry := value.(*ChunkEntry)
 
 		lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 		lock := lockI.(*sync.Mutex)
 		lock.Lock()
 		defer lock.Unlock()
 
-		hashes = append(hashes, entry.hash)
+		hashes = append(hashes, hash)
 		return true
 	})
 
@@ -1936,25 +1946,21 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				mgr.chunkRegistry.deletionLock.RLock()
 				lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(job.hash, &sync.Mutex{})
 				lock := lockI.(*sync.Mutex)
 				lock.Lock()
 
 				if mgr.chunkRegistry.ChunkExists(job.hash) {
 					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				}
 
 				if found, existsErr := mgr.storage.Exists(mgr.getObjectKey(chunkPrefix, job.hash)); existsErr == nil && found {
 					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				} else if existsErr != nil {
 					errCh <- fmt.Errorf("checking chunk existence %s: %w", job.hash, existsErr)
 					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				}
 
@@ -1963,7 +1969,6 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 				if mkErr := os.MkdirAll(dir, os.ModePerm); mkErr != nil {
 					errCh <- fmt.Errorf("creating chunk dir %s: %w", dir, mkErr)
 					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				}
 
@@ -1971,7 +1976,6 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 				if createErr != nil {
 					errCh <- fmt.Errorf("creating chunk %s: %w", chunkFilePath, createErr)
 					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				}
 
@@ -1982,7 +1986,6 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 						chunkFile.Close()
 						errCh <- fmt.Errorf("encrypting chunk %s: %w", job.hash, encErr)
 						lock.Unlock()
-						mgr.chunkRegistry.deletionLock.RUnlock()
 						continue
 					}
 					toWrite = encryptedData
@@ -1992,7 +1995,6 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 					chunkFile.Close()
 					errCh <- fmt.Errorf("writing chunk %d: %w", job.idx, writeErr)
 					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				}
 				chunkFile.Close()
@@ -2000,13 +2002,11 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 				if uploadErr := mgr.uploadFile(chunkPrefix, chunkFilePath); uploadErr != nil {
 					errCh <- fmt.Errorf("uploading chunk %d: %w", job.idx, uploadErr)
 					lock.Unlock()
-					mgr.chunkRegistry.deletionLock.RUnlock()
 					continue
 				}
 
 				_ = mgr.chunkRegistry.AddAccess(job.hash)
 				lock.Unlock()
-				mgr.chunkRegistry.deletionLock.RUnlock()
 			}
 		}()
 	}
@@ -2228,9 +2228,6 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 }
 
 func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) {
-	mgr.chunkRegistry.deletionLock.RLock()
-	defer mgr.chunkRegistry.deletionLock.RUnlock()
-
 	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
@@ -2266,10 +2263,6 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	if !mgr.cleanChunks {
 		// Write to file in background
 		go func(data []byte, hash string) {
-			// Acquire lock for this specific chunk since we're writing to disk/updating registry
-			mgr.chunkRegistry.deletionLock.RLock()
-			defer mgr.chunkRegistry.deletionLock.RUnlock()
-
 			lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 			lock := lockI.(*sync.Mutex)
 			lock.Lock()
@@ -2305,9 +2298,6 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 }
 
 func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, func(), error) {
-	mgr.chunkRegistry.deletionLock.RLock()
-	defer mgr.chunkRegistry.deletionLock.RUnlock()
-
 	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
@@ -2365,9 +2355,6 @@ func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, 
 		}
 
 		go func(chunkData []byte, hash string) {
-			mgr.chunkRegistry.deletionLock.RLock()
-			defer mgr.chunkRegistry.deletionLock.RUnlock()
-
 			lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 			lock := lockI.(*sync.Mutex)
 			lock.Lock()
@@ -2416,9 +2403,6 @@ func EncryptData(data, out []byte, key []byte) ([]byte, error) {
 }
 
 func (mgr *SnapshotManager) DownloadChunk(hash string) error {
-	mgr.chunkRegistry.deletionLock.RLock()
-	defer mgr.chunkRegistry.deletionLock.RUnlock()
-
 	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
@@ -2441,25 +2425,21 @@ func (mgr *SnapshotManager) DownloadChunk(hash string) error {
 
 // RemoveChunk safely removes the chunk from the registry and disk.
 func (mgr *SnapshotManager) RemoveChunk(hash string) error {
-	mgr.chunkRegistry.deletionLock.Lock()
-	defer mgr.chunkRegistry.deletionLock.Unlock()
-
-	mgr.chunkRegistry.statsLock.Lock()
-	defer mgr.chunkRegistry.statsLock.Unlock()
-
 	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 	lock.Lock()
 	defer lock.Unlock()
 
+	mgr.chunkRegistry.statsLock.Lock()
 	if err := mgr.chunkRegistry.UnregisterChunk(hash); err != nil {
 		log.Warnf("RemoveChunk: UnregisterChunk failed for %s: %v", hash, err)
 	}
+	mgr.chunkRegistry.statsLock.Unlock()
 
 	return mgr.removeChunkFile(hash)
 }
 
-// removes the chunk from local disk. assumes chunk lock and deletionLock are held
+// removes the chunk from local disk. assumes chunk lock is held
 func (mgr *SnapshotManager) removeChunkFile(hash string) error {
 	chunkFilePath := mgr.GetChunkFilePath(hash)
 
