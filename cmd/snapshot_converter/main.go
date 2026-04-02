@@ -147,6 +147,13 @@ func main() {
 	mgr := snapshotting.NewSnapshotManager(smBase, st, true, false, false, false, *wsCoalescing, *wsRecording, *chunkSize, 128*1024*1024, *targetMode, 1, *encryption, false)
 	log.Info("Waiting for snapshot manager to initialize chunks...")
 	mgr.WaitForInit()
+	defer func() {
+		if err := mgr.UploadChunkAliasMap(); err != nil {
+			log.Warnf("Failed uploading chunk alias map after conversion: %v", err)
+		} else {
+			log.Info("Uploaded chunk alias map for private chunk deduplication")
+		}
+	}()
 
 	log.Infof("Preparing base snapshot chunks...")
 	if err := mgr.EnsureRemoteSnapshotChunked("base"); err != nil {

@@ -339,6 +339,9 @@ func main() {
 	)
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()
+	if err := snapMgr.RefreshChunkAliasMapFromRemote(); err != nil {
+		log.Warnf("Failed to refresh chunk alias map on relay launch: %v", err)
+	}
 	time.Sleep(1 * time.Second) // Wait for orchestrator to fully initialize
 
 	if *baseSnap {

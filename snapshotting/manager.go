@@ -61,6 +61,7 @@ const (
 	chunkPrefix     = "_chunks"
 	wsSharedPrefix  = "ws_shared"
 	wsBaseRootfsKey = "base_rootfs"
+	chunkAliasFile  = "chunk_aliases.json"
 	K               = 3   // TODO: tune
 	deleteBatchSize = 150 // TODO: tune
 )
@@ -759,6 +760,10 @@ type SnapshotManager struct {
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
 	initWg  sync.WaitGroup
+
+	chunkAliasMu      sync.RWMutex
+	chunkAliases      map[string]string
+	chunkAliasesDirty bool
 }
 
 func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool, error) {
@@ -824,6 +829,7 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		threads:       threads,
 		encryption:    encryption,
 		cleanChunks:   cleanChunks,
+		chunkAliases:  make(map[string]string),
 	}
 	manager.chunkRegistry = NewChunkRegistry(manager, K)
 	manager.wsRegistry = NewWorkingSetRegistry(manager, K)
@@ -838,6 +844,10 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 	}
 	if skipCleanup {
 		_ = manager.RecoverSnapshots()
+	}
+
+	if err := manager.RefreshChunkAliasMapFromRemote(); err != nil {
+		log.Warnf("failed to refresh remote chunk alias map: %v", err)
 	}
 
 	manager.startWorkingSetCacheServer()
@@ -1917,6 +1927,10 @@ func (mgr *SnapshotManager) uploadMemFile(snap *Snapshot) error {
 	}
 	log.Infof("Recipe file uploaded successfully")
 
+	if err := mgr.UploadChunkAliasMap(); err != nil {
+		log.Warnf("Failed to upload chunk alias map after snapshot %s: %v", snap.GetId(), err)
+	}
+
 	log.Infof("uploadMemFile for snapshot %s completed in %s, total chunks: %d", snap.GetId(), time.Since(startTime), chunkIndex)
 	return nil
 }
@@ -1932,9 +1946,9 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 	}
 
 	type chunkJob struct {
-		idx  int
-		hash string
-		data []byte
+		idx       int
+		storeHash string
+		data      []byte
 	}
 
 	jobs := make(chan chunkJob, 128)
@@ -1946,25 +1960,26 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(job.hash, &sync.Mutex{})
+				lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(job.storeHash, &sync.Mutex{})
 				lock := lockI.(*sync.Mutex)
 				lock.Lock()
 
-				if mgr.chunkRegistry.ChunkExists(job.hash) {
+				if mgr.chunkRegistry.ChunkExists(job.storeHash) {
 					lock.Unlock()
 					continue
 				}
 
-				if found, existsErr := mgr.storage.Exists(mgr.getObjectKey(chunkPrefix, job.hash)); existsErr == nil && found {
+				if found, existsErr := mgr.storage.Exists(mgr.getObjectKey(chunkPrefix, job.storeHash)); existsErr == nil && found {
+					_ = mgr.chunkRegistry.AddAccess(job.storeHash)
 					lock.Unlock()
 					continue
 				} else if existsErr != nil {
-					errCh <- fmt.Errorf("checking chunk existence %s: %w", job.hash, existsErr)
+					errCh <- fmt.Errorf("checking chunk existence %s: %w", job.storeHash, existsErr)
 					lock.Unlock()
 					continue
 				}
 
-				chunkFilePath := mgr.GetChunkFilePath(job.hash)
+				chunkFilePath := mgr.GetChunkFilePath(job.storeHash)
 				dir := filepath.Dir(chunkFilePath)
 				if mkErr := os.MkdirAll(dir, os.ModePerm); mkErr != nil {
 					errCh <- fmt.Errorf("creating chunk dir %s: %w", dir, mkErr)
@@ -1984,7 +1999,7 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 					encryptedData := make([]byte, len(job.data))
 					if _, encErr := EncryptData(job.data, encryptedData, EncryptionKey[:16]); encErr != nil {
 						chunkFile.Close()
-						errCh <- fmt.Errorf("encrypting chunk %s: %w", job.hash, encErr)
+						errCh <- fmt.Errorf("encrypting chunk %s: %w", job.storeHash, encErr)
 						lock.Unlock()
 						continue
 					}
@@ -2005,7 +2020,7 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 					continue
 				}
 
-				_ = mgr.chunkRegistry.AddAccess(job.hash)
+				_ = mgr.chunkRegistry.AddAccess(job.storeHash)
 				lock.Unlock()
 			}
 		}()
@@ -2027,13 +2042,19 @@ func (mgr *SnapshotManager) uploadChunkedMemoryContent(reader io.Reader, revisio
 			break
 		}
 
-		hash := mgr.DeriveChunkHash(buffer[:n], revision, image)
-		recipe = append(recipe, hash[:]...)
-		chunkHash := hex.EncodeToString(hash[:])
+		requestedHash := mgr.DeriveChunkHash(buffer[:n], revision, image)
+		canonicalHash := md5.Sum(buffer[:n])
+
+		recipe = append(recipe, requestedHash[:]...)
+		requestedHashStr := hex.EncodeToString(requestedHash[:])
+		canonicalHashStr := hex.EncodeToString(canonicalHash[:])
+		if requestedHashStr != canonicalHashStr {
+			mgr.recordChunkAlias(requestedHashStr, canonicalHashStr)
+		}
 
 		dataCopy := make([]byte, n)
 		copy(dataCopy, buffer[:n])
-		jobs <- chunkJob{idx: chunkIndex, hash: chunkHash, data: dataCopy}
+		jobs <- chunkJob{idx: chunkIndex, storeHash: canonicalHashStr, data: dataCopy}
 
 		chunkIndex++
 		if readErr == io.EOF {
@@ -2228,20 +2249,21 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 }
 
 func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) {
-	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+	resolvedHash := mgr.ResolveChunkName(hash)
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(resolvedHash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	chunkFilePath := mgr.GetChunkFilePath(hash)
+	chunkFilePath := mgr.GetChunkFilePath(resolvedHash)
 
 	// Return from in-memory registry if already downloaded
-	if mgr.chunkRegistry.ChunkExists(hash) {
+	if mgr.chunkRegistry.ChunkExists(resolvedHash) {
 		data, err := os.ReadFile(chunkFilePath)
 		if err == nil {
 
-			mgr.chunkRegistry.AddAccess(hash)
+			mgr.chunkRegistry.AddAccess(resolvedHash)
 
 			if mgr.encryption {
 				EncryptData(data, data, EncryptionKey[:16])
@@ -2253,11 +2275,11 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	}
 
 	// Download and store chunk
-	objectKey := mgr.getObjectKey(chunkPrefix, hash)
+	objectKey := mgr.getObjectKey(chunkPrefix, resolvedHash)
 
 	data, err := mgr.storage.DownloadObject(objectKey)
 	if err != nil {
-		return nil, errors.Wrapf(err, "downloading chunk %s", hash)
+		return nil, errors.Wrapf(err, "downloading chunk %s", resolvedHash)
 	}
 
 	if !mgr.cleanChunks {
@@ -2287,7 +2309,7 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 
 			// Mark as downloaded
 			mgr.chunkRegistry.AddAccess(hash)
-		}(data, hash)
+		}(data, resolvedHash)
 	}
 
 	if mgr.encryption {
@@ -2298,15 +2320,16 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 }
 
 func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, func(), error) {
-	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+	resolvedHash := mgr.ResolveChunkName(hash)
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(resolvedHash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	chunkFilePath := mgr.GetChunkFilePath(hash)
+	chunkFilePath := mgr.GetChunkFilePath(resolvedHash)
 
-	if mgr.chunkRegistry.ChunkExists(hash) {
+	if mgr.chunkRegistry.ChunkExists(resolvedHash) {
 		if !mgr.encryption {
 			if stat, statErr := os.Stat(chunkFilePath); statErr == nil && stat.Size() > 0 {
 				file, openErr := os.Open(chunkFilePath)
@@ -2316,25 +2339,25 @@ func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, 
 						log.Warnf("Failed to close chunk fd %s after mmap attempt: %v", chunkFilePath, closeErr)
 					}
 					if mmapErr == nil {
-						_ = mgr.chunkRegistry.AddAccess(hash)
+						_ = mgr.chunkRegistry.AddAccess(resolvedHash)
 						var once sync.Once
 						releaseFn := func() {
 							once.Do(func() {
 								if unmapErr := unix.Munmap(mapped); unmapErr != nil {
-									log.Warnf("Failed to munmap chunk %s: %v", hash, unmapErr)
+									log.Warnf("Failed to munmap chunk %s: %v", resolvedHash, unmapErr)
 								}
 							})
 						}
 						return mapped, releaseFn, nil
 					}
-					log.Warnf("Failed to mmap chunk %s: %v", hash, mmapErr)
+					log.Warnf("Failed to mmap chunk %s: %v", resolvedHash, mmapErr)
 				}
 			}
 		}
 
 		data, err := os.ReadFile(chunkFilePath)
 		if err == nil {
-			_ = mgr.chunkRegistry.AddAccess(hash)
+			_ = mgr.chunkRegistry.AddAccess(resolvedHash)
 			if mgr.encryption {
 				EncryptData(data, data, EncryptionKey[:16])
 			}
@@ -2342,10 +2365,10 @@ func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, 
 		}
 	}
 
-	objectKey := mgr.getObjectKey(chunkPrefix, hash)
+	objectKey := mgr.getObjectKey(chunkPrefix, resolvedHash)
 	data, err := mgr.storage.DownloadObject(objectKey)
 	if err != nil {
-		return nil, func() {}, errors.Wrapf(err, "downloading chunk %s", hash)
+		return nil, func() {}, errors.Wrapf(err, "downloading chunk %s", resolvedHash)
 	}
 
 	if !mgr.cleanChunks {
@@ -2377,7 +2400,7 @@ func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, 
 			}
 
 			_ = mgr.chunkRegistry.AddAccess(hash)
-		}(persistData, hash)
+		}(persistData, resolvedHash)
 	}
 
 	if mgr.encryption {
@@ -2403,23 +2426,24 @@ func EncryptData(data, out []byte, key []byte) ([]byte, error) {
 }
 
 func (mgr *SnapshotManager) DownloadChunk(hash string) error {
-	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
+	resolvedHash := mgr.ResolveChunkName(hash)
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(resolvedHash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	if mgr.chunkRegistry.ChunkExists(hash) {
-		mgr.chunkRegistry.AddAccess(hash)
+	if mgr.chunkRegistry.ChunkExists(resolvedHash) {
+		mgr.chunkRegistry.AddAccess(resolvedHash)
 		return nil // already downloaded
 	}
-	chunkFilePath := mgr.GetChunkFilePath(hash)
+	chunkFilePath := mgr.GetChunkFilePath(resolvedHash)
 
-	if err := mgr.downloadFile(chunkPrefix, chunkFilePath, hash); err != nil {
+	if err := mgr.downloadFile(chunkPrefix, chunkFilePath, resolvedHash); err != nil {
 		return err
 	}
 
-	mgr.chunkRegistry.AddAccess(hash)
+	mgr.chunkRegistry.AddAccess(resolvedHash)
 	return nil
 }
 
@@ -3030,6 +3054,130 @@ func (mgr *SnapshotManager) getObjectKey(revision, fileName string) string {
 	return fmt.Sprintf("%s/%s", revision, fileName)
 }
 
+func (mgr *SnapshotManager) getChunkAliasObjectKey() string {
+	return fmt.Sprintf("%s/%s", chunkPrefix, chunkAliasFile)
+}
+
+func (mgr *SnapshotManager) getChunkAliasLocalPath() string {
+	return filepath.Join(mgr.baseFolder, chunkPrefix, chunkAliasFile)
+}
+
+func (mgr *SnapshotManager) ResolveChunkName(requestedHash string) string {
+	mgr.chunkAliasMu.RLock()
+	defer mgr.chunkAliasMu.RUnlock()
+
+	current := requestedHash
+	visited := map[string]bool{current: true}
+	for {
+		next, ok := mgr.chunkAliases[current]
+		if !ok || next == "" || next == current {
+			return current
+		}
+		if visited[next] {
+			return current
+		}
+		visited[next] = true
+		current = next
+	}
+}
+
+func (mgr *SnapshotManager) recordChunkAlias(requestedHash, canonicalHash string) {
+	if requestedHash == "" || canonicalHash == "" || requestedHash == canonicalHash {
+		return
+	}
+
+	mgr.chunkAliasMu.Lock()
+	defer mgr.chunkAliasMu.Unlock()
+
+	if current, ok := mgr.chunkAliases[requestedHash]; ok && current == canonicalHash {
+		return
+	}
+	mgr.chunkAliases[requestedHash] = canonicalHash
+	mgr.chunkAliasesDirty = true
+}
+
+func (mgr *SnapshotManager) loadChunkAliasMapFromBytes(data []byte) error {
+	decoded := make(map[string]string)
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			return err
+		}
+	}
+
+	mgr.chunkAliasMu.Lock()
+	defer mgr.chunkAliasMu.Unlock()
+	mgr.chunkAliases = decoded
+	mgr.chunkAliasesDirty = false
+	return nil
+}
+
+func (mgr *SnapshotManager) RefreshChunkAliasMapFromRemote() error {
+	localPath := mgr.getChunkAliasLocalPath()
+	if data, err := os.ReadFile(localPath); err == nil {
+		if loadErr := mgr.loadChunkAliasMapFromBytes(data); loadErr != nil {
+			return errors.Wrapf(loadErr, "parsing local chunk alias map")
+		}
+	}
+
+	if mgr.storage == nil {
+		return nil
+	}
+
+	objectKey := mgr.getChunkAliasObjectKey()
+	exists, err := mgr.storage.Exists(objectKey)
+	if err != nil {
+		return errors.Wrapf(err, "checking chunk alias map existence")
+	}
+	if !exists {
+		return nil
+	}
+
+	data, err := mgr.storage.DownloadObject(objectKey)
+	if err != nil {
+		return errors.Wrapf(err, "downloading chunk alias map")
+	}
+	if err := mgr.loadChunkAliasMapFromBytes(data); err != nil {
+		return errors.Wrapf(err, "parsing remote chunk alias map")
+	}
+
+	if mkErr := os.MkdirAll(filepath.Dir(localPath), os.ModePerm); mkErr == nil {
+		_ = os.WriteFile(localPath, data, 0644)
+	}
+
+	return nil
+}
+
+func (mgr *SnapshotManager) UploadChunkAliasMap() error {
+	mgr.chunkAliasMu.RLock()
+	if !mgr.chunkAliasesDirty {
+		mgr.chunkAliasMu.RUnlock()
+		return nil
+	}
+	payload, err := json.Marshal(mgr.chunkAliases)
+	mgr.chunkAliasMu.RUnlock()
+	if err != nil {
+		return errors.Wrapf(err, "serializing chunk alias map")
+	}
+
+	localPath := mgr.getChunkAliasLocalPath()
+	if mkErr := os.MkdirAll(filepath.Dir(localPath), os.ModePerm); mkErr == nil {
+		if writeErr := os.WriteFile(localPath, payload, 0644); writeErr != nil {
+			log.Warnf("failed writing local chunk alias map: %v", writeErr)
+		}
+	}
+
+	if mgr.storage != nil {
+		if err := mgr.storage.UploadObject(mgr.getChunkAliasObjectKey(), bytes.NewReader(payload), int64(len(payload))); err != nil {
+			return errors.Wrapf(err, "uploading chunk alias map")
+		}
+	}
+
+	mgr.chunkAliasMu.Lock()
+	mgr.chunkAliasesDirty = false
+	mgr.chunkAliasMu.Unlock()
+	return nil
+}
+
 func (mgr *SnapshotManager) IsChunkSensitive(hash [16]byte, image string) bool {
 	return isHashSensitiveChunk(hash, image)
 }
@@ -3091,24 +3239,9 @@ func (mgr *SnapshotManager) rewriteRemoteRecipeForSecurityMode(revision, image s
 
 		newHashBytes := md5.Sum(append(currentHash[:], []byte(revision)...))
 		newHashStr := hex.EncodeToString(newHashBytes[:])
-
-		newChunkKey := mgr.getObjectKey(chunkPrefix, newHashStr)
-		exists, existsErr := mgr.storage.Exists(newChunkKey)
-		if existsErr != nil {
-			return errors.Wrapf(existsErr, "checking chunk existence for %s", newHashStr)
-		}
-
-		if !exists {
-			currentHashStr := hex.EncodeToString(currentHash[:])
-			oldChunkKey := mgr.getObjectKey(chunkPrefix, currentHashStr)
-			data, dlErr := mgr.storage.DownloadObject(oldChunkKey)
-			if dlErr != nil {
-				return errors.Wrapf(dlErr, "downloading source chunk %s", oldChunkKey)
-			}
-
-			if upErr := mgr.storage.UploadObject(newChunkKey, bytes.NewReader(data), int64(len(data))); upErr != nil {
-				return errors.Wrapf(upErr, "uploading rewritten chunk %s", newChunkKey)
-			}
+		currentHashStr := hex.EncodeToString(currentHash[:])
+		if newHashStr != currentHashStr {
+			mgr.recordChunkAlias(newHashStr, currentHashStr)
 		}
 
 		copy(newRecipe[i:i+md5.Size], newHashBytes[:])
@@ -3122,6 +3255,10 @@ func (mgr *SnapshotManager) rewriteRemoteRecipeForSecurityMode(revision, image s
 	recipeKey := mgr.getObjectKey(revision, "recipe_file")
 	if err := mgr.storage.UploadObject(recipeKey, bytes.NewReader(newRecipe), int64(len(newRecipe))); err != nil {
 		return errors.Wrapf(err, "uploading updated recipe for %s", revision)
+	}
+
+	if err := mgr.UploadChunkAliasMap(); err != nil {
+		return err
 	}
 
 	return nil
@@ -3142,6 +3279,10 @@ func (mgr *SnapshotManager) convertRemoteUnchunkedSnapshot(revision, image strin
 	recipeKey := mgr.getObjectKey(revision, "recipe_file")
 	if err := mgr.storage.UploadObject(recipeKey, bytes.NewReader(recipe), int64(len(recipe))); err != nil {
 		return errors.Wrapf(err, "uploading recipe_file for %s", revision)
+	}
+
+	if err := mgr.UploadChunkAliasMap(); err != nil {
+		return err
 	}
 
 	return nil
