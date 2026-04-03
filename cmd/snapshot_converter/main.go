@@ -85,7 +85,7 @@ func copyRevisionObjects(st storage.ObjectStorage, srcRevision, dstRevision stri
 			continue
 		}
 		suffix := strings.TrimPrefix(srcKey, prefix)
-		if suffix == "" {
+		if suffix == "" || suffix == "mem_file" {
 			continue
 		}
 
