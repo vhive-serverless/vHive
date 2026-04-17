@@ -3257,9 +3257,9 @@ func (mgr *SnapshotManager) rewriteRemoteRecipeForSecurityMode(revision, image s
 		return errors.Wrapf(err, "uploading updated recipe for %s", revision)
 	}
 
-	if err := mgr.UploadChunkAliasMap(); err != nil {
-		return err
-	}
+	// if err := mgr.UploadChunkAliasMap(); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
