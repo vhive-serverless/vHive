@@ -30,7 +30,7 @@ type ksvcList struct {
 
 func functionType(revision string) string {
 	idx := strings.LastIndex(revision, "-")
-	if idx <= 0 || idx == len(revision)-1 {
+	if idx <= 0 || idx == len(revision)-1 || strings.HasPrefix(revision, "cold") {
 		return revision
 	}
 	return revision[:idx]
