@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -79,8 +80,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 
 	ctx := context.Background()
-	relayCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	image := r.Header.Get("image")
 	if mapped, ok := imageMap[image]; ok {
 		image = mapped
@@ -101,10 +100,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if args != "" {
 		argsArr = strings.Split(args, " ")
 	}
+	port, err := strconv.Atoi(r.Header.Get("port"))
+	if err != nil {
+		log.Errorf("Invalid port: %v", err)
+		http.Error(w, fmt.Sprintf("Invalid port: %v", err), http.StatusBadRequest)
+		return
+	}
 	log.Debugf("env vars: %v, args: %v", envArr, argsArr)
 
 	var resp *ctriface.StartVMResponse
-	var err error
 	var snap *snapshotting.Snapshot
 	var metric *metrics.Metric
 
@@ -158,38 +162,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugf("created VM with ID %s and IP %s for revision %s", resp.VMID, resp.GuestIP, r.Header.Get("revision"))
 
-	relayArgs := r.Header.Get("relayArgs")
-	endpoint := resp.GuestIP + ":50051"
-	if relayArgs != "" {
-		mu.Lock()
-		relayPort++
-		port := 50000 + relayPort%5000
-		mu.Unlock()
-
-		endpoint = fmt.Sprintf("localhost:%d", port)
-		relayArgs = strings.Replace(relayArgs, "--addr=0.0.0.0:50000", "--addr="+endpoint, 1)
-		relayArgs = strings.Replace(relayArgs, "--function-endpoint-url=0.0.0.0", "--function-endpoint-url="+resp.GuestIP, 1)
-		log.Debugf("Relay args: %s", relayArgs)
-
-		go func() {
-			cmd := exec.CommandContext(
-				relayCtx,
-				homeDir+"/vswarm/tools/relay/server",
-				strings.Split(relayArgs, " ")...,
-			)
-
-			out, err := cmd.CombinedOutput()
-
-			log.Debugf("vswarm relay output:\n%s\n", out)
-
-			if err != nil {
-				fmt.Printf("vswarm relay error: %v\n", err)
-			}
-		}()
-
-		time.Sleep(50 * time.Millisecond)
-	}
-
+	endpoint := resp.GuestIP + fmt.Sprintf(":%d", port)
+	w.Header().Set("node-overhead", fmt.Sprintf("%d", time.Since(startTime).Microseconds()))
 	log.Debugf("Sending invocation to %s", vmId)
 
 	proxy := pkghttp.NewHeaderPruningReverseProxy(endpoint, pkghttp.NoHostOverride, []string{}, false /* use HTTP */)
