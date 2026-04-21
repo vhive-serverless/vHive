@@ -48,6 +48,8 @@ const (
 	GetWorkingSetPages = "GetWorkingSetPages"
 	// GetWorkingSetContent Time to get working set content for coalescing
 	GetWorkingSetContent = "GetWorkingSetContent"
+	// UffdPrepareDelay Total time spent preparing UFFD data before handler start
+	UffdPrepareDelay = "UffdPrepareDelay"
 
 	// AddInstance Time to add instance - load snap or start vm
 	AddInstance = "AddInstance"
