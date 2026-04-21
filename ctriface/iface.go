@@ -1084,7 +1084,6 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			wsContent         []byte
 			wsContentRelease  func()
 			wsContentErr      error
-			wsContentDur      time.Duration
 			wsContentSources  *snapshotting.WorkingSetContentSources
 			wsSourcesRelease  func()
 			wsSourcesErr      error
@@ -1118,15 +1117,10 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 					defer prepareWG.Done()
 					start := time.Now()
 					wsContentSources, wsSourcesRelease, wsSourcesErr = o.snapshotManager.GetWorkingSetContentSourcesManaged(snap)
+					if wsContentSources == nil {
+						wsContent, wsContentRelease, wsContentErr = o.snapshotManager.GetWorkingSetContentManaged(snap)
+					}
 					wsSourcesDur = time.Since(start)
-				}()
-
-				prepareWG.Add(1)
-				go func() {
-					defer prepareWG.Done()
-					start := time.Now()
-					wsContent, wsContentRelease, wsContentErr = o.snapshotManager.GetWorkingSetContentManaged(snap)
-					wsContentDur = time.Since(start)
 				}()
 			}
 		}
@@ -1195,10 +1189,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 				if wsContentSources != nil {
 					// Prefer split content sources when available.
 					wsContent = nil
-					loadSnapshotMetric.MetricMap[metrics.GetWorkingSetContent] = metrics.ToUS(wsSourcesDur)
-				} else {
-					loadSnapshotMetric.MetricMap[metrics.GetWorkingSetContent] = metrics.ToUS(wsContentDur)
 				}
+				loadSnapshotMetric.MetricMap[metrics.GetWorkingSetContent] = metrics.ToUS(wsSourcesDur)
 			}
 		}
 
