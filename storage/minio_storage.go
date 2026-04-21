@@ -74,7 +74,7 @@ func (m *MinioStorage) DownloadObject(objectKey string) ([]byte, error) {
 	data := make([]byte, stat.Size)
 
 	concurrency := 10
-	if stat.Size < 1024*1024 { // For small objects, use single connection to avoid overhead
+	if stat.Size <= 2*1024*1024 { // For small objects, use a single goroutine to avoid overhead.
 		concurrency = 1
 	}
 
