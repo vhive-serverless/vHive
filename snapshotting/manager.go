@@ -2249,21 +2249,20 @@ func (mgr *SnapshotManager) downloadMemFile(snap *Snapshot) error {
 }
 
 func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) {
-	resolvedHash := mgr.ResolveChunkName(hash)
-	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(resolvedHash, &sync.Mutex{})
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	chunkFilePath := mgr.GetChunkFilePath(resolvedHash)
+	chunkFilePath := mgr.GetChunkFilePath(hash)
 
 	// Return from in-memory registry if already downloaded
-	if mgr.chunkRegistry.ChunkExists(resolvedHash) {
+	if mgr.chunkRegistry.ChunkExists(hash) {
 		data, err := os.ReadFile(chunkFilePath)
 		if err == nil {
 
-			mgr.chunkRegistry.AddAccess(resolvedHash)
+			mgr.chunkRegistry.AddAccess(hash)
 
 			if mgr.encryption {
 				EncryptData(data, data, EncryptionKey[:16])
@@ -2275,11 +2274,12 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 	}
 
 	// Download and store chunk
+	resolvedHash := mgr.ResolveChunkName(hash)
 	objectKey := mgr.getObjectKey(chunkPrefix, resolvedHash)
 
 	data, err := mgr.storage.DownloadObject(objectKey)
 	if err != nil {
-		return nil, errors.Wrapf(err, "downloading chunk %s", resolvedHash)
+		return nil, errors.Wrapf(err, "downloading chunk %s", hash)
 	}
 
 	if !mgr.cleanChunks {
@@ -2309,7 +2309,7 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 
 			// Mark as downloaded
 			mgr.chunkRegistry.AddAccess(hash)
-		}(data, resolvedHash)
+		}(data, hash)
 	}
 
 	if mgr.encryption {
@@ -2320,16 +2320,15 @@ func (mgr *SnapshotManager) DownloadAndReturnChunk(hash string) ([]byte, error) 
 }
 
 func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, func(), error) {
-	resolvedHash := mgr.ResolveChunkName(hash)
-	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(resolvedHash, &sync.Mutex{})
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	chunkFilePath := mgr.GetChunkFilePath(resolvedHash)
+	chunkFilePath := mgr.GetChunkFilePath(hash)
 
-	if mgr.chunkRegistry.ChunkExists(resolvedHash) {
+	if mgr.chunkRegistry.ChunkExists(hash) {
 		if !mgr.encryption {
 			if stat, statErr := os.Stat(chunkFilePath); statErr == nil && stat.Size() > 0 {
 				file, openErr := os.Open(chunkFilePath)
@@ -2339,25 +2338,25 @@ func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, 
 						log.Warnf("Failed to close chunk fd %s after mmap attempt: %v", chunkFilePath, closeErr)
 					}
 					if mmapErr == nil {
-						_ = mgr.chunkRegistry.AddAccess(resolvedHash)
+						_ = mgr.chunkRegistry.AddAccess(hash)
 						var once sync.Once
 						releaseFn := func() {
 							once.Do(func() {
 								if unmapErr := unix.Munmap(mapped); unmapErr != nil {
-									log.Warnf("Failed to munmap chunk %s: %v", resolvedHash, unmapErr)
+									log.Warnf("Failed to munmap chunk %s: %v", hash, unmapErr)
 								}
 							})
 						}
 						return mapped, releaseFn, nil
 					}
-					log.Warnf("Failed to mmap chunk %s: %v", resolvedHash, mmapErr)
+					log.Warnf("Failed to mmap chunk %s: %v", hash, mmapErr)
 				}
 			}
 		}
 
 		data, err := os.ReadFile(chunkFilePath)
 		if err == nil {
-			_ = mgr.chunkRegistry.AddAccess(resolvedHash)
+			_ = mgr.chunkRegistry.AddAccess(hash)
 			if mgr.encryption {
 				EncryptData(data, data, EncryptionKey[:16])
 			}
@@ -2365,10 +2364,11 @@ func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, 
 		}
 	}
 
+	resolvedHash := mgr.ResolveChunkName(hash)
 	objectKey := mgr.getObjectKey(chunkPrefix, resolvedHash)
 	data, err := mgr.storage.DownloadObject(objectKey)
 	if err != nil {
-		return nil, func() {}, errors.Wrapf(err, "downloading chunk %s", resolvedHash)
+		return nil, func() {}, errors.Wrapf(err, "downloading chunk %s", hash)
 	}
 
 	if !mgr.cleanChunks {
@@ -2400,7 +2400,7 @@ func (mgr *SnapshotManager) DownloadAndReturnChunkManaged(hash string) ([]byte, 
 			}
 
 			_ = mgr.chunkRegistry.AddAccess(hash)
-		}(persistData, resolvedHash)
+		}(persistData, hash)
 	}
 
 	if mgr.encryption {
@@ -2426,24 +2426,24 @@ func EncryptData(data, out []byte, key []byte) ([]byte, error) {
 }
 
 func (mgr *SnapshotManager) DownloadChunk(hash string) error {
-	resolvedHash := mgr.ResolveChunkName(hash)
-	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(resolvedHash, &sync.Mutex{})
+	lockI, _ := mgr.chunkRegistry.chunkLocks.LoadOrStore(hash, &sync.Mutex{})
 	lock := lockI.(*sync.Mutex)
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	if mgr.chunkRegistry.ChunkExists(resolvedHash) {
-		mgr.chunkRegistry.AddAccess(resolvedHash)
+	if mgr.chunkRegistry.ChunkExists(hash) {
+		mgr.chunkRegistry.AddAccess(hash)
 		return nil // already downloaded
 	}
-	chunkFilePath := mgr.GetChunkFilePath(resolvedHash)
+	chunkFilePath := mgr.GetChunkFilePath(hash)
 
+	resolvedHash := mgr.ResolveChunkName(hash)
 	if err := mgr.downloadFile(chunkPrefix, chunkFilePath, resolvedHash); err != nil {
 		return err
 	}
 
-	mgr.chunkRegistry.AddAccess(resolvedHash)
+	mgr.chunkRegistry.AddAccess(hash)
 	return nil
 }
 
