@@ -23,7 +23,16 @@
 
 # When executed inside a docker container, this command returns the container ID of the container.
 # on a non container environment, this returns "/".
-CONTAINERID=$(basename $(cat /proc/1/cpuset))
+if [ -r /proc/1/cpuset ]; then
+    CPUSET=$(cat /proc/1/cpuset)
+    if [ -n "$CPUSET" ]; then
+        CONTAINERID=$(basename "$CPUSET")
+    else
+        CONTAINERID="/"
+    fi
+else
+    CONTAINERID="/"
+fi
 
 # Docker container ID is 64 characters long.
 if [ 64 -eq ${#CONTAINERID} ]; then
@@ -62,4 +71,3 @@ fi
 
 cd $HOME/actions-runner
 RUNNER_ALLOW_RUNASROOT=1 ./run.sh
-

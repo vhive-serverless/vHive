@@ -77,7 +77,7 @@ func CreateOneNodeCluster(stockContainerd string, useNFTables bool) error {
 func CreateOneNodeKubernetes(criSock string, useNFTables bool) error {
 	// When executed inside a docker container, this command returns the container ID of the container.
 	// on a non container environment, this returns "/".
-	containerId, err := utils.ExecShellCmd("basename $(cat /proc/1/cpuset)")
+	containerId, err := utils.GetContainerIDFromCpuset()
 	if err != nil {
 		return err
 	}

@@ -71,12 +71,6 @@ func SetupNode(sandbox string, useStargz string) error {
 		if err := setup.SetupFirecrackerContainerd(); err != nil {
 			return err
 		}
-	case "gvisor":
-		// Set up Gvisor
-		utils.WaitPrintf("Set up Gvisor")
-		if err := setup.SetupGvisorContainerd(); err != nil {
-			return err
-		}
 	default:
 	}
 
@@ -92,6 +86,12 @@ func SetupNode(sandbox string, useStargz string) error {
 		// create devmapper
 		utils.InfoPrintf("Create devmapper\n")
 		if err := setup.CreateDevmapper(); err != nil {
+			return err
+		}
+	case "gvisor":
+		// Set up Gvisor
+		utils.WaitPrintf("Set up Gvisor")
+		if err := setup.SetupGvisorContainerd(); err != nil {
 			return err
 		}
 	default:
