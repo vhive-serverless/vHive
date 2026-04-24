@@ -73,7 +73,7 @@ jobs:
         run: ./scripts/setup_tool setup_node stock-only use-stargz
 
       - name: Check containerd service is running
-        run: sudo screen -list | grep "containerd"
+        run: tmux has-session -t containerd
 
       - name: Check stargz-snapshotter is running
         run: sudo systemctl is-active --quiet stargz-snapshotter

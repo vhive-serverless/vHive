@@ -22,10 +22,10 @@ sudo wget -O /etc/systemd/system/stargz-snapshotter.service https://raw.githubus
 # Enable stargz snapshotter
 sudo systemctl enable --now stargz-snapshotter
 
-# Check if containerd process is running and stop if true
-if sudo screen -list | grep "containerd"; then
-    sudo screen -XS containerd quit
+# Check if a tmux session for containerd is running and stop it if true
+if tmux has-session -t containerd 2>/dev/null; then
+    tmux kill-session -t containerd
 fi
 
 # Start containerd
-sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
+tmux new-session -d -s containerd "bash -lc 'sudo containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)'"

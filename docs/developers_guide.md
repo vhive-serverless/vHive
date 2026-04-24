@@ -258,7 +258,7 @@ The script has been tested on ubuntu20.04, with GPU including NVIDIA A100, V100 
 ### Start Containerd and Knative
 
 ``` bash
-sudo screen -dmS containerd containerd; sleep 5;
+tmux new-session -d -s containerd "sudo containerd"; sleep 5;
 ./setup_tool create_one_node_cluster stock-only
 ```
 
