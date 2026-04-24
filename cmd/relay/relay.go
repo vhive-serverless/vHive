@@ -106,6 +106,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Invalid port: %v", err), http.StatusBadRequest)
 		return
 	}
+	envArr = append(envArr, fmt.Sprintf("PORT=%d", port))
 	log.Debugf("env vars: %v, args: %v", envArr, argsArr)
 
 	var resp *ctriface.StartVMResponse
