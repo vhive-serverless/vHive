@@ -212,7 +212,7 @@ func SetupSystem() error {
 
 	// Install required dependencies
 	utils.WaitPrintf("Installing required dependencies")
-	err := utils.InstallPackages("curl ca-certificates screen")
+	err := utils.InstallPackages("curl ca-certificates tmux")
 	if !utils.CheckErrorWithMsg(err, "Failed to install required dependencies!\n") {
 		return err
 	}

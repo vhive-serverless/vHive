@@ -123,33 +123,33 @@ Another option is to install using official instructions: [https://golang.org/do
     ./setup_tool setup_worker_kubelet firecracker
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
-    sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
+    tmux new-session -d -s containerd "bash -lc 'sudo containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)'"
     ```
     > **Note:**
     >
-    > `screen` is a terminal multiplexer similar to `tmux` but widely available by default.
+    > `tmux` is a terminal multiplexer that lets you keep long-running daemons in detached sessions.
     >
-    > Starting long-running daemons in the background using `screen` allows you to use a single
+    > Starting long-running daemons in the background using `tmux` allows you to use a single
     > terminal (an SSH session most likely) by keeping it unoccupied and ensures that
     > daemons will not be terminated when you log out (voluntarily, or because of connection issues).
     >
     > - To (re-)attach a background terminal:
     >   ```bash
-    >   sudo screen -rd <name>
+    >   tmux attach -t <name>
     >   ```
-    >  - To detach (from an attached terminal):\
-    >    <kbd>Ctrl</kbd>+<kbd>A</kbd> then <kbd>D</kbd>
+    > - To detach (from an attached terminal):\
+    >   <kbd>Ctrl</kbd>+<kbd>B</kbd> then <kbd>D</kbd>
     > - To kill a background terminal:
     >   ```bash
-    >   sudo screen -XS <name> quit
+    >   tmux kill-session -t <name>
     >   ```
     > - To list all the sessions:
     >   ```bash
-    >   sudo screen -ls
+    >   tmux ls
     >   ```
 3. Start `firecracker-containerd` in a background terminal named `firecracker`:
     ```bash
-    sudo PATH=$PATH screen -dmS firecracker bash -c "/usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml > >(tee -a /tmp/vhive-logs/firecracker.stdout) 2> >(tee -a /tmp/vhive-logs/firecracker.stderr >&2)"
+    tmux new-session -d -s firecracker "bash -lc 'sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml > >(tee -a /tmp/vhive-logs/firecracker.stdout) 2> >(tee -a /tmp/vhive-logs/firecracker.stderr >&2)'"
     ```
 
     > **Note:**
@@ -157,8 +157,8 @@ Another option is to install using official instructions: [https://golang.org/do
     > If you are using `stargz` with `firecracker`, you need to also start both `demux-snapshotter` and the `http-address-resolver`:
     > 
     > ```bash
-    > sudo screen -dmS demux-snapshotter bash -c "demux-snapshotter"
-    > sudo screen -dmS http-address-resolver bash -c "http-address-resolver"
+    > tmux new-session -d -s demux-snapshotter "sudo demux-snapshotter"
+    > tmux new-session -d -s http-address-resolver "sudo http-address-resolver"
     > ```
     >
     > More details [here](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter.md).
@@ -170,9 +170,9 @@ Another option is to install using official instructions: [https://golang.org/do
 5. Start `vHive` in a background terminal named `vhive`:
     ```bash
     # EITHER
-    sudo screen -dmS vhive bash -c "./vhive > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)"
+    tmux new-session -d -s vhive "bash -lc 'sudo ./vhive > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)'"
     # OR
-    sudo screen -dmS vhive bash -c "./vhive -snapshots > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)"
+    tmux new-session -d -s vhive "bash -lc 'sudo ./vhive -snapshots > >(tee -a /tmp/vhive-logs/vhive.stdout) 2> >(tee -a /tmp/vhive-logs/vhive.stderr >&2)'"
     ```
     > **Note:**
     >
@@ -192,7 +192,7 @@ Another option is to install using official instructions: [https://golang.org/do
 
 1. Start `containerd` in a background terminal named `containerd`:
     ```bash
-    sudo screen -dmS containerd bash -c "containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)"
+    tmux new-session -d -s containerd "bash -lc 'sudo containerd > >(tee -a /tmp/vhive-logs/containerd.stdout) 2> >(tee -a /tmp/vhive-logs/containerd.stderr >&2)'"
     ```
 2. Run the script that creates the multinode cluster (without `stargz`):
     ```bash
@@ -276,15 +276,15 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     > * `1.5 - Start vHive in a background terminal named vhive`.
 2. Start `containerd` in a background terminal named `containerd`:
     ```bash
-    sudo screen -dmS containerd containerd; sleep 5;
+    tmux new-session -d -s containerd "sudo containerd"; sleep 5;
     ```
     > **Note:**
     >
-    > Regarding `screen` and starting daemons in background terminals, see the note
+    > Regarding `tmux` and starting daemons in background terminals, see the note
     > in step 2 of subsection II.2 _Setup Worker Nodes_.
 3. Start `firecracker-containerd` in a background named `firecracker`:
     ```bash
-    sudo PATH=$PATH screen -dmS firecracker /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml; sleep 5;
+    tmux new-session -d -s firecracker "sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml"; sleep 5;
     ```
 4. Build vHive host orchestrator:
     ```bash
@@ -292,7 +292,7 @@ Execute the following below **as a non-root user with sudo rights** using **bash
     ```
 5. Start `vHive` in a background terminal named `vhive`:
     ```bash
-    sudo screen -dmS vhive ./vhive; sleep 5;
+    tmux new-session -d -s vhive "sudo ./vhive"; sleep 5;
     ```
 
     > **Note:**

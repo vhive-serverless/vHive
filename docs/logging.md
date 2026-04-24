@@ -8,15 +8,15 @@ Kubelet has its own logs, which can have different verbosity levels. This verbos
 There are a couple of ways to gather and extract logs for vHive to your local machine, whether it is on a single-node cluster or a multi node one.
 We will present one method to do it.
 Firstly, if you follow the steps from the [Quickstart guide], logs should already be generated in the `/tmp/vhive-logs` folder at different steps in the workflow.
-However, sometimes because of running some commands with `screen`, the log folder ends up empty.
-To mitigate this, you can run the same commands using different `tmux panes`.
+However, depending on how the background daemons are started, the log folder can end up empty.
+To mitigate this, you can run the same commands using dedicated `tmux` sessions.
 
 >
-> **Note:** `tmux` serves the same role as `screen`, being a terminal multiplexer offering similar features.
+> **Note:** `tmux` is a terminal multiplexer that lets you keep long-running commands attached to dedicated sessions.
 > 
 
 The following section will describe how to set up a Serverless (Knative) Cluster using `tmux`.
-This section follows the steps from the Quickstart guide with minor modifications for the log generation and running commands without `screen`.
+This section follows the steps from the Quickstart guide with minor modifications for log generation and running commands in dedicated `tmux` sessions.
 We present how to set up a multi-node cluster, however, the same modifications can be used to generate and extract logs from a single-node cluster.
 
    > **Beware:**
