@@ -108,6 +108,16 @@ func InstallContainerd() error {
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to modify containerd config!\n") {
 		return err
 	}
+
+	// // Download containerd cni setup script
+	// _, err = utils.ExecShellCmd(configs.System.GetContainerdCniSetupScriptDownloadUrl())
+	// if !utils.CheckErrorWithMsg(err, "Failed to download containerd cni setup script!\n") {
+	// 	return err
+	// }
+	// // Grant permission and move the executable
+	// _, err = utils.ExecShellCmd("cd ~/containerd && ./script/setup/install-cni")
+
+	// Success
 	return nil
 }
 
@@ -136,6 +146,20 @@ func InstallRunsc() error {
 	// Grant permission and move the executable
 	_, err = utils.ExecShellCmd("sudo chmod a+rx %s && sudo mv %s /usr/local/bin", runscFilePath, runscFilePath)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install runsc!\n") {
+		return err
+	}
+	return nil
+}
+
+func InstallRunscContainerdShim() error {
+	// Download runsc containerd shim
+	shimFilePath, err := utils.DownloadToTmpDir(configs.System.GetRunscContainerdShimDownloadUrl())
+	if !utils.CheckErrorWithMsg(err, "Failed to download runsc containerd shim!\n") {
+		return err
+	}
+	// Grant permission and move the executable
+	_, err = utils.ExecShellCmd("sudo chmod a+rx %s && sudo mv %s /usr/local/bin/containerd-shim-runsc-v1", shimFilePath, shimFilePath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install runsc containerd shim!\n") {
 		return err
 	}
 	return nil
@@ -237,13 +261,6 @@ func InstallStock() error {
 	utils.WaitPrintf("Installing runc(ver %s)", configs.System.RuncVersion)
 	if err := InstallRunc(); err != nil {
 		utils.ErrorPrintf("Failed to install runc!\n")
-		return err
-	}
-
-	// Install runsc
-	utils.WaitPrintf("Installing runsc")
-	if err := InstallRunsc(); err != nil {
-		utils.ErrorPrintf("Failed to install runsc!\n")
 		return err
 	}
 

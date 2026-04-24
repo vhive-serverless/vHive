@@ -113,7 +113,7 @@ func SetupFirecrackerContainerd() error {
 
 	// When executed inside a docker container, this command returns the container ID of the container.
 	// on a non container environment, this returns "/".
-	containerId, err := utils.ExecShellCmd("basename $(cat /proc/1/cpuset)")
+	containerId, err := utils.GetContainerIDFromCpuset()
 	if err != nil {
 		return err
 	}
@@ -141,53 +141,53 @@ func SetupFirecrackerContainerd() error {
 // Set up gvisor containerd
 func SetupGvisorContainerd() error {
 	// Create required directory
-	_, err := utils.ExecShellCmd("sudo mkdir -p /etc/gvisor-containerd && sudo mkdir -p /etc/cni/net.d")
-	if err != nil {
-		return err
-	}
+	// _, err := utils.ExecShellCmd("sudo mkdir -p /etc/gvisor-containerd && sudo mkdir -p /etc/cni/net.d")
+	// if err != nil {
+	// 	return err
+	// }
 
-	// Pull LFS in vHive
-	utils.WaitPrintf("Pulling LFS in vHive")
-	if err := utils.CheckVHiveRepo(); !utils.CheckErrorWithMsg(err, "Failed to pull LFS in vHive!\n") {
-		return err
-	}
-	_, err = utils.ExecShellCmd("cd %s && git lfs pull", configs.VHive.VHiveRepoPath)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to pull LFS in vHive!\n") {
-		return err
-	}
+	// // Pull LFS in vHive
+	// utils.WaitPrintf("Pulling LFS in vHive")
+	// if err := utils.CheckVHiveRepo(); !utils.CheckErrorWithMsg(err, "Failed to pull LFS in vHive!\n") {
+	// 	return err
+	// }
+	// _, err = utils.ExecShellCmd("cd %s && git lfs pull", configs.VHive.VHiveRepoPath)
+	// if !utils.CheckErrorWithTagAndMsg(err, "Failed to pull LFS in vHive!\n") {
+	// 	return err
+	// }
 
 	// Copy various required files
-	utils.WaitPrintf("Copying required files")
-	dstDir := "/usr/local/bin"
-	binsDir := "bin"
-	ctrdConfigsDir := "configs/gvisor-containerd"
+	// utils.WaitPrintf("Copying required files")
+	// dstDir := "/usr/local/bin"
+	// binsDir := "bin"
+	// ctrdConfigsDir := "configs/gvisor-containerd"
 	cniConfigsDir := "configs/cni"
 
-	binLists := []string{
-		"containerd-shim-runsc-v1",
-		"gvisor-containerd",
-	}
-	for _, bin := range binLists {
-		src, err := utils.GetVHiveFilePath(path.Join(binsDir, bin))
-		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-			return err
-		}
-		err = utils.CopyToDir(src, dstDir, true)
-		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-			return err
-		}
-	}
+	// binLists := []string{
+	// 	"containerd-shim-runsc-v1",
+	// 	"gvisor-containerd",
+	// }
+	// for _, bin := range binLists {
+	// 	src, err := utils.GetVHiveFilePath(path.Join(binsDir, bin))
+	// 	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+	// 		return err
+	// 	}
+	// 	err = utils.CopyToDir(src, dstDir, true)
+	// 	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+	// 		return err
+	// 	}
+	// }
 
-	configFilePath, err := utils.GetVHiveFilePath(path.Join(ctrdConfigsDir, "config.toml"))
-	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-		return err
-	}
-	err = utils.CopyToDir(configFilePath, "/etc/gvisor-containerd/", true)
-	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-		return err
-	}
+	// configFilePath, err := utils.GetVHiveFilePath(path.Join(ctrdConfigsDir, "config.toml"))
+	// if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+	// 	return err
+	// }
+	// err = utils.CopyToDir(configFilePath, "/etc/gvisor-containerd/", true)
+	// if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
+	// 	return err
+	// }
 
-	dstDir = "/etc/cni/net.d"
+	dstDir := "/etc/cni/net.d"
 	configLists := []string{
 		"10-bridge.conf",
 		"99-loopback.conf",
@@ -203,6 +203,39 @@ func SetupGvisorContainerd() error {
 		}
 	}
 	utils.SuccessPrintf("\n")
+
+	utils.WaitPrintf("Installing runsc")
+	if err := InstallRunsc(); err != nil {
+		utils.ErrorPrintf("Failed to install runsc!\n")
+		return err
+	}
+
+	utils.WaitPrintf("Installing runsc containerd shim")
+	if err := InstallRunscContainerdShim(); err != nil {
+		utils.ErrorPrintf("Failed to install containerd runsc shim!\n")
+		return err
+	}
+
+	// utils.WaitPrintf("Configuring containerd for runsc")
+	// _, err := utils.ExecShellCmd("sudo mkdir -p /etc/containerd/conf.d")
+	// if err != nil {
+	// 	return err
+	// }
+
+	configFilePath, err := utils.GetVHiveFilePath(path.Join("configs/gvisor-containerd", "config.toml"))
+	if !utils.CheckErrorWithMsg(err, "Failed to find gVisor containerd config!\n") {
+		return err
+	}
+
+	// Copy config.toml to /etc/containerd/conf.d/config.toml
+	_, err = utils.ExecShellCmd("sudo mkdir -p /etc/containerd/conf.d")
+	if err != nil {
+		return err
+	}
+	err = utils.CopyToDir(configFilePath, "/etc/containerd/conf.d/", true)
+	if !utils.CheckErrorWithMsg(err, "Failed to install gVisor containerd config!\n") {
+		return err
+	}
 
 	return nil
 }

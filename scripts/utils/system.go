@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
@@ -181,6 +182,29 @@ func CopyToDir(source string, target string, privileged bool) error {
 	_, err = ExecShellCmd("%s cp -R %s %s", privilegedCmd, source, target)
 
 	return err
+}
+
+// GetContainerIDFromCpuset returns the basename of /proc/1/cpuset when the setup
+// tool is running inside a Docker-style container. On hosts without that proc
+// file, such as some cgroup v2 environments, it returns "/" to indicate a normal
+// host environment.
+func GetContainerIDFromCpuset() (string, error) {
+	const cpusetPath = "/proc/1/cpuset"
+
+	cpuset, err := os.ReadFile(cpusetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "/", nil
+		}
+		return "", err
+	}
+
+	cpusetPathValue := strings.TrimSpace(string(cpuset))
+	if cpusetPathValue == "" {
+		return "/", nil
+	}
+
+	return path.Base(cpusetPathValue), nil
 }
 
 // Get kernel version info (equivalent to `uname -r`)

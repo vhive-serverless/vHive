@@ -2,10 +2,10 @@ package main
 
 // criteria table for testing ParsingNodeDependencyVersion
 var criteriaTable = map[string]string{
-	"Golang":     "1.19.10",
-	"containerd": "1.6.18",
-	"runc":       "1.1.4",
-	"CNI":        "1.2.0",
+	"Golang":     "1.26.2",
+	"containerd": "2.2.3",
+	"runc":       "1.3.5",
+	"CNI":        "1.7.1",
 }
 
 // mock node info

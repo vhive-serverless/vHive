@@ -29,30 +29,35 @@ import (
 
 // System environment struct
 type SystemEnvironmentStruct struct {
-	GoVersion                           string
-	GoDownloadUrlTemplate               string
+	GoVersion             string
+	GoDownloadUrlTemplate string
+
 	ContainerdVersion                   string
 	ContainerdDownloadUrlTemplate       string
 	ContainerdSystemdProfileDownloadUrl string
+	ContainerdCniSetupScriptDownloadUrl string
 	RuncVersion                         string
 	RuncDownloadUrlTemplate             string
-	RunscVersion                        string
-	RunscDownloadUrlTemplate            string
 	CniPluginsVersion                   string
 	CniPluginsDownloadUrlTemplate       string
-	KubeVersion                         string
-	KubeRepoUrl                         string
-	Dependencies                        string
-	TmpDir                              string
-	CurrentOS                           string
-	CurrentArch                         string
-	CurrentDir                          string
-	UserHomeDir                         string
-	PmuToolsRepoUrl                     string
-	ProtocVersion                       string
-	ProtocDownloadUrlTemplate           string
-	LogVerbosity                        int
-	YqDownloadUrlTemplate               string
+
+	RunscVersion                           string
+	RunscDownloadUrlTemplate               string
+	RunscContainerdShimDownloadUrlTemplate string
+
+	KubeVersion               string
+	KubeRepoUrl               string
+	Dependencies              string
+	TmpDir                    string
+	CurrentOS                 string
+	CurrentArch               string
+	CurrentDir                string
+	UserHomeDir               string
+	PmuToolsRepoUrl           string
+	ProtocVersion             string
+	ProtocDownloadUrlTemplate string
+	LogVerbosity              int
+	YqDownloadUrlTemplate     string
 }
 
 // Current system environment
@@ -79,6 +84,10 @@ func (system *SystemEnvironmentStruct) GetContainerdDownloadUrl() string {
 	return fmt.Sprintf(system.ContainerdDownloadUrlTemplate, system.ContainerdVersion, system.ContainerdVersion, system.CurrentArch)
 }
 
+func (system *SystemEnvironmentStruct) GetContainerdCniSetupScriptDownloadUrl() string {
+	return fmt.Sprintf("git clone --depth=1 %s -b v%s ~/containerd", system.ContainerdCniSetupScriptDownloadUrl, system.ContainerdVersion)
+}
+
 func (system *SystemEnvironmentStruct) GetRuncDownloadUrl() string {
 	return fmt.Sprintf(system.RuncDownloadUrlTemplate, system.RuncVersion, system.CurrentArch)
 }
@@ -94,4 +103,17 @@ func (system *SystemEnvironmentStruct) GetRunscDownloadUrl() string {
 	}
 
 	return fmt.Sprintf(system.RunscDownloadUrlTemplate, system.RunscVersion, unameArch)
+}
+
+func (system *SystemEnvironmentStruct) GetRunscContainerdShimDownloadUrl() string {
+	unameArch := system.CurrentArch
+	switch unameArch {
+	case "amd64":
+		unameArch = "x86_64"
+	case "arm64":
+		unameArch = "aarch_64"
+	default:
+	}
+
+	return fmt.Sprintf(system.RunscContainerdShimDownloadUrlTemplate, system.RunscVersion, unameArch)
 }

@@ -264,6 +264,7 @@ lan
 latencies
 latSamples
 Lausanne
+lc
 ldquo
 Lebedev
 Letraset
