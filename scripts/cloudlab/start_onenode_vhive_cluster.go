@@ -69,15 +69,8 @@ func StartOnenodeVhiveCluster(sandbox string, useNFTables bool) error {
 	// Sleep 1 second
 	time.Sleep(1 * time.Second)
 
-	// Run the containerd daemon
+	// Run sandbox-specific support daemons when needed.
 	switch sandbox {
-	case "gvisor":
-		utils.WaitPrintf("Running the gvisor-containerd daemon")
-		_, err := utils.ExecShellCmd("sudo /usr/local/bin/gvisor-containerd --address /run/gvisor-containerd/gvisor-containerd.sock --config /etc/gvisor-containerd/config.toml 1>%s/gvisor.out 2>%s/gvisor.err &",
-			ctrdLogDir, ctrdLogDir)
-		if !utils.CheckErrorWithTagAndMsg(err, "Failed to run the gvisor-containerd daemon!\n") {
-			return err
-		}
 	case "firecracker":
 		utils.WaitPrintf("Running the firecracker-containerd daemon")
 		_, err := utils.ExecShellCmd("sudo /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>%s/fccd.out 2>%s/fccd.err &",
@@ -91,28 +84,32 @@ func StartOnenodeVhiveCluster(sandbox string, useNFTables bool) error {
 	// Sleep 1 second
 	time.Sleep(1 * time.Second)
 
-	// Build vHive
-	utils.WaitPrintf("Building vHive")
-	_, err = utils.ExecShellCmd("cd %s && source /etc/profile && go build", configs.VHive.VHiveRepoPath)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to build vHive!\n") {
-		return err
-	}
+	if sandbox == "firecracker" {
+		// Build vHive
+		utils.WaitPrintf("Building vHive")
+		_, err = utils.ExecShellCmd("cd %s && source /etc/profile && go build", configs.VHive.VHiveRepoPath)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to build vHive!\n") {
+			return err
+		}
 
-	// Run vHive
-	githubVHiveArgs := utils.GetEnvironmentVariable("GITHUB_VHIVE_ARGS")
-	utils.WaitPrintf("Running vHive with \"%s\" arguments", githubVHiveArgs)
-	vhiveExecutablePath, err := utils.GetVHiveFilePath("vhive")
-	if !utils.CheckErrorWithMsg(err, "Failed to find vHive executable!\n") {
-		return err
-	}
-	_, err = utils.ExecShellCmd("sudo %s -sandbox %s %s 1>%s/orch.out 2>%s/orch.err &",
-		vhiveExecutablePath,
-		sandbox,
-		githubVHiveArgs,
-		ctrdLogDir,
-		ctrdLogDir)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to run vHive!\n") {
-		return err
+		// Run vHive
+		githubVHiveArgs := utils.GetEnvironmentVariable("GITHUB_VHIVE_ARGS")
+		utils.WaitPrintf("Running vHive with \"%s\" arguments", githubVHiveArgs)
+		vhiveExecutablePath, err := utils.GetVHiveFilePath("vhive")
+		if !utils.CheckErrorWithMsg(err, "Failed to find vHive executable!\n") {
+			return err
+		}
+		_, err = utils.ExecShellCmd("sudo %s -sandbox %s %s 1>%s/orch.out 2>%s/orch.err &",
+			vhiveExecutablePath,
+			sandbox,
+			githubVHiveArgs,
+			ctrdLogDir,
+			ctrdLogDir)
+		if !utils.CheckErrorWithTagAndMsg(err, "Failed to run vHive!\n") {
+			return err
+		}
+	} else {
+		utils.InfoPrintf("Using stock containerd with gVisor RuntimeClass; vHive is not required\n")
 	}
 
 	time.Sleep(1 * time.Second)

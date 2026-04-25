@@ -43,17 +43,16 @@ $SCRIPTS/utils/disable_auto_updates.sh
 source $SCRIPTS/install_go.sh
 $SCRIPTS/setup_system.sh
 
-sudo mkdir -p /etc/vhive-cri
-
 if [ "$SANDBOX" == "firecracker" ]; then
+    sudo mkdir -p /etc/vhive-cri
     $SCRIPTS/setup_firecracker_containerd.sh 
 fi
 
-if [ "$SANDBOX" == "gvisor" ]; then
-    $SCRIPTS/setup_gvisor_containerd.sh
-fi
-
 $SCRIPTS/install_stock.sh
+
+if [ "$SANDBOX" == "gvisor" ]; then
+    $SCRIPTS/setup_gvisor_runtime.sh
+fi
 
 if [ "$SANDBOX" == "firecracker" ]; then
     $SCRIPTS/create_devmapper.sh

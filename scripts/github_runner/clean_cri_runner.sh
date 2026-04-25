@@ -36,7 +36,7 @@ if [ "$SANDBOX" != "gvisor" ] && [ "$SANDBOX" != "firecracker" ] && [ "$SANDBOX"
 fi
 
 KUBECONFIG=/etc/kubernetes/admin.conf kn service delete --all
-if [ "$SANDBOX" == "stock-only" ]; then
+if [ "$SANDBOX" == "stock-only" ] || [ "$SANDBOX" == "gvisor" ]; then
     sudo kubeadm reset --cri-socket unix:///run/containerd/containerd.sock -f
 else
     sudo kubeadm reset --cri-socket unix:///etc/vhive-cri/vhive-cri.sock -f
@@ -50,9 +50,7 @@ if [ "$SANDBOX" == "firecracker" ]; then
 fi
 
 if [ "$SANDBOX" == "gvisor" ]; then
-    sudo pkill -INT vhive
     sudo pkill -9 containerd
-    sudo pkill -9 -f gvisor-containerd
     sudo pkill -9 -f runsc
 fi
 
@@ -84,7 +82,7 @@ elif [ "$SANDBOX" == "firecracker" ]; then
     sudo dmsetup remove fc-dev-thinpool
 fi
 
-sudo rm /etc/vhive-cri/vhive-cri.sock
+sudo rm -f /etc/vhive-cri/vhive-cri.sock
 rm ${HOME}/.kube/config
 sudo rm -rf ${HOME}/tmp
 
@@ -99,13 +97,8 @@ if [ "$SANDBOX" == "firecracker" ]; then
 fi
 
 if [ "$SANDBOX" == "gvisor" ]; then
-    echo Cleaning /run/gvisor-containerd/*
-    sudo umount /run/gvisor-containerd/io.containerd.runtime.v2.task/default/*/rootfs
-    sudo rm -rf /run/gvisor-containerd/*
-
-    echo Cleaning /var/lib/gvisor-containerd/*
-    sudo rm -rf /var/lib/gvisor-containerd/*
-
+    echo Cleaning runsc state
+    sudo rm -rf /run/containerd/runsc
 fi
 
 if [ "$SANDBOX" == "firecracker" ]; then

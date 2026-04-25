@@ -25,7 +25,7 @@ git clone https://github.com/vhive-serverless/vhive && cd vhive
 
 The `restart` flag indicates whether runners are already setup on this host and a cleanup needs to be performed first.
 
-### Deploying CRI tests workflow runners
+### Deploying Firecracker CRI and gVisor RuntimeClass workflow runners
 
 1. Clone the repository.
 

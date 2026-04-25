@@ -43,8 +43,6 @@ sleep 30s
 $VHIVE_ROOT/scripts/setup_tool -vhive-repo-dir $VHIVE_ROOT setup_zipkin
 
 sleep 30s
-echo "Testing connectivity to ghcr.io..."
-curl -v https://ghcr.io/v2/
 # FIXME (gh-709)
 #source etc/profile && go run $VHIVE_ROOT/examples/registry/populate_registry.go -imageFile $VHIVE_ROOT/examples/registry/images.txt
 
@@ -52,3 +50,23 @@ sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworld -f $VHIVE
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply helloworldserial -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/helloworldSerial.yaml
 sudo KUBECONFIG=/etc/kubernetes/admin.conf kn service apply pyaes -f $VHIVE_ROOT/configs/knative_workloads/$SANDBOX/pyaes.yaml
 sleep 30s
+
+if [ "$SANDBOX" == "gvisor" ]; then
+    sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get runtimeclass gvisor
+    FEATURE=$(sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get cm config-features -n knative-serving -o go-template='{{ index .data "kubernetes.podspec-runtimeclassname" }}')
+    if [ "$FEATURE" != "enabled" ]; then
+        echo "Knative RuntimeClass support is not enabled"
+        exit 1
+    fi
+
+    sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl wait ksvc/helloworld ksvc/helloworldserial ksvc/pyaes --for=condition=Ready --timeout=600s
+    POD_RUNTIME_CLASSES=$(sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get pods -n default -l 'serving.knative.dev/service in (helloworld,helloworldserial,pyaes)' -o jsonpath='{range .items[*]}{.spec.runtimeClassName}{"\n"}{end}')
+    if [ -z "$POD_RUNTIME_CLASSES" ]; then
+        echo "No gVisor test pods found"
+        exit 1
+    fi
+    if echo "$POD_RUNTIME_CLASSES" | grep -v '^gvisor$'; then
+        echo "Expected all gVisor test pods to use runtimeClassName=gvisor"
+        exit 1
+    fi
+fi

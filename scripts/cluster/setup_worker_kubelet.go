@@ -29,10 +29,10 @@ import (
 
 func SetupWorkerKubelet(stockContainerd string) error {
 	var criSock string
-	if stockContainerd == "stock-only" {
-		criSock = "/run/containerd/containerd.sock"
-	} else {
+	if stockContainerd == "firecracker" {
 		criSock = "/etc/vhive-cri/vhive-cri.sock"
+	} else {
+		criSock = "/run/containerd/containerd.sock"
 	}
 
 	if err := CreateWorkerKubeletService(criSock); err != nil {

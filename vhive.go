@@ -35,7 +35,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/vhive-serverless/vhive/cri"
 	fccri "github.com/vhive-serverless/vhive/cri/firecracker"
-	gvcri "github.com/vhive-serverless/vhive/cri/gvisor"
 	ctriface "github.com/vhive-serverless/vhive/ctriface"
 	hpb "github.com/vhive-serverless/vhive/examples/protobuf/helloworld"
 	pb "github.com/vhive-serverless/vhive/proto"
@@ -83,14 +82,14 @@ func main() {
 	criSock = flag.String("criSock", "/etc/vhive-cri/vhive-cri.sock", "Socket address for CRI service")
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
-	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
+	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
 	dockerCredentials := flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM") // https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds
 	flag.Parse()
 
-	if *sandbox != "firecracker" && *sandbox != "gvisor" {
-		log.Fatalln("Only \"gvisor\" or \"firecracker\" are supported as sandboxing-techniques")
+	if *sandbox != "firecracker" {
+		log.Fatalln("Only \"firecracker\" is supported as a vHive sandboxing technique. Use Kubernetes RuntimeClass for gVisor.")
 		return
 	}
 
@@ -153,8 +152,6 @@ func main() {
 		go setupFirecrackerCRI()
 		go orchServe()
 		fwdServe()
-	case "gvisor":
-		setupGVisorCRI()
 	}
 }
 
@@ -270,29 +267,4 @@ func (s *fwdServer) FwdHello(ctx context.Context, in *hpb.FwdHelloReq) (*hpb.Fwd
 
 	resp, _, err := funcPool.Serve(ctx, fID, imageName, payload)
 	return resp, err
-}
-
-func setupGVisorCRI() {
-	lis, err := net.Listen("unix", *criSock)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-
-	s := grpc.NewServer()
-
-	gvService, err := gvcri.NewGVisorService()
-	if err != nil {
-		log.Fatalf("failed to create gVisor service %v", err)
-	}
-
-	criService, err := cri.NewService(gvService)
-	if err != nil {
-		log.Fatalf("failed to create CRI service %v", err)
-	}
-
-	criService.Register(s)
-
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
 }

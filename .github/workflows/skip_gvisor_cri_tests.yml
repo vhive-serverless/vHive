@@ -1,4 +1,4 @@
-name: vHive gVisor CRI tests
+name: vHive gVisor RuntimeClass tests
 
 on:
   push:
@@ -21,7 +21,7 @@ env:
   GO111MODULE: on
 
 jobs:
-  gvisor-cri-tests:
+  gvisor-runtimeclass-tests:
     uses: ./.github/workflows/skip_cri_tests.yml
     with:
       sandbox: gvisor

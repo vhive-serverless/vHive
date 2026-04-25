@@ -109,14 +109,6 @@ func InstallContainerd() error {
 		return err
 	}
 
-	// // Download containerd cni setup script
-	// _, err = utils.ExecShellCmd(configs.System.GetContainerdCniSetupScriptDownloadUrl())
-	// if !utils.CheckErrorWithMsg(err, "Failed to download containerd cni setup script!\n") {
-	// 	return err
-	// }
-	// // Grant permission and move the executable
-	// _, err = utils.ExecShellCmd("cd ~/containerd && ./script/setup/install-cni")
-
 	// Success
 	return nil
 }

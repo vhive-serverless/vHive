@@ -2,7 +2,7 @@ This is the deployment scripts of github self-hosted runners, used to execute so
 
 There are four self-hosted runners in total:
 * cri-firecracker: Used for [firecracker cri tests](../../.github/workflows/integration_tests.yml)
-* cri-gvisor: Used for [gvisor cri tests](../../.github/workflows/gvisor_cri_tests.yml)
+* cri-gvisor: Used for [gVisor RuntimeClass tests](../../.github/workflows/gvisor_cri_tests.yml)
 * integ: Used for [integration tests](../../.github/workflows/integration_tests.yml)
 * profile: Used for [profile unit tests](../../.github/workflows/unit_tests.yml), job: `profile-unit-test`
 
@@ -64,11 +64,11 @@ Here `<private_key>` should be the key that has the ssh permission to all four r
 On `SCSE` cloud, rebuild the four nodes and redeploy them.
 
 # When Should Restart Runners
-For firecracker and gvisor cri tests, when the test stuck in `helloworld is waiting for a Revision to be ready`
+For firecracker CRI and gVisor RuntimeClass tests, when the test stuck in `helloworld is waiting for a Revision to be ready`
 <img width="814" alt="bc67c34ef2308282b8285077534667f" src="https://github.com/vhive-serverless/vHive/assets/58351056/78cea3f8-b42f-4807-ad7a-10fea14a8eea">
 
-This basically implies that the firecracker and gvisor cri runners need to be restart(You can also restart only one runner in that case)
-But if the firecracker and gvisor cri test passed the `Setup vHive CRI test environment` step and failed in `Run vHive CRI tests` step, this typically is just sporadic failure and can be resolved by re-running the tests, just trigger the re-run button on github webpage is okay.
+This basically implies that the firecracker and gVisor runners need to be restarted. You can also restart only one runner in that case.
+But if the firecracker or gVisor test passed the `Setup sandbox test environment` step and failed in `Run shared CRI tests` step, this is typically a sporadic failure and can be resolved by re-running the tests from the GitHub UI.
 
 # Notice for Github PAT
 Below are steps for generating github PAT:

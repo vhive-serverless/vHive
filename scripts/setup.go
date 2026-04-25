@@ -90,7 +90,7 @@ func main() {
 		"setup_nvidia_gpu",
 		"setup_zipkin",
 		"setup_system",
-		"setup_gvisor_containerd",
+		"setup_gvisor_runtime",
 		"setup_firecracker_containerd",
 		"setup_stargz",
 		"install_stock",
@@ -223,9 +223,9 @@ func main() {
 	case "setup_system":
 		utils.InfoPrintf("Set up system\n")
 		err = setup.SetupSystem()
-	case "setup_gvisor_containerd":
-		utils.InfoPrintf("Set up gvisor_containerd\n")
-		err = setup.SetupGvisorContainerd()
+	case "setup_gvisor_runtime":
+		utils.InfoPrintf("Set up gVisor runtime\n")
+		err = setup.SetupGvisorRuntime()
 	case "setup_firecracker_containerd":
 		utils.InfoPrintf("Set up firecracker_containerd\n")
 		err = setup.SetupFirecrackerContainerd()
