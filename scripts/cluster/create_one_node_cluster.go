@@ -39,10 +39,10 @@ func CreateOneNodeCluster(stockContainerd string, useNFTables bool) error {
 
 	var criSock string
 
-	if stockContainerd == "stock-only" {
-		criSock = "/run/containerd/containerd.sock"
-	} else {
+	if stockContainerd == "firecracker" {
 		criSock = "/etc/vhive-cri/vhive-cri.sock"
+	} else {
+		criSock = "/run/containerd/containerd.sock"
 	}
 
 	err = CreateOneNodeKubernetes(criSock, useNFTables)

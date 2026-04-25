@@ -5,7 +5,7 @@
 ## Testing stock Knative setup or images
 
 If you need to test Knative functions in stock Knative environment (i.e., containers)
-or in gVisor MicroVMs instead of Firecracker MicroVMs, use the following commands to set up the environment.
+or under gVisor's runsc runtime instead of Firecracker MicroVMs, use the following commands to set up the environment.
 
 ```bash
 git clone https://github.com/vhive-serverless/vhive
@@ -22,7 +22,8 @@ watch kubectl get pods -A
 kn service apply
 ```
 
-To deploy a function in the stock or gVisor execution environment, please create and use your own YAML files following this [example](https://github.com/knative/docs/tree/main/code-samples/serving/hello-world/helloworld-python#yaml)
+To deploy a function in the stock environment, please create and use your own YAML files following this [example](https://github.com/knative/docs/tree/main/code-samples/serving/hello-world/helloworld-python#yaml).
+To deploy a function with gVisor, add `spec.template.spec.runtimeClassName: gvisor` to the Knative Service YAML.
 
 ### Clean up
 ```bash
@@ -109,7 +110,7 @@ We also offer self-hosted stock-Knative environments powered by KinD. To be able
     - If you have used `kubectl apply -f ...` then use `kubectl delete -f ...`
     - If you have used `kn service apply` then use `kn service delete -f ... --wait`
 
-## Running CRI tests locally
+## Running sandbox tests locally
 Assuming you rented a node using the vHive CloudLab profile:
 
 1. Setup the node for the desired sandbox:
@@ -118,13 +119,13 @@ Assuming you rented a node using the vHive CloudLab profile:
 ./setup_tool setup_node [firecracker|gvisor]
 ```
 
-2. Setup the CRI test environment for the desired sandbox:
+2. Setup the test environment for the desired sandbox. Firecracker uses vHive CRI; gVisor uses stock containerd with Kubernetes RuntimeClass.
 
 ```bash
 ./scripts/github_runner/setup_cri_test_env.sh [firecracker|gvisor]
 ```
 
-3. Run CRI tests:
+3. Run live CRI tests for Firecracker. The gVisor path does not start vHive; `setup_cri_test_env.sh gvisor` validates the RuntimeClass, Knative feature flag, service readiness, and generated Pod `runtimeClassName` instead.
 
 ```bash
 source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
@@ -144,8 +145,8 @@ source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
   the [legacy branch](https://github.com/vhive-serverless/vHive/tree/legacy-firecracker-v0.24.0-with-upf-support).
   We are also working on supporting [remote Firecracker snapshots](./snapshots.md#remote-snapshots) (GH-823).
 
-* vHive integrates with Kubernetes and Knative via its built-in CRI support.
-  Currently, only Knative Serving is supported.
+* vHive integrates Firecracker with Kubernetes and Knative via its built-in CRI support.
+  gVisor functions use Kubernetes RuntimeClass and stock containerd directly.
 
 * vHive supports arbitrary distributed setup of a serverless cluster.
 
@@ -222,8 +223,8 @@ Here are some useful commands (there are plenty of Zipkin tutorials online):
   for details on the building process). Currently, we are in the process of upstreaming VM snapshots support to the
   upstream repository.
 
-* Current Firecracker version is 1.4.1, Knative 1.9, Kubernetes 1.25.3, gVisor 20210622.0, and Istio 1.16.0.
-  We plan to keep our code loosely up to date with the upstream Firecracker repository.
+* Firecracker uses vHive's firecracker-containerd integration. gVisor uses the upstream `runsc` runtime configured in stock containerd.
+  We plan to keep our code loosely up to date with the upstream Firecracker and gVisor projects.
 
 * vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind)
   to speed up testing environment setup requiring Kubernetes.

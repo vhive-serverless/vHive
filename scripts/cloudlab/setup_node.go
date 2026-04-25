@@ -59,13 +59,12 @@ func SetupNode(sandbox string, useStargz string) error {
 		return err
 	}
 
-	if _, err := utils.ExecShellCmd("sudo mkdir -p /etc/vhive-cri"); err != nil {
-		return err
-	}
-
 	// Set up sandbox
 	switch sandbox {
 	case "firecracker":
+		if _, err := utils.ExecShellCmd("sudo mkdir -p /etc/vhive-cri"); err != nil {
+			return err
+		}
 		// Set up firecracker
 		utils.InfoPrintf("Set up firecracker\n")
 		if err := setup.SetupFirecrackerContainerd(); err != nil {
@@ -91,7 +90,7 @@ func SetupNode(sandbox string, useStargz string) error {
 	case "gvisor":
 		// Set up Gvisor
 		utils.WaitPrintf("Set up Gvisor")
-		if err := setup.SetupGvisorContainerd(); err != nil {
+		if err := setup.SetupGvisorRuntime(); err != nil {
 			return err
 		}
 	default:

@@ -25,6 +25,7 @@ package cluster
 import (
 	"os"
 	"path"
+	"time"
 
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
@@ -55,9 +56,24 @@ func SetupMasterNode(stockContainerd string, useNFTables bool) error {
 		}
 	}
 
+	if stockContainerd == "gvisor" {
+		err = InstallGvisorRuntimeClass()
+		if err != nil {
+			return err
+		}
+	}
+
 	err = InstallKnativeServingComponent()
 	if err != nil {
 		return err
+	}
+
+	if stockContainerd == "gvisor" {
+		time.Sleep(30 * time.Second)
+		err = EnableKnativeRuntimeClass()
+		if err != nil {
+			return err
+		}
 	}
 
 	err = InstallLocalClusterRegistry()
@@ -290,6 +306,31 @@ func InstallKnativeServingComponent() error {
 
 	_, err := utils.ExecShellCmd("kubectl -n knative-serving wait deploy webhook --timeout=180s --for=condition=Available")
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install Knative Serving component!\n") {
+		return err
+	}
+
+	return nil
+}
+
+func InstallGvisorRuntimeClass() error {
+	utils.WaitPrintf("Installing gVisor RuntimeClass")
+	runtimeClassPath, err := utils.GetVHiveFilePath(path.Join("configs", "gvisor", "runtimeclass.yaml"))
+	if !utils.CheckErrorWithMsg(err, "Failed to find gVisor RuntimeClass config!\n") {
+		return err
+	}
+
+	_, err = utils.ExecShellCmd("kubectl apply -f %s", runtimeClassPath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to install gVisor RuntimeClass!\n") {
+		return err
+	}
+
+	return nil
+}
+
+func EnableKnativeRuntimeClass() error {
+	utils.WaitPrintf("Enabling Knative RuntimeClass support")
+	_, err := utils.ExecShellCmd(`kubectl patch configmap config-features -n knative-serving --type merge --patch '{"data":{"kubernetes.podspec-runtimeclassname":"enabled"}}'`)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to enable Knative RuntimeClass support!\n") {
 		return err
 	}
 

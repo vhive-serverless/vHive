@@ -22,60 +22,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-sudo apt-get update >> /dev/null
+set -Eeuo pipefail
 
-sudo apt-get -y install btrfs-progs pkg-config libseccomp-dev unzip tar libseccomp2 socat util-linux apt-transport-https curl ipvsadm >> /dev/null
-sudo apt-get -y install apparmor apparmor-utils >> /dev/null        # needed for containerd versions >1.5.x
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+ROOT="$( cd "$DIR" && cd .. && pwd )"
 
-wget --continue --quiet https://github.com/protocolbuffers/protobuf/releases/download/v3.19.4/protoc-3.19.4-linux-x86_64.zip
-sudo unzip -o -q protoc-3.19.4-linux-x86_64.zip -d /usr/local
+pushd "$ROOT/scripts" >/dev/null
+go build -o setup_tool
+popd >/dev/null
 
-wget --continue --quiet https://github.com/containerd/containerd/releases/download/v1.6.2/containerd-1.6.2-linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf containerd-1.6.2-linux-amd64.tar.gz
-
-wget --continue --quiet https://github.com/opencontainers/runc/releases/download/v1.1.0/runc.amd64
-mv runc.amd64 runc
-sudo install -D -m0755 runc /usr/local/sbin/runc
-
-wget --continue --quiet https://storage.googleapis.com/gvisor/releases/release/20210622/x86_64/runsc
-sudo chmod a+rx runsc
-sudo mv runsc /usr/local/bin
-
-containerd --version || echo "failed to build containerd"
-
-
-# Install k8s
-K8S_VERSION=1.25.3-00
-sudo mkdir -p /etc/apt/keyrings
-sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-if sudo apt-get update | grep "Err"; then
-    echo "Google GPG server unreachable, Trying k8s mirror"
-    sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://dl.k8s.io/apt/doc/apt-key.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-    if sudo apt-get update | grep "Err"; then
-    echo "GPG server unreachable, check GPG server status" && exit 1
-    fi
-fi
-sudo apt-get -y install cri-tools ebtables ethtool kubeadm=$K8S_VERSION kubectl=$K8S_VERSION kubelet=$K8S_VERSION kubernetes-cni >> /dev/null
-
-# Install knative CLI
-KNATIVE_VERSION="release-1.9"
-git clone --quiet --depth=1 --branch=$KNATIVE_VERSION -c advice.detachedHead=false https://github.com/knative/client.git $HOME/client
-cd $HOME/client
-hack/build.sh -f
-sudo mv kn /usr/local/bin
-
-
-# Necessary for containerd as container runtime but not docker
-sudo modprobe overlay
-sudo modprobe br_netfilter
-
-# Set up required sysctl params, these persist across reboots.
-sudo tee /etc/sysctl.d/99-kubernetes-cri.conf <<EOF
-net.bridge.bridge-nf-call-iptables  = 1
-net.ipv4.ip_forward                 = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-EOF
-
-sudo sysctl --quiet --system
+"$ROOT/scripts/setup_tool" -vhive-repo-dir "$ROOT" install_stock

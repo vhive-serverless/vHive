@@ -2,7 +2,7 @@
 
 # MIT License
 #
-# Copyright (c) 2020 Dmitrii Ustiugov, Plamen Petrov and EASE lab
+# Copyright (c) 2026 vHive team
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,33 +22,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-set -e
+set -Eeuo pipefail
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-ROOT="$( cd $DIR && cd .. && pwd)"
-BINS=$ROOT/bin
-CTRDCONFIGS=$ROOT/configs/gvisor-containerd
-CNICONFIGS=$ROOT/configs/cni
+ROOT="$( cd "$DIR" && cd .. && pwd)"
 
-sudo mkdir -p /etc/gvisor-containerd
+pushd "$ROOT/scripts" >/dev/null
+go build -o setup_tool
+popd >/dev/null
 
-cd $ROOT
-git lfs pull
-
-DST=/usr/local/bin
-
-for BINARY in containerd-shim-runsc-v1 gvisor-containerd
-do
-  sudo cp $BINS/$BINARY $DST
-done
-
-sudo cp $CTRDCONFIGS/config.toml /etc/gvisor-containerd/
-
-sudo mkdir -p /etc/cni/net.d
-
-DST=/etc/cni/net.d
-
-for CONFIG in 10-bridge.conf 99-loopback.conf
-do
-  sudo cp $CNICONFIGS/$CONFIG $DST
-done
+"$ROOT/scripts/setup_tool" -vhive-repo-dir "$ROOT" setup_gvisor_runtime
