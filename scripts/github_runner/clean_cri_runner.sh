@@ -83,6 +83,9 @@ elif [ "$SANDBOX" == "firecracker" ]; then
 fi
 
 sudo rm -f /etc/vhive-cri/vhive-cri.sock
+sudo rm -f /etc/cni/net.d/10-bridge.conf /etc/cni/net.d/99-loopback.conf
+sudo rm -rf /var/lib/cni/networks/mynet
+sudo ip link delete cni0 2>/dev/null || true
 rm ${HOME}/.kube/config
 sudo rm -rf ${HOME}/tmp
 
