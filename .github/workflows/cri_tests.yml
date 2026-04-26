@@ -58,7 +58,6 @@ jobs:
         run: source /etc/profile && go clean -testcache && go test ./cri ./cri/firecracker -run TestDoesNotExist
 
       - name: Run shared CRI tests
-        if: ${{ inputs.sandbox == 'firecracker' }}
         run: source /etc/profile && go clean -testcache && go test ./cri -v -race -cover
 
       - name: Run sandbox specific tests

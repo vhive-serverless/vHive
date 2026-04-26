@@ -21,7 +21,7 @@ env:
   GO111MODULE: on
 
 jobs:
-  gvisor-runtimeclass-tests:
+  gvisor-cri-tests:
     uses: ./.github/workflows/skip_cri_tests.yml
     with:
       sandbox: gvisor
