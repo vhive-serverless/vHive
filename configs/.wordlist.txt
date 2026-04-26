@@ -187,6 +187,7 @@ grpcServer
 grpcurl
 gvisor
 gVisor
+gVisor's
 gz
 Harald
 HDDs
@@ -432,7 +433,9 @@ rsa
 rsquo
 rsync
 runc
+runsc
 runtime
+RuntimeClass
 runtimes
 s
 SABRes
@@ -520,6 +523,7 @@ tsim
 TSIM
 txt
 Uebele
+UI
 UINT
 uk
 umass
