@@ -140,25 +140,6 @@ func SetupFirecrackerContainerd() error {
 
 // Set up gVisor runsc runtime for stock containerd.
 func SetupGvisorRuntime() error {
-	cniConfigsDir := "configs/cni"
-
-	dstDir := "/etc/cni/net.d"
-	configLists := []string{
-		"10-bridge.conf",
-		"99-loopback.conf",
-	}
-	for _, configFile := range configLists {
-		src, err := utils.GetVHiveFilePath(path.Join(cniConfigsDir, configFile))
-		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-			return err
-		}
-		err = utils.CopyToDir(src, dstDir, true)
-		if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-			return err
-		}
-	}
-	utils.SuccessPrintf("\n")
-
 	utils.WaitPrintf("Installing runsc")
 	if err := InstallRunsc(); err != nil {
 		utils.ErrorPrintf("Failed to install runsc!\n")
