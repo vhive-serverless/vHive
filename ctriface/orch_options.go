@@ -216,6 +216,12 @@ func WithWSRecording(isWSRecording bool) OrchestratorOption {
 	}
 }
 
+func WithWSCompression(isWSCompression bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.isWSCompression = isWSCompression
+	}
+}
+
 func WithCleanChunks(cleanChunks bool) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.cleanChunks = cleanChunks

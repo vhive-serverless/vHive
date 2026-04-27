@@ -102,9 +102,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	port, err := strconv.Atoi(r.Header.Get("port"))
 	if err != nil {
-		log.Errorf("Invalid port: %v", err)
-		http.Error(w, fmt.Sprintf("Invalid port: %v", err), http.StatusBadRequest)
-		return
+		port = 50051
 	}
 	envArr = append(envArr, fmt.Sprintf("PORT=%d", port))
 	log.Debugf("env vars: %v, args: %v", envArr, argsArr)
@@ -223,6 +221,7 @@ func main() {
 	isWSEnabled := flag.Bool("ws", false, "Enable working set pulling for UPFs in lazy mode")
 	isWSCoalescing := flag.Bool("wsCoalescing", false, "Enable coalescing of working set pulls for multiple UPF-enabled VMs")
 	isWSRecording := flag.Bool("wsRecording", false, "Enable recording of working set pages accessed during function execution")
+	isWSCompression := flag.Bool("wsCompression", false, "Compress monolithic/private working set contents on disk and in MinIO")
 	hostIface := flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize := flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
@@ -295,6 +294,7 @@ func main() {
 		ctriface.WithWSPulling(*isWSEnabled),
 		ctriface.WithWSCoalescing(*isWSCoalescing),
 		ctriface.WithWSRecording(*isWSRecording),
+		ctriface.WithWSCompression(*isWSCompression),
 		ctriface.WithChunkingEnabled(*isChunkingEnabled),
 		ctriface.WithChunkSize(*chunkSize),
 		ctriface.WithNetPoolSize(*netPoolSize),

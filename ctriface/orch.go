@@ -325,6 +325,7 @@ type Orchestrator struct {
 	isWSPulling       bool
 	isWSCoalescing    bool
 	isWSRecording     bool
+	isWSCompression   bool
 	isChunkingEnabled bool
 	chunkSize         uint64
 	snapshotsDir      string
@@ -459,6 +460,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, false,
 		o.isLazyMode, o.isWSPulling, o.isWSCoalescing, o.isWSRecording, o.chunkSize, o.cacheSize, o.securityMode, o.threads, o.encryption, o.cleanChunks)
+	o.snapshotManager.SetWorkingSetCompression(o.isWSCompression)
 
 	return o
 }

@@ -1084,6 +1084,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			wsContent         []byte
 			wsContentRelease  func()
 			wsContentErr      error
+			wsContentCompSize int64
+			wsContentIsComp   bool
 			wsContentSources  *snapshotting.WorkingSetContentSources
 			wsSourcesRelease  func()
 			wsSourcesErr      error
@@ -1118,7 +1120,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 					start := time.Now()
 					wsContentSources, wsSourcesRelease, wsSourcesErr = o.snapshotManager.GetWorkingSetContentSourcesManaged(snap)
 					if wsContentSources == nil {
-						wsContent, wsContentRelease, wsContentErr = o.snapshotManager.GetWorkingSetContentManaged(snap)
+						wsContent, wsContentRelease, wsContentCompSize, wsContentIsComp, wsContentErr = o.snapshotManager.GetWorkingSetContentManaged(snap)
 					}
 					wsSourcesDur = time.Since(start)
 				}()
@@ -1196,7 +1198,20 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 
 		loadSnapshotMetric.MetricMap[metrics.UffdPrepareDelay] = metrics.ToUS(time.Since(uffdPrepareStart))
 		go func() {
-			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, wsContentSources, o.isLazyMode, o.snapshotManager, o.threads, releaseAll)
+			err := uffd_handler.StartUffdHandler(
+				fmt.Sprintf("/tmp/%s.uffd.sock", vmID),
+				memData,
+				memPathForTrace+".touched",
+				wsPages,
+				wsContent,
+				wsContentCompSize,
+				wsContentIsComp,
+				wsContentSources,
+				o.isLazyMode,
+				o.snapshotManager,
+				o.threads,
+				releaseAll,
+			)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if o.isWSRecording && snap.GetId() != "base" {

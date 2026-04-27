@@ -134,55 +134,61 @@ type MappedChunkInfo struct {
 }
 
 type WorkingSetSource struct {
-	content     []byte
-	contentPtr  uintptr
-	pfnToIndex  map[uint64]uint64
-	hashToIndex map[string]uint64
+	content             []byte
+	contentPtr          uintptr
+	pfnToIndex          map[uint64]uint64
+	hashToIndex         map[string]uint64
+	compressedSizeBytes int64
+	isCompressed        bool
 }
 
 // PageOperations encapsulates the page-level operations for UFFD handling.
 // This structure is shared across multiple UFFD handlers to provide consistent
 // behavior without duplicating configuration.
 type PageOperations struct {
-	backingBuffer      uintptr
-	legacyWSContent    []byte
-	legacyWSContentPtr uintptr
-	baseRootfsSource   *WorkingSetSource
-	imageSource        *WorkingSetSource
-	privateSource      *WorkingSetSource
-	pageSize           uint64
-	workingSet         []uint64
-	firstPageFaultOnce *sync.Once
-	lazy               bool
-	mappedChunks       sync.Map
-	keyLocks           sync.Map
-	snapMgr            *snapshotting.SnapshotManager
-	threads            int
-	logger             *log.Entry
+	backingBuffer          uintptr
+	legacyWSContent        []byte
+	legacyWSContentPtr     uintptr
+	legacyWSCompressedSize int64
+	legacyWSIsCompressed   bool
+	baseRootfsSource       *WorkingSetSource
+	imageSource            *WorkingSetSource
+	privateSource          *WorkingSetSource
+	pageSize               uint64
+	workingSet             []uint64
+	firstPageFaultOnce     *sync.Once
+	lazy                   bool
+	mappedChunks           sync.Map
+	keyLocks               sync.Map
+	snapMgr                *snapshotting.SnapshotManager
+	threads                int
+	logger                 *log.Entry
 }
 
 // NewPageOperations creates a new PageOperations instance
 func NewPageOperations(backingBuffer uintptr, legacyWSContent []byte, baseRootfsSource *WorkingSetSource, imageSource *WorkingSetSource,
-	privateSource *WorkingSetSource, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) *PageOperations {
+	privateSource *WorkingSetSource, legacyWSCompressedSize int64, legacyWSIsCompressed bool, pageSize uint64, workingSet []uint64, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) *PageOperations {
 	legacyWSContentPtr := uintptr(0)
 	if len(legacyWSContent) > 0 {
 		legacyWSContentPtr = uintptr(unsafe.Pointer(&legacyWSContent[0]))
 	}
 
 	return &PageOperations{
-		backingBuffer:      backingBuffer,
-		legacyWSContent:    legacyWSContent,
-		legacyWSContentPtr: legacyWSContentPtr,
-		baseRootfsSource:   baseRootfsSource,
-		imageSource:        imageSource,
-		privateSource:      privateSource,
-		pageSize:           pageSize,
-		workingSet:         workingSet,
-		firstPageFaultOnce: &sync.Once{},
-		lazy:               lazy,
-		snapMgr:            snapMgr,
-		threads:            threads,
-		logger:             logger,
+		backingBuffer:          backingBuffer,
+		legacyWSContent:        legacyWSContent,
+		legacyWSContentPtr:     legacyWSContentPtr,
+		legacyWSCompressedSize: legacyWSCompressedSize,
+		legacyWSIsCompressed:   legacyWSIsCompressed,
+		baseRootfsSource:       baseRootfsSource,
+		imageSource:            imageSource,
+		privateSource:          privateSource,
+		pageSize:               pageSize,
+		workingSet:             workingSet,
+		firstPageFaultOnce:     &sync.Once{},
+		lazy:                   lazy,
+		snapMgr:                snapMgr,
+		threads:                threads,
+		logger:                 logger,
 	}
 }
 
@@ -259,9 +265,26 @@ func (po *PageOperations) insertWorkingSet(uffd int, region *GuestRegionUffdMapp
 		count := ""
 		if po.baseRootfsSource != nil || po.imageSource != nil || po.privateSource != nil {
 			mode = "(Split WS) "
-			count = fmt.Sprintf(", private page count: %d", len(po.privateSource.pfnToIndex))
+			privateCount := 0
+			if po.privateSource != nil {
+				privateCount = len(po.privateSource.pfnToIndex)
+			}
+			parts := []string{fmt.Sprintf("private page count: %d", privateCount)}
+			if po.privateSource != nil && po.privateSource.isCompressed {
+				parts = append(parts, fmt.Sprintf("private compressed size: %d bytes", po.privateSource.compressedSizeBytes))
+			}
+			if po.baseRootfsSource != nil && po.baseRootfsSource.isCompressed {
+				parts = append(parts, fmt.Sprintf("base/rootfs compressed size: %d bytes", po.baseRootfsSource.compressedSizeBytes))
+			}
+			if po.imageSource != nil && po.imageSource.isCompressed {
+				parts = append(parts, fmt.Sprintf("image compressed size: %d bytes", po.imageSource.compressedSizeBytes))
+			}
+			count = ", " + strings.Join(parts, ", ")
 		} else if po.legacyWSContentPtr != 0 {
 			mode = "(Monolithic WS) "
+			if po.legacyWSIsCompressed {
+				count = fmt.Sprintf(", compressed size: %d bytes", po.legacyWSCompressedSize)
+			}
 		} else if po.lazy {
 			mode = "(Lazy Version) "
 			cnt := 0
@@ -820,7 +843,7 @@ func parseWSHashIndex(indexData []byte) (map[string]uint64, error) {
 	return hashToIndex, nil
 }
 
-func buildWorkingSetSourceByPFN(content []byte, index []byte) (*WorkingSetSource, error) {
+func buildWorkingSetSourceByPFN(content []byte, index []byte, compressedSizeBytes int64, isCompressed bool) (*WorkingSetSource, error) {
 	if len(content) == 0 {
 		return nil, nil
 	}
@@ -835,13 +858,15 @@ func buildWorkingSetSourceByPFN(content []byte, index []byte) (*WorkingSetSource
 
 	contentPtr := uintptr(unsafe.Pointer(&content[0]))
 	return &WorkingSetSource{
-		content:    content,
-		contentPtr: contentPtr,
-		pfnToIndex: pfnToIndex,
+		content:             content,
+		contentPtr:          contentPtr,
+		pfnToIndex:          pfnToIndex,
+		compressedSizeBytes: compressedSizeBytes,
+		isCompressed:        isCompressed,
 	}, nil
 }
 
-func buildWorkingSetSourceByHash(content []byte, index []byte) (*WorkingSetSource, error) {
+func buildWorkingSetSourceByHash(content []byte, index []byte, compressedSizeBytes int64, isCompressed bool) (*WorkingSetSource, error) {
 	if len(content) == 0 {
 		return nil, nil
 	}
@@ -857,14 +882,16 @@ func buildWorkingSetSourceByHash(content []byte, index []byte) (*WorkingSetSourc
 
 	contentPtr := uintptr(unsafe.Pointer(&content[0]))
 	return &WorkingSetSource{
-		content:     content,
-		contentPtr:  contentPtr,
-		hashToIndex: hashToIndex,
+		content:             content,
+		contentPtr:          contentPtr,
+		hashToIndex:         hashToIndex,
+		compressedSizeBytes: compressedSizeBytes,
+		isCompressed:        isCompressed,
 	}, nil
 }
 
 // NewRuntime creates a new runtime
-func NewRuntime(conn *net.UnixConn, backingMemory []byte, wsData []byte, wsContent []byte, wsSources *snapshotting.WorkingSetContentSources, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
+func NewRuntime(conn *net.UnixConn, backingMemory []byte, wsData []byte, wsContent []byte, wsContentCompressedSize int64, wsContentIsCompressed bool, wsSources *snapshotting.WorkingSetContentSources, tracer *PageFaultTracer, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, logger *log.Entry) (*Runtime, error) {
 	if len(backingMemory) == 0 {
 		return nil, fmt.Errorf("backing memory content is empty")
 	}
@@ -905,15 +932,30 @@ func NewRuntime(conn *net.UnixConn, backingMemory []byte, wsData []byte, wsConte
 	var err error
 
 	if wsSources != nil {
-		baseRootfsSource, err = buildWorkingSetSourceByHash(wsSources.BaseRootfs.Content, wsSources.BaseRootfs.Index)
+		baseRootfsSource, err = buildWorkingSetSourceByHash(
+			wsSources.BaseRootfs.Content,
+			wsSources.BaseRootfs.Index,
+			wsSources.BaseRootfs.CompressedSizeBytes,
+			wsSources.BaseRootfs.IsCompressed,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse base/rootfs ws source: %w", err)
 		}
-		imageSource, err = buildWorkingSetSourceByHash(wsSources.Image.Content, wsSources.Image.Index)
+		imageSource, err = buildWorkingSetSourceByHash(
+			wsSources.Image.Content,
+			wsSources.Image.Index,
+			wsSources.Image.CompressedSizeBytes,
+			wsSources.Image.IsCompressed,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse image ws source: %w", err)
 		}
-		privateSource, err = buildWorkingSetSourceByPFN(wsSources.Private.Content, wsSources.Private.Index)
+		privateSource, err = buildWorkingSetSourceByPFN(
+			wsSources.Private.Content,
+			wsSources.Private.Index,
+			wsSources.Private.CompressedSizeBytes,
+			wsSources.Private.IsCompressed,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private ws source: %w", err)
 		}
@@ -923,7 +965,7 @@ func NewRuntime(conn *net.UnixConn, backingMemory []byte, wsData []byte, wsConte
 
 	// Create PageOperations with a reasonable default page size
 	// The actual page size will be validated when handlers are created
-	pageOps := NewPageOperations(backingMemoryPtr, wsContent, baseRootfsSource, imageSource, privateSource, 4096, ws, lazy, snapMgr, threads, logger)
+	pageOps := NewPageOperations(backingMemoryPtr, wsContent, baseRootfsSource, imageSource, privateSource, wsContentCompressedSize, wsContentIsCompressed, 4096, ws, lazy, snapMgr, threads, logger)
 
 	rt := &Runtime{
 		stream:             conn,
@@ -1084,7 +1126,7 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 	return body, -1, nil
 }
 
-func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string, wsData []byte, wsContent []byte, wsSources *snapshotting.WorkingSetContentSources, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, release func()) error {
+func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string, wsData []byte, wsContent []byte, wsContentCompressedSize int64, wsContentIsCompressed bool, wsSources *snapshotting.WorkingSetContentSources, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, release func()) error {
 	log.Debugf("Starting handler at %s", uffdSockPath)
 	if release != nil {
 		defer release()
@@ -1125,7 +1167,7 @@ func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string,
 	}()
 
 	// Create runtime
-	runtime, err := NewRuntime(conn, memData, wsData, wsContent, wsSources, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
+	runtime, err := NewRuntime(conn, memData, wsData, wsContent, wsContentCompressedSize, wsContentIsCompressed, wsSources, tracer, lazy, snapMgr, threads, log.WithField("uffd", uffdSockPath))
 	if err != nil {
 		return fmt.Errorf("failed to create runtime: %w", err)
 	}

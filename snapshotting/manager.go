@@ -25,6 +25,7 @@ package snapshotting
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"container/heap"
 	"container/list"
 	"crypto/aes"
@@ -73,8 +74,10 @@ var EncryptionKey = []byte("vhive-snapshot-enc") // 16 bytes key for AES-128
 var wsCacheHTTPServerOnce sync.Once
 
 type WorkingSetContentSource struct {
-	Content []byte
-	Index   []byte
+	Content             []byte
+	Index               []byte
+	CompressedSizeBytes int64
+	IsCompressed        bool
 }
 
 type WorkingSetContentSources struct {
@@ -102,12 +105,55 @@ func combineReleaseFuncs(releaseFuncs ...func()) func() {
 	}
 }
 
+func compressWorkingSetContent(content []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := gzip.NewWriter(&buf)
+	if _, err := writer.Write(content); err != nil {
+		_ = writer.Close()
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func decompressWorkingSetContentIfNeeded(content []byte) ([]byte, bool, error) {
+	if len(content) < 2 || content[0] != 0x1f || content[1] != 0x8b {
+		return content, false, nil
+	}
+
+	start := time.Now()
+	defer func() {
+		log.Debugf("Decompression took %v", time.Since(start))
+	}()
+	reader, err := gzip.NewReader(bytes.NewReader(content))
+	if err != nil {
+		return nil, true, err
+	}
+
+	decoded, readErr := io.ReadAll(reader)
+	closeErr := reader.Close()
+	if readErr != nil {
+		return nil, true, readErr
+	}
+	if closeErr != nil {
+		return nil, true, closeErr
+	}
+
+	return decoded, true, nil
+}
+
 func (mgr *SnapshotManager) GetCleanChunks() bool {
 	return mgr.cleanChunks
 }
 
 func (mgr *SnapshotManager) GetChunkSize() uint64 {
 	return mgr.chunkSize
+}
+
+func (mgr *SnapshotManager) SetWorkingSetCompression(enabled bool) {
+	mgr.wsCompression = enabled
 }
 
 type ChunkEntry struct {
@@ -746,6 +792,7 @@ type SnapshotManager struct {
 	wsPulling     bool
 	optimizeWS    bool
 	wsRecording   bool
+	wsCompression bool
 	chunkSize     uint64
 	cacheSize     uint64
 	securityMode  string
@@ -1419,6 +1466,15 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 			}
 			defer contentFile.Close()
 
+			var (
+				contentWriter io.Writer = contentFile
+				gzipWriter    *gzip.Writer
+			)
+			if mgr.wsCompression {
+				gzipWriter = gzip.NewWriter(contentFile)
+				contentWriter = gzipWriter
+			}
+
 			page := make([]byte, 4096)
 			for i := 1; i < len(records); i++ {
 				record := records[i]
@@ -1459,8 +1515,14 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 					}
 				}
 
-				if _, err := contentFile.Write(page); err != nil {
+				if _, err := contentWriter.Write(page); err != nil {
 					return errors.Wrapf(err, "writing page to monolithic working set content file")
+				}
+			}
+
+			if gzipWriter != nil {
+				if err := gzipWriter.Close(); err != nil {
+					return errors.Wrapf(err, "closing monolithic working set content compressor")
 				}
 			}
 
@@ -1561,7 +1623,14 @@ func (mgr *SnapshotManager) UploadWorkingSet(revision string) error {
 		if err != nil {
 			return errors.Wrapf(err, "building private working set index")
 		}
-		if err := os.WriteFile(snap.GetWSPrivateContentFilePath(), privateBuild.content, 0644); err != nil {
+		privateContentToWrite := privateBuild.content
+		if mgr.wsCompression {
+			privateContentToWrite, err = compressWorkingSetContent(privateBuild.content)
+			if err != nil {
+				return errors.Wrapf(err, "compressing private working set content file")
+			}
+		}
+		if err := os.WriteFile(snap.GetWSPrivateContentFilePath(), privateContentToWrite, 0644); err != nil {
 			return errors.Wrapf(err, "writing private working set content file")
 		}
 		if err := os.WriteFile(snap.GetWSPrivateIndexFilePath(), privateIndex, 0644); err != nil {
@@ -1776,20 +1845,24 @@ func (mgr *SnapshotManager) persistSharedWSSource(imageName string, content []by
 	if existingErr != nil {
 		return errors.Wrapf(existingErr, "loading existing shared content")
 	}
+	decodedExistingContent, _, decodeErr := decompressWorkingSetContentIfNeeded(existingContent)
+	if decodeErr != nil {
+		return errors.Wrapf(decodeErr, "decompressing existing shared content")
+	}
 	existingIndex, existingErr := mgr.getOptionalSharedFile(indexPath, indexObj)
 	if existingErr != nil {
 		return errors.Wrapf(existingErr, "loading existing shared index")
 	}
-	if len(existingContent) > 0 && len(existingIndex) > 0 {
+	if len(decodedExistingContent) > 0 && len(existingIndex) > 0 {
 		existingHashes, parseErr := parseWSHashIndex(existingIndex)
-		if parseErr == nil && len(existingContent) >= len(existingHashes)*4096 {
+		if parseErr == nil && len(decodedExistingContent) >= len(existingHashes)*4096 {
 			for i, hash := range existingHashes {
 				if _, ok := pageByHash[hash]; ok {
 					continue
 				}
 				start := i * 4096
 				end := start + 4096
-				pageByHash[hash] = append([]byte(nil), existingContent[start:end]...)
+				pageByHash[hash] = append([]byte(nil), decodedExistingContent[start:end]...)
 			}
 		}
 	}
@@ -2506,15 +2579,32 @@ func (mgr *SnapshotManager) downloadFile(revision, filePath, fileName string) er
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContent(snap *Snapshot) ([]byte, error) {
+	decode := func(data []byte) ([]byte, error) {
+		decoded, _, err := decompressWorkingSetContentIfNeeded(data)
+		if err != nil {
+			return nil, errors.Wrapf(err, "decompressing working set content")
+		}
+		return decoded, nil
+	}
+
 	if mgr.securityMode == "full" {
-		return mgr.GetSnapshotFileContent(snap, snap.GetWSContentFilePath())
+		data, err := mgr.GetSnapshotFileContent(snap, snap.GetWSContentFilePath())
+		if err != nil {
+			return nil, err
+		}
+		return decode(data)
 	}
 
 	data, err := mgr.GetSnapshotFileContent(snap, snap.GetWSPrivateContentFilePath())
 	if err == nil {
-		return data, nil
+		return decode(data)
 	}
-	return mgr.GetSnapshotFileContent(snap, snap.GetWSContentFilePath())
+
+	fallbackData, fallbackErr := mgr.GetSnapshotFileContent(snap, snap.GetWSContentFilePath())
+	if fallbackErr != nil {
+		return nil, fallbackErr
+	}
+	return decode(fallbackData)
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContentSources(snap *Snapshot) (*WorkingSetContentSources, error) {
@@ -2522,15 +2612,34 @@ func (mgr *SnapshotManager) GetWorkingSetContentSources(snap *Snapshot) (*Workin
 		return nil, nil
 	}
 
-	privateContent, err := mgr.GetWorkingSetContent(snap)
-	if err != nil {
-		privateContent = nil
+	privateContentSource := WorkingSetContentSource{CompressedSizeBytes: -1}
+	privateRaw, err := mgr.GetSnapshotFileContent(snap, snap.GetWSPrivateContentFilePath())
+	if err == nil {
+		decodedPrivate, isCompressed, decodeErr := decompressWorkingSetContentIfNeeded(privateRaw)
+		if decodeErr != nil {
+			return nil, errors.Wrapf(decodeErr, "decompressing private working set content")
+		}
+		privateContentSource.Content = decodedPrivate
+		privateContentSource.CompressedSizeBytes = int64(len(privateRaw))
+		privateContentSource.IsCompressed = isCompressed
+	} else {
+		legacyRaw, legacyErr := mgr.GetSnapshotFileContent(snap, snap.GetWSContentFilePath())
+		if legacyErr == nil {
+			decodedLegacy, isCompressed, decodeErr := decompressWorkingSetContentIfNeeded(legacyRaw)
+			if decodeErr != nil {
+				return nil, errors.Wrapf(decodeErr, "decompressing legacy working set content")
+			}
+			privateContentSource.Content = decodedLegacy
+			privateContentSource.CompressedSizeBytes = int64(len(legacyRaw))
+			privateContentSource.IsCompressed = isCompressed
+		}
 	}
 
 	privateIndex, err := mgr.GetSnapshotFileContent(snap, snap.GetWSPrivateIndexFilePath())
 	if err != nil {
 		privateIndex = nil
 	}
+	privateContentSource.Index = privateIndex
 
 	baseSource, err := mgr.getSharedWSSource("")
 	if err != nil {
@@ -2542,15 +2651,12 @@ func (mgr *SnapshotManager) GetWorkingSetContentSources(snap *Snapshot) (*Workin
 		return nil, err
 	}
 
-	if len(privateContent) == 0 && len(privateIndex) == 0 && baseSource == nil && imageSource == nil {
+	if len(privateContentSource.Content) == 0 && len(privateContentSource.Index) == 0 && baseSource == nil && imageSource == nil {
 		return nil, nil
 	}
 
 	sources := &WorkingSetContentSources{
-		Private: WorkingSetContentSource{
-			Content: privateContent,
-			Index:   privateIndex,
-		},
+		Private: privateContentSource,
 	}
 	if baseSource != nil {
 		sources.BaseRootfs = *baseSource
@@ -2585,12 +2691,21 @@ func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetCont
 		return nil, err
 	}
 	if len(sharedContent) > 0 && len(sharedIndex) > 0 {
+		decodedSharedContent, isCompressed, decodeErr := decompressWorkingSetContentIfNeeded(sharedContent)
+		if decodeErr != nil {
+			return nil, errors.Wrapf(decodeErr, "decompressing coalesced shared working set content")
+		}
 		hashes, parseErr := parseWSHashIndex(sharedIndex)
 		if parseErr != nil {
 			return nil, errors.Wrapf(parseErr, "parsing coalesced shared working set index")
 		}
-		if len(sharedContent) >= len(hashes)*4096 {
-			source := &WorkingSetContentSource{Content: sharedContent, Index: sharedIndex}
+		if len(decodedSharedContent) >= len(hashes)*4096 {
+			source := &WorkingSetContentSource{
+				Content:             decodedSharedContent,
+				Index:               sharedIndex,
+				CompressedSizeBytes: int64(len(sharedContent)),
+				IsCompressed:        isCompressed,
+			}
 			mgr.warnWSRecordingForCoalescedSharedWS(imageName)
 			if imageName == "" {
 				mgr.wsBaseCache = source
@@ -2602,7 +2717,7 @@ func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetCont
 
 		log.Warnf("Coalesced shared WS content for image=%q is truncated: have %d bytes, expected at least %d; falling back to legacy chunk lookup",
 			imageName,
-			len(sharedContent),
+			len(decodedSharedContent),
 			len(hashes)*4096)
 	}
 
@@ -2670,7 +2785,7 @@ func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetCont
 		content = append(content, chunkMap[hash]...)
 	}
 
-	source := &WorkingSetContentSource{Content: content, Index: index}
+	source := &WorkingSetContentSource{Content: content, Index: index, CompressedSizeBytes: -1, IsCompressed: false}
 	mgr.warnWSRecordingForCoalescedSharedWS(imageName)
 	if imageName == "" {
 		mgr.wsBaseCache = source
@@ -2749,22 +2864,34 @@ func (mgr *SnapshotManager) GetUffdMemoryContentManaged(snap *Snapshot, lazy boo
 	return mgr.GetSnapshotFileContentManaged(snap, snap.GetMemFilePath())
 }
 
-func (mgr *SnapshotManager) GetWorkingSetContentManaged(snap *Snapshot) ([]byte, func(), error) {
+func (mgr *SnapshotManager) GetWorkingSetContentManaged(snap *Snapshot) ([]byte, func(), int64, bool, error) {
+	decodeManaged := func(data []byte, releaseFn func()) ([]byte, func(), int64, bool, error) {
+		decoded, isCompressed, err := decompressWorkingSetContentIfNeeded(data)
+		if err != nil {
+			return nil, releaseFn, -1, false, errors.Wrapf(err, "decompressing working set content")
+		}
+		return decoded, releaseFn, int64(len(data)), isCompressed, nil
+	}
+
 	if mgr.securityMode == "full" {
-		return mgr.GetSnapshotFileContentManaged(snap, snap.GetWSContentFilePath())
+		data, releaseFn, err := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSContentFilePath())
+		if err != nil {
+			return nil, releaseFn, -1, false, err
+		}
+		return decodeManaged(data, releaseFn)
 	}
 
 	data, releaseFn, err := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSPrivateContentFilePath())
 	if err == nil {
-		return data, releaseFn, nil
+		return decodeManaged(data, releaseFn)
 	}
 
 	fallbackData, fallbackRelease, fallbackErr := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSContentFilePath())
 	if fallbackErr == nil {
-		return fallbackData, fallbackRelease, nil
+		return decodeManaged(fallbackData, fallbackRelease)
 	}
 
-	return nil, combineReleaseFuncs(releaseFn, fallbackRelease), fallbackErr
+	return nil, combineReleaseFuncs(releaseFn, fallbackRelease), -1, false, fallbackErr
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContentSourcesManaged(snap *Snapshot) (*WorkingSetContentSources, func(), error) {
@@ -2772,10 +2899,39 @@ func (mgr *SnapshotManager) GetWorkingSetContentSourcesManaged(snap *Snapshot) (
 		return nil, func() {}, nil
 	}
 
-	privateContent, privateContentRelease, err := mgr.GetWorkingSetContentManaged(snap)
-	if err != nil {
-		privateContent = nil
-		privateContentRelease = func() {}
+	privateContent := []byte(nil)
+	privateContentRelease := func() {}
+	privateCompressedSize := int64(-1)
+	privateCompressed := false
+
+	privateRaw, privateRawRelease, err := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSPrivateContentFilePath())
+	if err == nil {
+		decodedPrivate, isCompressed, decodeErr := decompressWorkingSetContentIfNeeded(privateRaw)
+		if decodeErr != nil {
+			if privateRawRelease != nil {
+				privateRawRelease()
+			}
+			return nil, func() {}, errors.Wrapf(decodeErr, "decompressing private working set content")
+		}
+		privateContent = decodedPrivate
+		privateContentRelease = privateRawRelease
+		privateCompressedSize = int64(len(privateRaw))
+		privateCompressed = isCompressed
+	} else {
+		legacyRaw, legacyRelease, legacyErr := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSContentFilePath())
+		if legacyErr == nil {
+			decodedLegacy, isCompressed, decodeErr := decompressWorkingSetContentIfNeeded(legacyRaw)
+			if decodeErr != nil {
+				if legacyRelease != nil {
+					legacyRelease()
+				}
+				return nil, func() {}, errors.Wrapf(decodeErr, "decompressing legacy working set content")
+			}
+			privateContent = decodedLegacy
+			privateContentRelease = legacyRelease
+			privateCompressedSize = int64(len(legacyRaw))
+			privateCompressed = isCompressed
+		}
 	}
 
 	privateIndex, privateIndexRelease, err := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSPrivateIndexFilePath())
@@ -2804,8 +2960,10 @@ func (mgr *SnapshotManager) GetWorkingSetContentSourcesManaged(snap *Snapshot) (
 
 	sources := &WorkingSetContentSources{
 		Private: WorkingSetContentSource{
-			Content: privateContent,
-			Index:   privateIndex,
+			Content:             privateContent,
+			Index:               privateIndex,
+			CompressedSizeBytes: privateCompressedSize,
+			IsCompressed:        privateCompressed,
 		},
 	}
 	if baseSource != nil {
