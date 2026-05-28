@@ -29,9 +29,9 @@ import (
 )
 
 // NewVMPool Initializes a pool of VMs
-func NewVMPool(hostIfaceName string, netPoolSize int, vethPrefix, clonePrefix string) *VMPool {
+func NewVMPool(hostIfaceName string, netPoolSize int, vethPrefix, clonePrefix string, setExpIface bool) *VMPool {
 	p := new(VMPool)
-	networkManager, err := networking.NewNetworkManager(hostIfaceName, netPoolSize, vethPrefix, clonePrefix)
+	networkManager, err := networking.NewNetworkManager(hostIfaceName, "", netPoolSize, vethPrefix, clonePrefix, setExpIface)
 	if err != nil {
 		log.Println(err)
 	}

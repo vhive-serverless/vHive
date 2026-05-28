@@ -111,3 +111,9 @@ func WithDockerCredentials(dockerCredentials string) OrchestratorOption {
 		o.dockerCredentials = creds
 	}
 }
+
+func WithSetExpIface(setExpIface bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.setExpIface = setExpIface
+	}
+}
