@@ -40,7 +40,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ftrvxmtrx/fd"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
@@ -67,12 +66,13 @@ type SnapshotStateCfg struct {
 // of the VM.
 type SnapshotState struct {
 	SnapshotStateCfg
-	firstPageFaultOnce *sync.Once // to initialize the start virtual address and replay
-	startAddress       uint64
-	userFaultFD        *os.File
-	trace              *Trace
-	epfd               int
-	quitCh             chan int
+	firstPageFaultOnce  *sync.Once // to initialize the start virtual address and replay
+	startAddress        uint64
+	userFaultFD         *os.File
+	guestRegionMappings []GuestRegionUffdMapping
+	trace               *Trace
+	epfd                int
+	quitCh              chan int
 
 	// to indicate whether the instance has even been activated. this is to
 	// get around cases where offload is called for the first time
@@ -145,13 +145,14 @@ func (s *SnapshotState) getUFFD() error {
 
 		sendfdConn := c.(*net.UnixConn)
 
-		fs, err := fd.Get(sendfdConn, 1, []string{"a file"})
+		mappings, userFaultFD, err := receiveUffdMappingsAndFD(sendfdConn)
 		if err != nil {
-			log.Error("Failed to receive the uffd")
+			log.Error("Failed to receive the uffd and guest memory mappings")
 			return err
 		}
 
-		s.userFaultFD = fs[0]
+		s.guestRegionMappings = mappings
+		s.userFaultFD = userFaultFD
 
 		return nil
 	}
