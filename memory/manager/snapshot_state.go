@@ -396,14 +396,18 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		return nil
 	}
 
-	offset := address - s.startAddress
+	copyArgs, err := pageFaultCopyArgsForFault(s.guestRegionMappings, address)
+	if err != nil {
+		return err
+	}
 
-	src := uint64(uintptr(unsafe.Pointer(&s.guestMem[offset])))
-	dst := uint64(int64(address) & ^(int64(os.Getpagesize()) - 1))
-	mode := uint64(0)
+	src, err := guestMemPointer(s.guestMem, copyArgs.srcOffset, copyArgs.copyLen)
+	if err != nil {
+		return err
+	}
 
 	rec := Record{
-		offset: offset,
+		offset: copyArgs.srcOffset,
 	}
 
 	if !s.isRecordReady {
@@ -428,7 +432,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		tStart = time.Now()
 	}
 
-	err := installRegion(fd, src, dst, mode, 1)
+	err = installRegionBytes(fd, src, copyArgs.dstAddr, copyArgs.copyMode, copyArgs.copyLen)
 
 	if s.metricsModeOn {
 		s.currentMetric.MetricMap[serveUniqueMetric] += metrics.ToUS(time.Since(tStart))
@@ -468,13 +472,17 @@ func (s *SnapshotState) installWorkingSetPages(fd int) {
 	wake(fd, s.startAddress, os.Getpagesize())
 }
 
-func installRegion(fd int, src, dst, mode, len uint64) error {
+func installRegion(fd int, src, dst, mode, pageCount uint64) error {
+	return installRegionBytes(fd, src, dst, mode, uint64(os.Getpagesize())*pageCount)
+}
+
+func installRegionBytes(fd int, src, dst, mode, length uint64) error {
 	cUC := C.struct_uffdio_copy{
 		mode: C.ulonglong(mode),
 		copy: 0,
 		src:  C.ulonglong(src),
 		dst:  C.ulonglong(dst),
-		len:  C.ulonglong(uint64(os.Getpagesize()) * len),
+		len:  C.ulonglong(length),
 	}
 
 	err := ioctl(uintptr(fd), int(C.const_UFFDIO_COPY), unsafe.Pointer(&cUC))
@@ -483,6 +491,17 @@ func installRegion(fd int, src, dst, mode, len uint64) error {
 	}
 
 	return nil
+}
+
+func guestMemPointer(guestMem []byte, offset, length uint64) (uint64, error) {
+	if length == 0 {
+		return 0, errors.New("guest memory copy length must be non-zero")
+	}
+	if offset >= uint64(len(guestMem)) || length > uint64(len(guestMem))-offset {
+		return 0, fmt.Errorf("guest memory copy is outside mapped file: offset=%#x len=%#x size=%#x", offset, length, len(guestMem))
+	}
+
+	return uint64(uintptr(unsafe.Pointer(&guestMem[int(offset)]))), nil
 }
 
 func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
