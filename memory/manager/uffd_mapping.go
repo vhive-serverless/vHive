@@ -19,6 +19,13 @@ type GuestRegionUffdMapping struct {
 	PageSize         uint64 `json:"page_size"`
 }
 
+type pageFaultCopyArgs struct {
+	srcOffset uint64
+	dstAddr   uint64
+	copyLen   uint64
+	copyMode  uint64
+}
+
 func pageAlignFaultAddress(faultAddr uint64, region GuestRegionUffdMapping) (uint64, error) {
 	if region.PageSize == 0 {
 		return 0, errInvalidGuestRegionPageSize
@@ -67,6 +74,32 @@ func guestMemoryOffsetForFault(regions []GuestRegionUffdMapping, faultAddr uint6
 	}
 
 	return 0, fmt.Errorf("%w: %#x", errGuestRegionNotFound, faultAddr)
+}
+
+func pageFaultCopyArgsForFault(regions []GuestRegionUffdMapping, faultAddr uint64) (pageFaultCopyArgs, error) {
+	for _, region := range regions {
+		faultPageAddr, err := pageAlignFaultAddress(faultAddr, region)
+		if err != nil {
+			return pageFaultCopyArgs{}, err
+		}
+		if !regionContainsFaultPage(region, faultPageAddr) {
+			continue
+		}
+
+		srcOffset, err := guestMemoryOffsetForFaultPage(region, faultPageAddr)
+		if err != nil {
+			return pageFaultCopyArgs{}, err
+		}
+
+		return pageFaultCopyArgs{
+			srcOffset: srcOffset,
+			dstAddr:   faultPageAddr,
+			copyLen:   region.PageSize,
+			copyMode:  0,
+		}, nil
+	}
+
+	return pageFaultCopyArgs{}, fmt.Errorf("%w: %#x", errGuestRegionNotFound, faultAddr)
 }
 
 func regionContainsFaultPage(region GuestRegionUffdMapping, faultPageAddr uint64) bool {

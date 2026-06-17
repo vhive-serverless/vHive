@@ -142,3 +142,101 @@ func TestGuestMemoryOffsetForFaultZeroPageSize(t *testing.T) {
 		t.Fatalf("guestMemoryOffsetForFault() error = %v, want %v", err, errInvalidGuestRegionPageSize)
 	}
 }
+
+func TestPageFaultCopyArgsForFault(t *testing.T) {
+	tests := []struct {
+		name    string
+		regions []GuestRegionUffdMapping
+		fault   uint64
+		want    pageFaultCopyArgs
+	}{
+		{
+			name: "zero offset",
+			regions: []GuestRegionUffdMapping{{
+				BaseHostVirtAddr: 0x100000,
+				Size:             0x4000,
+				PageSize:         0x1000,
+			}},
+			fault: 0x102000,
+			want: pageFaultCopyArgs{
+				srcOffset: 0x2000,
+				dstAddr:   0x102000,
+				copyLen:   0x1000,
+				copyMode:  0,
+			},
+		},
+		{
+			name: "non-zero offset",
+			regions: []GuestRegionUffdMapping{{
+				BaseHostVirtAddr: 0x100000,
+				Size:             0x4000,
+				Offset:           0x800000,
+				PageSize:         0x1000,
+			}},
+			fault: 0x103000,
+			want: pageFaultCopyArgs{
+				srcOffset: 0x803000,
+				dstAddr:   0x103000,
+				copyLen:   0x1000,
+				copyMode:  0,
+			},
+		},
+		{
+			name: "not page-aligned",
+			regions: []GuestRegionUffdMapping{{
+				BaseHostVirtAddr: 0x100000,
+				Size:             0x4000,
+				Offset:           0x300000,
+				PageSize:         0x1000,
+			}},
+			fault: 0x101234,
+			want: pageFaultCopyArgs{
+				srcOffset: 0x301000,
+				dstAddr:   0x101000,
+				copyLen:   0x1000,
+				copyMode:  0,
+			},
+		},
+		{
+			name: "larger page size",
+			regions: []GuestRegionUffdMapping{{
+				BaseHostVirtAddr: 0x100000,
+				Size:             0x8000,
+				Offset:           0x500000,
+				PageSize:         0x2000,
+			}},
+			fault: 0x103456,
+			want: pageFaultCopyArgs{
+				srcOffset: 0x502000,
+				dstAddr:   0x102000,
+				copyLen:   0x2000,
+				copyMode:  0,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := pageFaultCopyArgsForFault(tt.regions, tt.fault)
+			if err != nil {
+				t.Fatalf("pageFaultCopyArgsForFault returned error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("pageFaultCopyArgsForFault() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPageFaultCopyArgsForFaultOutsideAllRegions(t *testing.T) {
+	regions := []GuestRegionUffdMapping{{
+		BaseHostVirtAddr: 0x100000,
+		Size:             0x2000,
+		PageSize:         0x1000,
+	}}
+
+	_, err := pageFaultCopyArgsForFault(regions, 0x103000)
+	if !errors.Is(err, errGuestRegionNotFound) {
+		t.Fatalf("pageFaultCopyArgsForFault() error = %v, want %v", err, errGuestRegionNotFound)
+	}
+}
