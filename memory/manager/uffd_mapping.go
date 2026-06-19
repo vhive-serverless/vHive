@@ -61,19 +61,12 @@ func guestMemoryOffsetForFaultPage(region GuestRegionUffdMapping, faultPageAddr 
 }
 
 func guestMemoryOffsetForFault(regions []GuestRegionUffdMapping, faultAddr uint64) (uint64, error) {
-	for _, region := range regions {
-		faultPageAddr, err := pageAlignFaultAddress(faultAddr, region)
-		if err != nil {
-			return 0, err
-		}
-		if !regionContainsFaultPage(region, faultPageAddr) {
-			continue
-		}
-
-		return guestMemoryOffsetForFaultPage(region, faultPageAddr)
+	copyArgs, err := pageFaultCopyArgsForFault(regions, faultAddr)
+	if err != nil {
+		return 0, err
 	}
 
-	return 0, fmt.Errorf("%w: %#x", errGuestRegionNotFound, faultAddr)
+	return copyArgs.srcOffset, nil
 }
 
 func pageFaultCopyArgsForFault(regions []GuestRegionUffdMapping, faultAddr uint64) (pageFaultCopyArgs, error) {

@@ -79,6 +79,7 @@ func parseUnixRights(oob []byte) ([]int, error) {
 	for i := range scms {
 		rights, err := unix.ParseUnixRights(&scms[i])
 		if err != nil {
+			closeFDs(fds)
 			return nil, err
 		}
 		fds = append(fds, rights...)

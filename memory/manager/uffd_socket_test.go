@@ -61,6 +61,19 @@ func TestReceiveUffdMappingsAndFDInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestReceiveUffdMappingsAndFDEmptyMappings(t *testing.T) {
+	sentFile := tempFileWithContent(t, "unused")
+	_, gotFile, err := receiveFromTestSocket(t, func(conn *net.UnixConn) error {
+		return writeUffdSocketPayload(conn, []byte("[]"), sentFile)
+	})
+	if gotFile != nil {
+		_ = gotFile.Close()
+	}
+	if !errors.Is(err, errNoGuestRegionMappings) {
+		t.Fatalf("receiveUffdMappingsAndFD error = %v, want %v", err, errNoGuestRegionMappings)
+	}
+}
+
 func TestReceiveUffdMappingsAndFDMissingFD(t *testing.T) {
 	body := validMappingsJSON(t)
 	_, gotFile, err := receiveFromTestSocket(t, func(conn *net.UnixConn) error {
