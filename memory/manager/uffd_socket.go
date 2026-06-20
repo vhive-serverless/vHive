@@ -6,21 +6,56 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/sys/unix"
 )
 
 const (
-	uffdSocketPayloadSize = 64 * 1024
-	uffdSocketFDLimit     = 2
-	uffdSocketReadTimeout = time.Second
+	uffdSocketPayloadSize   = 64 * 1024
+	uffdSocketFDLimit       = 2
+	uffdSocketReadTimeout   = time.Second
+	uffdSocketAcceptTimeout = 30 * time.Second
 )
 
 var (
 	errUnexpectedUffdFDCount = errors.New("expected exactly one uffd fd")
 	errNoGuestRegionMappings = errors.New("no guest region mappings received")
+	errEmptyUffdSocketPath   = errors.New("empty uffd socket path")
 )
+
+func receiveUffdMappingsAndFDFromSocket(socketPath string) ([]GuestRegionUffdMapping, *os.File, error) {
+	if socketPath == "" {
+		return nil, nil, errEmptyUffdSocketPath
+	}
+	if err := os.MkdirAll(filepath.Dir(socketPath), 0755); err != nil {
+		return nil, nil, err
+	}
+	if err := removeStaleUffdSocket(socketPath); err != nil {
+		return nil, nil, err
+	}
+
+	addr := &net.UnixAddr{Name: socketPath, Net: "unix"}
+	listener, err := net.ListenUnix("unix", addr)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = listener.Close() }()
+	defer func() { _ = os.Remove(socketPath) }()
+
+	if err := listener.SetDeadline(time.Now().Add(uffdSocketAcceptTimeout)); err != nil {
+		return nil, nil, err
+	}
+
+	conn, err := listener.AcceptUnix()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = conn.Close() }()
+
+	return receiveUffdMappingsAndFD(conn)
+}
 
 func receiveUffdMappingsAndFD(conn *net.UnixConn) ([]GuestRegionUffdMapping, *os.File, error) {
 	if err := conn.SetReadDeadline(time.Now().Add(uffdSocketReadTimeout)); err != nil {
@@ -92,4 +127,18 @@ func closeFDs(fds []int) {
 	for _, receivedFD := range fds {
 		_ = unix.Close(receivedFD)
 	}
+}
+
+func removeStaleUffdSocket(socketPath string) error {
+	info, err := os.Lstat(socketPath)
+	if err == nil {
+		if info.Mode()&os.ModeSocket == 0 {
+			return fmt.Errorf("refusing to remove non-socket uffd path %q", socketPath)
+		}
+		return os.Remove(socketPath)
+	}
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -116,36 +117,31 @@ func TestSnapshotStateGetUFFDStoresMappingsAndFD(t *testing.T) {
 	sentFile := tempFileWithContent(t, "state fd payload")
 
 	socketPath := filepath.Join(t.TempDir(), "uffd.sock")
-	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"})
-	if err != nil {
-		t.Fatalf("net.ListenUnix returned error: %v", err)
-	}
-	defer func() { _ = listener.Close() }()
-
-	serverErrCh := make(chan error, 1)
-	go func() {
-		conn, err := listener.AcceptUnix()
-		if err != nil {
-			serverErrCh <- err
-			return
-		}
-		defer func() { _ = conn.Close() }()
-		serverErrCh <- writeUffdSocketPayload(conn, body, sentFile)
-	}()
-
 	state := &SnapshotState{
 		SnapshotStateCfg: SnapshotStateCfg{
 			InstanceSockAddr: socketPath,
 		},
 	}
-	if err := state.getUFFD(); err != nil {
+
+	stateErrCh := make(chan error, 1)
+	go func() {
+		stateErrCh <- state.getUFFD()
+	}()
+
+	conn := dialUnixSocketWithRetry(t, socketPath)
+	if err := writeUffdSocketPayload(conn, body, sentFile); err != nil {
+		_ = conn.Close()
+		t.Fatalf("writeUffdSocketPayload returned error: %v", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("conn.Close returned error: %v", err)
+	}
+
+	if err := <-stateErrCh; err != nil {
 		t.Fatalf("getUFFD returned error: %v", err)
 	}
 	defer func() { _ = state.userFaultFD.Close() }()
 
-	if err := <-serverErrCh; err != nil {
-		t.Fatalf("test server returned error: %v", err)
-	}
 	if !reflect.DeepEqual(state.guestRegionMappings, mappings) {
 		t.Fatalf("guestRegionMappings = %+v, want %+v", state.guestRegionMappings, mappings)
 	}
@@ -155,6 +151,23 @@ func TestSnapshotStateGetUFFDStoresMappingsAndFD(t *testing.T) {
 	}
 	if want := "state fd payload"; string(gotPayload) != want {
 		t.Fatalf("state.userFaultFD payload = %q, want %q", gotPayload, want)
+	}
+}
+
+func dialUnixSocketWithRetry(t *testing.T, socketPath string) *net.UnixConn {
+	t.Helper()
+
+	addr := &net.UnixAddr{Name: socketPath, Net: "unix"}
+	deadline := time.Now().Add(time.Second)
+	for {
+		conn, err := net.DialUnix("unix", nil, addr)
+		if err == nil {
+			return conn
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("net.DialUnix(%q) timed out: %v", socketPath, err)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 

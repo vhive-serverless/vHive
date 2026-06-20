@@ -3,7 +3,7 @@ module github.com/vhive-serverless/vhive
 go 1.26.2
 
 replace (
-	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20251220120737-a3dabeb332c7
+	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20260304152437-f7f97e2dec10
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
 )
 
@@ -13,7 +13,6 @@ require (
 	github.com/containerd/stargz-snapshotter v0.11.3
 	github.com/davecgh/go-spew v1.1.1
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
-	github.com/ftrvxmtrx/fd v0.0.0-20150925145434-c6d800382fff
 	github.com/go-multierror/multierror v1.0.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/nftables v0.3.0

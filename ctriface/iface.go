@@ -316,6 +316,12 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 		logger.WithError(err).Error("failed to stop firecracker-containerd VM")
 	}
 
+	if o.GetUPFEnabled() {
+		if err := o.memoryManager.Deactivate(vmID); err != nil {
+			logger.WithError(err).Warn("failed to deactivate VM in memory manager")
+		}
+	}
+
 	if err := o.vmPool.Free(vmID); err != nil {
 		logger.Error("failed to free VM from VM pool")
 		return err
@@ -493,6 +499,48 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 	return nil
 }
 
+func logSnapshotLoadFailure(logger *log.Entry, snap *snapshotting.Snapshot, conf *proto.CreateVMRequest, err error) {
+	logger.WithError(err).Error("failed to load snapshot of the VM")
+	logger.Errorf("snapFilePath: %s, memFilePath: %s, containerSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), conf.ContainerSnapshotPath)
+
+	logDir := func(path string) {
+		files, readErr := os.ReadDir(filepath.Dir(path))
+		if readErr != nil {
+			logger.Error(readErr)
+			return
+		}
+
+		snapFiles := ""
+		for _, f := range files {
+			snapFiles += f.Name() + ", "
+		}
+		logger.Error(snapFiles)
+	}
+
+	logDir(snap.GetSnapshotFilePath())
+	logDir(conf.ContainerSnapshotPath)
+}
+
+func waitForUnixSocket(socketPath string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		info, err := os.Lstat(socketPath)
+		if err == nil {
+			if info.Mode()&os.ModeSocket == 0 {
+				return fmt.Errorf("%s exists but is not a unix socket", socketPath)
+			}
+			return nil
+		}
+		if !os.IsNotExist(err) {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timed out waiting for unix socket %s", socketPath)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
@@ -525,6 +573,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
 	conf.MemFilePath = snap.GetMemFilePath()
+	uffdSock := filepath.Join(o.getVMBaseDir(vmID), "uffd.sock")
 
 	if o.snapshotter == "devmapper" {
 		if vm.Image, err = o.getImage(ctx, snap.GetImage()); err != nil {
@@ -583,6 +632,25 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	}
 
 	if o.GetUPFEnabled() {
+		conf.MemFilePath = ""
+		conf.MemBackend = &proto.MemoryBackend{
+			BackendType: "Uffd",
+			BackendPath: uffdSock,
+		}
+
+		if err := o.memoryManager.PrepareSnapshotLoad(manager.SnapshotStateCfg{
+			VMID:             vmID,
+			VMMStatePath:     snap.GetSnapshotFilePath(),
+			GuestMemPath:     snap.GetMemFilePath(),
+			WorkingSetPath:   o.getWorkingSetFile(vmID),
+			InstanceSockAddr: uffdSock,
+			BaseDir:          o.getVMBaseDir(vmID),
+			IsLazyMode:       o.isLazyMode,
+			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+		}); err != nil {
+			return nil, nil, err
+		}
+
 		if err := o.memoryManager.FetchState(vmID); err != nil {
 			return nil, nil, err
 		}
@@ -590,44 +658,35 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	tStart = time.Now()
 
-	go func() {
-		defer close(loadDone)
+	if o.GetUPFEnabled() {
+		activateDone := make(chan error, 1)
+		go func() {
+			activateDone <- o.memoryManager.Activate(vmID)
+		}()
+
+		if err := waitForUnixSocket(uffdSock, time.Second); err != nil {
+			activateErr = <-activateDone
+			return nil, nil, multierror.Of(err, activateErr)
+		}
 
 		if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
-			logger.Error("Failed to load snapshot of the VM: ", loadErr)
-			logger.Errorf("snapFilePath: %s, memFilePath: %s, containerSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), conf.ContainerSnapshotPath)
-			files, err := os.ReadDir(filepath.Dir(snap.GetSnapshotFilePath()))
-			if err != nil {
-				logger.Error(err)
-			}
-
-			snapFiles := ""
-			for _, f := range files {
-				snapFiles += f.Name() + ", "
-			}
-
-			logger.Error(snapFiles)
-
-			files, _ = os.ReadDir(filepath.Dir(conf.ContainerSnapshotPath))
-			if err != nil {
-				logger.Error(err)
-			}
-
-			snapFiles = ""
-			for _, f := range files {
-				snapFiles += f.Name() + ", "
-			}
-			logger.Error(snapFiles)
+			logSnapshotLoadFailure(logger, snap, conf, loadErr)
 		}
-	}()
-
-	if o.GetUPFEnabled() {
-		if activateErr = o.memoryManager.Activate(vmID); activateErr != nil {
+		activateErr = <-activateDone
+		if activateErr != nil {
 			logger.Warn("Failed to activate VM in the memory manager", activateErr)
 		}
-	}
+	} else {
+		go func() {
+			defer close(loadDone)
 
-	<-loadDone
+			if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
+				logSnapshotLoadFailure(logger, snap, conf, loadErr)
+			}
+		}()
+
+		<-loadDone
+	}
 
 	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))
 
