@@ -90,6 +90,36 @@ func (m *MemoryManager) RegisterVM(cfg SnapshotStateCfg) error {
 	return nil
 }
 
+// PrepareSnapshotLoad creates or refreshes the state used to serve UFFD faults
+// while loading a VM snapshot.
+func (m *MemoryManager) PrepareSnapshotLoad(cfg SnapshotStateCfg) error {
+	m.Lock()
+	defer m.Unlock()
+
+	vmID := cfg.VMID
+	if vmID == "" {
+		return errors.New("VMID is required")
+	}
+
+	cfg.metricsModeOn = m.MetricsModeOn
+	nextState := NewSnapshotState(cfg)
+
+	state, ok := m.instances[vmID]
+	if !ok {
+		m.instances[vmID] = nextState
+		return nil
+	}
+	if state.isActive {
+		return errors.New("failed to prepare snapshot load, VM still active")
+	}
+	if state.userFaultFD != nil {
+		_ = state.userFaultFD.Close()
+	}
+
+	*state = *nextState
+	return nil
+}
+
 // DeregisterVM Deregisters a VM from the memory manager
 func (m *MemoryManager) DeregisterVM(vmID string) error {
 	m.Lock()
@@ -150,6 +180,9 @@ func (m *MemoryManager) Activate(vmID string) error {
 
 	if err := state.getUFFD(); err != nil {
 		logger.Error("Failed to get uffd")
+		if unmapErr := state.unmapGuestMemory(); unmapErr != nil {
+			logger.WithError(unmapErr).Error("Failed to munmap guest memory after getUFFD failure")
+		}
 		return err
 	}
 
@@ -230,7 +263,10 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		return errors.New("VM not activated")
 	}
 
-	state.quitCh <- 0
+	select {
+	case state.quitCh <- 0:
+	default:
+	}
 	if err := state.unmapGuestMemory(); err != nil {
 		logger.Error("Failed to munmap guest memory")
 		return err

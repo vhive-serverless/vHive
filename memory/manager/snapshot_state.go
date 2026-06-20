@@ -28,11 +28,9 @@ package manager
 import "C"
 
 import (
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -116,7 +114,7 @@ func (s *SnapshotState) setupStateOnActivate() {
 	s.isActive = true
 	s.isEverActivated = true
 	s.firstPageFaultOnce = new(sync.Once)
-	s.quitCh = make(chan int)
+	s.quitCh = make(chan int, 1)
 
 	if s.metricsModeOn {
 		s.uniqueNum = 0
@@ -126,36 +124,16 @@ func (s *SnapshotState) setupStateOnActivate() {
 }
 
 func (s *SnapshotState) getUFFD() error {
-	var d net.Dialer
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	for {
-		c, err := d.DialContext(ctx, "unix", s.InstanceSockAddr)
-		if err != nil {
-			if ctx.Err() != nil {
-				log.Error("Failed to dial within the context timeout")
-				return err
-			}
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
-
-		defer func() { _ = c.Close() }()
-
-		sendfdConn := c.(*net.UnixConn)
-
-		mappings, userFaultFD, err := receiveUffdMappingsAndFD(sendfdConn)
-		if err != nil {
-			log.Error("Failed to receive the uffd and guest memory mappings")
-			return err
-		}
-
-		s.guestRegionMappings = mappings
-		s.userFaultFD = userFaultFD
-
-		return nil
+	mappings, userFaultFD, err := receiveUffdMappingsAndFDFromSocket(s.InstanceSockAddr)
+	if err != nil {
+		log.Error("Failed to receive the uffd and guest memory mappings")
+		return err
 	}
+
+	s.guestRegionMappings = mappings
+	s.userFaultFD = userFaultFD
+
+	return nil
 }
 
 func (s *SnapshotState) processMetrics() {
@@ -184,6 +162,7 @@ func (s *SnapshotState) mapGuestMemory() error {
 		log.Errorf("Failed to open guest memory file: %v", err)
 		return err
 	}
+	defer func() { _ = fd.Close() }()
 
 	s.guestMem, err = unix.Mmap(int(fd.Fd()), 0, s.GuestMemSize, unix.PROT_READ, unix.MAP_PRIVATE)
 	if err != nil {
@@ -244,6 +223,10 @@ func (s *SnapshotState) fetchState() error {
 	if _, err := os.ReadFile(s.VMMStatePath); err != nil {
 		log.Errorf("Failed to fetch VMM state: %v\n", err)
 		return err
+	}
+
+	if !s.IsLazyMode {
+		return nil
 	}
 
 	size := len(s.trace.trace) * os.Getpagesize()
