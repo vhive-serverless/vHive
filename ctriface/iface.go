@@ -365,7 +365,7 @@ func getK8sDNS() []string {
 }
 
 func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
-	kernelArgs := "ro noapic reboot=k panic=1 pci=off nomodules systemd.log_color=false systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet 8250.nr_uarts=0 ipv6.disable=1"
+	kernelArgs := "ro noapic reboot=k panic=1 acpi=off pci=off nomodules systemd.log_color=false systemd.journald.forward_to_console systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet ipv6.disable=1 console=ttyS0"
 
 	return &proto.CreateVMRequest{
 		VMID:           vm.ID,
@@ -373,7 +373,7 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 		KernelArgs:     kernelArgs,
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
 			VcpuCount:  1,
-			MemSizeMib: 256,
+			MemSizeMib: 512,
 		},
 		NetworkInterfaces: []*proto.FirecrackerNetworkInterface{{
 			AllowMMDS: true,
