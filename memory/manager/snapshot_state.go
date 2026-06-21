@@ -254,20 +254,21 @@ func (s *SnapshotState) fetchState() error {
 	return nil
 }
 
-func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
+func (s *SnapshotState) pollUserPageFaults(readyCh chan error) {
 	logger := log.WithFields(log.Fields{"vmID": s.VMID})
 
 	var events [1]syscall.EpollEvent
 
 	if err := s.registerEpoller(); err != nil {
-		logger.Fatalf("register_epoller: %v", err)
+		readyCh <- err
+		return
 	}
 
 	logger.Debug("Starting polling loop")
 
 	defer func() { _ = syscall.Close(s.epfd) }()
 
-	readyCh <- 0
+	readyCh <- nil
 
 	for {
 		select {
@@ -277,12 +278,19 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 		default:
 			nevents, err := syscall.EpollWait(s.epfd, events[:], -1)
 			if err != nil {
-				logger.Fatalf("epoll_wait: %v", err)
-				break
+				if errors.Is(err, syscall.EINTR) {
+					continue
+				}
+				if errors.Is(err, syscall.EBADF) {
+					logger.Debug("UFFD epoller was closed")
+					return
+				}
+				logger.WithError(err).Error("epoll_wait failed")
+				return
 			}
 
 			if nevents < 1 {
-				panic("Wrong number of events")
+				continue
 			}
 
 			for i := 0; i < nevents; i++ {
@@ -293,26 +301,45 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan int) {
 				stateFd := int(s.userFaultFD.Fd())
 
 				if fd != stateFd && stateFd != -1 {
-					logger.Fatalf("Received event from unknown fd")
+					logger.WithFields(log.Fields{
+						"fd":      fd,
+						"stateFd": stateFd,
+					}).Error("Received event from unknown fd")
+					return
 				}
 
 				goMsg := make([]byte, sizeOfUFFDMsg())
 
-				if nread, err := syscall.Read(fd, goMsg); err != nil || nread != len(goMsg) {
-					if !errors.Is(err, syscall.EBADF) {
-						log.Fatalf("Read uffd_msg failed: %v", err)
+				nread, err := syscall.Read(fd, goMsg)
+				if err != nil {
+					if errors.Is(err, syscall.EINTR) || errors.Is(err, syscall.EAGAIN) {
+						continue
 					}
-					break
+					if errors.Is(err, syscall.EBADF) {
+						logger.Debug("UFFD fd was closed")
+						return
+					}
+					logger.WithError(err).Error("Read uffd_msg failed")
+					return
+				}
+				if nread != len(goMsg) {
+					logger.WithFields(log.Fields{
+						"read": nread,
+						"want": len(goMsg),
+					}).Error("Read incomplete uffd_msg")
+					return
 				}
 
 				if event := uint8(goMsg[0]); event != uffdPageFault() {
-					log.Fatal("Received wrong event type")
+					logger.WithField("event", event).Warn("Ignoring unsupported UFFD event")
+					continue
 				}
 
 				address := binary.LittleEndian.Uint64(goMsg[16:])
 
 				if err := s.servePageFault(fd, address); err != nil {
-					log.Fatalf("Failed to serve page fault")
+					logger.WithError(err).WithField("address", fmt.Sprintf("%#x", address)).Error("Failed to serve page fault")
+					return
 				}
 			}
 		}
@@ -345,6 +372,7 @@ func (s *SnapshotState) registerEpoller() error {
 		fdInt,
 		&event,
 	); err != nil {
+		_ = syscall.Close(s.epfd)
 		logger.Errorf("Failed to subscribe VM %v", err)
 		return err
 	}
@@ -470,6 +498,9 @@ func installRegionBytes(fd int, src, dst, mode, length uint64) error {
 
 	err := ioctl(uintptr(fd), int(C.const_UFFDIO_COPY), unsafe.Pointer(&cUC))
 	if err != nil {
+		if errors.Is(err, unix.EEXIST) {
+			return nil
+		}
 		return err
 	}
 
@@ -498,7 +529,7 @@ func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
 		uintptr(argp),
 	)
 	if errno != 0 {
-		return os.NewSyscallError("ioctl", fmt.Errorf("%d", int(errno)))
+		return os.NewSyscallError("ioctl", errno)
 	}
 
 	return nil
