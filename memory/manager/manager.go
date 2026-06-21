@@ -154,7 +154,7 @@ func (m *MemoryManager) Activate(vmID string) error {
 	var (
 		ok      bool
 		state   *SnapshotState
-		readyCh = make(chan int)
+		readyCh = make(chan error)
 	)
 
 	m.Lock()
@@ -190,7 +190,16 @@ func (m *MemoryManager) Activate(vmID string) error {
 
 	go state.pollUserPageFaults(readyCh)
 
-	<-readyCh
+	if err := <-readyCh; err != nil {
+		logger.WithError(err).Error("Failed to start UFFD page fault polling")
+		if state.userFaultFD != nil {
+			_ = state.userFaultFD.Close()
+		}
+		if unmapErr := state.unmapGuestMemory(); unmapErr != nil {
+			logger.WithError(unmapErr).Error("Failed to munmap guest memory after UFFD poller failure")
+		}
+		return err
+	}
 
 	return nil
 }
