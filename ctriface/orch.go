@@ -100,7 +100,6 @@ type Orchestrator struct {
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
-	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
 	netPoolSize      int
