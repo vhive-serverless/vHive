@@ -248,15 +248,11 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		logger.Debug("Registering VM with the memory manager")
 
 		stateCfg := manager.SnapshotStateCfg{
-			VMID:           vmID,
-			GuestMemPath:   o.getMemoryFile(vmID),
-			BaseDir:        o.getVMBaseDir(vmID),
-			GuestMemSize:   int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			IsLazyMode:     o.isLazyMode,
-			VMMStatePath:   o.getSnapshotFile(vmID),
-			WorkingSetPath: o.getWorkingSetFile(vmID),
-			// FIXME (gh-807)
-			//InstanceSockAddr: resp.UPFSockPath,
+			VMID:         vmID,
+			GuestMemPath: o.getMemoryFile(vmID),
+			BaseDir:      o.getVMBaseDir(vmID),
+			GuestMemSize: int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			VMMStatePath: o.getSnapshotFile(vmID),
 		}
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
@@ -500,45 +496,13 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 }
 
 func logSnapshotLoadFailure(logger *log.Entry, snap *snapshotting.Snapshot, conf *proto.CreateVMRequest, err error) {
-	logger.WithError(err).Error("failed to load snapshot of the VM")
-	logger.Errorf("snapFilePath: %s, memFilePath: %s, containerSnapshotPath: %s", snap.GetSnapshotFilePath(), snap.GetMemFilePath(), conf.ContainerSnapshotPath)
-
-	logDir := func(path string) {
-		files, readErr := os.ReadDir(filepath.Dir(path))
-		if readErr != nil {
-			logger.Error(readErr)
-			return
-		}
-
-		snapFiles := ""
-		for _, f := range files {
-			snapFiles += f.Name() + ", "
-		}
-		logger.Error(snapFiles)
-	}
-
-	logDir(snap.GetSnapshotFilePath())
-	logDir(conf.ContainerSnapshotPath)
-}
-
-func waitForUnixSocket(socketPath string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for {
-		info, err := os.Lstat(socketPath)
-		if err == nil {
-			if info.Mode()&os.ModeSocket == 0 {
-				return fmt.Errorf("%s exists but is not a unix socket", socketPath)
-			}
-			return nil
-		}
-		if !os.IsNotExist(err) {
-			return err
-		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("timed out waiting for unix socket %s", socketPath)
-		}
-		time.Sleep(time.Millisecond)
-	}
+	logger.WithError(err).WithFields(log.Fields{
+		"snapFilePath":          snap.GetSnapshotFilePath(),
+		"memFilePath":           snap.GetMemFilePath(),
+		"containerSnapshotPath": conf.ContainerSnapshotPath,
+		"memoryBackendType":     conf.GetMemBackend().GetBackendType(),
+		"memoryBackendPath":     conf.GetMemBackend().GetBackendPath(),
+	}).Error("failed to load snapshot of the VM")
 }
 
 // LoadSnapshot Loads a snapshot of a VM
@@ -642,10 +606,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 			VMID:             vmID,
 			VMMStatePath:     snap.GetSnapshotFilePath(),
 			GuestMemPath:     snap.GetMemFilePath(),
-			WorkingSetPath:   o.getWorkingSetFile(vmID),
 			InstanceSockAddr: uffdSock,
 			BaseDir:          o.getVMBaseDir(vmID),
-			IsLazyMode:       o.isLazyMode,
 			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
 		}); err != nil {
 			return nil, nil, err
@@ -660,11 +622,12 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	if o.GetUPFEnabled() {
 		activateDone := make(chan error, 1)
+		socketReady := make(chan error, 1)
 		go func() {
-			activateDone <- o.memoryManager.Activate(vmID)
+			activateDone <- o.memoryManager.ActivateWithSocketReady(vmID, socketReady)
 		}()
 
-		if err := waitForUnixSocket(uffdSock, time.Second); err != nil {
+		if err := <-socketReady; err != nil {
 			activateErr = <-activateDone
 			return nil, nil, multierror.Of(err, activateErr)
 		}

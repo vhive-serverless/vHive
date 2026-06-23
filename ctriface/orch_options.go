@@ -62,12 +62,9 @@ func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
 	}
 }
 
-// WithLazyMode Sets the lazy paging mode on (or off),
-// where all guest memory pages are brought on demand.
-// Only works if snapshots are enabled
+// WithLazyMode is kept for compatibility with legacy callers.
 func WithLazyMode(isLazyMode bool) OrchestratorOption {
 	return func(o *Orchestrator) {
-		o.isLazyMode = isLazyMode
 	}
 }
 

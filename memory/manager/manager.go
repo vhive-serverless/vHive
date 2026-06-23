@@ -27,9 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"sync"
-	"time"
 
 	"github.com/vhive-serverless/vhive/metrics"
 	"gonum.org/v1/gonum/stat"
@@ -39,8 +37,6 @@ import (
 
 const (
 	serveUniqueMetric = "ServeUnique"
-	installWSMetric   = "InstallWS"
-	fetchStateMetric  = "FetchState"
 )
 
 // MemoryManagerCfg Global config of the manager
@@ -147,6 +143,16 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 
 // Activate Creates an epoller to serve page faults for the VM
 func (m *MemoryManager) Activate(vmID string) error {
+	return m.activate(vmID, nil)
+}
+
+// ActivateWithSocketReady is like Activate, but reports when the UFFD socket
+// listener is ready for Firecracker to connect.
+func (m *MemoryManager) ActivateWithSocketReady(vmID string, socketReadyCh chan<- error) error {
+	return m.activate(vmID, socketReadyCh)
+}
+
+func (m *MemoryManager) activate(vmID string, socketReadyCh chan<- error) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Activating instance in the memory manager")
@@ -175,10 +181,11 @@ func (m *MemoryManager) Activate(vmID string) error {
 
 	if err := state.mapGuestMemory(); err != nil {
 		logger.Error("Failed to map guest memory")
+		notifySocketReady(socketReadyCh, err)
 		return err
 	}
 
-	if err := state.getUFFD(); err != nil {
+	if err := state.getUFFD(socketReadyCh); err != nil {
 		logger.Error("Failed to get uffd")
 		if unmapErr := state.unmapGuestMemory(); unmapErr != nil {
 			logger.WithError(unmapErr).Error("Failed to munmap guest memory after getUFFD failure")
@@ -204,17 +211,15 @@ func (m *MemoryManager) Activate(vmID string) error {
 	return nil
 }
 
-// FetchState Fetches the working set file (or the whole guest memory) and the VMM state file
+// FetchState verifies that snapshot state needed by the memory manager exists.
 func (m *MemoryManager) FetchState(vmID string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
-	logger.Debug("Activating instance in the memory manager")
+	logger.Debug("Fetching state in the memory manager")
 
 	var (
-		ok     bool
-		state  *SnapshotState
-		tStart time.Time
-		err    error
+		ok    bool
+		state *SnapshotState
 	)
 
 	m.Lock()
@@ -228,17 +233,7 @@ func (m *MemoryManager) FetchState(vmID string) error {
 
 	m.Unlock()
 
-	if state.isRecordReady && !state.IsLazyMode {
-		if state.metricsModeOn {
-			tStart = time.Now()
-		}
-		err = state.fetchState()
-		if state.metricsModeOn {
-			state.currentMetric.MetricMap[fetchStateMetric] = metrics.ToUS(time.Since(tStart))
-		}
-	}
-
-	return err
+	return state.fetchState()
 }
 
 // Deactivate Removes the epoller which serves page faults for the VM
@@ -283,12 +278,10 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	state.processMetrics()
 
-	defer func() { _ = state.userFaultFD.Close() }()
-	if !state.isRecordReady && !state.IsLazyMode {
-		state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath)
+	if state.userFaultFD != nil {
+		defer func() { _ = state.userFaultFD.Close() }()
 	}
 
-	state.isRecordReady = true
 	state.isActive = false
 
 	return nil
@@ -326,11 +319,7 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 		return errors.New("metrics mode is not on")
 	}
 
-	if state.IsLazyMode {
-		statHeader, stats = getLazyHeaderStats(state, functionName)
-	} else {
-		statHeader, stats = getRecRepHeaderStats(state, functionName)
-	}
+	statHeader, stats = getUPFHeaderStats(state, functionName)
 
 	return writeUPFPageStats(metricsOutFilePath, statHeader, stats)
 }
@@ -396,42 +385,10 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 	return state.latencyMetrics, nil
 }
 
-func getLazyHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
+func getUPFHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
 	header := []string{
 		"FuncName",
-		"RecPages",
-		"RepPages",
-		"StdDev",
-		"Reused",
-		"StdDev",
-		"Unique",
-		"StdDev",
-	}
-
-	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
-	totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
-	reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
-
-	stats := []string{
-		functionName,
-		strconv.Itoa(len(state.trace.trace)), // number of records (i.e., offsets)
-		strconv.Itoa(int(totalMean)),         // number of pages served
-		fmt.Sprintf("%.1f", totalStd),
-		strconv.Itoa(int(reusedMean)), // number of pages found in the trace
-		fmt.Sprintf("%.1f", reusedStd),
-		strconv.Itoa(int(uniqueMean)), // number of pages not found in the trace
-		fmt.Sprintf("%.1f", uniqueStd),
-	}
-
-	return header, stats
-}
-
-func getRecRepHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
-	header := []string{
-		"FuncName",
-		"RecPages",
-		"RecRegions",
-		"Unique",
+		"ServedPages",
 		"StdDev",
 	}
 
@@ -439,9 +396,7 @@ func getRecRepHeaderStats(state *SnapshotState, functionName string) ([]string, 
 
 	stats := []string{
 		functionName,
-		strconv.Itoa(len(state.trace.trace)),   // number of records (i.e., offsets)
-		strconv.Itoa(len(state.trace.regions)), // number of contiguous regions in the trace
-		strconv.Itoa(int(uniqueMean)),          // number of pages not found in the trace
+		fmt.Sprintf("%.0f", uniqueMean),
 		fmt.Sprintf("%.1f", uniqueStd),
 	}
 

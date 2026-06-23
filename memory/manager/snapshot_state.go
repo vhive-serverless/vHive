@@ -29,12 +29,13 @@ import "C"
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"net"
 	"os"
 	"path/filepath"
-	"sort"
-	"sync"
 	"syscall"
 	"time"
 
@@ -46,16 +47,103 @@ import (
 	"unsafe"
 )
 
+const (
+	uffdSocketPayloadSize   = 64 * 1024
+	uffdSocketFDLimit       = 2
+	uffdSocketReadTimeout   = time.Second
+	uffdSocketAcceptTimeout = 30 * time.Second
+)
+
+var (
+	errInvalidGuestRegionPageSize = errors.New("guest region page size must be non-zero")
+	errGuestRegionNotFound        = errors.New("fault address is outside guest memory mappings")
+	errUnexpectedUffdFDCount      = errors.New("expected exactly one uffd fd")
+	errNoGuestRegionMappings      = errors.New("no guest region mappings received")
+	errEmptyUffdSocketPath        = errors.New("empty uffd socket path")
+)
+
+// GuestRegionUffdMapping describes Firecracker's UFFD guest memory mapping.
+type GuestRegionUffdMapping struct {
+	BaseHostVirtAddr uint64 `json:"base_host_virt_addr"`
+	Size             uint64 `json:"size"`
+	Offset           uint64 `json:"offset"`
+	PageSize         uint64 `json:"page_size"`
+}
+
+type pageFaultCopyArgs struct {
+	srcOffset uint64
+	dstAddr   uint64
+	copyLen   uint64
+	copyMode  uint64
+}
+
+func pageAlignFaultAddress(faultAddr uint64, region GuestRegionUffdMapping) (uint64, error) {
+	if region.PageSize == 0 {
+		return 0, errInvalidGuestRegionPageSize
+	}
+
+	return faultAddr - faultAddr%region.PageSize, nil
+}
+
+func guestMemoryOffsetForFaultPage(region GuestRegionUffdMapping, faultPageAddr uint64) (uint64, error) {
+	if region.PageSize == 0 {
+		return 0, errInvalidGuestRegionPageSize
+	}
+	if !regionContainsFaultPage(region, faultPageAddr) {
+		return 0, fmt.Errorf("%w: %#x", errGuestRegionNotFound, faultPageAddr)
+	}
+
+	regionOffset := faultPageAddr - region.BaseHostVirtAddr
+	if region.Offset > math.MaxUint64-regionOffset {
+		return 0, fmt.Errorf("guest memory offset overflow for fault address %#x", faultPageAddr)
+	}
+
+	return region.Offset + regionOffset, nil
+}
+
+func pageFaultCopyArgsForFault(regions []GuestRegionUffdMapping, faultAddr uint64) (pageFaultCopyArgs, error) {
+	for _, region := range regions {
+		faultPageAddr, err := pageAlignFaultAddress(faultAddr, region)
+		if err != nil {
+			return pageFaultCopyArgs{}, err
+		}
+		if !regionContainsFaultPage(region, faultPageAddr) {
+			continue
+		}
+
+		srcOffset, err := guestMemoryOffsetForFaultPage(region, faultPageAddr)
+		if err != nil {
+			return pageFaultCopyArgs{}, err
+		}
+
+		return pageFaultCopyArgs{
+			srcOffset: srcOffset,
+			dstAddr:   faultPageAddr,
+			copyLen:   region.PageSize,
+			copyMode:  0,
+		}, nil
+	}
+
+	return pageFaultCopyArgs{}, fmt.Errorf("%w: %#x", errGuestRegionNotFound, faultAddr)
+}
+
+func regionContainsFaultPage(region GuestRegionUffdMapping, faultPageAddr uint64) bool {
+	if region.Size == 0 || faultPageAddr < region.BaseHostVirtAddr {
+		return false
+	}
+
+	return faultPageAddr-region.BaseHostVirtAddr < region.Size
+}
+
 // SnapshotStateCfg Config to initialize SnapshotState
 type SnapshotStateCfg struct {
 	VMID string
 
-	VMMStatePath, GuestMemPath, WorkingSetPath string
+	VMMStatePath, GuestMemPath string
 
 	InstanceSockAddr string
 	BaseDir          string // base directory for the instance
 	MetricsPath      string // path to csv file where the metrics should be stored
-	IsLazyMode       bool
 	GuestMemSize     int
 	metricsModeOn    bool
 }
@@ -64,11 +152,8 @@ type SnapshotStateCfg struct {
 // of the VM.
 type SnapshotState struct {
 	SnapshotStateCfg
-	firstPageFaultOnce  *sync.Once // to initialize the start virtual address and replay
-	startAddress        uint64
 	userFaultFD         *os.File
 	guestRegionMappings []GuestRegionUffdMapping
-	trace               *Trace
 	epfd                int
 	quitCh              chan int
 
@@ -78,18 +163,12 @@ type SnapshotState struct {
 	// for sanity checking on deactivate/activate
 	isActive bool
 
-	isRecordReady bool
-
-	guestMem   []byte
-	workingSet []byte
+	guestMem []byte
 
 	// Stats
-	totalPFServed  []float64
 	uniquePFServed []float64
-	reusedPFServed []float64
 	latencyMetrics []*metrics.Metric
 
-	replayedNum   int // only valid for lazy serving
 	uniqueNum     int
 	currentMetric *metrics.Metric
 }
@@ -99,11 +178,8 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	s := new(SnapshotState)
 	s.SnapshotStateCfg = cfg
 
-	s.trace = initTrace(s.getTraceFile())
 	if s.metricsModeOn {
-		s.totalPFServed = make([]float64, 0)
 		s.uniquePFServed = make([]float64, 0)
-		s.reusedPFServed = make([]float64, 0)
 		s.latencyMetrics = make([]*metrics.Metric, 0)
 	}
 
@@ -113,18 +189,16 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 func (s *SnapshotState) setupStateOnActivate() {
 	s.isActive = true
 	s.isEverActivated = true
-	s.firstPageFaultOnce = new(sync.Once)
 	s.quitCh = make(chan int, 1)
 
 	if s.metricsModeOn {
 		s.uniqueNum = 0
-		s.replayedNum = 0
 		s.currentMetric = metrics.NewMetric()
 	}
 }
 
-func (s *SnapshotState) getUFFD() error {
-	mappings, userFaultFD, err := receiveUffdMappingsAndFDFromSocket(s.InstanceSockAddr)
+func (s *SnapshotState) getUFFD(socketReadyCh chan<- error) error {
+	mappings, userFaultFD, err := receiveUffdMappingsAndFDFromSocket(s.InstanceSockAddr, socketReadyCh)
 	if err != nil {
 		log.Error("Failed to receive the uffd and guest memory mappings")
 		return err
@@ -136,24 +210,143 @@ func (s *SnapshotState) getUFFD() error {
 	return nil
 }
 
-func (s *SnapshotState) processMetrics() {
-	if s.metricsModeOn && s.isRecordReady {
-		s.uniquePFServed = append(s.uniquePFServed, float64(s.uniqueNum))
+func receiveUffdMappingsAndFDFromSocket(socketPath string, socketReadyCh chan<- error) ([]GuestRegionUffdMapping, *os.File, error) {
+	if socketPath == "" {
+		notifySocketReady(socketReadyCh, errEmptyUffdSocketPath)
+		return nil, nil, errEmptyUffdSocketPath
+	}
+	if err := os.MkdirAll(filepath.Dir(socketPath), 0755); err != nil {
+		notifySocketReady(socketReadyCh, err)
+		return nil, nil, err
+	}
+	if err := removeStaleUffdSocket(socketPath); err != nil {
+		notifySocketReady(socketReadyCh, err)
+		return nil, nil, err
+	}
 
-		if s.IsLazyMode {
-			s.totalPFServed = append(s.totalPFServed, float64(s.replayedNum))
-			s.reusedPFServed = append(
-				s.reusedPFServed,
-				float64(s.replayedNum-s.uniqueNum),
-			)
+	addr := &net.UnixAddr{Name: socketPath, Net: "unix"}
+	listener, err := net.ListenUnix("unix", addr)
+	if err != nil {
+		notifySocketReady(socketReadyCh, err)
+		return nil, nil, err
+	}
+	defer func() { _ = listener.Close() }()
+	defer func() { _ = os.Remove(socketPath) }()
+
+	if err := listener.SetDeadline(time.Now().Add(uffdSocketAcceptTimeout)); err != nil {
+		notifySocketReady(socketReadyCh, err)
+		return nil, nil, err
+	}
+
+	notifySocketReady(socketReadyCh, nil)
+
+	conn, err := listener.AcceptUnix()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = conn.Close() }()
+
+	return receiveUffdMappingsAndFD(conn)
+}
+
+func notifySocketReady(socketReadyCh chan<- error, err error) {
+	if socketReadyCh == nil {
+		return
+	}
+	socketReadyCh <- err
+}
+
+func receiveUffdMappingsAndFD(conn *net.UnixConn) ([]GuestRegionUffdMapping, *os.File, error) {
+	if err := conn.SetReadDeadline(time.Now().Add(uffdSocketReadTimeout)); err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
+
+	body := make([]byte, uffdSocketPayloadSize)
+	oob := make([]byte, unix.CmsgSpace(uffdSocketFDLimit*4))
+
+	n, oobn, flags, _, err := conn.ReadMsgUnix(body, oob)
+	if err != nil {
+		return nil, nil, err
+	}
+	if flags&unix.MSG_TRUNC != 0 {
+		return nil, nil, errors.New("uffd mappings payload was truncated")
+	}
+	if flags&unix.MSG_CTRUNC != 0 {
+		return nil, nil, errors.New("uffd fd control message was truncated")
+	}
+
+	fds, err := parseUnixRights(oob[:oobn])
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(fds) != 1 {
+		closeFDs(fds)
+		return nil, nil, fmt.Errorf("%w: got %d", errUnexpectedUffdFDCount, len(fds))
+	}
+
+	uffdFile := os.NewFile(uintptr(fds[0]), "userfaultfd")
+	if uffdFile == nil {
+		return nil, nil, errors.New("failed to create file for uffd fd")
+	}
+
+	var mappings []GuestRegionUffdMapping
+	if err := json.Unmarshal(body[:n], &mappings); err != nil {
+		_ = uffdFile.Close()
+		return nil, nil, fmt.Errorf("cannot deserialize memory mappings: %w", err)
+	}
+	if len(mappings) == 0 {
+		_ = uffdFile.Close()
+		return nil, nil, errNoGuestRegionMappings
+	}
+
+	return mappings, uffdFile, nil
+}
+
+func parseUnixRights(oob []byte) ([]int, error) {
+	scms, err := unix.ParseSocketControlMessage(oob)
+	if err != nil {
+		return nil, err
+	}
+
+	var fds []int
+	for i := range scms {
+		rights, err := unix.ParseUnixRights(&scms[i])
+		if err != nil {
+			closeFDs(fds)
+			return nil, err
 		}
+		fds = append(fds, rights...)
+	}
 
-		s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
+	return fds, nil
+}
+
+func closeFDs(fds []int) {
+	for _, receivedFD := range fds {
+		_ = unix.Close(receivedFD)
 	}
 }
 
-func (s *SnapshotState) getTraceFile() string {
-	return filepath.Join(s.BaseDir, "trace")
+func removeStaleUffdSocket(socketPath string) error {
+	info, err := os.Lstat(socketPath)
+	if err == nil {
+		if info.Mode()&os.ModeSocket == 0 {
+			return fmt.Errorf("refusing to remove non-socket uffd path %q", socketPath)
+		}
+		return os.Remove(socketPath)
+	}
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
+func (s *SnapshotState) processMetrics() {
+	if s.metricsModeOn && s.currentMetric != nil {
+		s.uniquePFServed = append(s.uniquePFServed, float64(s.uniqueNum))
+		s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
+	}
 }
 
 func (s *SnapshotState) mapGuestMemory() error {
@@ -182,72 +375,10 @@ func (s *SnapshotState) unmapGuestMemory() error {
 	return nil
 }
 
-// alignment returns alignment of the block in memory
-// with reference to alignSize
-//
-// Can't check alignment of a zero sized block as &block[0] is invalid
-func alignment(block []byte, alignSize int) int {
-	return int(uintptr(unsafe.Pointer(&block[0])) & uintptr(alignSize-1))
-}
-
-// AlignedBlock returns []byte of size BlockSize aligned to a multiple
-// of alignSize in memory (must be power of two)
-func AlignedBlock(blockSize int) []byte {
-	alignSize := os.Getpagesize() // must be multiple of the filesystem block size
-
-	if blockSize == 0 {
-		return nil
-	}
-
-	block := make([]byte, blockSize+alignSize)
-
-	a := alignment(block, alignSize)
-	offset := 0
-	if a != 0 {
-		offset = alignSize - a
-	}
-	block = block[offset : offset+blockSize]
-
-	// Check
-	if blockSize != 0 {
-		a = alignment(block, alignSize)
-		if a != 0 {
-			log.Fatal("Failed to align block")
-		}
-	}
-	return block
-}
-
-// fetchState Fetches the working set file (or the whole guest memory) and the VMM state file
+// fetchState verifies the VMM state file before snapshot activation.
 func (s *SnapshotState) fetchState() error {
 	if _, err := os.ReadFile(s.VMMStatePath); err != nil {
 		log.Errorf("Failed to fetch VMM state: %v\n", err)
-		return err
-	}
-
-	if !s.IsLazyMode {
-		return nil
-	}
-
-	size := len(s.trace.trace) * os.Getpagesize()
-
-	// O_DIRECT allows to fully leverage disk bandwidth by bypassing the OS page cache
-	f, err := os.OpenFile(s.WorkingSetPath, os.O_RDONLY|syscall.O_DIRECT, 0600)
-	if err != nil {
-		log.Errorf("Failed to open the working set file for direct-io: %v\n", err)
-		return err
-	}
-
-	s.workingSet = AlignedBlock(size) // direct io requires aligned buffer
-
-	if n, err := f.Read(s.workingSet); n != size || err != nil {
-		log.Errorf("Reading working set file failed: %v\n", err)
-		return err
-	}
-
-	log.Debug("Fetched the entire working set")
-	if err := f.Close(); err != nil {
-		log.Errorf("Failed to close the working set file: %v\n", err)
 		return err
 	}
 
@@ -381,31 +512,7 @@ func (s *SnapshotState) registerEpoller() error {
 }
 
 func (s *SnapshotState) servePageFault(fd int, address uint64) error {
-	var (
-		tStart              time.Time
-		workingSetInstalled bool
-	)
-
-	s.firstPageFaultOnce.Do(
-		func() {
-			s.startAddress = address
-
-			if s.isRecordReady && !s.IsLazyMode {
-				if s.metricsModeOn {
-					tStart = time.Now()
-				}
-				s.installWorkingSetPages(fd)
-				if s.metricsModeOn {
-					s.currentMetric.MetricMap[installWSMetric] = metrics.ToUS(time.Since(tStart))
-				}
-
-				workingSetInstalled = true
-			}
-		})
-
-	if workingSetInstalled {
-		return nil
-	}
+	var tStart time.Time
 
 	copyArgs, err := pageFaultCopyArgsForFault(s.guestRegionMappings, address)
 	if err != nil {
@@ -417,29 +524,8 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		return err
 	}
 
-	rec := Record{
-		offset: copyArgs.srcOffset,
-	}
-
-	if !s.isRecordReady {
-		s.trace.AppendRecord(rec)
-	} else {
-		log.Debug("Serving a page that is missing from the working set")
-	}
-
 	if s.metricsModeOn {
-		if s.isRecordReady {
-			if s.IsLazyMode {
-				if !s.trace.containsRecord(rec) {
-					s.uniqueNum++
-				}
-				s.replayedNum++
-			} else {
-				s.uniqueNum++
-			}
-
-		}
-
+		s.uniqueNum++
 		tStart = time.Now()
 	}
 
@@ -450,41 +536,6 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	}
 
 	return err
-}
-
-func (s *SnapshotState) installWorkingSetPages(fd int) {
-	log.Debug("Installing the working set pages")
-
-	// build a list of sorted regions
-	keys := make([]uint64, 0)
-	for k := range s.trace.regions {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-
-	var (
-		srcOffset uint64
-	)
-
-	for _, offset := range keys {
-		regLength := s.trace.regions[offset]
-		regAddress := s.startAddress + offset
-		mode := uint64(C.const_UFFDIO_COPY_MODE_DONTWAKE)
-		src := uint64(uintptr(unsafe.Pointer(&s.workingSet[srcOffset])))
-		dst := regAddress
-
-		if err := installRegion(fd, src, dst, mode, uint64(regLength)); err != nil {
-			log.Fatalf("install_region: %v", err)
-		}
-
-		srcOffset += uint64(regLength) * 4096
-	}
-
-	wake(fd, s.startAddress, os.Getpagesize())
-}
-
-func installRegion(fd int, src, dst, mode, pageCount uint64) error {
-	return installRegionBytes(fd, src, dst, mode, uint64(os.Getpagesize())*pageCount)
 }
 
 func installRegionBytes(fd int, src, dst, mode, length uint64) error {
@@ -533,23 +584,6 @@ func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
 	}
 
 	return nil
-}
-
-func wake(fd int, startAddress uint64, len int) {
-	cUR := C.struct_uffdio_range{
-		start: C.ulonglong(startAddress),
-		len:   C.ulonglong(len),
-	}
-
-	err := ioctl(uintptr(fd), int(C.const_UFFDIO_WAKE), unsafe.Pointer(&cUR))
-	if err != nil {
-		log.Fatalf("ioctl failed: %v", err)
-	}
-}
-
-//nolint:unused
-func registerForUpf(startAddress []byte, len uint64) int {
-	return int(C.register_for_upf(unsafe.Pointer(&startAddress[0]), C.ulong(len)))
 }
 
 func sizeOfUFFDMsg() int {

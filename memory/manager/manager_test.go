@@ -20,150 +20,222 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//nolint:unused
 package manager
 
 import (
-	"os"
-
-	log "github.com/sirupsen/logrus"
-
+	"encoding/binary"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+	"time"
+
+	"golang.org/x/sys/unix"
 )
 
-/*
-func TestSingleClient(t *testing.T) {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	var (
-		uffd            int
-		region          []byte
-		regionSize      int    = 4 * os.Getpagesize()
-		uffdFileName    string = "/tmp/uffd_file.file"
-		guestMemoryPath        = "/tmp/guest_mem"
-		vmID            string = "1"
-	)
+func TestPrepareGuestMemoryFileAndValidateGuestMemory(t *testing.T) {
+	guestMemPath := filepath.Join(t.TempDir(), "guest_mem")
+	guestMemSize := 4 * os.Getpagesize()
 
-	log.SetLevel(log.DebugLevel)
+	prepareGuestMemoryFile(t, guestMemPath, guestMemSize)
 
-	prepareGuestMemoryFile(guestMemoryPath, regionSize)
-
-	region, err := unix.Mmap(-1, 0, regionSize, unix.PROT_READ, unix.MAP_PRIVATE|unix.MAP_ANONYMOUS)
+	guestMem, err := os.ReadFile(guestMemPath)
 	if err != nil {
-		log.Errorf("Failed to mmap: %v", err)
+		t.Fatalf("os.ReadFile returned error: %v", err)
+	}
+	if err := validateGuestMemory(guestMem); err != nil {
+		t.Fatalf("validateGuestMemory returned error: %v", err)
 	}
 
-	defer unix.Munmap(region)
+	guestMem[os.Getpagesize()] = 0
+	if err := validateGuestMemory(guestMem); err == nil {
+		t.Fatal("validateGuestMemory succeeded for corrupted guest memory")
+	}
+}
 
-	uffd = registerForUpf(region, uint64(regionSize))
+func TestMemoryManagerRegisterFetchPrepareDeregister(t *testing.T) {
+	baseDir := t.TempDir()
+	vmID := "vm-register"
+	guestMemPath := filepath.Join(baseDir, "guest_mem")
+	vmmStatePath := filepath.Join(baseDir, "state")
 
-	uffdFile := os.NewFile(uintptr(uffd), uffdFileName)
+	prepareGuestMemoryFile(t, guestMemPath, os.Getpagesize())
+	writeTestFile(t, vmmStatePath, "state")
 
-	managerCfg := MemoryManagerCfg{}
-	manager := NewMemoryManager(managerCfg)
-
-	stateCfg := SnapshotStateCfg{
+	manager := NewMemoryManager(MemoryManagerCfg{})
+	cfg := SnapshotStateCfg{
 		VMID:         vmID,
-		BaseDir:      "/tmp/snap_base",
-		GuestMemPath: guestMemoryPath,
-		GuestMemSize: regionSize,
+		BaseDir:      baseDir,
+		VMMStatePath: vmmStatePath,
+		GuestMemPath: guestMemPath,
+		GuestMemSize: os.Getpagesize(),
 	}
 
-	err = manager.RegisterVM(stateCfg)
-	require.NoError(t, err, "Failed to register VM")
+	if err := manager.RegisterVM(cfg); err != nil {
+		t.Fatalf("RegisterVM returned error: %v", err)
+	}
+	if err := manager.RegisterVM(cfg); err == nil {
+		t.Fatal("RegisterVM succeeded for duplicate VM")
+	}
+	if err := manager.FetchState(vmID); err != nil {
+		t.Fatalf("FetchState returned error: %v", err)
+	}
 
-	err = manager.Activate(vmID, uffdFile)
-	require.NoError(t, err, "Failed to add VM")
+	nextVMMStatePath := filepath.Join(baseDir, "next_state")
+	writeTestFile(t, nextVMMStatePath, "next-state")
+	nextCfg := cfg
+	nextCfg.VMMStatePath = nextVMMStatePath
 
-	err = validateGuestMemory(region)
-	require.NoError(t, err, "Failed to validate guest memory")
+	if err := manager.PrepareSnapshotLoad(nextCfg); err != nil {
+		t.Fatalf("PrepareSnapshotLoad returned error: %v", err)
+	}
+	if got := manager.instances[vmID].VMMStatePath; got != nextVMMStatePath {
+		t.Fatalf("PrepareSnapshotLoad VMMStatePath = %q, want %q", got, nextVMMStatePath)
+	}
 
-	err = manager.Deactivate(vmID)
-	require.NoError(t, err, "Failed to remove intance")
-
-	err = manager.DeregisterVM(vmID)
-	require.NoError(t, err, "Failed to deregister vm")
+	if err := manager.DeregisterVM(vmID); err != nil {
+		t.Fatalf("DeregisterVM returned error: %v", err)
+	}
+	if err := manager.DeregisterVM(vmID); err == nil {
+		t.Fatal("DeregisterVM succeeded for unregistered VM")
+	}
 }
 
-func TestParallelClients(t *testing.T) {
-	numParallel := 1000
+func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
+	baseDir := t.TempDir()
+	vmID := "vm-activate"
+	guestMemPath := filepath.Join(baseDir, "guest_mem")
+	socketPath := filepath.Join(baseDir, "uffd.sock")
+	guestMemSize := 2 * os.Getpagesize()
 
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	var (
-		regionSize int = 4 * os.Getpagesize()
-		err        error
-	)
+	prepareGuestMemoryFile(t, guestMemPath, guestMemSize)
 
-	log.SetLevel(log.DebugLevel)
-
-	clients := make(map[int]*upfClient)
-
-	for i := 0; i < numParallel; i++ {
-		vmID := fmt.Sprintf("%d", i)
-		guestMemoryPath := "/tmp/guest_mem_" + vmID
-
-		prepareGuestMemoryFile(guestMemoryPath, regionSize)
-
-		region, err := unix.Mmap(-1, 0, regionSize, unix.PROT_READ, unix.MAP_PRIVATE|unix.MAP_ANONYMOUS)
-		if err != nil {
-			log.Errorf("Failed to mmap: %v", err)
-		}
-		defer unix.Munmap(region)
-
-		uffd := registerForUpf(region, uint64(regionSize))
-		uffdFileName := fmt.Sprintf("file_%s", vmID)
-		uffdFile := os.NewFile(uintptr(uffd), uffdFileName)
-
-		clients[i] = initClient(uffd, region, uffdFileName, guestMemoryPath, vmID, uffdFile)
+	manager := NewMemoryManager(MemoryManagerCfg{})
+	cfg := SnapshotStateCfg{
+		VMID:             vmID,
+		BaseDir:          baseDir,
+		GuestMemPath:     guestMemPath,
+		GuestMemSize:     guestMemSize,
+		InstanceSockAddr: socketPath,
+	}
+	if err := manager.RegisterVM(cfg); err != nil {
+		t.Fatalf("RegisterVM returned error: %v", err)
 	}
 
-	managerCfg := MemoryManagerCfg{}
-	manager := NewMemoryManager(managerCfg)
-
-	var wg sync.WaitGroup
-
-	for i := 0; i < numParallel; i++ {
-		c := clients[i]
-		stateCfg := SnapshotStateCfg{
-			VMID:         c.vmID,
-			BaseDir:      "/tmp/snap_base",
-			GuestMemPath: c.guestMemoryPath,
-			GuestMemSize: regionSize,
-		}
-
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			err = manager.RegisterVM(stateCfg)
-			require.NoError(t, err, "Failed to register VM")
-
-			err = manager.Activate(c.vmID, c.uffdFile)
-			require.NoError(t, err, "Failed to add VM")
-
-			err = validateGuestMemory(c.region)
-			require.NoError(t, err, "Failed to validate guest memory")
-
-			err = manager.Deactivate(c.vmID)
-			require.NoError(t, err, "Failed to remove intance")
-
-			err = manager.DeregisterVM(c.vmID)
-			require.NoError(t, err, "Failed to deregister vm")
-		}()
-
+	mappings := []GuestRegionUffdMapping{{
+		BaseHostVirtAddr: 0x100000,
+		Size:             uint64(guestMemSize),
+		PageSize:         uint64(os.Getpagesize()),
+	}}
+	body, err := json.Marshal(mappings)
+	if err != nil {
+		t.Fatalf("json.Marshal returned error: %v", err)
 	}
 
-	wg.Wait()
+	uffdStandIn := testEventFD(t)
+	socketReadyCh := make(chan error, 1)
+	activateErrCh := make(chan error, 1)
+	go func() {
+		activateErrCh <- manager.ActivateWithSocketReady(vmID, socketReadyCh)
+	}()
+
+	if err := receiveSocketReady(t, socketReadyCh); err != nil {
+		t.Fatalf("ActivateWithSocketReady failed before socket accept: %v", err)
+	}
+
+	conn := dialUnixSocketWithRetry(t, socketPath)
+	if err := writeUffdSocketPayload(conn, body, uffdStandIn); err != nil {
+		_ = conn.Close()
+		t.Fatalf("writeUffdSocketPayload returned error: %v", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("conn.Close returned error: %v", err)
+	}
+
+	if err := receiveActivateResult(t, activateErrCh); err != nil {
+		t.Fatalf("ActivateWithSocketReady returned error: %v", err)
+	}
+
+	state := manager.instances[vmID]
+	if !state.isActive {
+		t.Fatal("state is not active after ActivateWithSocketReady")
+	}
+	if !reflect.DeepEqual(state.guestRegionMappings, mappings) {
+		t.Fatalf("guestRegionMappings = %+v, want %+v", state.guestRegionMappings, mappings)
+	}
+	if err := validateGuestMemory(state.guestMem); err != nil {
+		t.Fatalf("validateGuestMemory mapped memory returned error: %v", err)
+	}
+
+	signalEventFD(t, uffdStandIn)
+
+	if err := manager.Deactivate(vmID); err != nil {
+		t.Fatalf("Deactivate returned error: %v", err)
+	}
+	if err := manager.DeregisterVM(vmID); err != nil {
+		t.Fatalf("DeregisterVM returned error: %v", err)
+	}
 }
-*/
 
-func prepareGuestMemoryFile(guestFileName string, size int) {
+func receiveSocketReady(t *testing.T, readyCh <-chan error) error {
+	t.Helper()
+
+	select {
+	case err := <-readyCh:
+		return err
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for UFFD socket readiness")
+	}
+
+	return nil
+}
+
+func receiveActivateResult(t *testing.T, activateErrCh <-chan error) error {
+	t.Helper()
+
+	select {
+	case err := <-activateErrCh:
+		return err
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for ActivateWithSocketReady")
+	}
+
+	return nil
+}
+
+func testEventFD(t *testing.T) *os.File {
+	t.Helper()
+
+	fd, err := unix.Eventfd(0, unix.EFD_CLOEXEC|unix.EFD_NONBLOCK)
+	if err != nil {
+		t.Fatalf("unix.Eventfd returned error: %v", err)
+	}
+
+	file := os.NewFile(uintptr(fd), "test-eventfd")
+	if file == nil {
+		_ = unix.Close(fd)
+		t.Fatal("os.NewFile returned nil")
+	}
+	t.Cleanup(func() { _ = file.Close() })
+
+	return file
+}
+
+func signalEventFD(t *testing.T, file *os.File) {
+	t.Helper()
+
+	var buf [8]byte
+	binary.LittleEndian.PutUint64(buf[:], 1)
+	if _, err := unix.Write(int(file.Fd()), buf[:]); err != nil {
+		t.Fatalf("unix.Write(eventfd) returned error: %v", err)
+	}
+}
+
+func prepareGuestMemoryFile(t *testing.T, guestFileName string, size int) {
+	t.Helper()
+
 	toWrite := make([]byte, size)
 	pages := size / os.Getpagesize()
 	for i := 0; i < pages; i++ {
@@ -172,40 +244,27 @@ func prepareGuestMemoryFile(guestFileName string, size int) {
 		}
 	}
 
-	err := os.WriteFile(guestFileName, toWrite, 0777)
-	if err != nil {
-		panic(err)
+	if err := os.WriteFile(guestFileName, toWrite, 0600); err != nil {
+		t.Fatalf("os.WriteFile returned error: %v", err)
 	}
 }
 
 func validateGuestMemory(guestMem []byte) error {
 	pages := len(guestMem) / os.Getpagesize()
 	for i := 0; i < pages; i++ {
-		log.Debugf("Validating page %d's contents...\n", i)
 		j := os.Getpagesize() * i
 		if guestMem[j] != byte(48+i) {
-			return errors.New("Incorrect guest memory")
+			return errors.New("incorrect guest memory")
 		}
 	}
+
 	return nil
 }
 
-type upfClient struct {
-	uffd                                int
-	region                              []byte
-	uffdFileName, guestMemoryPath, vmID string
-	uffdFile                            *os.File
-}
+func writeTestFile(t *testing.T, path, content string) {
+	t.Helper()
 
-func initClient(uffd int, region []byte, uffdFileName, guestMemoryPath, vmID string, uffdFile *os.File) *upfClient {
-	c := new(upfClient)
-
-	c.uffd = uffd
-	c.region = region
-	c.uffdFileName = uffdFileName
-	c.guestMemoryPath = guestMemoryPath
-	c.vmID = vmID
-	c.uffdFile = uffdFile
-
-	return c
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatalf("os.WriteFile returned error: %v", err)
+	}
 }
