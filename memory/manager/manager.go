@@ -267,10 +267,10 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		return errors.New("VM not activated")
 	}
 
-	select {
-	case state.quitCh <- 0:
-	default:
-	}
+	state.stopPolling()
+	state.waitForPoller()
+	state.closeWakeFD()
+
 	if err := state.unmapGuestMemory(); err != nil {
 		logger.Error("Failed to munmap guest memory")
 		return err

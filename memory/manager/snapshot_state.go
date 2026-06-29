@@ -155,7 +155,9 @@ type SnapshotState struct {
 	userFaultFD         *os.File
 	guestRegionMappings []GuestRegionUffdMapping
 	epfd                int
+	wakeFD              int
 	quitCh              chan int
+	pollDoneCh          chan struct{}
 
 	// to indicate whether the instance has even been activated. this is to
 	// get around cases where offload is called for the first time
@@ -189,7 +191,9 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 func (s *SnapshotState) setupStateOnActivate() {
 	s.isActive = true
 	s.isEverActivated = true
+	s.wakeFD = -1
 	s.quitCh = make(chan int, 1)
+	s.pollDoneCh = make(chan struct{})
 
 	if s.metricsModeOn {
 		s.uniqueNum = 0
@@ -388,7 +392,9 @@ func (s *SnapshotState) fetchState() error {
 func (s *SnapshotState) pollUserPageFaults(readyCh chan error) {
 	logger := log.WithFields(log.Fields{"vmID": s.VMID})
 
-	var events [1]syscall.EpollEvent
+	var events [2]syscall.EpollEvent
+
+	defer close(s.pollDoneCh)
 
 	if err := s.registerEpoller(); err != nil {
 		readyCh <- err
@@ -424,10 +430,21 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan error) {
 				continue
 			}
 
+			select {
+			case <-s.quitCh:
+				logger.Debug("Handler received a signal to quit")
+				return
+			default:
+			}
+
 			for i := 0; i < nevents; i++ {
 				event := events[i]
 
 				fd := int(event.Fd)
+				if fd == s.wakeFD {
+					logger.Debug("Handler received wakeup event")
+					return
+				}
 
 				stateFd := int(s.userFaultFD.Fd())
 
@@ -508,7 +525,59 @@ func (s *SnapshotState) registerEpoller() error {
 		return err
 	}
 
+	s.wakeFD, err = unix.Eventfd(0, unix.EFD_CLOEXEC|unix.EFD_NONBLOCK)
+	if err != nil {
+		_ = syscall.Close(s.epfd)
+		logger.Errorf("Failed to create UFFD wake fd %v", err)
+		return err
+	}
+
+	event.Fd = int32(s.wakeFD)
+	if err := syscall.EpollCtl(
+		s.epfd,
+		syscall.EPOLL_CTL_ADD,
+		s.wakeFD,
+		&event,
+	); err != nil {
+		_ = unix.Close(s.wakeFD)
+		_ = syscall.Close(s.epfd)
+		logger.Errorf("Failed to subscribe UFFD wake fd %v", err)
+		return err
+	}
+
 	return nil
+}
+
+func (s *SnapshotState) stopPolling() {
+	select {
+	case s.quitCh <- 0:
+	default:
+	}
+
+	if s.wakeFD < 0 {
+		return
+	}
+
+	var wake [8]byte
+	binary.LittleEndian.PutUint64(wake[:], 1)
+	if _, err := unix.Write(s.wakeFD, wake[:]); err != nil &&
+		!errors.Is(err, syscall.EBADF) &&
+		!errors.Is(err, syscall.EAGAIN) {
+		log.WithError(err).Debug("Failed to wake UFFD poller")
+	}
+}
+
+func (s *SnapshotState) waitForPoller() {
+	if s.pollDoneCh != nil {
+		<-s.pollDoneCh
+	}
+}
+
+func (s *SnapshotState) closeWakeFD() {
+	if s.wakeFD >= 0 {
+		_ = unix.Close(s.wakeFD)
+		s.wakeFD = -1
+	}
 }
 
 func (s *SnapshotState) servePageFault(fd int, address uint64) error {
