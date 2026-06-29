@@ -23,7 +23,6 @@
 package manager
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"os"
@@ -169,8 +168,6 @@ func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
 		t.Fatalf("validateGuestMemory mapped memory returned error: %v", err)
 	}
 
-	signalEventFD(t, uffdStandIn)
-
 	if err := manager.Deactivate(vmID); err != nil {
 		t.Fatalf("Deactivate returned error: %v", err)
 	}
@@ -221,16 +218,6 @@ func testEventFD(t *testing.T) *os.File {
 	t.Cleanup(func() { _ = file.Close() })
 
 	return file
-}
-
-func signalEventFD(t *testing.T, file *os.File) {
-	t.Helper()
-
-	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], 1)
-	if _, err := unix.Write(int(file.Fd()), buf[:]); err != nil {
-		t.Fatalf("unix.Write(eventfd) returned error: %v", err)
-	}
 }
 
 func prepareGuestMemoryFile(t *testing.T, guestFileName string, size int) {

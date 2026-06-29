@@ -36,7 +36,9 @@ jobs:
           **/go.mod
 
     - name: Run memory manager tests
-      run: go test ./memory/manager
+      run: |
+        go test ./memory/manager
+        go test -race ./memory/manager -count=1
 
   unit-test:
     name: Unit test
