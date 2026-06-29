@@ -20,6 +20,24 @@ env:
   GO111MODULE: on
 
 jobs:
+  memory-manager-unit-test:
+    name: "Unit tests: memory manager"
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v6
+
+    - name: Set up Go version in go.mod file
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: ${{ github.workspace }}/go.mod
+        cache-dependency-path: |
+          **/go.sum
+          **/go.mod
+
+    - name: Run memory manager tests
+      run: go test ./memory/manager
+
   unit-test:
     name: Unit test
     runs-on: ubuntu-24.04
