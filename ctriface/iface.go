@@ -505,6 +505,14 @@ func logSnapshotLoadFailure(logger *log.Entry, snap *snapshotting.Snapshot, conf
 	}).Error("failed to load snapshot of the VM")
 }
 
+func configureSnapshotMemoryBackend(conf *proto.CreateVMRequest, backendType, backendPath string) {
+	conf.MemFilePath = ""
+	conf.MemBackend = &proto.MemoryBackend{
+		BackendType: backendType,
+		BackendPath: backendPath,
+	}
+}
+
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	var (
@@ -536,7 +544,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf := o.getVMConfig(vm)
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
-	conf.MemFilePath = snap.GetMemFilePath()
+	configureSnapshotMemoryBackend(conf, "File", snap.GetMemFilePath())
 	uffdSock := filepath.Join(o.getVMBaseDir(vmID), "uffd.sock")
 
 	if o.snapshotter == "devmapper" {
@@ -596,11 +604,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	}
 
 	if o.GetUPFEnabled() {
-		conf.MemFilePath = ""
-		conf.MemBackend = &proto.MemoryBackend{
-			BackendType: "Uffd",
-			BackendPath: uffdSock,
-		}
+		configureSnapshotMemoryBackend(conf, "Uffd", uffdSock)
 
 		if err := o.memoryManager.PrepareSnapshotLoad(manager.SnapshotStateCfg{
 			VMID:             vmID,
