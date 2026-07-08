@@ -36,7 +36,7 @@ jobs:
           ]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Handle LFS Caching
         uses: ./.github/actions/lfs-cache
         with:
