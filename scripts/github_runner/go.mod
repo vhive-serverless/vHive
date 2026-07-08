@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/sfreiberg/simplessh v0.0.0-20220719182921-185eafd40485
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 )
 
 require (
