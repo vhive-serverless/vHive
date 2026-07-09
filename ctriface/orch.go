@@ -234,10 +234,6 @@ func (o *Orchestrator) getMemoryFile(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "mem_file")
 }
 
-func (o *Orchestrator) getWorkingSetFile(vmID string) string {
-	return filepath.Join(o.getVMBaseDir(vmID), "working_set_pages")
-}
-
 func (o *Orchestrator) getVMBaseDir(vmID string) string {
 	return filepath.Join(o.snapshotsDir, vmID)
 }
