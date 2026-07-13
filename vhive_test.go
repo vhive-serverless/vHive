@@ -64,6 +64,10 @@ func TestMain(m *testing.M) {
 	log.SetLevel(log.InfoLevel)
 
 	flag.Parse()
+	if *isUPFEnabledTest && !*isLazyModeTest {
+		log.Error("User-level page faults currently require lazy serving mode")
+		os.Exit(-1)
+	}
 
 	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)

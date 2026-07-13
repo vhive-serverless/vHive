@@ -165,6 +165,89 @@ func TestPageFaultCopyArgsForFaultZeroPageSize(t *testing.T) {
 	}
 }
 
+func TestPageFaultCopyArgsForGuestOffset(t *testing.T) {
+	regions := []GuestRegionUffdMapping{
+		{
+			BaseHostVirtAddr: 0x100000,
+			Size:             0x2000,
+			PageSize:         0x1000,
+		},
+		{
+			BaseHostVirtAddr: 0x400000,
+			Size:             0x3000,
+			Offset:           0x8000,
+			PageSize:         0x1000,
+		},
+	}
+
+	got, err := pageFaultCopyArgsForGuestOffset(regions, 0x9000, 7)
+	if err != nil {
+		t.Fatalf("pageFaultCopyArgsForGuestOffset returned error: %v", err)
+	}
+
+	want := pageFaultCopyArgs{
+		srcOffset: 0x9000,
+		dstAddr:   0x401000,
+		copyLen:   0x1000,
+		copyMode:  7,
+	}
+	if got != want {
+		t.Fatalf("pageFaultCopyArgsForGuestOffset() = %+v, want %+v", got, want)
+	}
+}
+
+func TestPageFaultCopyArgsForGuestOffsetOutsideAllRegions(t *testing.T) {
+	regions := []GuestRegionUffdMapping{{
+		BaseHostVirtAddr: 0x100000,
+		Size:             0x2000,
+		PageSize:         0x1000,
+	}}
+
+	_, err := pageFaultCopyArgsForGuestOffset(regions, 0x3000, 0)
+	if !errors.Is(err, errGuestRegionNotFound) {
+		t.Fatalf("pageFaultCopyArgsForGuestOffset() error = %v, want %v", err, errGuestRegionNotFound)
+	}
+}
+
+func TestTraceProcessRecordWritesWorkingSet(t *testing.T) {
+	baseDir := t.TempDir()
+	guestMemPath := filepath.Join(baseDir, "guest_mem")
+	workingSetPath := filepath.Join(baseDir, "working_set_pages")
+	pageSize := uint64(os.Getpagesize())
+
+	prepareGuestMemoryFile(t, guestMemPath, 5*int(pageSize))
+
+	trace := initTrace(filepath.Join(baseDir, "trace"))
+	trace.AppendRecord(Record{offset: 3 * pageSize})
+	trace.AppendRecord(Record{offset: pageSize})
+	trace.AppendRecord(Record{offset: 2 * pageSize})
+	trace.AppendRecord(Record{offset: 2 * pageSize})
+
+	if err := trace.ProcessRecord(guestMemPath, workingSetPath, pageSize); err != nil {
+		t.Fatalf("ProcessRecord returned error: %v", err)
+	}
+
+	if got, want := len(trace.trace), 3; got != want {
+		t.Fatalf("trace length = %d, want %d", got, want)
+	}
+	if got, want := trace.regions[pageSize], 3; got != want {
+		t.Fatalf("trace.regions[%#x] = %d, want %d", pageSize, got, want)
+	}
+
+	got, err := os.ReadFile(workingSetPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile working set returned error: %v", err)
+	}
+	wantGuest, err := os.ReadFile(guestMemPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile guest memory returned error: %v", err)
+	}
+	want := wantGuest[pageSize : 4*pageSize]
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("working set contents do not match recorded guest memory pages")
+	}
+}
+
 func TestReceiveUffdMappingsAndFD(t *testing.T) {
 	mappings := []GuestRegionUffdMapping{{
 		BaseHostVirtAddr: 0x100000,

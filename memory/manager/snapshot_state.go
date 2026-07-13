@@ -32,10 +32,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
+	"sync"
 	"syscall"
 	"time"
 
@@ -101,6 +104,22 @@ func guestMemoryOffsetForFaultPage(region GuestRegionUffdMapping, faultPageAddr 
 	return region.Offset + regionOffset, nil
 }
 
+func guestAddressForMemoryOffset(region GuestRegionUffdMapping, offset uint64) (uint64, error) {
+	if region.PageSize == 0 {
+		return 0, errInvalidGuestRegionPageSize
+	}
+	if !regionContainsGuestMemoryOffset(region, offset) {
+		return 0, fmt.Errorf("%w: %#x", errGuestRegionNotFound, offset)
+	}
+
+	regionOffset := offset - region.Offset
+	if region.BaseHostVirtAddr > math.MaxUint64-regionOffset {
+		return 0, fmt.Errorf("guest address overflow for memory offset %#x", offset)
+	}
+
+	return region.BaseHostVirtAddr + regionOffset, nil
+}
+
 func pageFaultCopyArgsForFault(regions []GuestRegionUffdMapping, faultAddr uint64) (pageFaultCopyArgs, error) {
 	for _, region := range regions {
 		faultPageAddr, err := pageAlignFaultAddress(faultAddr, region)
@@ -127,6 +146,27 @@ func pageFaultCopyArgsForFault(regions []GuestRegionUffdMapping, faultAddr uint6
 	return pageFaultCopyArgs{}, fmt.Errorf("%w: %#x", errGuestRegionNotFound, faultAddr)
 }
 
+func pageFaultCopyArgsForGuestOffset(regions []GuestRegionUffdMapping, offset uint64, mode uint64) (pageFaultCopyArgs, error) {
+	for _, region := range regions {
+		if !regionContainsGuestMemoryOffset(region, offset) {
+			continue
+		}
+		dstAddr, err := guestAddressForMemoryOffset(region, offset)
+		if err != nil {
+			return pageFaultCopyArgs{}, err
+		}
+
+		return pageFaultCopyArgs{
+			srcOffset: offset,
+			dstAddr:   dstAddr,
+			copyLen:   region.PageSize,
+			copyMode:  mode,
+		}, nil
+	}
+
+	return pageFaultCopyArgs{}, fmt.Errorf("%w: %#x", errGuestRegionNotFound, offset)
+}
+
 func regionContainsFaultPage(region GuestRegionUffdMapping, faultPageAddr uint64) bool {
 	if region.Size == 0 || faultPageAddr < region.BaseHostVirtAddr {
 		return false
@@ -135,15 +175,44 @@ func regionContainsFaultPage(region GuestRegionUffdMapping, faultPageAddr uint64
 	return faultPageAddr-region.BaseHostVirtAddr < region.Size
 }
 
+func regionContainsGuestMemoryOffset(region GuestRegionUffdMapping, offset uint64) bool {
+	if region.Size == 0 || offset < region.Offset {
+		return false
+	}
+
+	return offset-region.Offset < region.Size
+}
+
+func guestMappingPageSize(regions []GuestRegionUffdMapping) (uint64, error) {
+	var pageSize uint64
+	for _, region := range regions {
+		if region.PageSize == 0 {
+			return 0, errInvalidGuestRegionPageSize
+		}
+		if pageSize == 0 {
+			pageSize = region.PageSize
+			continue
+		}
+		if pageSize != region.PageSize {
+			return 0, errors.New("mixed guest region page sizes are not supported for working-set replay")
+		}
+	}
+	if pageSize == 0 {
+		return 0, errNoGuestRegionMappings
+	}
+	return pageSize, nil
+}
+
 // SnapshotStateCfg Config to initialize SnapshotState
 type SnapshotStateCfg struct {
 	VMID string
 
-	VMMStatePath, GuestMemPath string
+	VMMStatePath, GuestMemPath, WorkingSetPath string
 
 	InstanceSockAddr string
 	BaseDir          string // base directory for the instance
 	MetricsPath      string // path to csv file where the metrics should be stored
+	IsLazyMode       bool
 	GuestMemSize     int
 	metricsModeOn    bool
 }
@@ -152,8 +221,10 @@ type SnapshotStateCfg struct {
 // of the VM.
 type SnapshotState struct {
 	SnapshotStateCfg
+	firstPageFaultOnce  *sync.Once
 	userFaultFD         *os.File
 	guestRegionMappings []GuestRegionUffdMapping
+	trace               *Trace
 	epfd                int
 	wakeFD              int
 	quitCh              chan int
@@ -165,12 +236,18 @@ type SnapshotState struct {
 	// for sanity checking on deactivate/activate
 	isActive bool
 
-	guestMem []byte
+	isRecordReady bool
+
+	guestMem   []byte
+	workingSet []byte
 
 	// Stats
+	totalPFServed  []float64
 	uniquePFServed []float64
+	reusedPFServed []float64
 	latencyMetrics []*metrics.Metric
 
+	replayedNum   int
 	uniqueNum     int
 	currentMetric *metrics.Metric
 }
@@ -178,26 +255,95 @@ type SnapshotState struct {
 // NewSnapshotState Initializes a snapshot state
 func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	s := new(SnapshotState)
+	cfg = normalizeSnapshotStateCfg(cfg)
 	s.SnapshotStateCfg = cfg
 
+	s.trace = initTrace(s.getTraceFile())
 	if s.metricsModeOn {
+		s.totalPFServed = make([]float64, 0)
 		s.uniquePFServed = make([]float64, 0)
+		s.reusedPFServed = make([]float64, 0)
 		s.latencyMetrics = make([]*metrics.Metric, 0)
 	}
 
 	return s
 }
 
+func normalizeSnapshotStateCfg(cfg SnapshotStateCfg) SnapshotStateCfg {
+	if cfg.WorkingSetPath == "" && cfg.BaseDir != "" {
+		cfg.WorkingSetPath = filepath.Join(cfg.BaseDir, "working_set_pages")
+	}
+	return cfg
+}
+
+func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
+	cfg = normalizeSnapshotStateCfg(cfg)
+
+	trace := s.trace
+	if trace == nil {
+		trace = initTrace(filepath.Join(cfg.BaseDir, "trace"))
+	} else {
+		trace.traceFileName = filepath.Join(cfg.BaseDir, "trace")
+	}
+	isRecordReady := s.isRecordReady
+	isEverActivated := s.isEverActivated
+	totalPFServed := s.totalPFServed
+	uniquePFServed := s.uniquePFServed
+	reusedPFServed := s.reusedPFServed
+	latencyMetrics := s.latencyMetrics
+
+	s.SnapshotStateCfg = cfg
+	s.firstPageFaultOnce = nil
+	s.userFaultFD = nil
+	s.guestRegionMappings = nil
+	s.trace = trace
+	s.epfd = 0
+	s.wakeFD = -1
+	s.quitCh = nil
+	s.pollDoneCh = nil
+	s.isEverActivated = isEverActivated
+	s.isActive = false
+	s.isRecordReady = isRecordReady
+	s.guestMem = nil
+	s.workingSet = nil
+	s.totalPFServed = totalPFServed
+	s.uniquePFServed = uniquePFServed
+	s.reusedPFServed = reusedPFServed
+	s.latencyMetrics = latencyMetrics
+	s.replayedNum = 0
+	s.uniqueNum = 0
+	s.currentMetric = nil
+
+	if s.metricsModeOn {
+		if s.totalPFServed == nil {
+			s.totalPFServed = make([]float64, 0)
+		}
+		if s.uniquePFServed == nil {
+			s.uniquePFServed = make([]float64, 0)
+		}
+		if s.reusedPFServed == nil {
+			s.reusedPFServed = make([]float64, 0)
+		}
+		if s.latencyMetrics == nil {
+			s.latencyMetrics = make([]*metrics.Metric, 0)
+		}
+	}
+}
+
 func (s *SnapshotState) setupStateOnActivate() {
 	s.isActive = true
 	s.isEverActivated = true
+	s.firstPageFaultOnce = new(sync.Once)
 	s.wakeFD = -1
 	s.quitCh = make(chan int, 1)
 	s.pollDoneCh = make(chan struct{})
 
 	if s.metricsModeOn {
 		s.uniqueNum = 0
-		s.currentMetric = metrics.NewMetric()
+		s.replayedNum = 0
+		if s.currentMetric == nil {
+			s.currentMetric = metrics.NewMetric()
+		}
 	}
 }
 
@@ -347,10 +493,24 @@ func removeStaleUffdSocket(socketPath string) error {
 }
 
 func (s *SnapshotState) processMetrics() {
-	if s.metricsModeOn && s.currentMetric != nil {
+	if !s.metricsModeOn || s.currentMetric == nil {
+		return
+	}
+
+	if s.isRecordReady {
+		if s.IsLazyMode {
+			s.totalPFServed = append(s.totalPFServed, float64(s.replayedNum))
+			s.reusedPFServed = append(s.reusedPFServed, float64(s.replayedNum-s.uniqueNum))
+		}
+
 		s.uniquePFServed = append(s.uniquePFServed, float64(s.uniqueNum))
 		s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
 	}
+	s.currentMetric = nil
+}
+
+func (s *SnapshotState) getTraceFile() string {
+	return filepath.Join(s.BaseDir, "trace")
 }
 
 func (s *SnapshotState) mapGuestMemory() error {
@@ -379,14 +539,74 @@ func (s *SnapshotState) unmapGuestMemory() error {
 	return nil
 }
 
-// fetchState verifies the VMM state file before snapshot activation.
+// fetchState verifies snapshot state and loads the replay working set when ready.
 func (s *SnapshotState) fetchState() error {
 	if _, err := os.ReadFile(s.VMMStatePath); err != nil {
 		log.Errorf("Failed to fetch VMM state: %v\n", err)
 		return err
 	}
 
+	if s.isRecordReady && !s.IsLazyMode {
+		return s.fetchWorkingSet()
+	}
+
 	return nil
+}
+
+func (s *SnapshotState) fetchWorkingSet() error {
+	pageSize := s.trace.pageSize
+	if pageSize == 0 {
+		pageSize = uint64(os.Getpagesize())
+	}
+
+	size := uint64(len(s.trace.trace)) * pageSize
+	if size > uint64(int(^uint(0)>>1)) {
+		return fmt.Errorf("working set too large: %#x", size)
+	}
+	if size == 0 {
+		s.workingSet = nil
+		return nil
+	}
+
+	f, err := os.Open(s.WorkingSetPath)
+	if err != nil {
+		log.Errorf("Failed to open the working set file: %v\n", err)
+		return err
+	}
+	defer func() { _ = f.Close() }()
+
+	s.workingSet = AlignedBlock(int(size))
+	n, err := io.ReadFull(f, s.workingSet)
+	if err != nil {
+		log.Errorf("Reading working set file failed: %v\n", err)
+		return err
+	}
+	if n != len(s.workingSet) {
+		return io.ErrUnexpectedEOF
+	}
+
+	log.Debug("Fetched the entire working set")
+	return nil
+}
+
+// alignment returns alignment of the block in memory with reference to alignSize.
+func alignment(block []byte, alignSize int) int {
+	return int(uintptr(unsafe.Pointer(&block[0])) & uintptr(alignSize-1))
+}
+
+// AlignedBlock returns a []byte aligned to the host page size.
+func AlignedBlock(blockSize int) []byte {
+	if blockSize == 0 {
+		return nil
+	}
+
+	alignSize := os.Getpagesize()
+	block := make([]byte, blockSize+alignSize)
+
+	if a := alignment(block, alignSize); a != 0 {
+		block = block[alignSize-a:]
+	}
+	return block[:blockSize]
 }
 
 func (s *SnapshotState) pollUserPageFaults(readyCh chan error) {
@@ -581,11 +801,42 @@ func (s *SnapshotState) closeWakeFD() {
 }
 
 func (s *SnapshotState) servePageFault(fd int, address uint64) error {
-	var tStart time.Time
+	var (
+		tStart              time.Time
+		workingSetInstalled bool
+	)
 
 	copyArgs, err := pageFaultCopyArgsForFault(s.guestRegionMappings, address)
 	if err != nil {
 		return err
+	}
+
+	rec := Record{offset: copyArgs.srcOffset}
+	if s.firstPageFaultOnce != nil {
+		s.firstPageFaultOnce.Do(func() {
+			if !s.isRecordReady || s.IsLazyMode {
+				return
+			}
+
+			if s.metricsModeOn {
+				tStart = time.Now()
+			}
+			err = s.installWorkingSetPages(fd, copyArgs.dstAddr, copyArgs.copyLen)
+			if err != nil {
+				return
+			}
+			if s.metricsModeOn {
+				s.currentMetric.MetricMap[installWSMetric] = metrics.ToUS(time.Since(tStart))
+			}
+			workingSetInstalled = true
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	if workingSetInstalled && s.trace.containsRecord(rec) {
+		return nil
 	}
 
 	src, err := guestMemPointer(s.guestMem, copyArgs.srcOffset, copyArgs.copyLen)
@@ -593,8 +844,23 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		return err
 	}
 
+	if !s.isRecordReady {
+		s.trace.AppendRecord(rec)
+	} else {
+		log.Debug("Serving a page that is missing from the working set")
+	}
+
 	if s.metricsModeOn {
-		s.uniqueNum++
+		if s.isRecordReady {
+			if s.IsLazyMode {
+				if !s.trace.containsRecord(rec) {
+					s.uniqueNum++
+				}
+				s.replayedNum++
+			} else {
+				s.uniqueNum++
+			}
+		}
 		tStart = time.Now()
 	}
 
@@ -605,6 +871,48 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	}
 
 	return err
+}
+
+func (s *SnapshotState) installWorkingSetPages(fd int, faultPageAddr, pageSize uint64) error {
+	if len(s.workingSet) == 0 || len(s.trace.regions) == 0 {
+		return nil
+	}
+	if s.trace.pageSize != 0 {
+		pageSize = s.trace.pageSize
+	}
+
+	keys := make([]uint64, 0, len(s.trace.regions))
+	for offset := range s.trace.regions {
+		keys = append(keys, offset)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+	var workingSetOffset uint64
+	for _, regionOffset := range keys {
+		regLength := s.trace.regions[regionOffset]
+		for i := 0; i < regLength; i++ {
+			pageOffset := regionOffset + uint64(i)*pageSize
+			copyArgs, err := pageFaultCopyArgsForGuestOffset(
+				s.guestRegionMappings,
+				pageOffset,
+				uint64(C.const_UFFDIO_COPY_MODE_DONTWAKE),
+			)
+			if err != nil {
+				return err
+			}
+
+			src, err := guestMemPointer(s.workingSet, workingSetOffset, copyArgs.copyLen)
+			if err != nil {
+				return err
+			}
+			if err := installRegionBytes(fd, src, copyArgs.dstAddr, copyArgs.copyMode, copyArgs.copyLen); err != nil {
+				return err
+			}
+			workingSetOffset += copyArgs.copyLen
+		}
+	}
+
+	return wake(fd, faultPageAddr, pageSize)
 }
 
 func installRegionBytes(fd int, src, dst, mode, length uint64) error {
@@ -653,6 +961,15 @@ func ioctl(fd uintptr, request int, argp unsafe.Pointer) error {
 	}
 
 	return nil
+}
+
+func wake(fd int, startAddress, length uint64) error {
+	cUR := C.struct_uffdio_range{
+		start: C.ulonglong(startAddress),
+		len:   C.ulonglong(length),
+	}
+
+	return ioctl(uintptr(fd), int(C.const_UFFDIO_WAKE), unsafe.Pointer(&cUR))
 }
 
 func sizeOfUFFDMsg() int {

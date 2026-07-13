@@ -24,8 +24,11 @@ package ctriface
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
+
+var errUPFRequiresLazyMode = errors.New("UPF currently requires lazy mode")
 
 // OrchestratorOption Options to pass to Orchestrator
 type OrchestratorOption func(*Orchestrator)
@@ -62,10 +65,18 @@ func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
 	}
 }
 
-// WithLazyMode is kept for compatibility with legacy callers.
+// WithLazyMode Sets the lazy paging mode on or off.
 func WithLazyMode(isLazyMode bool) OrchestratorOption {
 	return func(o *Orchestrator) {
+		o.isLazyMode = isLazyMode
 	}
+}
+
+func (o *Orchestrator) validateUPFMode() error {
+	if o.isUPFEnabled && !o.isLazyMode {
+		return errUPFRequiresLazyMode
+	}
+	return nil
 }
 
 // WithMetricsMode Sets the metrics mode

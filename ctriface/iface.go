@@ -248,11 +248,13 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		logger.Debug("Registering VM with the memory manager")
 
 		stateCfg := manager.SnapshotStateCfg{
-			VMID:         vmID,
-			GuestMemPath: o.getMemoryFile(vmID),
-			BaseDir:      o.getVMBaseDir(vmID),
-			GuestMemSize: int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
-			VMMStatePath: o.getSnapshotFile(vmID),
+			VMID:           vmID,
+			GuestMemPath:   o.getMemoryFile(vmID),
+			BaseDir:        o.getVMBaseDir(vmID),
+			GuestMemSize:   int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			IsLazyMode:     o.isLazyMode,
+			VMMStatePath:   o.getSnapshotFile(vmID),
+			WorkingSetPath: o.getWorkingSetFile(vmID),
 		}
 		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
 			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
@@ -515,6 +517,10 @@ func configureSnapshotMemoryBackend(conf *proto.CreateVMRequest, backendType, ba
 
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+	if err := o.validateUPFMode(); err != nil {
+		return nil, nil, err
+	}
+
 	var (
 		loadSnapshotMetric   = metrics.NewMetric()
 		tStart               time.Time
@@ -613,6 +619,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 			InstanceSockAddr: uffdSock,
 			BaseDir:          o.getVMBaseDir(vmID),
 			GuestMemSize:     int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+			IsLazyMode:       o.isLazyMode,
+			WorkingSetPath:   o.getWorkingSetFile(vmID),
 		}); err != nil {
 			return nil, nil, err
 		}

@@ -100,6 +100,7 @@ type Orchestrator struct {
 	// store *skv.KVStore
 	snapshotsEnabled bool
 	isUPFEnabled     bool
+	isLazyMode       bool
 	snapshotsDir     string
 	isMetricsMode    bool
 	netPoolSize      int
@@ -232,6 +233,10 @@ func (o *Orchestrator) getSnapshotFile(vmID string) string {
 
 func (o *Orchestrator) getMemoryFile(vmID string) string {
 	return filepath.Join(o.getVMBaseDir(vmID), "mem_file")
+}
+
+func (o *Orchestrator) getWorkingSetFile(vmID string) string {
+	return filepath.Join(o.getVMBaseDir(vmID), "working_set_pages")
 }
 
 func (o *Orchestrator) getVMBaseDir(vmID string) string {

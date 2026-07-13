@@ -20,33 +20,13 @@ env:
   GO111MODULE: on
 
 jobs:
-  memory-manager-unit-test:
-    name: "Unit tests: memory manager"
-    runs-on: ubuntu-24.04
-    steps:
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v7
-
-    - name: Set up Go version in go.mod file
-      uses: actions/setup-go@v6
-      with:
-        go-version-file: ${{ github.workspace }}/go.mod
-        cache-dependency-path: |
-          **/go.sum
-          **/go.mod
-
-    - name: Run memory manager tests
-      run: |
-        go test ./memory/manager
-        go test -race ./memory/manager -count=1
-
   unit-test:
     name: Unit test
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        module: [misc, networking, snapshotting]
+        module: [misc, networking, snapshotting, memory/manager]
     steps:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v7
@@ -84,8 +64,12 @@ jobs:
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
           AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: |
-        make -C $MODULE test
-        make -C $MODULE test-man
+        if [[ "$MODULE" == "memory/manager" ]]; then
+          go test -race ./memory/manager -count=1
+        else
+          make -C "$MODULE" test
+          make -C "$MODULE" test-man
+        fi
   
   profile-unit-test:
     if: false
