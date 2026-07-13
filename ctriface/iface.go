@@ -525,7 +525,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		loadSnapshotMetric   = metrics.NewMetric()
 		tStart               time.Time
 		loadErr, activateErr error
-		loadDone             = make(chan int)
+		activateDone         chan error
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -633,34 +633,27 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	tStart = time.Now()
 
 	if o.GetUPFEnabled() {
-		activateDone := make(chan error, 1)
+		activateDone = make(chan error, 1)
 		socketReady := make(chan error, 1)
 		go func() {
-			activateDone <- o.memoryManager.ActivateWithSocketReady(vmID, socketReady)
+			err := o.memoryManager.Activate(vmID, socketReady)
+			if err != nil {
+				logger.WithError(err).Warn("Failed to activate VM in the memory manager")
+			}
+			activateDone <- err
 		}()
 
 		if err := <-socketReady; err != nil {
-			activateErr = <-activateDone
-			return nil, nil, multierror.Of(err, activateErr)
+			return nil, nil, multierror.Of(err, <-activateDone)
 		}
+	}
 
-		if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
-			logSnapshotLoadFailure(logger, snap, conf, loadErr)
-		}
+	if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
+		logSnapshotLoadFailure(logger, snap, conf, loadErr)
+	}
+
+	if activateDone != nil {
 		activateErr = <-activateDone
-		if activateErr != nil {
-			logger.Warn("Failed to activate VM in the memory manager", activateErr)
-		}
-	} else {
-		go func() {
-			defer close(loadDone)
-
-			if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
-				logSnapshotLoadFailure(logger, snap, conf, loadErr)
-			}
-		}()
-
-		<-loadDone
 	}
 
 	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))

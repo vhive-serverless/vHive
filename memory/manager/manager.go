@@ -145,18 +145,9 @@ func (m *MemoryManager) DeregisterVM(vmID string) error {
 	return nil
 }
 
-// Activate Creates an epoller to serve page faults for the VM
-func (m *MemoryManager) Activate(vmID string) error {
-	return m.activate(vmID, nil)
-}
-
-// ActivateWithSocketReady is like Activate, but reports when the UFFD socket
-// listener is ready for Firecracker to connect.
-func (m *MemoryManager) ActivateWithSocketReady(vmID string, socketReadyCh chan<- error) error {
-	return m.activate(vmID, socketReadyCh)
-}
-
-func (m *MemoryManager) activate(vmID string, socketReadyCh chan<- error) error {
+// Activate creates an epoller to serve page faults and reports when the UFFD
+// socket listener is ready for Firecracker to connect.
+func (m *MemoryManager) Activate(vmID string, socketReadyCh chan<- error) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 
 	logger.Debug("Activating instance in the memory manager")
@@ -173,14 +164,18 @@ func (m *MemoryManager) activate(vmID string, socketReadyCh chan<- error) error 
 	if !ok {
 		m.Unlock()
 		logger.Error("VM not registered with the memory manager")
-		return errors.New("VM not registered with the memory manager")
+		err := errors.New("VM not registered with the memory manager")
+		notifySocketReady(socketReadyCh, err)
+		return err
 	}
 
 	m.Unlock()
 
 	if state.isActive {
 		logger.Error("VM already active")
-		return errors.New("VM already active")
+		err := errors.New("VM already active")
+		notifySocketReady(socketReadyCh, err)
+		return err
 	}
 
 	if err := state.mapGuestMemory(); err != nil {

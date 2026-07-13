@@ -196,11 +196,11 @@ func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
 	socketReadyCh := make(chan error, 1)
 	activateErrCh := make(chan error, 1)
 	go func() {
-		activateErrCh <- manager.ActivateWithSocketReady(vmID, socketReadyCh)
+		activateErrCh <- manager.Activate(vmID, socketReadyCh)
 	}()
 
 	if err := receiveSocketReady(t, socketReadyCh); err != nil {
-		t.Fatalf("ActivateWithSocketReady failed before socket accept: %v", err)
+		t.Fatalf("Activate failed before socket accept: %v", err)
 	}
 
 	conn := dialUnixSocketWithRetry(t, socketPath)
@@ -213,12 +213,12 @@ func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
 	}
 
 	if err := receiveActivateResult(t, activateErrCh); err != nil {
-		t.Fatalf("ActivateWithSocketReady returned error: %v", err)
+		t.Fatalf("Activate returned error: %v", err)
 	}
 
 	state := manager.instances[vmID]
 	if !state.isActive {
-		t.Fatal("state is not active after ActivateWithSocketReady")
+		t.Fatal("state is not active after Activate")
 	}
 	if !reflect.DeepEqual(state.guestRegionMappings, mappings) {
 		t.Fatalf("guestRegionMappings = %+v, want %+v", state.guestRegionMappings, mappings)
@@ -232,6 +232,24 @@ func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
 	}
 	if err := manager.DeregisterVM(vmID); err != nil {
 		t.Fatalf("DeregisterVM returned error: %v", err)
+	}
+}
+
+func TestMemoryManagerActivateReportsErrorBeforeSocketListen(t *testing.T) {
+	manager := NewMemoryManager(MemoryManagerCfg{})
+	socketReadyCh := make(chan error, 1)
+
+	activateErr := manager.Activate("missing-vm", socketReadyCh)
+	if activateErr == nil {
+		t.Fatal("Activate returned nil error for an unregistered VM")
+	}
+
+	readyErr := receiveSocketReady(t, socketReadyCh)
+	if readyErr == nil {
+		t.Fatal("socket readiness returned nil error for an unregistered VM")
+	}
+	if readyErr.Error() != activateErr.Error() {
+		t.Fatalf("socket readiness error = %q, want %q", readyErr, activateErr)
 	}
 }
 
@@ -255,7 +273,7 @@ func receiveActivateResult(t *testing.T, activateErrCh <-chan error) error {
 	case err := <-activateErrCh:
 		return err
 	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for ActivateWithSocketReady")
+		t.Fatal("timed out waiting for Activate")
 	}
 
 	return nil
