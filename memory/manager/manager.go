@@ -27,7 +27,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/vhive-serverless/vhive/metrics"
 	"gonum.org/v1/gonum/stat"
@@ -37,6 +39,8 @@ import (
 
 const (
 	serveUniqueMetric = "ServeUnique"
+	installWSMetric   = "InstallWS"
+	fetchStateMetric  = "FetchState"
 )
 
 // MemoryManagerCfg Global config of the manager
@@ -98,11 +102,10 @@ func (m *MemoryManager) PrepareSnapshotLoad(cfg SnapshotStateCfg) error {
 	}
 
 	cfg.metricsModeOn = m.MetricsModeOn
-	nextState := NewSnapshotState(cfg)
 
 	state, ok := m.instances[vmID]
 	if !ok {
-		m.instances[vmID] = nextState
+		m.instances[vmID] = NewSnapshotState(cfg)
 		return nil
 	}
 	if state.isActive {
@@ -110,9 +113,10 @@ func (m *MemoryManager) PrepareSnapshotLoad(cfg SnapshotStateCfg) error {
 	}
 	if state.userFaultFD != nil {
 		_ = state.userFaultFD.Close()
+		state.userFaultFD = nil
 	}
 
-	*state = *nextState
+	state.refreshSnapshotLoad(cfg)
 	return nil
 }
 
@@ -218,8 +222,9 @@ func (m *MemoryManager) FetchState(vmID string) error {
 	logger.Debug("Fetching state in the memory manager")
 
 	var (
-		ok    bool
-		state *SnapshotState
+		ok     bool
+		state  *SnapshotState
+		tStart time.Time
 	)
 
 	m.Lock()
@@ -233,7 +238,18 @@ func (m *MemoryManager) FetchState(vmID string) error {
 
 	m.Unlock()
 
-	return state.fetchState()
+	if state.metricsModeOn && state.currentMetric == nil {
+		state.currentMetric = metrics.NewMetric()
+	}
+	if state.metricsModeOn && state.isRecordReady && !state.IsLazyMode {
+		tStart = time.Now()
+	}
+
+	err := state.fetchState()
+	if err == nil && !tStart.IsZero() {
+		state.currentMetric.MetricMap[fetchStateMetric] = metrics.ToUS(time.Since(tStart))
+	}
+	return err
 }
 
 // Deactivate Removes the epoller which serves page faults for the VM
@@ -282,6 +298,17 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		defer func() { _ = state.userFaultFD.Close() }()
 	}
 
+	if !state.isRecordReady && !state.IsLazyMode {
+		pageSize, err := guestMappingPageSize(state.guestRegionMappings)
+		if err != nil {
+			return err
+		}
+		if err := state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath, pageSize); err != nil {
+			return err
+		}
+	}
+
+	state.isRecordReady = true
 	state.isActive = false
 
 	return nil
@@ -319,7 +346,11 @@ func (m *MemoryManager) DumpUPFPageStats(vmID, functionName, metricsOutFilePath 
 		return errors.New("metrics mode is not on")
 	}
 
-	statHeader, stats = getUPFHeaderStats(state, functionName)
+	if state.IsLazyMode {
+		statHeader, stats = getLazyHeaderStats(state, functionName)
+	} else {
+		statHeader, stats = getRecRepHeaderStats(state, functionName)
+	}
 
 	return writeUPFPageStats(metricsOutFilePath, statHeader, stats)
 }
@@ -385,10 +416,42 @@ func (m *MemoryManager) GetUPFLatencyStats(vmID string) ([]*metrics.Metric, erro
 	return state.latencyMetrics, nil
 }
 
-func getUPFHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
+func getLazyHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
 	header := []string{
 		"FuncName",
-		"ServedPages",
+		"RecPages",
+		"RepPages",
+		"StdDev",
+		"Reused",
+		"StdDev",
+		"Unique",
+		"StdDev",
+	}
+
+	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
+	totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
+	reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
+
+	stats := []string{
+		functionName,
+		strconv.Itoa(len(state.trace.trace)),
+		strconv.Itoa(int(totalMean)),
+		fmt.Sprintf("%.1f", totalStd),
+		strconv.Itoa(int(reusedMean)),
+		fmt.Sprintf("%.1f", reusedStd),
+		strconv.Itoa(int(uniqueMean)),
+		fmt.Sprintf("%.1f", uniqueStd),
+	}
+
+	return header, stats
+}
+
+func getRecRepHeaderStats(state *SnapshotState, functionName string) ([]string, []string) {
+	header := []string{
+		"FuncName",
+		"RecPages",
+		"RecRegions",
+		"Unique",
 		"StdDev",
 	}
 
@@ -396,7 +459,9 @@ func getUPFHeaderStats(state *SnapshotState, functionName string) ([]string, []s
 
 	stats := []string{
 		functionName,
-		fmt.Sprintf("%.0f", uniqueMean),
+		strconv.Itoa(len(state.trace.trace)),
+		strconv.Itoa(len(state.trace.regions)),
+		strconv.Itoa(int(uniqueMean)),
 		fmt.Sprintf("%.1f", uniqueStd),
 	}
 

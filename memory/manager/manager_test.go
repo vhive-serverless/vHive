@@ -102,6 +102,65 @@ func TestMemoryManagerRegisterFetchPrepareDeregister(t *testing.T) {
 	}
 }
 
+func TestPrepareSnapshotLoadPreservesWorkingSetState(t *testing.T) {
+	baseDir := t.TempDir()
+	vmID := "vm-prepare-ws"
+	guestMemPath := filepath.Join(baseDir, "guest_mem")
+	vmmStatePath := filepath.Join(baseDir, "state")
+	workingSetPath := filepath.Join(baseDir, "working_set_pages")
+
+	prepareGuestMemoryFile(t, guestMemPath, 2*os.Getpagesize())
+	writeTestFile(t, vmmStatePath, "state")
+
+	manager := NewMemoryManager(MemoryManagerCfg{})
+	cfg := SnapshotStateCfg{
+		VMID:           vmID,
+		BaseDir:        baseDir,
+		VMMStatePath:   vmmStatePath,
+		GuestMemPath:   guestMemPath,
+		WorkingSetPath: workingSetPath,
+		GuestMemSize:   2 * os.Getpagesize(),
+	}
+	if err := manager.RegisterVM(cfg); err != nil {
+		t.Fatalf("RegisterVM returned error: %v", err)
+	}
+
+	state := manager.instances[vmID]
+	state.trace.AppendRecord(Record{offset: 0})
+	state.isRecordReady = true
+	trace := state.trace
+
+	nextVMMStatePath := filepath.Join(baseDir, "next_state")
+	nextSocketPath := filepath.Join(baseDir, "next_uffd.sock")
+	writeTestFile(t, nextVMMStatePath, "next-state")
+
+	nextCfg := cfg
+	nextCfg.VMMStatePath = nextVMMStatePath
+	nextCfg.InstanceSockAddr = nextSocketPath
+	nextCfg.IsLazyMode = true
+
+	if err := manager.PrepareSnapshotLoad(nextCfg); err != nil {
+		t.Fatalf("PrepareSnapshotLoad returned error: %v", err)
+	}
+
+	got := manager.instances[vmID]
+	if got.trace != trace {
+		t.Fatal("PrepareSnapshotLoad replaced trace state")
+	}
+	if !got.isRecordReady {
+		t.Fatal("PrepareSnapshotLoad cleared isRecordReady")
+	}
+	if got.VMMStatePath != nextVMMStatePath {
+		t.Fatalf("VMMStatePath = %q, want %q", got.VMMStatePath, nextVMMStatePath)
+	}
+	if got.InstanceSockAddr != nextSocketPath {
+		t.Fatalf("InstanceSockAddr = %q, want %q", got.InstanceSockAddr, nextSocketPath)
+	}
+	if !got.IsLazyMode {
+		t.Fatal("PrepareSnapshotLoad did not update IsLazyMode")
+	}
+}
+
 func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
 	baseDir := t.TempDir()
 	vmID := "vm-activate"

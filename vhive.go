@@ -97,6 +97,10 @@ func main() {
 		log.Error("User-level page faults are not supported without snapshots")
 		return
 	}
+	if *isUPFEnabled && !*isLazyMode {
+		log.Error("User-level page faults currently require lazy serving mode")
+		return
+	}
 
 	if !*isUPFEnabled && *isLazyMode {
 		log.Error("Lazy page fault serving mode is not supported without user-level page faults")

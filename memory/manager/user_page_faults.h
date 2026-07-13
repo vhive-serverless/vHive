@@ -26,5 +26,7 @@
 #include <sys/ioctl.h>
 
 // constants for use from Go
+int const_UFFDIO_WAKE = UFFDIO_WAKE;
 int const_UFFDIO_COPY = UFFDIO_COPY;
 int const_UFFD_EVENT_PAGEFAULT = UFFD_EVENT_PAGEFAULT;
+int const_UFFDIO_COPY_MODE_DONTWAKE = UFFDIO_COPY_MODE_DONTWAKE;
