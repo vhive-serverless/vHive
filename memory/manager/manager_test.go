@@ -193,15 +193,13 @@ func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
 	}
 
 	uffdStandIn := testEventFD(t)
-	socketReadyCh := make(chan error, 1)
+	socketReadyCh := make(chan struct{}, 1)
 	activateErrCh := make(chan error, 1)
 	go func() {
 		activateErrCh <- manager.Activate(vmID, socketReadyCh)
 	}()
 
-	if err := receiveSocketReady(t, socketReadyCh); err != nil {
-		t.Fatalf("Activate failed before socket accept: %v", err)
-	}
+	receiveSocketReady(t, socketReadyCh)
 
 	conn := dialUnixSocketWithRetry(t, socketPath)
 	if err := writeUffdSocketPayload(conn, body, uffdStandIn); err != nil {
@@ -235,35 +233,31 @@ func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
 	}
 }
 
-func TestMemoryManagerActivateReportsErrorBeforeSocketListen(t *testing.T) {
+func TestMemoryManagerActivateReturnsErrorBeforeSocketListen(t *testing.T) {
 	manager := NewMemoryManager(MemoryManagerCfg{})
-	socketReadyCh := make(chan error, 1)
+	socketReadyCh := make(chan struct{}, 1)
 
 	activateErr := manager.Activate("missing-vm", socketReadyCh)
 	if activateErr == nil {
 		t.Fatal("Activate returned nil error for an unregistered VM")
 	}
 
-	readyErr := receiveSocketReady(t, socketReadyCh)
-	if readyErr == nil {
-		t.Fatal("socket readiness returned nil error for an unregistered VM")
-	}
-	if readyErr.Error() != activateErr.Error() {
-		t.Fatalf("socket readiness error = %q, want %q", readyErr, activateErr)
+	select {
+	case <-socketReadyCh:
+		t.Fatal("socket readiness was reported for an unregistered VM")
+	default:
 	}
 }
 
-func receiveSocketReady(t *testing.T, readyCh <-chan error) error {
+func receiveSocketReady(t *testing.T, readyCh <-chan struct{}) {
 	t.Helper()
 
 	select {
-	case err := <-readyCh:
-		return err
+	case <-readyCh:
+		return
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for UFFD socket readiness")
 	}
-
-	return nil
 }
 
 func receiveActivateResult(t *testing.T, activateErrCh <-chan error) error {

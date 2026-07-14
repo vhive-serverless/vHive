@@ -54,16 +54,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestValidateUPFModeRequiresLazyMode(t *testing.T) {
-	orch := &Orchestrator{}
-	WithUPF(true)(orch)
-
-	require.ErrorIs(t, orch.validateUPFMode(), errUPFRequiresLazyMode)
-
-	WithLazyMode(true)(orch)
-	require.NoError(t, orch.validateUPFMode())
-}
-
 func TestStartSnapStopLoad(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,

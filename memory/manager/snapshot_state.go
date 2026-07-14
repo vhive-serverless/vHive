@@ -347,7 +347,7 @@ func (s *SnapshotState) setupStateOnActivate() {
 	}
 }
 
-func (s *SnapshotState) getUFFD(socketReadyCh chan<- error) error {
+func (s *SnapshotState) getUFFD(socketReadyCh chan<- struct{}) error {
 	mappings, userFaultFD, err := receiveUffdMappingsAndFDFromSocket(s.InstanceSockAddr, socketReadyCh)
 	if err != nil {
 		log.Error("Failed to receive the uffd and guest memory mappings")
@@ -360,35 +360,30 @@ func (s *SnapshotState) getUFFD(socketReadyCh chan<- error) error {
 	return nil
 }
 
-func receiveUffdMappingsAndFDFromSocket(socketPath string, socketReadyCh chan<- error) ([]GuestRegionUffdMapping, *os.File, error) {
+func receiveUffdMappingsAndFDFromSocket(socketPath string, socketReadyCh chan<- struct{}) ([]GuestRegionUffdMapping, *os.File, error) {
 	if socketPath == "" {
-		notifySocketReady(socketReadyCh, errEmptyUffdSocketPath)
 		return nil, nil, errEmptyUffdSocketPath
 	}
 	if err := os.MkdirAll(filepath.Dir(socketPath), 0755); err != nil {
-		notifySocketReady(socketReadyCh, err)
 		return nil, nil, err
 	}
 	if err := removeStaleUffdSocket(socketPath); err != nil {
-		notifySocketReady(socketReadyCh, err)
 		return nil, nil, err
 	}
 
 	addr := &net.UnixAddr{Name: socketPath, Net: "unix"}
 	listener, err := net.ListenUnix("unix", addr)
 	if err != nil {
-		notifySocketReady(socketReadyCh, err)
 		return nil, nil, err
 	}
 	defer func() { _ = listener.Close() }()
 	defer func() { _ = os.Remove(socketPath) }()
 
 	if err := listener.SetDeadline(time.Now().Add(uffdSocketAcceptTimeout)); err != nil {
-		notifySocketReady(socketReadyCh, err)
 		return nil, nil, err
 	}
 
-	notifySocketReady(socketReadyCh, nil)
+	notifySocketReady(socketReadyCh)
 
 	conn, err := listener.AcceptUnix()
 	if err != nil {
@@ -399,11 +394,11 @@ func receiveUffdMappingsAndFDFromSocket(socketPath string, socketReadyCh chan<- 
 	return receiveUffdMappingsAndFD(conn)
 }
 
-func notifySocketReady(socketReadyCh chan<- error, err error) {
+func notifySocketReady(socketReadyCh chan<- struct{}) {
 	if socketReadyCh == nil {
 		return
 	}
-	socketReadyCh <- err
+	socketReadyCh <- struct{}{}
 }
 
 func receiveUffdMappingsAndFD(conn *net.UnixConn) ([]GuestRegionUffdMapping, *os.File, error) {

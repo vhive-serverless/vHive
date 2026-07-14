@@ -634,7 +634,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	if o.GetUPFEnabled() {
 		activateDone = make(chan error, 1)
-		socketReady := make(chan error, 1)
+		socketReady := make(chan struct{}, 1)
 		go func() {
 			err := o.memoryManager.Activate(vmID, socketReady)
 			if err != nil {
@@ -643,8 +643,10 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 			activateDone <- err
 		}()
 
-		if err := <-socketReady; err != nil {
-			return nil, nil, multierror.Of(err, <-activateDone)
+		select {
+		case <-socketReady:
+		case activateErr = <-activateDone:
+			return nil, nil, activateErr
 		}
 	}
 
