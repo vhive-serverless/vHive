@@ -23,11 +23,7 @@
 EXTRAGOARGS:=-v -race -cover
 EXTRATESTFILES:=iface_test.go iface.go orch_options.go orch.go
 BENCHFILES:=bench_test.go iface.go orch_options.go orch.go
-# User-level page faults are temporarily disabled (gh-807)
-# WITHUPF:=-upf
-# WITHLAZY:=-lazy
-WITHUPF:=
-WITHLAZY:=
+UPFARGS:=-upf -lazy
 STARGZ:=-ss 'proxy' -img 'ghcr.io/vhive-serverless/helloworld:var_workload-esgz'
 DOCKER_CREDENTIALS:=-dockerCredentials '{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}'
 GOBENCH:=-v -timeout 1500s
@@ -39,7 +35,7 @@ test:
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(WITHUPF)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(UPFARGS)
 	./../scripts/clean_fcctr.sh
 
 test-man:
@@ -48,10 +44,7 @@ test-man:
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_upf_man_travis.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(WITHUPF)
-	./../scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_lazy_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_lazy_man_travis.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(WITHUPF) $(WITHLAZY)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(UPFARGS)
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_remote_snap_create_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_remote_snap_create_man_travis.err &
 	# Creates a remote snapshot.
@@ -74,12 +67,8 @@ test-skip:
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_man_skip.out 2>$(CTRDLOGDIR)/ctriface_log_upf_man_skip.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelSnapLoad -args $(WITHUPF)
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad -args $(WITHUPF)
-	./../scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_lazy_man_skip.out 2>$(CTRDLOGDIR)/ctriface_log_lazy_man_skip.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelSnapLoad -args $(WITHUPF) $(WITHLAZY)
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad -args $(WITHUPF) $(WITHLAZY)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelSnapLoad -args $(UPFARGS)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad -args $(UPFARGS)
 	./../scripts/clean_fcctr.sh
 
 

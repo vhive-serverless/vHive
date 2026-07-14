@@ -73,6 +73,8 @@ func TestStartSnapStopLoad(t *testing.T) {
 		*snapshotter,
 		"",
 		WithTestModeOn(true),
+		WithUPF(*isUPFEnabled),
+		WithLazyMode(*isLazyMode),
 		WithDockerCredentials(*dockerCredentials),
 	)
 
