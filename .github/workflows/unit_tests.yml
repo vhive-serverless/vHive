@@ -64,12 +64,8 @@ jobs:
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
           AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: |
-        if [[ "$MODULE" == "memory/manager" ]]; then
-          go test -race ./memory/manager -count=1
-        else
-          make -C "$MODULE" test
-          make -C "$MODULE" test-man
-        fi
+        make -C "$MODULE" test
+        make -C "$MODULE" test-man
   
   profile-unit-test:
     if: false
