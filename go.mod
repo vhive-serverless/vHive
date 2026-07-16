@@ -3,7 +3,7 @@ module github.com/vhive-serverless/vhive
 go 1.26.2
 
 replace (
-	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20260205055657-a35b52c279d9
+	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20260713114451-bb007a1ef569
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
 )
 
@@ -31,6 +31,7 @@ require (
 	gonum.org/v1/gonum v0.17.0
 	gonum.org/v1/plot v0.17.0
 	google.golang.org/grpc v1.82.0
+	google.golang.org/protobuf v1.36.11
 	k8s.io/cri-api v0.27.1
 )
 
@@ -90,6 +91,5 @@ require (
 	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

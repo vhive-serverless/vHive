@@ -522,10 +522,12 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	}
 
 	var (
-		loadSnapshotMetric   = metrics.NewMetric()
-		tStart               time.Time
-		loadErr, activateErr error
-		activateDone         chan error
+		loadSnapshotMetric = metrics.NewMetric()
+		tStart             time.Time
+		loadErr            error
+		activateErr        error
+		deactivateErr      error
+		activateErrChan    chan error
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -633,19 +635,19 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	tStart = time.Now()
 
 	if o.GetUPFEnabled() {
-		activateDone = make(chan error, 1)
-		socketReady := make(chan struct{}, 1)
+		activateErrChan = make(chan error, 1)
+		socketReadyChan := make(chan struct{}, 1)
 		go func() {
-			err := o.memoryManager.Activate(vmID, socketReady)
+			err := o.memoryManager.Activate(vmID, socketReadyChan)
 			if err != nil {
 				logger.WithError(err).Warn("Failed to activate VM in the memory manager")
 			}
-			activateDone <- err
+			activateErrChan <- err
 		}()
 
 		select {
-		case <-socketReady:
-		case activateErr = <-activateDone:
+		case <-socketReadyChan:
+		case activateErr = <-activateErrChan:
 			return nil, nil, activateErr
 		}
 	}
@@ -654,14 +656,21 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		logSnapshotLoadFailure(logger, snap, conf, loadErr)
 	}
 
-	if activateDone != nil {
-		activateErr = <-activateDone
+	if activateErrChan != nil {
+		activateErr = <-activateErrChan
+	}
+
+	if loadErr != nil && activateErr == nil && activateErrChan != nil {
+		deactivateErr = o.memoryManager.Deactivate(vmID)
+		if deactivateErr != nil {
+			logger.WithError(deactivateErr).Warn("Failed to deactivate VM in the memory manager after snapshot load failure")
+		}
 	}
 
 	loadSnapshotMetric.MetricMap[metrics.LoadVMM] = metrics.ToUS(time.Since(tStart))
 
-	if loadErr != nil || activateErr != nil {
-		multierr := multierror.Of(loadErr, activateErr)
+	if loadErr != nil || activateErr != nil || deactivateErr != nil {
+		multierr := multierror.Of(loadErr, activateErr, deactivateErr)
 		return nil, nil, multierr
 	}
 
