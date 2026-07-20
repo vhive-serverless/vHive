@@ -25,7 +25,7 @@ require (
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld v0.0.0-00010101000000-000000000000
 	github.com/vhive-serverless/vhive/networking v0.0.0-00010101000000-000000000000
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.22.0
 	golang.org/x/sys v0.45.0
 	gonum.org/v1/gonum v0.17.0
 	gonum.org/v1/plot v0.17.0
