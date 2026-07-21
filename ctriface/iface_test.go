@@ -37,7 +37,6 @@ import (
 	"github.com/vhive-serverless/vhive/snapshotting"
 )
 
-// TODO: Make it impossible to use lazy mode without UPF
 var (
 	isUPFEnabled = flag.Bool("upf", false, "Set UPF enabled")
 	isLazyMode   = flag.Bool("lazy", false, "Set lazy serving on or off")
@@ -52,6 +51,32 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	os.Exit(m.Run())
+}
+
+func TestValidateUPFMode(t *testing.T) {
+	tests := []struct {
+		name    string
+		upf     bool
+		lazy    bool
+		wantErr bool
+	}{
+		{name: "disabled", upf: false, lazy: false},
+		{name: "working set", upf: true, lazy: false},
+		{name: "lazy", upf: true, lazy: true},
+		{name: "lazy without UPF", upf: false, lazy: true, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			orch := &Orchestrator{isUPFEnabled: tt.upf, isLazyMode: tt.lazy}
+			err := orch.validateUPFMode()
+			if tt.wantErr {
+				require.ErrorIs(t, err, errLazyModeRequiresUPF)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }
 
 func TestStartSnapStopLoad(t *testing.T) {

@@ -64,8 +64,8 @@ func TestMain(m *testing.M) {
 	log.SetLevel(log.InfoLevel)
 
 	flag.Parse()
-	if *isUPFEnabledTest && !*isLazyModeTest {
-		log.Error("User-level page faults currently require lazy serving mode")
+	if !*isUPFEnabledTest && *isLazyModeTest {
+		log.Error("Lazy page fault serving mode is not supported without user-level page faults")
 		os.Exit(-1)
 	}
 
