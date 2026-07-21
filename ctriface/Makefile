@@ -24,6 +24,7 @@ EXTRAGOARGS:=-v -race -cover
 EXTRATESTFILES:=iface_test.go iface.go orch_options.go orch.go
 BENCHFILES:=bench_test.go iface.go orch_options.go orch.go
 UPFARGS:=-upf -lazy
+REAPARGS:=-upf
 STARGZ:=-ss 'proxy' -img 'ghcr.io/vhive-serverless/helloworld:var_workload-esgz'
 DOCKER_CREDENTIALS:=-dockerCredentials '{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}'
 GOBENCH:=-v -timeout 1500s
@@ -36,6 +37,9 @@ test:
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(UPFARGS)
+	./../scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -run '^TestUPFWorkingSetRecordReplay$$' -args $(REAPARGS)
 	./../scripts/clean_fcctr.sh
 
 test-man:

@@ -22,6 +22,7 @@
 package ctriface
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -133,6 +134,84 @@ func TestStartSnapStopLoad(t *testing.T) {
 
 	_ = snap.Cleanup()
 	orch.Cleanup()
+}
+
+func TestUPFWorkingSetRecordReplay(t *testing.T) {
+	if !*isUPFEnabled || *isLazyMode {
+		t.Skip("requires UPF working set mode")
+	}
+
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		FullTimestamp:   true,
+	})
+	log.SetOutput(os.Stdout)
+	log.SetLevel(log.InfoLevel)
+
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), 5*time.Minute)
+	defer cancel()
+
+	orch := NewOrchestrator(
+		*snapshotter,
+		"",
+		WithTestModeOn(true),
+		WithUPF(true),
+		WithLazyMode(false),
+		WithMetricsMode(true),
+		WithDockerCredentials(*dockerCredentials),
+	)
+	t.Cleanup(func() {
+		_ = orch.StopActiveVMs()
+		orch.Cleanup()
+	})
+
+	sourceVMID := "ws-source"
+	recordVMID := "ws-record"
+	replayVMID := "ws-replay"
+	snap := snapshotting.NewSnapshot("myrev-working-set", "/fccd/snapshots", *testImage)
+
+	_, _, err := orch.StartVM(ctx, sourceVMID, *testImage)
+	require.NoError(t, err, "Failed to start source VM")
+	require.NoError(t, orch.PauseVM(ctx, sourceVMID), "Failed to pause source VM")
+	require.NoError(t, snap.CreateSnapDir(), "Failed to create snapshot directory")
+	require.NoError(t, orch.CreateSnapshot(ctx, sourceVMID, snap), "Failed to create snapshot")
+	require.NoError(t, orch.StopSingleVM(ctx, sourceVMID), "Failed to stop source VM")
+
+	loadResumeStop := func(vmID string) {
+		_, _, err := orch.LoadSnapshot(ctx, vmID, snap)
+		require.NoError(t, err, "Failed to load snapshot into %s", vmID)
+		_, err = orch.ResumeVM(ctx, vmID)
+		require.NoError(t, err, "Failed to resume %s", vmID)
+		time.Sleep(500 * time.Millisecond)
+		require.NoError(t, orch.StopSingleVM(ctx, vmID), "Failed to stop %s", vmID)
+	}
+
+	loadResumeStop(recordVMID)
+	workingSetBefore, err := os.ReadFile(snap.GetWorkingSetFilePath())
+	require.NoError(t, err, "Failed to read recorded working set")
+	require.NotEmpty(t, workingSetBefore, "Recorded working set is empty")
+	traceBefore, err := os.ReadFile(snap.GetWorkingSetTraceFilePath())
+	require.NoError(t, err, "Failed to read recorded working set trace")
+	require.NotEmpty(t, traceBefore, "Recorded working set trace is empty")
+
+	loadResumeStop(replayVMID)
+	latencyMetrics, err := orch.GetUPFLatencyStats(replayVMID)
+	require.NoError(t, err, "Failed to get replay metrics")
+	workingSetInstalled := false
+	for _, metric := range latencyMetrics {
+		if _, ok := metric.MetricMap["InstallWS"]; ok {
+			workingSetInstalled = true
+			break
+		}
+	}
+	require.True(t, workingSetInstalled, "Working set was not installed during replay")
+
+	workingSetAfter, err := os.ReadFile(snap.GetWorkingSetFilePath())
+	require.NoError(t, err, "Failed to reread working set")
+	traceAfter, err := os.ReadFile(snap.GetWorkingSetTraceFilePath())
+	require.NoError(t, err, "Failed to reread working set trace")
+	require.True(t, bytes.Equal(workingSetBefore, workingSetAfter), "Replay rewrote working set pages")
+	require.True(t, bytes.Equal(traceBefore, traceAfter), "Replay rewrote working set trace")
 }
 
 func TestPauseSnapResume(t *testing.T) {
