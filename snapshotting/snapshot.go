@@ -40,6 +40,7 @@ type Snapshot struct {
 	ContainerSnapName string
 	snapDir           string
 	Image             string
+	artifacts         ArtifactNames
 }
 
 func NewSnapshot(id, baseFolder, image string) *Snapshot {
@@ -49,9 +50,19 @@ func NewSnapshot(id, baseFolder, image string) *Snapshot {
 		snapDir:           filepath.Join(baseFolder, id),
 		ContainerSnapName: fmt.Sprintf("%s%s", id, time.Now().Format("20060102150405")),
 		Image:             image,
+		artifacts:         defaultArtifactNames(),
 	}
 
 	return s
+}
+
+// NewSnapshotFromDescriptor adapts catalog metadata to the existing local
+// filesystem snapshot API used by the orchestrator.
+func NewSnapshotFromDescriptor(baseFolder string, descriptor *SnapshotDescriptor) *Snapshot {
+	snapshot := NewSnapshot(descriptor.Revision, baseFolder, descriptor.Image)
+	snapshot.ready = descriptor.Ready
+	snapshot.artifacts = descriptor.Artifacts
+	return snapshot
 }
 
 func (snp *Snapshot) CreateSnapDir() error {
@@ -75,11 +86,11 @@ func (snp *Snapshot) GetContainerSnapName() string {
 }
 
 func (snp *Snapshot) GetSnapshotFilePath() string {
-	return filepath.Join(snp.snapDir, "snap_file")
+	return filepath.Join(snp.snapDir, snp.artifacts.VMState)
 }
 
 func (snp *Snapshot) GetMemFilePath() string {
-	return filepath.Join(snp.snapDir, "mem_file")
+	return filepath.Join(snp.snapDir, snp.artifacts.Memory)
 }
 
 func (snp *Snapshot) GetWorkingSetFilePath() string {
@@ -91,11 +102,11 @@ func (snp *Snapshot) GetWorkingSetTraceFilePath() string {
 }
 
 func (snp *Snapshot) GetPatchFilePath() string {
-	return filepath.Join(snp.snapDir, "patch_file")
+	return filepath.Join(snp.snapDir, snp.artifacts.Patch)
 }
 
 func (snp *Snapshot) GetInfoFilePath() string {
-	return filepath.Join(snp.snapDir, "info_file")
+	return filepath.Join(snp.snapDir, snp.artifacts.Info)
 }
 
 // SerializeSnapInfo serializes the snapshot info using gob. This can be useful for remote snapshots

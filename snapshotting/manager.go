@@ -38,6 +38,7 @@ type SnapshotManager struct {
 	// variable of knative).
 	snapshots  map[string]*Snapshot
 	baseFolder string
+	catalog    Catalog
 }
 
 // Snapshot identified by VM id
@@ -50,6 +51,14 @@ func NewSnapshotManager(baseFolder string) *SnapshotManager {
 	// Clean & init basefolder
 	_ = os.RemoveAll(manager.baseFolder)
 	_ = os.MkdirAll(manager.baseFolder, os.ModePerm)
+	catalog, err := NewLocalCatalog(manager.baseFolder)
+	manager.catalog = catalog
+	if err != nil {
+		// Preserve the constructor's historical no-error API. Operations will
+		// return the filesystem error instead of panicking if initialization was
+		// not possible.
+		manager.catalog = &LocalCatalog{baseFolder: manager.baseFolder}
+	}
 
 	return manager
 }
@@ -59,19 +68,14 @@ func (mgr *SnapshotManager) AcquireSnapshot(revision string) (*Snapshot, error) 
 	mgr.Lock()
 	defer mgr.Unlock()
 
-	// Check if idle snapshot is available for the given image
-	snap, ok := mgr.snapshots[revision]
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("Get: Snapshot for revision %s does not exist", revision))
+	descriptor, err := mgr.catalog.Get(revision)
+	if err != nil {
+		return nil, err
 	}
-
-	// Snapshot registered in manager but creation not finished yet
-	if !snap.ready {
-		return nil, errors.New("Snapshot is not yet usable")
+	if snap, ok := mgr.snapshots[revision]; ok {
+		return snap, nil
 	}
-
-	// Return snapshot for supplied revision
-	return mgr.snapshots[revision], nil
+	return NewSnapshotFromDescriptor(mgr.baseFolder, descriptor), nil
 }
 
 // InitSnapshot initializes a snapshot by adding its metadata to the SnapshotManager. Once the snapshot has
@@ -82,21 +86,23 @@ func (mgr *SnapshotManager) InitSnapshot(revision, image string) (*Snapshot, err
 	logger := log.WithFields(log.Fields{"revision": revision, "image": image})
 	logger.Debug("Initializing snapshot corresponding to revision and image")
 
-	if _, present := mgr.snapshots[revision]; present {
+	if exists, err := mgr.catalog.Exists(revision); err != nil {
+		mgr.Unlock()
+		return nil, err
+	} else if exists {
 		mgr.Unlock()
 		return nil, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists", revision))
 	}
 
 	// Create snapshot object and move into creating state
-	snap := NewSnapshot(revision, mgr.baseFolder, image)
+	descriptor, err := mgr.catalog.Begin(revision, image)
+	if err != nil {
+		mgr.Unlock()
+		return nil, err
+	}
+	snap := NewSnapshotFromDescriptor(mgr.baseFolder, descriptor)
 	mgr.snapshots[snap.GetId()] = snap
 	mgr.Unlock()
-
-	// Create directory to store snapshot data
-	err := snap.CreateSnapDir()
-	if err != nil {
-		return nil, errors.Wrapf(err, "creating snapDir for snapshots %s", revision)
-	}
 
 	return snap, nil
 }
@@ -106,16 +112,23 @@ func (mgr *SnapshotManager) CommitSnapshot(revision string) error {
 	mgr.Lock()
 	defer mgr.Unlock()
 
-	snap, ok := mgr.snapshots[revision]
-	if !ok {
-		return errors.New(fmt.Sprintf("Snapshot for revision %s to commit does not exist", revision))
+	if err := mgr.catalog.Commit(revision); err != nil {
+		return err
 	}
-
-	if snap.ready {
-		return errors.New(fmt.Sprintf("Snapshot for revision %s has already been committed", revision))
+	if snap, ok := mgr.snapshots[revision]; ok {
+		snap.ready = true
 	}
-
-	snap.ready = true
-
 	return nil
+}
+
+// Catalog exposes the lifecycle port while SnapshotManager remains as a
+// compatibility adapter for callers that need a local Snapshot object.
+func (mgr *SnapshotManager) Catalog() Catalog {
+	return mgr.catalog
+}
+
+// SnapshotForDescriptor returns the existing filesystem adapter for a catalog
+// entry without performing another readiness lookup.
+func (mgr *SnapshotManager) SnapshotForDescriptor(descriptor *SnapshotDescriptor) *Snapshot {
+	return NewSnapshotFromDescriptor(mgr.baseFolder, descriptor)
 }

@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/vhive-serverless/vhive/snapshotting"
+	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -44,6 +46,7 @@ type coordinator struct {
 
 	activeInstances     map[string]*funcInstance
 	snapshotManager     *snapshotting.SnapshotManager
+	snapshotCatalog     snapshotting.Catalog
 	withoutOrchestrator bool
 }
 
@@ -67,10 +70,14 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorO
 	}
 
 	snapshotsDir := "/fccd/test/snapshots"
+	if c.withoutOrchestrator {
+		snapshotsDir = filepath.Join(os.TempDir(), "vhive-snapshots")
+	}
 	if !c.withoutOrchestrator {
 		snapshotsDir = orch.GetSnapshotsDir()
 	}
 	c.snapshotManager = snapshotting.NewSnapshotManager(snapshotsDir)
+	c.snapshotCatalog = c.snapshotManager.Catalog()
 
 	return c
 }
@@ -82,7 +89,8 @@ func (c *coordinator) startVM(ctx context.Context, image, revision string) (*fun
 func (c *coordinator) startVMWithEnvironment(ctx context.Context, image, revision string, environment []string) (*funcInstance, error) {
 	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
 		// Check if snapshot is available
-		if snap, err := c.snapshotManager.AcquireSnapshot(revision); err == nil {
+		if descriptor, err := c.snapshotCatalog.Get(revision); err == nil {
+			snap := c.snapshotManager.SnapshotForDescriptor(descriptor)
 			return c.orchLoadInstance(ctx, snap)
 		}
 	}
