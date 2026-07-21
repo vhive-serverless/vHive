@@ -28,7 +28,7 @@ import (
 	"fmt"
 )
 
-var errUPFRequiresLazyMode = errors.New("UPF currently requires lazy mode")
+var errLazyModeRequiresUPF = errors.New("lazy mode requires UPF")
 
 // OrchestratorOption Options to pass to Orchestrator
 type OrchestratorOption func(*Orchestrator)
@@ -73,8 +73,8 @@ func WithLazyMode(isLazyMode bool) OrchestratorOption {
 }
 
 func (o *Orchestrator) validateUPFMode() error {
-	if o.isUPFEnabled && !o.isLazyMode {
-		return errUPFRequiresLazyMode
+	if o.isLazyMode && !o.isUPFEnabled {
+		return errLazyModeRequiresUPF
 	}
 	return nil
 }
