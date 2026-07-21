@@ -26,6 +26,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/vhive-serverless/vhive/snapshotting"
 )
 
 var errLazyModeRequiresUPF = errors.New("lazy mode requires UPF")
@@ -62,6 +64,22 @@ func WithUPF(isUPFEnabled bool) OrchestratorOption {
 func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.snapshotsDir = snapshotsDir
+	}
+}
+
+// WithArtifactStore injects a remote artifact store. Snapshot transfer remains
+// disabled until a later stage wires this optional dependency into the flow.
+func WithArtifactStore(store snapshotting.ArtifactStore) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.artifactStore = store
+	}
+}
+
+// WithArtifactStoreConfig requests a MinIO-backed artifact store. Supplying
+// this option is explicit opt-in; the default orchestrator remains local-only.
+func WithArtifactStoreConfig(config snapshotting.MinIOArtifactStoreConfig) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.artifactStoreConfig = &config
 	}
 }
 

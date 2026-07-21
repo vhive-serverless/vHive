@@ -49,6 +49,7 @@ import (
 	"github.com/vhive-serverless/vhive/memory/manager"
 	"github.com/vhive-serverless/vhive/metrics"
 	"github.com/vhive-serverless/vhive/misc"
+	"github.com/vhive-serverless/vhive/snapshotting"
 
 	_ "github.com/davecgh/go-spew/spew" //tmp
 )
@@ -112,7 +113,9 @@ type Orchestrator struct {
 
 	setExpIface bool
 
-	memoryManager *manager.MemoryManager
+	memoryManager       *manager.MemoryManager
+	artifactStore       snapshotting.ArtifactStore
+	artifactStoreConfig *snapshotting.MinIOArtifactStoreConfig
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -131,6 +134,13 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 
 	for _, opt := range opts {
 		opt(o)
+	}
+	if o.artifactStore == nil && o.artifactStoreConfig != nil {
+		store, err := snapshotting.NewMinIOArtifactStore(*o.artifactStoreConfig)
+		if err != nil {
+			log.Panicf("Failed to construct remote artifact store: %v", err)
+		}
+		o.artifactStore = store
 	}
 
 	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize, o.vethPrefix, o.clonePrefix, o.setExpIface)
@@ -170,6 +180,12 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
 
 	return o
+}
+
+// ArtifactStore returns the optional remote store. It is nil unless explicitly
+// configured; no snapshot transfer uses it until the remote-transfer stage.
+func (o *Orchestrator) ArtifactStore() snapshotting.ArtifactStore {
+	return o.artifactStore
 }
 
 func getK8sDNS() []string {
