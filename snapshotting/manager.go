@@ -23,8 +23,9 @@
 package snapshotting
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 	"sync"
 
@@ -39,6 +40,20 @@ type SnapshotManager struct {
 	snapshots  map[string]*Snapshot
 	baseFolder string
 	catalog    Catalog
+	remote     *remoteSnapshotTransfer
+}
+
+// EnableRemoteTransfer makes committed snapshots available to other workers
+// through store.  It is deliberately opt-in: without this call the manager
+// retains the original local-only behaviour.
+func (mgr *SnapshotManager) EnableRemoteTransfer(store ArtifactStore, cacheSnaps bool) {
+	mgr.Lock()
+	defer mgr.Unlock()
+	if store == nil {
+		mgr.remote = nil
+		return
+	}
+	mgr.remote = newRemoteSnapshotTransfer(store, cacheSnaps)
 }
 
 // Snapshot identified by VM id
@@ -65,15 +80,31 @@ func NewSnapshotManager(baseFolder string) *SnapshotManager {
 
 // AcquireSnapshot returns a snapshot for the specified revision if it is available.
 func (mgr *SnapshotManager) AcquireSnapshot(revision string) (*Snapshot, error) {
-	mgr.Lock()
-	defer mgr.Unlock()
+	return mgr.AcquireSnapshotContext(context.Background(), revision)
+}
 
+// AcquireSnapshotContext returns a local snapshot, fetching a committed remote
+// copy on a local cache miss when remote transfer has been enabled.
+func (mgr *SnapshotManager) AcquireSnapshotContext(ctx context.Context, revision string) (*Snapshot, error) {
+	mgr.Lock()
 	descriptor, err := mgr.catalog.Get(revision)
-	if err != nil {
+	if err == nil {
+		if snap, ok := mgr.snapshots[revision]; ok {
+			mgr.Unlock()
+			return snap, nil
+		}
+		mgr.Unlock()
+		return NewSnapshotFromDescriptor(mgr.baseFolder, descriptor), nil
+	}
+	remote := mgr.remote
+	mgr.Unlock()
+	if remote == nil || (!errors.Is(err, ErrSnapshotNotFound) && !(errors.Is(err, ErrSnapshotNotReady) && remote.hasDownload(revision))) {
 		return nil, err
 	}
-	if snap, ok := mgr.snapshots[revision]; ok {
-		return snap, nil
+
+	descriptor, err = remote.download(ctx, mgr.catalog, mgr.baseFolder, revision)
+	if err != nil {
+		return nil, err
 	}
 	return NewSnapshotFromDescriptor(mgr.baseFolder, descriptor), nil
 }
@@ -91,7 +122,7 @@ func (mgr *SnapshotManager) InitSnapshot(revision, image string) (*Snapshot, err
 		return nil, err
 	} else if exists {
 		mgr.Unlock()
-		return nil, errors.New(fmt.Sprintf("Add: Snapshot for revision %s already exists", revision))
+		return nil, fmt.Errorf("add: snapshot for revision %s already exists", revision)
 	}
 
 	// Create snapshot object and move into creating state
@@ -119,6 +150,38 @@ func (mgr *SnapshotManager) CommitSnapshot(revision string) error {
 		snap.ready = true
 	}
 	return nil
+}
+
+// PublishSnapshot uploads a locally committed snapshot.  The remote descriptor
+// is published last, so a remote reader never accepts a partial transfer.
+// When cacheSnaps is false, successful publication removes the local copy.
+func (mgr *SnapshotManager) PublishSnapshot(ctx context.Context, revision string) error {
+	mgr.Lock()
+	remote := mgr.remote
+	catalog := mgr.catalog
+	baseFolder := mgr.baseFolder
+	mgr.Unlock()
+	if remote == nil {
+		return nil
+	}
+	if err := remote.publish(ctx, catalog, baseFolder, revision); err != nil {
+		return err
+	}
+	if !remote.cacheSnaps {
+		mgr.Lock()
+		delete(mgr.snapshots, revision)
+		mgr.Unlock()
+		if err := catalog.Delete(revision); err != nil {
+			return fmt.Errorf("remove published local snapshot %s: %w", revision, err)
+		}
+	}
+	return nil
+}
+
+func (mgr *SnapshotManager) RemoteTransferEnabled() bool {
+	mgr.Lock()
+	defer mgr.Unlock()
+	return mgr.remote != nil
 }
 
 // Catalog exposes the lifecycle port while SnapshotManager remains as a

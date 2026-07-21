@@ -67,12 +67,17 @@ func WithSnapshotsDir(snapshotsDir string) OrchestratorOption {
 	}
 }
 
-// WithArtifactStore injects a remote artifact store. Snapshot transfer remains
-// disabled until a later stage wires this optional dependency into the flow.
+// WithArtifactStore injects an explicitly enabled remote snapshot store.
 func WithArtifactStore(store snapshotting.ArtifactStore) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.artifactStore = store
 	}
+}
+
+// WithCacheSnaps retains successfully published remote snapshots locally.
+// The default is false: after publication they are fetched on demand.
+func WithCacheSnaps(cacheSnaps bool) OrchestratorOption {
+	return func(o *Orchestrator) { o.cacheSnaps = cacheSnaps }
 }
 
 // WithArtifactStoreConfig requests a MinIO-backed artifact store. Supplying

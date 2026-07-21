@@ -116,6 +116,7 @@ type Orchestrator struct {
 	memoryManager       *manager.MemoryManager
 	artifactStore       snapshotting.ArtifactStore
 	artifactStoreConfig *snapshotting.MinIOArtifactStoreConfig
+	cacheSnaps          bool
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -187,6 +188,10 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 func (o *Orchestrator) ArtifactStore() snapshotting.ArtifactStore {
 	return o.artifactStore
 }
+
+// GetCacheSnaps reports whether remote snapshots remain on local disk after
+// publishing. It is false by default, so remote mode exercises cache misses.
+func (o *Orchestrator) GetCacheSnaps() bool { return o.cacheSnaps }
 
 func getK8sDNS() []string {
 	//using googleDNS as a backup

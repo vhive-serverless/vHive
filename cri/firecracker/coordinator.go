@@ -77,6 +77,9 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorO
 		snapshotsDir = orch.GetSnapshotsDir()
 	}
 	c.snapshotManager = snapshotting.NewSnapshotManager(snapshotsDir)
+	if !c.withoutOrchestrator && orch.ArtifactStore() != nil {
+		c.snapshotManager.EnableRemoteTransfer(orch.ArtifactStore(), orch.GetCacheSnaps())
+	}
 	c.snapshotCatalog = c.snapshotManager.Catalog()
 
 	return c
@@ -89,9 +92,10 @@ func (c *coordinator) startVM(ctx context.Context, image, revision string) (*fun
 func (c *coordinator) startVMWithEnvironment(ctx context.Context, image, revision string, environment []string) (*funcInstance, error) {
 	if c.orch != nil && c.orch.GetSnapshotsEnabled() {
 		// Check if snapshot is available
-		if descriptor, err := c.snapshotCatalog.Get(revision); err == nil {
-			snap := c.snapshotManager.SnapshotForDescriptor(descriptor)
+		if snap, err := c.snapshotManager.AcquireSnapshotContext(ctx, revision); err == nil {
 			return c.orchLoadInstance(ctx, snap)
+		} else if c.snapshotManager.RemoteTransferEnabled() && !errors.Is(err, snapshotting.ErrSnapshotNotFound) && !errors.Is(err, snapshotting.ErrArtifactNotFound) {
+			return nil, err
 		}
 	}
 
@@ -240,6 +244,10 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 
 	if err := c.snapshotManager.CommitSnapshot(fi.Revision); err != nil {
 		fi.Logger.WithError(err).Error("failed to commit snapshot")
+		return err
+	}
+	if err := c.snapshotManager.PublishSnapshot(ctxTimeout, fi.Revision); err != nil {
+		fi.Logger.WithError(err).Error("failed to publish remote snapshot")
 		return err
 	}
 

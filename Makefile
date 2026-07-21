@@ -27,7 +27,7 @@ EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go
 # User-level page faults are temporarily disabled (gh-807)
 # WITHUPF:=-upfTest
 # WITHLAZY:=-lazyTest
-WITHUPF:=
+WITHUPF:=-upfTest -lazyTest
 WITHLAZY:=
 WITHSNAPSHOTS:=-snapshotsTest
 CTRDLOGDIR:=/tmp/ctrd-logs
