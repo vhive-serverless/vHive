@@ -24,6 +24,8 @@ package snapshotting_test
 
 import (
 	"fmt"
+	"path/filepath"
+
 	ctrdlog "github.com/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -77,6 +79,16 @@ func TestSnapshotManagerSingle(t *testing.T) {
 	imageName := "testImage"
 
 	testSnapshotManager(t, mgr, revision, imageName)
+}
+
+func TestSnapshotWorkingSetPaths(t *testing.T) {
+	baseDir := t.TempDir()
+	revision := "myrevision-working-set"
+	snap := snapshotting.NewSnapshot(revision, baseDir, "testImage")
+	snapshotDir := filepath.Join(baseDir, revision)
+
+	require.Equal(t, filepath.Join(snapshotDir, "working_set_pages"), snap.GetWorkingSetFilePath())
+	require.Equal(t, filepath.Join(snapshotDir, "working_set_trace"), snap.GetWorkingSetTraceFilePath())
 }
 
 func TestSnapshotManagerConcurrent(t *testing.T) {

@@ -39,7 +39,7 @@ import (
 type SnapshotStateCfg struct {
 	VMID string
 
-	VMMStatePath, GuestMemPath, WorkingSetPath string
+	VMMStatePath, GuestMemPath, WorkingSetPath, WorkingSetTracePath string
 
 	InstanceSockAddr string
 	BaseDir          string // base directory for the instance
@@ -90,7 +90,7 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	cfg = normalizeSnapshotStateCfg(cfg)
 	s.SnapshotStateCfg = cfg
 
-	s.trace = initTrace(s.getTraceFile())
+	s.trace = initTrace(s.WorkingSetTracePath)
 	if s.metricsModeOn {
 		s.totalPFServed = make([]float64, 0)
 		s.uniquePFServed = make([]float64, 0)
@@ -105,6 +105,9 @@ func normalizeSnapshotStateCfg(cfg SnapshotStateCfg) SnapshotStateCfg {
 	if cfg.WorkingSetPath == "" && cfg.BaseDir != "" {
 		cfg.WorkingSetPath = filepath.Join(cfg.BaseDir, "working_set_pages")
 	}
+	if cfg.WorkingSetTracePath == "" && cfg.BaseDir != "" {
+		cfg.WorkingSetTracePath = filepath.Join(cfg.BaseDir, "trace")
+	}
 	return cfg
 }
 
@@ -113,9 +116,9 @@ func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 
 	trace := s.trace
 	if trace == nil {
-		trace = initTrace(filepath.Join(cfg.BaseDir, "trace"))
+		trace = initTrace(cfg.WorkingSetTracePath)
 	} else {
-		trace.traceFileName = filepath.Join(cfg.BaseDir, "trace")
+		trace.traceFileName = cfg.WorkingSetTracePath
 	}
 	isRecordReady := s.isRecordReady
 	isEverActivated := s.isEverActivated
@@ -194,10 +197,6 @@ func (s *SnapshotState) processMetrics() {
 		s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
 	}
 	s.currentMetric = nil
-}
-
-func (s *SnapshotState) getTraceFile() string {
-	return filepath.Join(s.BaseDir, "trace")
 }
 
 func (s *SnapshotState) mapGuestMemory() error {
