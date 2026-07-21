@@ -82,7 +82,8 @@ echo Cleaning /run/firecracker-containerd/*
 sudo rm -rf /run/firecracker-containerd/containerd.sock.ttrpc \
     /run/firecracker-containerd/io.containerd.runtime.v1.linux \
     /run/firecracker-containerd/io.containerd.runtime.v2.task \
-    /run/containerd/*
+    /run/containerd/fifo \
+    /run/containerd/s
 
 echo Cleaning /var/lib/demux-snapshotter/*
 sudo rm -rf /var/lib/demux-snapshotter/snapshotter.sock

@@ -120,6 +120,54 @@ func TestSendToFunctionSerial(t *testing.T) {
 	require.NoError(t, err, "Function returned error, "+message)
 }
 
+// TestSnapshotRoundTripServesIndependentVMs is the application-level local
+// snapshot control test. It is intentionally opt-in because it needs the
+// Firecracker integration environment; unit tests must not require it.
+func TestSnapshotRoundTripServesIndependentVMs(t *testing.T) {
+	if !*isSnapshotsEnabledTest {
+		t.Skip("requires -snapshotsTest and the Firecracker integration environment")
+	}
+
+	const (
+		functionID = "stage0-snapshot-roundtrip"
+		request    = "world"
+		response   = "Hello, world!"
+	)
+
+	pool := NewFuncPool(true, 1, 0, isTestModeConst)
+	function := pool.getFunction(functionID, testImageName)
+
+	first, _, err := pool.Serve(context.Background(), functionID, testImageName, request)
+	require.NoError(t, err)
+	require.Equal(t, response, first.Payload)
+	firstVMID := function.vmID
+	require.NotEmpty(t, firstVMID)
+
+	message, err := pool.RemoveInstance(functionID, testImageName, true)
+	require.NoError(t, err, message)
+
+	second, _, err := pool.Serve(context.Background(), functionID, testImageName, request)
+	require.NoError(t, err)
+	require.Equal(t, response, second.Payload)
+	secondVMID := function.vmID
+	require.NotEmpty(t, secondVMID)
+	require.NotEqual(t, firstVMID, secondVMID)
+
+	message, err = pool.RemoveInstance(functionID, testImageName, true)
+	require.NoError(t, err, message)
+
+	third, _, err := pool.Serve(context.Background(), functionID, testImageName, request)
+	require.NoError(t, err)
+	require.Equal(t, response, third.Payload)
+	thirdVMID := function.vmID
+	require.NotEmpty(t, thirdVMID)
+	require.NotEqual(t, firstVMID, thirdVMID)
+	require.NotEqual(t, secondVMID, thirdVMID)
+
+	message, err = pool.RemoveInstance(functionID, testImageName, true)
+	require.NoError(t, err, message)
+}
+
 func TestSendToFunctionParallel(t *testing.T) {
 	fID := "2"
 	var (

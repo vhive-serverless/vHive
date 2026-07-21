@@ -33,8 +33,6 @@ import (
 	"testing"
 )
 
-const snapshotsDir = "/fccd/test/snapshots"
-
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
 
@@ -71,7 +69,7 @@ func testSnapshotManager(t *testing.T, mgr *snapshotting.SnapshotManager, revisi
 
 func TestSnapshotManagerSingle(t *testing.T) {
 	// Create snapshot manager
-	mgr := snapshotting.NewSnapshotManager(snapshotsDir)
+	mgr := snapshotting.NewSnapshotManager(t.TempDir())
 
 	revision := "myrevision-1" // Snap id = revision
 	imageName := "testImage"
@@ -81,7 +79,7 @@ func TestSnapshotManagerSingle(t *testing.T) {
 
 func TestSnapshotManagerConcurrent(t *testing.T) {
 	// Create snapshot manager
-	mgr := snapshotting.NewSnapshotManager(snapshotsDir)
+	mgr := snapshotting.NewSnapshotManager(t.TempDir())
 
 	var wg sync.WaitGroup
 	concurrency := 20
