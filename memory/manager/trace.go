@@ -23,15 +23,16 @@
 package manager
 
 import (
-	"encoding/csv"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
-	"strconv"
 	"sync"
 )
+
+const workingSetTraceVersion = 1
 
 // Record identifies one guest memory page by its offset in the full memory file.
 type Record struct {
@@ -47,6 +48,12 @@ type Trace struct {
 	containedOffsets map[uint64]struct{}
 	trace            []Record
 	regions          map[uint64]int
+}
+
+type workingSetTraceMetadata struct {
+	Version  int      `json:"version"`
+	PageSize uint64   `json:"page_size"`
+	Offsets  []uint64 `json:"offsets"`
 }
 
 func initTrace(traceFileName string) *Trace {
@@ -69,60 +76,52 @@ func (t *Trace) AppendRecord(r Record) {
 	t.containedOffsets[r.offset] = struct{}{}
 }
 
-func (t *Trace) WriteTrace() error {
+func (t *Trace) readTrace() error {
+	data, err := os.ReadFile(t.traceFileName)
+	if err != nil {
+		return err
+	}
+
+	var metadata workingSetTraceMetadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return err
+	}
+	if metadata.Version != workingSetTraceVersion {
+		return fmt.Errorf("unsupported working set trace version: %d", metadata.Version)
+	}
+	if metadata.PageSize == 0 {
+		return errInvalidGuestRegionPageSize
+	}
+
+	containedOffsets := make(map[uint64]struct{}, len(metadata.Offsets))
+	records := make([]Record, 0, len(metadata.Offsets))
+	for _, offset := range metadata.Offsets {
+		if _, ok := containedOffsets[offset]; ok {
+			return fmt.Errorf("duplicate working set trace offset: %#x", offset)
+		}
+		records = append(records, Record{offset: offset})
+		containedOffsets[offset] = struct{}{}
+	}
+
 	t.Lock()
 	defer t.Unlock()
 
-	file, err := os.Create(t.traceFileName)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = file.Close() }()
+	t.pageSize = metadata.PageSize
+	t.containedOffsets = containedOffsets
+	t.trace = records
+	t.buildRegionsLocked()
 
-	writer := csv.NewWriter(file)
-	for _, rec := range t.trace {
-		if err := writer.Write([]string{strconv.FormatUint(rec.offset, 16)}); err != nil {
-			return err
-		}
-	}
-	writer.Flush()
-	return writer.Error()
-}
-
-//nolint:unused
-func (t *Trace) readTrace() error {
-	f, err := os.Open(t.traceFileName)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-
-	lines, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		return err
-	}
-
-	for _, line := range lines {
-		rec, err := readRecord(line)
-		if err != nil {
-			return err
-		}
-		t.AppendRecord(rec)
-	}
 	return nil
 }
 
-//nolint:unused
-func readRecord(line []string) (Record, error) {
-	if len(line) == 0 {
-		return Record{}, errors.New("empty trace record")
-	}
-	offset, err := strconv.ParseUint(line[0], 16, 64)
-	if err != nil {
-		return Record{}, err
-	}
+func (t *Trace) reset() {
+	t.Lock()
+	defer t.Unlock()
 
-	return Record{offset: offset}, nil
+	t.pageSize = 0
+	t.containedOffsets = make(map[uint64]struct{})
+	t.trace = make([]Record, 0)
+	t.regions = make(map[uint64]int)
 }
 
 func (t *Trace) containsRecord(rec Record) bool {
@@ -139,6 +138,15 @@ func (t *Trace) ProcessRecord(guestMemPath, workingSetPath string, pageSize uint
 	defer t.Unlock()
 
 	t.pageSize = pageSize
+	t.buildRegionsLocked()
+
+	if err := t.writeWorkingSetPagesToFileLocked(guestMemPath, workingSetPath, pageSize); err != nil {
+		return err
+	}
+	return t.writeTraceLocked()
+}
+
+func (t *Trace) buildRegionsLocked() {
 	sort.Slice(t.trace, func(i, j int) bool {
 		return t.trace[i].offset < t.trace[j].offset
 	})
@@ -149,7 +157,7 @@ func (t *Trace) ProcessRecord(guestMemPath, workingSetPath string, pageSize uint
 		regionStart uint64
 	)
 	for i, rec := range t.trace {
-		if i == 0 || rec.offset != last+pageSize {
+		if i == 0 || rec.offset != last+t.pageSize {
 			regionStart = rec.offset
 			t.regions[regionStart] = 1
 		} else {
@@ -157,8 +165,27 @@ func (t *Trace) ProcessRecord(guestMemPath, workingSetPath string, pageSize uint
 		}
 		last = rec.offset
 	}
+}
 
-	return t.writeWorkingSetPagesToFileLocked(guestMemPath, workingSetPath, pageSize)
+func (t *Trace) writeTraceLocked() error {
+	offsets := make([]uint64, len(t.trace))
+	for i, rec := range t.trace {
+		offsets[i] = rec.offset
+	}
+
+	data, err := json.Marshal(workingSetTraceMetadata{
+		Version:  workingSetTraceVersion,
+		PageSize: t.pageSize,
+		Offsets:  offsets,
+	})
+	if err != nil {
+		return err
+	}
+
+	return writeFileAtomically(t.traceFileName, func(file *os.File) error {
+		_, err := file.Write(data)
+		return err
+	})
 }
 
 func (t *Trace) writeWorkingSetPagesToFileLocked(guestMemPath, workingSetPath string, pageSize uint64) error {
@@ -168,43 +195,62 @@ func (t *Trace) writeWorkingSetPagesToFileLocked(guestMemPath, workingSetPath st
 	}
 	defer func() { _ = fSrc.Close() }()
 
-	fDst, err := os.Create(workingSetPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = fDst.Close() }()
-
 	keys := make([]uint64, 0, len(t.regions))
 	for k := range t.regions {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
-	var dstOffset int64
-	for _, offset := range keys {
-		copyLen := uint64(t.regions[offset]) * pageSize
-		if copyLen > uint64(int(^uint(0)>>1)) {
-			return fmt.Errorf("working set region too large: %#x", copyLen)
+	return writeFileAtomically(workingSetPath, func(fDst *os.File) error {
+		var dstOffset int64
+		for _, offset := range keys {
+			copyLen := uint64(t.regions[offset]) * pageSize
+			if copyLen > uint64(int(^uint(0)>>1)) {
+				return fmt.Errorf("working set region too large: %#x", copyLen)
+			}
+
+			buf := make([]byte, int(copyLen))
+			n, err := fSrc.ReadAt(buf, int64(offset))
+			if err != nil && err != io.EOF {
+				return err
+			}
+			if n != len(buf) {
+				return io.ErrUnexpectedEOF
+			}
+
+			n, err = fDst.WriteAt(buf, dstOffset)
+			if err != nil {
+				return err
+			}
+			if n != len(buf) {
+				return io.ErrShortWrite
+			}
+			dstOffset += int64(copyLen)
 		}
 
-		buf := make([]byte, int(copyLen))
-		n, err := fSrc.ReadAt(buf, int64(offset))
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if n != len(buf) {
-			return io.ErrUnexpectedEOF
-		}
+		return nil
+	})
+}
 
-		n, err = fDst.WriteAt(buf, dstOffset)
-		if err != nil {
-			return err
-		}
-		if n != len(buf) {
-			return io.ErrShortWrite
-		}
-		dstOffset += int64(copyLen)
+func writeFileAtomically(path string, write func(*os.File) error) error {
+	tempFile, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*")
+	if err != nil {
+		return err
+	}
+	tempPath := tempFile.Name()
+	defer func() { _ = os.Remove(tempPath) }()
+
+	if err := write(tempFile); err != nil {
+		_ = tempFile.Close()
+		return err
+	}
+	if err := tempFile.Sync(); err != nil {
+		_ = tempFile.Close()
+		return err
+	}
+	if err := tempFile.Close(); err != nil {
+		return err
 	}
 
-	return fDst.Sync()
+	return os.Rename(tempPath, path)
 }

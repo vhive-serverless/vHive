@@ -102,24 +102,26 @@ func TestMemoryManagerRegisterFetchPrepareDeregister(t *testing.T) {
 	}
 }
 
-func TestPrepareSnapshotLoadPreservesWorkingSetState(t *testing.T) {
+func TestPrepareSnapshotLoadResetsWorkingSetState(t *testing.T) {
 	baseDir := t.TempDir()
 	vmID := "vm-prepare-ws"
 	guestMemPath := filepath.Join(baseDir, "guest_mem")
 	vmmStatePath := filepath.Join(baseDir, "state")
 	workingSetPath := filepath.Join(baseDir, "working_set_pages")
+	workingSetTracePath := filepath.Join(baseDir, "working_set_trace")
 
 	prepareGuestMemoryFile(t, guestMemPath, 2*os.Getpagesize())
 	writeTestFile(t, vmmStatePath, "state")
 
 	manager := NewMemoryManager(MemoryManagerCfg{})
 	cfg := SnapshotStateCfg{
-		VMID:           vmID,
-		BaseDir:        baseDir,
-		VMMStatePath:   vmmStatePath,
-		GuestMemPath:   guestMemPath,
-		WorkingSetPath: workingSetPath,
-		GuestMemSize:   2 * os.Getpagesize(),
+		VMID:                vmID,
+		BaseDir:             baseDir,
+		VMMStatePath:        vmmStatePath,
+		GuestMemPath:        guestMemPath,
+		WorkingSetPath:      workingSetPath,
+		WorkingSetTracePath: workingSetTracePath,
+		GuestMemSize:        2 * os.Getpagesize(),
 	}
 	if err := manager.RegisterVM(cfg); err != nil {
 		t.Fatalf("RegisterVM returned error: %v", err)
@@ -132,11 +134,13 @@ func TestPrepareSnapshotLoadPreservesWorkingSetState(t *testing.T) {
 
 	nextVMMStatePath := filepath.Join(baseDir, "next_state")
 	nextSocketPath := filepath.Join(baseDir, "next_uffd.sock")
+	nextTracePath := filepath.Join(baseDir, "next_working_set_trace")
 	writeTestFile(t, nextVMMStatePath, "next-state")
 
 	nextCfg := cfg
 	nextCfg.VMMStatePath = nextVMMStatePath
 	nextCfg.InstanceSockAddr = nextSocketPath
+	nextCfg.WorkingSetTracePath = nextTracePath
 	nextCfg.IsLazyMode = true
 
 	if err := manager.PrepareSnapshotLoad(nextCfg); err != nil {
@@ -144,11 +148,14 @@ func TestPrepareSnapshotLoadPreservesWorkingSetState(t *testing.T) {
 	}
 
 	got := manager.instances[vmID]
-	if got.trace != trace {
-		t.Fatal("PrepareSnapshotLoad replaced trace state")
+	if got.trace == trace {
+		t.Fatal("PrepareSnapshotLoad retained the previous trace state")
 	}
-	if !got.isRecordReady {
-		t.Fatal("PrepareSnapshotLoad cleared isRecordReady")
+	if got.isRecordReady {
+		t.Fatal("PrepareSnapshotLoad retained working set readiness")
+	}
+	if got.trace.traceFileName != nextTracePath {
+		t.Fatalf("trace path = %q, want %q", got.trace.traceFileName, nextTracePath)
 	}
 	if got.VMMStatePath != nextVMMStatePath {
 		t.Fatalf("VMMStatePath = %q, want %q", got.VMMStatePath, nextVMMStatePath)
@@ -158,6 +165,117 @@ func TestPrepareSnapshotLoadPreservesWorkingSetState(t *testing.T) {
 	}
 	if !got.IsLazyMode {
 		t.Fatal("PrepareSnapshotLoad did not update IsLazyMode")
+	}
+}
+
+func TestFetchStateLoadsWorkingSetAcrossVMIDs(t *testing.T) {
+	baseDir := t.TempDir()
+	snapshotDir := filepath.Join(baseDir, "revision")
+	if err := os.Mkdir(snapshotDir, 0755); err != nil {
+		t.Fatalf("os.Mkdir returned error: %v", err)
+	}
+
+	guestMemPath := filepath.Join(snapshotDir, "mem_file")
+	vmmStatePath := filepath.Join(snapshotDir, "snap_file")
+	workingSetPath := filepath.Join(snapshotDir, "working_set_pages")
+	workingSetTracePath := filepath.Join(snapshotDir, "working_set_trace")
+	pageSize := uint64(os.Getpagesize())
+	prepareGuestMemoryFile(t, guestMemPath, 5*int(pageSize))
+	writeTestFile(t, vmmStatePath, "state")
+
+	manager := NewMemoryManager(MemoryManagerCfg{})
+	recordCfg := SnapshotStateCfg{
+		VMID:                "vm-record",
+		BaseDir:             filepath.Join(baseDir, "vm-record"),
+		VMMStatePath:        vmmStatePath,
+		GuestMemPath:        guestMemPath,
+		WorkingSetPath:      workingSetPath,
+		WorkingSetTracePath: workingSetTracePath,
+		GuestMemSize:        5 * int(pageSize),
+	}
+	if err := manager.RegisterVM(recordCfg); err != nil {
+		t.Fatalf("RegisterVM returned error: %v", err)
+	}
+	recordState := manager.instances[recordCfg.VMID]
+	recordState.trace.AppendRecord(Record{offset: 3 * pageSize})
+	recordState.trace.AppendRecord(Record{offset: pageSize})
+	if err := recordState.trace.ProcessRecord(guestMemPath, workingSetPath, pageSize); err != nil {
+		t.Fatalf("ProcessRecord returned error: %v", err)
+	}
+
+	replayCfg := recordCfg
+	replayCfg.VMID = "vm-replay"
+	replayCfg.BaseDir = filepath.Join(baseDir, replayCfg.VMID)
+	if err := manager.PrepareSnapshotLoad(replayCfg); err != nil {
+		t.Fatalf("PrepareSnapshotLoad returned error: %v", err)
+	}
+	if err := manager.FetchState(replayCfg.VMID); err != nil {
+		t.Fatalf("FetchState returned error: %v", err)
+	}
+
+	replayState := manager.instances[replayCfg.VMID]
+	if !replayState.isRecordReady {
+		t.Fatal("FetchState did not mark the persisted working set ready")
+	}
+	if got, want := replayState.trace.pageSize, pageSize; got != want {
+		t.Fatalf("trace page size = %#x, want %#x", got, want)
+	}
+	if got, want := len(replayState.trace.trace), 2; got != want {
+		t.Fatalf("trace length = %d, want %d", got, want)
+	}
+	if got, want := replayState.trace.trace[0].offset, pageSize; got != want {
+		t.Fatalf("first trace offset = %#x, want %#x", got, want)
+	}
+	if got, want := replayState.trace.trace[1].offset, 3*pageSize; got != want {
+		t.Fatalf("second trace offset = %#x, want %#x", got, want)
+	}
+
+	guestMem, err := os.ReadFile(guestMemPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile guest memory returned error: %v", err)
+	}
+	wantWorkingSet := append([]byte{}, guestMem[pageSize:2*pageSize]...)
+	wantWorkingSet = append(wantWorkingSet, guestMem[3*pageSize:4*pageSize]...)
+	if !reflect.DeepEqual(replayState.workingSet, wantWorkingSet) {
+		t.Fatal("loaded working set does not match recorded pages")
+	}
+}
+
+func TestFetchStateRejectsInvalidWorkingSetArtifacts(t *testing.T) {
+	tests := []struct {
+		name         string
+		traceContent string
+		writePages   bool
+	}{
+		{name: "invalid trace", traceContent: "{"},
+		{name: "missing pages", traceContent: `{"version":1,"page_size":4096,"offsets":[0]}`},
+		{name: "wrong page data size", traceContent: `{"version":1,"page_size":4096,"offsets":[0]}`, writePages: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			baseDir := t.TempDir()
+			vmmStatePath := filepath.Join(baseDir, "snap_file")
+			tracePath := filepath.Join(baseDir, "working_set_trace")
+			writeTestFile(t, vmmStatePath, "state")
+			writeTestFile(t, tracePath, tt.traceContent)
+			if tt.writePages {
+				writeTestFile(t, filepath.Join(baseDir, "working_set_pages"), "pages")
+			}
+
+			state := NewSnapshotState(SnapshotStateCfg{
+				BaseDir:             baseDir,
+				VMMStatePath:        vmmStatePath,
+				WorkingSetPath:      filepath.Join(baseDir, "working_set_pages"),
+				WorkingSetTracePath: tracePath,
+			})
+			if err := state.fetchState(); err == nil {
+				t.Fatal("fetchState succeeded for invalid working set artifacts")
+			}
+			if state.isRecordReady {
+				t.Fatal("invalid working set artifacts were marked ready")
+			}
+		})
 	}
 }
 
