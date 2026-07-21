@@ -221,6 +221,48 @@ func TestUPFWorkingSetRecordReplay(t *testing.T) {
 	require.Equal(t, traceInfoBefore.ModTime(), traceInfoAfter.ModTime(), "Replay modified working set trace")
 }
 
+// TestRemoteSnapshotTransferRestore verifies remote snapshot transfer at the
+// Firecracker interface boundary.
+func TestRemoteSnapshotTransferRestore(t *testing.T) {
+	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), 120*time.Second)
+	defer cancel()
+
+	store := snapshotting.NewMemoryArtifactStore()
+	sourceDir, workerDir := t.TempDir(), t.TempDir()
+	orch := NewOrchestrator(*snapshotter, "", WithTestModeOn(true), WithUPF(*isUPFEnabled), WithLazyMode(*isLazyMode), WithDockerCredentials(*dockerCredentials), WithSnapshotsDir(sourceDir), WithArtifactStore(store))
+	t.Cleanup(orch.Cleanup)
+
+	const revision = "remote-snapshot-revision"
+	const sourceVMID, restoreVMID = "remote-snapshot-source", "remote-snapshot-restore"
+	source := snapshotting.NewSnapshotManager(sourceDir)
+	source.EnableRemoteTransfer(store, false)
+	_, _, err := orch.StartVM(ctx, sourceVMID, *testImage)
+	require.NoError(t, err, "start source VM")
+	require.NoError(t, orch.PauseVM(ctx, sourceVMID), "pause source VM")
+	snapshot, err := source.InitSnapshot(revision, *testImage)
+	require.NoError(t, err, "initialize source snapshot")
+	require.NoError(t, orch.CreateSnapshot(ctx, sourceVMID, snapshot), "create source snapshot")
+	_, err = orch.ResumeVM(ctx, sourceVMID)
+	require.NoError(t, err, "resume source VM")
+	require.NoError(t, orch.StopSingleVM(ctx, sourceVMID), "stop source VM")
+	require.NoError(t, source.CommitSnapshot(revision), "commit source snapshot")
+	require.NoError(t, source.PublishSnapshot(ctx, revision), "upload source snapshot")
+	_, err = source.Catalog().Get(revision)
+	require.ErrorIs(t, err, snapshotting.ErrSnapshotNotFound, "source cache is removed after upload")
+
+	worker := snapshotting.NewSnapshotManager(workerDir)
+	worker.EnableRemoteTransfer(store, true)
+	downloaded, err := worker.AcquireSnapshotContext(ctx, revision)
+	require.NoError(t, err, "download snapshot on clean worker")
+	_, err = worker.Catalog().Get(revision)
+	require.NoError(t, err, "downloaded snapshot is committed locally")
+	_, _, err = orch.LoadSnapshot(ctx, restoreVMID, downloaded)
+	require.NoError(t, err, "restore downloaded snapshot")
+	_, err = orch.ResumeVM(ctx, restoreVMID)
+	require.NoError(t, err, "resume restored VM")
+	require.NoError(t, orch.StopSingleVM(ctx, restoreVMID), "stop restored VM")
+}
+
 func TestPauseSnapResume(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
