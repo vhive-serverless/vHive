@@ -94,6 +94,40 @@ func TestRemoteWholeFileSnapshotConcurrentDownloadUsesOneTransfer(t *testing.T) 
 	require.Equal(t, 5, store.gets, "one descriptor, state, memory, metadata, and optional patch lookup")
 }
 
+func TestRemoteChunkedMemoryRoundTripDeduplicatesAcrossSnapshots(t *testing.T) {
+	store := NewMemoryArtifactStore()
+	base := t.TempDir()
+	first := NewSnapshotManager(base)
+	first.EnableRemoteTransfer(store, false)
+	require.NoError(t, first.EnableChunkedMemory(4))
+	for revision, memory := range map[string][]byte{
+		"revision-a": []byte("AAAABBBBCCCC"),
+		"revision-b": []byte("AAAABBBBDDDD"),
+	} {
+		snapshot, err := first.InitSnapshot(revision, "example:image")
+		require.NoError(t, err)
+		require.NoError(t, snapshot.CreateSnapDir())
+		require.NoError(t, os.WriteFile(snapshot.GetSnapshotFilePath(), []byte("vm-state"), 0600))
+		require.NoError(t, os.WriteFile(snapshot.GetMemFilePath(), memory, 0600))
+		require.NoError(t, snapshot.SerializeSnapInfo())
+		require.NoError(t, first.CommitSnapshot(revision))
+		require.NoError(t, first.PublishSnapshot(context.Background(), revision))
+	}
+	chunks, err := store.List(context.Background(), "shared/chunks/")
+	require.NoError(t, err)
+	require.Len(t, chunks, 4, "two repeated chunks are stored once across both snapshots")
+
+	worker := NewSnapshotManager(t.TempDir())
+	worker.EnableRemoteTransfer(store, true)
+	for revision, want := range map[string][]byte{"revision-a": []byte("AAAABBBBCCCC"), "revision-b": []byte("AAAABBBBDDDD")} {
+		snapshot, err := worker.AcquireSnapshotContext(context.Background(), revision)
+		require.NoError(t, err)
+		got, err := os.ReadFile(snapshot.GetMemFilePath())
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	}
+}
+
 type countingStore struct {
 	ArtifactStore
 	mu   sync.Mutex

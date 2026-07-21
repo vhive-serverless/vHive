@@ -56,6 +56,25 @@ func (mgr *SnapshotManager) EnableRemoteTransfer(store ArtifactStore, cacheSnaps
 	mgr.remote = newRemoteSnapshotTransfer(store, cacheSnaps)
 }
 
+// EnableChunkedMemory opts remote publication into content-addressed chunks.
+// It must be called after EnableRemoteTransfer. Passing zero disables it and
+// keeps the stage-3 whole-memory-file protocol.
+func (mgr *SnapshotManager) EnableChunkedMemory(chunkSize int) error {
+	mgr.Lock()
+	remote := mgr.remote
+	mgr.Unlock()
+	if remote == nil {
+		return fmt.Errorf("remote transfer is not enabled")
+	}
+	if chunkSize == 0 {
+		remote.mu.Lock()
+		remote.chunkSize = 0
+		remote.mu.Unlock()
+		return nil
+	}
+	return remote.enableChunkedMemory(chunkSize)
+}
+
 // Snapshot identified by VM id
 
 func NewSnapshotManager(baseFolder string) *SnapshotManager {

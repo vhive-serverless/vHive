@@ -19,6 +19,7 @@ const remoteDescriptorArtifact = ".snapshot-descriptor.json"
 type remoteSnapshotTransfer struct {
 	store      ArtifactStore
 	cacheSnaps bool
+	chunkSize  int
 
 	mu        sync.Mutex
 	downloads map[string]*remoteDownload
@@ -32,6 +33,16 @@ type remoteDownload struct {
 
 func newRemoteSnapshotTransfer(store ArtifactStore, cacheSnaps bool) *remoteSnapshotTransfer {
 	return &remoteSnapshotTransfer{store: store, cacheSnaps: cacheSnaps, downloads: make(map[string]*remoteDownload)}
+}
+
+func (r *remoteSnapshotTransfer) enableChunkedMemory(chunkSize int) error {
+	if chunkSize <= 0 {
+		return fmt.Errorf("chunk size must be positive")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.chunkSize = chunkSize
+	return nil
 }
 
 func (r *remoteSnapshotTransfer) hasDownload(revision string) bool {
@@ -51,7 +62,14 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 
 	// Upload payloads before the descriptor. The descriptor is the remote
 	// readiness marker and therefore must be last.
-	for _, artifact := range []string{desc.Artifacts.VMState, desc.Artifacts.Memory, desc.Artifacts.Info, desc.Artifacts.Patch} {
+	r.mu.Lock()
+	chunkSize := r.chunkSize
+	r.mu.Unlock()
+	artifacts := []string{desc.Artifacts.VMState, desc.Artifacts.Info, desc.Artifacts.Patch}
+	if chunkSize == 0 {
+		artifacts = append([]string{desc.Artifacts.Memory}, artifacts...)
+	}
+	for _, artifact := range artifacts {
 		file := filepath.Join(baseFolder, revision, artifact)
 		if artifact == desc.Artifacts.Patch {
 			if _, statErr := os.Stat(file); os.IsNotExist(statErr) {
@@ -63,6 +81,18 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 		if err := putFile(ctx, r.store, revision, artifact, file); err != nil {
 			return err
 		}
+	}
+	if chunkSize > 0 {
+		recipe, err := uploadChunkedMemory(ctx, r.store, filepath.Join(baseFolder, revision, desc.Artifacts.Memory), chunkSize)
+		if err != nil {
+			return err
+		}
+		if err := putRecipe(ctx, r.store, revision, recipe); err != nil {
+			return err
+		}
+		copy := *desc
+		desc = &copy
+		desc.MemoryRecipe = memoryRecipeArtifact
 	}
 
 	data, err := json.Marshal(desc)
@@ -126,9 +156,36 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 		}
 	}()
 
-	for _, artifact := range []string{desc.Artifacts.VMState, desc.Artifacts.Memory, desc.Artifacts.Info} {
+	for _, artifact := range []string{desc.Artifacts.VMState, desc.Artifacts.Info} {
 		if err := getFile(ctx, r.store, revision, artifact, filepath.Join(baseFolder, revision, artifact)); err != nil {
 			return nil, err
+		}
+	}
+	if desc.MemoryRecipe == "" {
+		if err := getFile(ctx, r.store, revision, desc.Artifacts.Memory, filepath.Join(baseFolder, revision, desc.Artifacts.Memory)); err != nil {
+			return nil, err
+		}
+	} else {
+		recipe, err := getRecipe(ctx, r.store, revision)
+		if err != nil {
+			return nil, err
+		}
+		memoryPath := filepath.Join(baseFolder, revision, desc.Artifacts.Memory)
+		temporary, err := os.CreateTemp(filepath.Dir(memoryPath), ".reconstructed-memory-*")
+		if err != nil {
+			return nil, fmt.Errorf("create reconstructed memory file: %w", err)
+		}
+		temporaryName := temporary.Name()
+		defer os.Remove(temporaryName)
+		if err := ReconstructMemory(ctx, r.store, recipe, temporary); err != nil {
+			temporary.Close()
+			return nil, err
+		}
+		if err := temporary.Close(); err != nil {
+			return nil, fmt.Errorf("close reconstructed memory file: %w", err)
+		}
+		if err := os.Rename(temporaryName, memoryPath); err != nil {
+			return nil, fmt.Errorf("publish reconstructed memory file: %w", err)
 		}
 	}
 	// A patch is needed only by devmapper snapshots, so its absence is valid.
@@ -172,6 +229,9 @@ func validateRemoteDescriptor(desc *SnapshotDescriptor, revision string) error {
 		if _, err := RevisionArtifactKey(revision, artifact); err != nil {
 			return fmt.Errorf("invalid remote descriptor: %w", err)
 		}
+	}
+	if desc.MemoryRecipe != "" && desc.MemoryRecipe != memoryRecipeArtifact {
+		return fmt.Errorf("invalid remote memory recipe %q", desc.MemoryRecipe)
 	}
 	return nil
 }

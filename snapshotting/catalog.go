@@ -39,10 +39,11 @@ func defaultArtifactNames() ArtifactNames {
 // SnapshotDescriptor is the catalog's durable lifecycle record for one
 // revision. A descriptor is readable only after Ready is true.
 type SnapshotDescriptor struct {
-	Revision  string        `json:"revision"`
-	Image     string        `json:"image"`
-	Ready     bool          `json:"ready"`
-	Artifacts ArtifactNames `json:"artifacts"`
+	Revision     string        `json:"revision"`
+	Image        string        `json:"image"`
+	Ready        bool          `json:"ready"`
+	Artifacts    ArtifactNames `json:"artifacts"`
+	MemoryRecipe string        `json:"memoryRecipe,omitempty"`
 }
 
 // Catalog owns the lifecycle metadata for snapshots. The local implementation

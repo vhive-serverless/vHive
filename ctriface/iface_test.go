@@ -221,9 +221,18 @@ func TestUPFWorkingSetRecordReplay(t *testing.T) {
 	require.Equal(t, traceInfoBefore.ModTime(), traceInfoAfter.ModTime(), "Replay modified working set trace")
 }
 
-// TestRemoteSnapshotTransferRestore verifies remote snapshot transfer at the
-// Firecracker interface boundary.
+// TestRemoteSnapshotTransferRestore verifies eager whole-file transfer.
 func TestRemoteSnapshotTransferRestore(t *testing.T) {
+	testRemoteSnapshotTransferRestore(t, 0)
+}
+
+// TestRemoteChunkedSnapshotTransferRestore verifies chunked-memory transfer.
+func TestRemoteChunkedSnapshotTransferRestore(t *testing.T) {
+	testRemoteSnapshotTransferRestore(t, 512*1024)
+}
+
+func testRemoteSnapshotTransferRestore(t *testing.T, chunkSize int) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), 120*time.Second)
 	defer cancel()
 
@@ -236,6 +245,9 @@ func TestRemoteSnapshotTransferRestore(t *testing.T) {
 	const sourceVMID, restoreVMID = "remote-snapshot-source", "remote-snapshot-restore"
 	source := snapshotting.NewSnapshotManager(sourceDir)
 	source.EnableRemoteTransfer(store, false)
+	if chunkSize != 0 {
+		require.NoError(t, source.EnableChunkedMemory(chunkSize), "enable chunked memory publication")
+	}
 	_, _, err := orch.StartVM(ctx, sourceVMID, *testImage)
 	require.NoError(t, err, "start source VM")
 	require.NoError(t, orch.PauseVM(ctx, sourceVMID), "pause source VM")
