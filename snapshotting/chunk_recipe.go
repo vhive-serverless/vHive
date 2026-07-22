@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -186,21 +187,20 @@ func getRecipe(ctx context.Context, store ArtifactStore, revision string) (Memor
 
 // ReconstructMemory writes a recipe eagerly and verifies every fetched chunk.
 func ReconstructMemory(ctx context.Context, store ArtifactStore, recipe MemoryRecipe, writer io.Writer) error {
+	return ReconstructMemoryWithCache(ctx, store, nil, recipe, writer)
+}
+
+// ReconstructMemoryWithCache writes a recipe eagerly, using cache when it is
+// provided. A chunk is verified before insertion, and cached bytes are
+// verified again before they are written to the reconstructed memory file.
+func ReconstructMemoryWithCache(ctx context.Context, store ArtifactStore, cache ChunkCache, recipe MemoryRecipe, writer io.Writer) error {
 	if err := recipe.Validate(); err != nil {
 		return err
 	}
 	for _, expected := range recipe.Chunks {
-		reader, err := getChunk(ctx, store, expected.ID)
+		data, err := readRecipeChunk(ctx, store, cache, expected)
 		if err != nil {
 			return err
-		}
-		data, readErr := io.ReadAll(reader)
-		closeErr := reader.Close()
-		if readErr != nil {
-			return fmt.Errorf("read chunk %s: %w", expected.ID, readErr)
-		}
-		if closeErr != nil {
-			return fmt.Errorf("close chunk %s: %w", expected.ID, closeErr)
 		}
 		if len(data) != expected.Size || chunkID(data) != expected.ID {
 			return fmt.Errorf("corrupt chunk %s", expected.ID)
@@ -210,4 +210,54 @@ func ReconstructMemory(ctx context.Context, store ArtifactStore, recipe MemoryRe
 		}
 	}
 	return nil
+}
+
+func readRecipeChunk(ctx context.Context, store ArtifactStore, cache ChunkCache, expected RecipeChunk) ([]byte, error) {
+	if cache == nil {
+		return readRemoteChunk(ctx, store, expected.ID)
+	}
+	handle, err := cache.Acquire(ctx, expected.ID)
+	if errors.Is(err, ErrChunkCacheMiss) {
+		data, fetchErr := readRemoteChunk(ctx, store, expected.ID)
+		if fetchErr != nil {
+			return nil, fetchErr
+		}
+		if len(data) != expected.Size || chunkID(data) != expected.ID {
+			return nil, fmt.Errorf("corrupt chunk %s", expected.ID)
+		}
+		handle, err = cache.Insert(ctx, expected.ID, data)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("acquire cached chunk %s: %w", expected.ID, err)
+	}
+	defer handle.Release()
+	reader, err := handle.Open()
+	if err != nil {
+		return nil, err
+	}
+	data, readErr := io.ReadAll(reader)
+	closeErr := reader.Close()
+	if readErr != nil {
+		return nil, fmt.Errorf("read cached chunk %s: %w", expected.ID, readErr)
+	}
+	if closeErr != nil {
+		return nil, fmt.Errorf("close cached chunk %s: %w", expected.ID, closeErr)
+	}
+	return data, nil
+}
+
+func readRemoteChunk(ctx context.Context, store ArtifactStore, id ChunkID) ([]byte, error) {
+	reader, err := getChunk(ctx, store, id)
+	if err != nil {
+		return nil, err
+	}
+	data, readErr := io.ReadAll(reader)
+	closeErr := reader.Close()
+	if readErr != nil {
+		return nil, fmt.Errorf("read chunk %s: %w", id, readErr)
+	}
+	if closeErr != nil {
+		return nil, fmt.Errorf("close chunk %s: %w", id, closeErr)
+	}
+	return data, nil
 }

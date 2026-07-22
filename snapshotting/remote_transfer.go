@@ -20,6 +20,7 @@ type remoteSnapshotTransfer struct {
 	store      ArtifactStore
 	cacheSnaps bool
 	chunkSize  int
+	chunkCache ChunkCache
 
 	mu        sync.Mutex
 	downloads map[string]*remoteDownload
@@ -43,6 +44,12 @@ func (r *remoteSnapshotTransfer) enableChunkedMemory(chunkSize int) error {
 	defer r.mu.Unlock()
 	r.chunkSize = chunkSize
 	return nil
+}
+
+func (r *remoteSnapshotTransfer) setChunkCache(cache ChunkCache) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.chunkCache = cache
 }
 
 func (r *remoteSnapshotTransfer) hasDownload(revision string) bool {
@@ -177,7 +184,10 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 		}
 		temporaryName := temporary.Name()
 		defer os.Remove(temporaryName)
-		if err := ReconstructMemory(ctx, r.store, recipe, temporary); err != nil {
+		r.mu.Lock()
+		cache := r.chunkCache
+		r.mu.Unlock()
+		if err := ReconstructMemoryWithCache(ctx, r.store, cache, recipe, temporary); err != nil {
 			temporary.Close()
 			return nil, err
 		}

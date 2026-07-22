@@ -75,6 +75,62 @@ func (mgr *SnapshotManager) EnableChunkedMemory(chunkSize int) error {
 	return remote.enableChunkedMemory(chunkSize)
 }
 
+// EnableChunkCache uses directory for recipe chunk reuse during remote
+// reconstruction. It is independent of snapshot retention and affects only
+// chunked remote snapshots. Passing an empty directory disables the cache.
+func (mgr *SnapshotManager) EnableChunkCache(directory string) error {
+	mgr.Lock()
+	remote := mgr.remote
+	mgr.Unlock()
+	if remote == nil {
+		return fmt.Errorf("remote transfer is not enabled")
+	}
+	if directory == "" {
+		remote.setChunkCache(nil)
+		return nil
+	}
+	cache, err := NewFileChunkCache(directory)
+	if err != nil {
+		return err
+	}
+	remote.setChunkCache(cache)
+	return nil
+}
+
+// CleanupChunkCache removes only unpinned chunk files from the configured
+// cache. It has no effect when no chunk cache is enabled.
+func (mgr *SnapshotManager) CleanupChunkCache(ctx context.Context) error {
+	mgr.Lock()
+	remote := mgr.remote
+	mgr.Unlock()
+	if remote == nil {
+		return nil
+	}
+	remote.mu.Lock()
+	cache := remote.chunkCache
+	remote.mu.Unlock()
+	if cache == nil {
+		return nil
+	}
+	return cache.Cleanup(ctx)
+}
+
+func (mgr *SnapshotManager) ChunkCacheMetrics() ChunkCacheMetrics {
+	mgr.Lock()
+	remote := mgr.remote
+	mgr.Unlock()
+	if remote == nil {
+		return ChunkCacheMetrics{}
+	}
+	remote.mu.Lock()
+	cache := remote.chunkCache
+	remote.mu.Unlock()
+	if cache == nil {
+		return ChunkCacheMetrics{}
+	}
+	return cache.Metrics()
+}
+
 // Snapshot identified by VM id
 
 func NewSnapshotManager(baseFolder string) *SnapshotManager {

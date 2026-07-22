@@ -140,3 +140,15 @@ func (s *countingStore) Get(ctx context.Context, key ArtifactKey) (io.ReadCloser
 	s.mu.Unlock()
 	return s.ArtifactStore.Get(ctx, key)
 }
+
+func (s *countingStore) GetCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.gets
+}
+
+func (s *countingStore) ResetGetCount() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.gets = 0
+}
