@@ -32,6 +32,20 @@ type remoteDownload struct {
 	err  error
 }
 
+type memoryRecipeCatalog interface {
+	SetMemoryRecipe(revision, recipe string) error
+}
+
+func persistMemoryRecipe(catalog Catalog, revision, recipe string) error {
+	if recipe == "" {
+		return nil
+	}
+	if local, ok := catalog.(memoryRecipeCatalog); ok {
+		return local.SetMemoryRecipe(revision, recipe)
+	}
+	return nil
+}
+
 func newRemoteSnapshotTransfer(store ArtifactStore, cacheSnaps bool) *remoteSnapshotTransfer {
 	return &remoteSnapshotTransfer{store: store, cacheSnaps: cacheSnaps, downloads: make(map[string]*remoteDownload)}
 }
@@ -100,6 +114,9 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 		copy := *desc
 		desc = &copy
 		desc.MemoryRecipe = memoryRecipeArtifact
+		if err := persistMemoryRecipe(catalog, revision, desc.MemoryRecipe); err != nil {
+			return err
+		}
 	}
 
 	data, err := json.Marshal(desc)
@@ -155,6 +172,9 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 		return nil, err
 	}
 	if _, err := catalog.Begin(revision, desc.Image); err != nil {
+		return nil, err
+	}
+	if err := persistMemoryRecipe(catalog, revision, desc.MemoryRecipe); err != nil {
 		return nil, err
 	}
 	defer func() {

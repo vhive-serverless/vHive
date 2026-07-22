@@ -122,9 +122,13 @@ func TestRemoteChunkedMemoryRoundTripDeduplicatesAcrossSnapshots(t *testing.T) {
 	for revision, want := range map[string][]byte{"revision-a": []byte("AAAABBBBCCCC"), "revision-b": []byte("AAAABBBBDDDD")} {
 		snapshot, err := worker.AcquireSnapshotContext(context.Background(), revision)
 		require.NoError(t, err)
+		require.True(t, snapshot.HasMemoryRecipe(), "downloaded recipe marker is retained for lazy restore")
 		got, err := os.ReadFile(snapshot.GetMemFilePath())
 		require.NoError(t, err)
 		require.Equal(t, want, got)
+		reacquired, err := worker.AcquireSnapshotContext(context.Background(), revision)
+		require.NoError(t, err)
+		require.True(t, reacquired.HasMemoryRecipe(), "local catalog retains recipe marker")
 	}
 }
 

@@ -592,7 +592,17 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		return nil
 	}
 
-	src, err := guestMemPointer(s.guestMem, copyArgs.srcOffset, copyArgs.copyLen)
+	var src uint64
+	if s.PageServer != nil {
+		page, pageErr := s.PageServer.Read(copyArgs.srcOffset, copyArgs.copyLen)
+		if pageErr != nil {
+			return pageErr
+		}
+		// page.Bytes remains live until the ioctl below has consumed src.
+		src, err = guestMemPointer(page.Bytes, 0, copyArgs.copyLen)
+	} else {
+		src, err = guestMemPointer(s.guestMem, copyArgs.srcOffset, copyArgs.copyLen)
+	}
 	if err != nil {
 		return err
 	}

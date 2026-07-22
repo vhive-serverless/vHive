@@ -281,6 +281,12 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		logger.Error("Failed to munmap guest memory")
 		return err
 	}
+	if state.PageServer != nil {
+		if err := state.PageServer.Close(); err != nil {
+			logger.WithError(err).Error("Failed to close lazy page server")
+			return err
+		}
+	}
 
 	state.processMetrics()
 

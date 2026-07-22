@@ -495,6 +495,35 @@ func configureSnapshotMemoryBackend(conf *proto.CreateVMRequest, backendType, ba
 	}
 }
 
+var newRecipePageSourceForRevision = snapshotting.NewRecipePageSourceForRevision
+
+// lazyRecipePageServer selects recipe-backed lazy restore only when both lazy
+// mode and a chunked remote snapshot are explicitly in use. Local snapshots
+// deliberately retain the existing mmap-backed UFFD behavior.
+func lazyRecipePageServer(ctx context.Context, lazy bool, store snapshotting.ArtifactStore, snap *snapshotting.Snapshot) (*manager.PageServer, error) {
+	if !lazy || snap == nil || !snap.HasMemoryRecipe() {
+		return nil, nil
+	}
+	if store == nil {
+		return nil, fmt.Errorf("lazy recipe restore requires an artifact store")
+	}
+	source, err := newRecipePageSourceForRevision(ctx, store, nil, snap.GetId())
+	if err != nil {
+		return nil, err
+	}
+	input, err := (manager.RestoreMaterializer{}).MaterializeLazy(source)
+	if err != nil {
+		_ = source.Close()
+		return nil, err
+	}
+	server, err := input.NewPageServer()
+	if err != nil {
+		_ = input.Close()
+		return nil, err
+	}
+	return server, nil
+}
+
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
 	if err := o.validateUPFMode(); err != nil {
@@ -508,6 +537,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		activateErr        error
 		deactivateErr      error
 		activateErrChan    chan error
+		lazyPageServer     *manager.PageServer
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -534,6 +564,17 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
 	configureSnapshotMemoryBackend(conf, "File", snap.GetMemFilePath())
 	uffdSock := filepath.Join(o.getVMBaseDir(vmID), "uffd.sock")
+	if o.GetUPFEnabled() {
+		lazyPageServer, err = lazyRecipePageServer(ctx, o.isLazyMode, o.artifactStore, snap)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "prepare lazy recipe restore")
+		}
+	}
+	defer func() {
+		if retErr != nil && lazyPageServer != nil {
+			_ = lazyPageServer.Close()
+		}
+	}()
 
 	if o.snapshotter == "devmapper" {
 		if vm.Image, err = o.getImage(ctx, snap.GetImage()); err != nil {
@@ -604,6 +645,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 			IsLazyMode:          o.isLazyMode,
 			WorkingSetPath:      snap.GetWorkingSetFilePath(),
 			WorkingSetTracePath: snap.GetWorkingSetTraceFilePath(),
+			PageServer:          lazyPageServer,
 		}); err != nil {
 			return nil, nil, err
 		}

@@ -46,7 +46,10 @@ type SnapshotStateCfg struct {
 	MetricsPath      string // path to csv file where the metrics should be stored
 	IsLazyMode       bool
 	GuestMemSize     int
-	metricsModeOn    bool
+	// PageServer, when non-nil, supplies lazy pages instead of GuestMemPath.
+	// Keeping it optional preserves the established file-backed restore path.
+	PageServer    *PageServer
+	metricsModeOn bool
 }
 
 // SnapshotState Stores the state of the snapshot
@@ -193,6 +196,9 @@ func (s *SnapshotState) processMetrics() {
 }
 
 func (s *SnapshotState) mapGuestMemory() error {
+	if s.PageServer != nil {
+		return nil
+	}
 	fd, err := os.OpenFile(s.GuestMemPath, os.O_RDONLY, 0444)
 	if err != nil {
 		log.Errorf("Failed to open guest memory file: %v", err)
@@ -210,6 +216,9 @@ func (s *SnapshotState) mapGuestMemory() error {
 }
 
 func (s *SnapshotState) unmapGuestMemory() error {
+	if s.guestMem == nil {
+		return nil
+	}
 	if err := unix.Munmap(s.guestMem); err != nil {
 		log.Errorf("Failed to munmap guest memory file: %v", err)
 		return err

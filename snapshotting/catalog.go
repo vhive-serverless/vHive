@@ -117,6 +117,19 @@ func (c *LocalCatalog) Commit(revision string) error {
 	return c.write(descriptor)
 }
 
+// SetMemoryRecipe records the optional remote memory recipe before commit so
+// a later local acquire can still select recipe-backed lazy restore.
+func (c *LocalCatalog) SetMemoryRecipe(revision, recipe string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	descriptor, err := c.read(revision)
+	if err != nil {
+		return err
+	}
+	descriptor.MemoryRecipe = recipe
+	return c.write(descriptor)
+}
+
 func (c *LocalCatalog) Delete(revision string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()

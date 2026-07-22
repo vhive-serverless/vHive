@@ -41,6 +41,7 @@ type Snapshot struct {
 	snapDir           string
 	Image             string
 	artifacts         ArtifactNames
+	memoryRecipe      string
 }
 
 func NewSnapshot(id, baseFolder, image string) *Snapshot {
@@ -62,6 +63,7 @@ func NewSnapshotFromDescriptor(baseFolder string, descriptor *SnapshotDescriptor
 	snapshot := NewSnapshot(descriptor.Revision, baseFolder, descriptor.Image)
 	snapshot.ready = descriptor.Ready
 	snapshot.artifacts = descriptor.Artifacts
+	snapshot.memoryRecipe = descriptor.MemoryRecipe
 	return snapshot
 }
 
@@ -100,6 +102,10 @@ func (snp *Snapshot) GetWorkingSetFilePath() string {
 func (snp *Snapshot) GetWorkingSetTraceFilePath() string {
 	return filepath.Join(snp.snapDir, "working_set_trace")
 }
+
+// HasMemoryRecipe reports whether this snapshot's memory can be supplied
+// lazily from its remote chunk recipe.
+func (snp *Snapshot) HasMemoryRecipe() bool { return snp.memoryRecipe != "" }
 
 func (snp *Snapshot) GetPatchFilePath() string {
 	return filepath.Join(snp.snapDir, snp.artifacts.Patch)
