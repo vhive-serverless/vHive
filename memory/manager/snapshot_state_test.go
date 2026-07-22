@@ -209,15 +209,16 @@ func TestPageFaultCopyArgsForGuestOffsetOutsideAllRegions(t *testing.T) {
 	}
 }
 
-func TestTraceProcessRecordWritesWorkingSet(t *testing.T) {
+func TestTraceProcessRecordPersistsWorkingSetAndTrace(t *testing.T) {
 	baseDir := t.TempDir()
 	guestMemPath := filepath.Join(baseDir, "guest_mem")
 	workingSetPath := filepath.Join(baseDir, "working_set_pages")
+	tracePath := filepath.Join(baseDir, "working_set_trace")
 	pageSize := uint64(os.Getpagesize())
 
 	prepareGuestMemoryFile(t, guestMemPath, 5*int(pageSize))
 
-	trace := initTrace(filepath.Join(baseDir, "trace"))
+	trace := initTrace(tracePath)
 	trace.AppendRecord(Record{offset: 3 * pageSize})
 	trace.AppendRecord(Record{offset: pageSize})
 	trace.AppendRecord(Record{offset: 2 * pageSize})
@@ -245,6 +246,20 @@ func TestTraceProcessRecordWritesWorkingSet(t *testing.T) {
 	want := wantGuest[pageSize : 4*pageSize]
 	if !reflect.DeepEqual(got, want) {
 		t.Fatal("working set contents do not match recorded guest memory pages")
+	}
+
+	loadedTrace := initTrace(tracePath)
+	if err := loadedTrace.readTrace(); err != nil {
+		t.Fatalf("readTrace returned error: %v", err)
+	}
+	if got, want := loadedTrace.pageSize, pageSize; got != want {
+		t.Fatalf("loaded trace page size = %#x, want %#x", got, want)
+	}
+	if !reflect.DeepEqual(loadedTrace.trace, trace.trace) {
+		t.Fatal("loaded trace records do not match persisted records")
+	}
+	if !reflect.DeepEqual(loadedTrace.regions, trace.regions) {
+		t.Fatal("loaded trace regions do not match persisted regions")
 	}
 }
 

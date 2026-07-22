@@ -82,6 +82,14 @@ func (snp *Snapshot) GetMemFilePath() string {
 	return filepath.Join(snp.snapDir, "mem_file")
 }
 
+func (snp *Snapshot) GetWorkingSetFilePath() string {
+	return filepath.Join(snp.snapDir, "working_set_pages")
+}
+
+func (snp *Snapshot) GetWorkingSetTraceFilePath() string {
+	return filepath.Join(snp.snapDir, "working_set_trace")
+}
+
 func (snp *Snapshot) GetPatchFilePath() string {
 	return filepath.Join(snp.snapDir, "patch_file")
 }

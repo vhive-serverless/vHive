@@ -39,7 +39,7 @@ import (
 type SnapshotStateCfg struct {
 	VMID string
 
-	VMMStatePath, GuestMemPath, WorkingSetPath string
+	VMMStatePath, GuestMemPath, WorkingSetPath, WorkingSetTracePath string
 
 	InstanceSockAddr string
 	BaseDir          string // base directory for the instance
@@ -90,7 +90,7 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 	cfg = normalizeSnapshotStateCfg(cfg)
 	s.SnapshotStateCfg = cfg
 
-	s.trace = initTrace(s.getTraceFile())
+	s.trace = initTrace(s.WorkingSetTracePath)
 	if s.metricsModeOn {
 		s.totalPFServed = make([]float64, 0)
 		s.uniquePFServed = make([]float64, 0)
@@ -105,19 +105,15 @@ func normalizeSnapshotStateCfg(cfg SnapshotStateCfg) SnapshotStateCfg {
 	if cfg.WorkingSetPath == "" && cfg.BaseDir != "" {
 		cfg.WorkingSetPath = filepath.Join(cfg.BaseDir, "working_set_pages")
 	}
+	if cfg.WorkingSetTracePath == "" && cfg.BaseDir != "" {
+		cfg.WorkingSetTracePath = filepath.Join(cfg.BaseDir, "trace")
+	}
 	return cfg
 }
 
 func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 	cfg = normalizeSnapshotStateCfg(cfg)
 
-	trace := s.trace
-	if trace == nil {
-		trace = initTrace(filepath.Join(cfg.BaseDir, "trace"))
-	} else {
-		trace.traceFileName = filepath.Join(cfg.BaseDir, "trace")
-	}
-	isRecordReady := s.isRecordReady
 	isEverActivated := s.isEverActivated
 	totalPFServed := s.totalPFServed
 	uniquePFServed := s.uniquePFServed
@@ -128,14 +124,14 @@ func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 	s.firstPageFaultOnce = nil
 	s.userFaultFD = nil
 	s.guestRegionMappings = nil
-	s.trace = trace
+	s.trace = initTrace(cfg.WorkingSetTracePath)
 	s.epfd = 0
 	s.wakeFD = -1
 	s.quitCh = nil
 	s.pollDoneCh = nil
 	s.isEverActivated = isEverActivated
 	s.isActive = false
-	s.isRecordReady = isRecordReady
+	s.isRecordReady = false
 	s.guestMem = nil
 	s.workingSet = nil
 	s.totalPFServed = totalPFServed
@@ -196,10 +192,6 @@ func (s *SnapshotState) processMetrics() {
 	s.currentMetric = nil
 }
 
-func (s *SnapshotState) getTraceFile() string {
-	return filepath.Join(s.BaseDir, "trace")
-}
-
 func (s *SnapshotState) mapGuestMemory() error {
 	fd, err := os.OpenFile(s.GuestMemPath, os.O_RDONLY, 0444)
 	if err != nil {
@@ -226,17 +218,30 @@ func (s *SnapshotState) unmapGuestMemory() error {
 	return nil
 }
 
-// fetchState verifies snapshot state and loads the replay working set when ready.
+// fetchState verifies snapshot state and loads a persisted working set when available.
 func (s *SnapshotState) fetchState() error {
 	if _, err := os.ReadFile(s.VMMStatePath); err != nil {
 		log.Errorf("Failed to fetch VMM state: %v\n", err)
 		return err
 	}
 
-	if s.isRecordReady && !s.IsLazyMode {
-		return s.fetchWorkingSet()
+	s.isRecordReady = false
+	s.workingSet = nil
+	s.trace.reset()
+	if err := s.trace.readTrace(); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to read working set trace: %w", err)
 	}
 
+	if !s.IsLazyMode {
+		if err := s.fetchWorkingSet(); err != nil {
+			return err
+		}
+	}
+
+	s.isRecordReady = true
 	return nil
 }
 
@@ -250,10 +255,6 @@ func (s *SnapshotState) fetchWorkingSet() error {
 	if size > uint64(int(^uint(0)>>1)) {
 		return fmt.Errorf("working set too large: %#x", size)
 	}
-	if size == 0 {
-		s.workingSet = nil
-		return nil
-	}
 
 	f, err := os.Open(s.WorkingSetPath)
 	if err != nil {
@@ -261,6 +262,17 @@ func (s *SnapshotState) fetchWorkingSet() error {
 		return err
 	}
 	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if info.Size() < 0 || uint64(info.Size()) != size {
+		return fmt.Errorf("working set size is %#x, want %#x", info.Size(), size)
+	}
+	if size == 0 {
+		s.workingSet = nil
+		return nil
+	}
 
 	s.workingSet = make([]byte, int(size))
 	n, err := io.ReadFull(f, s.workingSet)
