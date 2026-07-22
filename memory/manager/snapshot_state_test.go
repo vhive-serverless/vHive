@@ -209,7 +209,7 @@ func TestPageFaultCopyArgsForGuestOffsetOutsideAllRegions(t *testing.T) {
 	}
 }
 
-func TestTraceProcessRecordWritesWorkingSet(t *testing.T) {
+func TestTraceProcessRecordPersistsWorkingSetAndTrace(t *testing.T) {
 	baseDir := t.TempDir()
 	guestMemPath := filepath.Join(baseDir, "guest_mem")
 	workingSetPath := filepath.Join(baseDir, "working_set_pages")
