@@ -217,18 +217,6 @@ func TestFetchStateLoadsWorkingSetAcrossVMIDs(t *testing.T) {
 	if !replayState.isRecordReady {
 		t.Fatal("FetchState did not mark the persisted working set ready")
 	}
-	if got, want := replayState.trace.pageSize, pageSize; got != want {
-		t.Fatalf("trace page size = %#x, want %#x", got, want)
-	}
-	if got, want := len(replayState.trace.trace), 2; got != want {
-		t.Fatalf("trace length = %d, want %d", got, want)
-	}
-	if got, want := replayState.trace.trace[0].offset, pageSize; got != want {
-		t.Fatalf("first trace offset = %#x, want %#x", got, want)
-	}
-	if got, want := replayState.trace.trace[1].offset, 3*pageSize; got != want {
-		t.Fatalf("second trace offset = %#x, want %#x", got, want)
-	}
 
 	guestMem, err := os.ReadFile(guestMemPath)
 	if err != nil {

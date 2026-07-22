@@ -22,10 +22,10 @@
 package ctriface
 
 import (
-	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"sync"
 	"testing"
@@ -141,13 +141,6 @@ func TestUPFWorkingSetRecordReplay(t *testing.T) {
 		t.Skip("requires UPF working set mode")
 	}
 
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
-		FullTimestamp:   true,
-	})
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.InfoLevel)
-
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), 5*time.Minute)
 	defer cancel()
 
@@ -168,6 +161,7 @@ func TestUPFWorkingSetRecordReplay(t *testing.T) {
 	sourceVMID := "ws-source"
 	recordVMID := "ws-record"
 	replayVMID := "ws-replay"
+	const installWorkingSetMetric = "InstallWS"
 	snap := snapshotting.NewSnapshot("myrev-working-set", "/fccd/snapshots", *testImage)
 
 	_, _, err := orch.StartVM(ctx, sourceVMID, *testImage)
@@ -178,11 +172,18 @@ func TestUPFWorkingSetRecordReplay(t *testing.T) {
 	require.NoError(t, orch.StopSingleVM(ctx, sourceVMID), "Failed to stop source VM")
 
 	loadResumeStop := func(vmID string) {
-		_, _, err := orch.LoadSnapshot(ctx, vmID, snap)
+		response, _, err := orch.LoadSnapshot(ctx, vmID, snap)
 		require.NoError(t, err, "Failed to load snapshot into %s", vmID)
 		_, err = orch.ResumeVM(ctx, vmID)
 		require.NoError(t, err, "Failed to resume %s", vmID)
-		time.Sleep(500 * time.Millisecond)
+		require.Eventually(t, func() bool {
+			conn, err := net.DialTimeout("tcp", net.JoinHostPort(response.GuestIP, "50051"), 200*time.Millisecond)
+			if err != nil {
+				return false
+			}
+			_ = conn.Close()
+			return true
+		}, 30*time.Second, 100*time.Millisecond, "%s workload did not become ready", vmID)
 		require.NoError(t, orch.StopSingleVM(ctx, vmID), "Failed to stop %s", vmID)
 	}
 
@@ -193,25 +194,31 @@ func TestUPFWorkingSetRecordReplay(t *testing.T) {
 	traceBefore, err := os.ReadFile(snap.GetWorkingSetTraceFilePath())
 	require.NoError(t, err, "Failed to read recorded working set trace")
 	require.NotEmpty(t, traceBefore, "Recorded working set trace is empty")
+	workingSetInfoBefore, err := os.Stat(snap.GetWorkingSetFilePath())
+	require.NoError(t, err, "Failed to stat recorded working set")
+	traceInfoBefore, err := os.Stat(snap.GetWorkingSetTraceFilePath())
+	require.NoError(t, err, "Failed to stat recorded working set trace")
 
 	loadResumeStop(replayVMID)
 	latencyMetrics, err := orch.GetUPFLatencyStats(replayVMID)
 	require.NoError(t, err, "Failed to get replay metrics")
 	workingSetInstalled := false
 	for _, metric := range latencyMetrics {
-		if _, ok := metric.MetricMap["InstallWS"]; ok {
+		if _, ok := metric.MetricMap[installWorkingSetMetric]; ok {
 			workingSetInstalled = true
 			break
 		}
 	}
 	require.True(t, workingSetInstalled, "Working set was not installed during replay")
 
-	workingSetAfter, err := os.ReadFile(snap.GetWorkingSetFilePath())
-	require.NoError(t, err, "Failed to reread working set")
-	traceAfter, err := os.ReadFile(snap.GetWorkingSetTraceFilePath())
-	require.NoError(t, err, "Failed to reread working set trace")
-	require.True(t, bytes.Equal(workingSetBefore, workingSetAfter), "Replay rewrote working set pages")
-	require.True(t, bytes.Equal(traceBefore, traceAfter), "Replay rewrote working set trace")
+	workingSetInfoAfter, err := os.Stat(snap.GetWorkingSetFilePath())
+	require.NoError(t, err, "Failed to restat working set")
+	traceInfoAfter, err := os.Stat(snap.GetWorkingSetTraceFilePath())
+	require.NoError(t, err, "Failed to restat working set trace")
+	require.True(t, os.SameFile(workingSetInfoBefore, workingSetInfoAfter), "Replay replaced working set pages")
+	require.True(t, os.SameFile(traceInfoBefore, traceInfoAfter), "Replay replaced working set trace")
+	require.Equal(t, workingSetInfoBefore.ModTime(), workingSetInfoAfter.ModTime(), "Replay modified working set pages")
+	require.Equal(t, traceInfoBefore.ModTime(), traceInfoAfter.ModTime(), "Replay modified working set trace")
 }
 
 func TestPauseSnapResume(t *testing.T) {
