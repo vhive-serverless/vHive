@@ -107,12 +107,6 @@ func (snp *Snapshot) GetWorkingSetTraceFilePath() string {
 // lazily from its remote chunk recipe.
 func (snp *Snapshot) HasMemoryRecipe() bool { return snp.memoryRecipe != "" }
 
-// GetWorkingSetTraceFilePath returns the recorded page-fault trace shared by
-// VMs restored from this snapshot.
-func (snp *Snapshot) GetWorkingSetTraceFilePath() string {
-	return filepath.Join(snp.snapDir, "working_set_trace")
-}
-
 func (snp *Snapshot) GetPatchFilePath() string {
 	return filepath.Join(snp.snapDir, snp.artifacts.Patch)
 }
