@@ -12,8 +12,35 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vhive-serverless/vhive/metrics"
 	"golang.org/x/sys/unix"
 )
+
+func TestProcessMetricsIncludesNonLazyRecordingRun(t *testing.T) {
+	state := NewSnapshotState(SnapshotStateCfg{metricsModeOn: true})
+	state.currentMetric = metrics.NewMetric()
+	state.uniqueNum = 3
+
+	state.processMetrics()
+
+	if len(state.latencyMetrics) != 1 {
+		t.Fatalf("latency metrics = %d, want 1", len(state.latencyMetrics))
+	}
+	if len(state.uniquePFServed) != 1 || state.uniquePFServed[0] != 3 {
+		t.Fatalf("unique page-fault metrics = %v, want [3]", state.uniquePFServed)
+	}
+}
+
+func TestProcessMetricsIncludesLazyRecordingRun(t *testing.T) {
+	state := NewSnapshotState(SnapshotStateCfg{IsLazyMode: true, metricsModeOn: true})
+	state.currentMetric = metrics.NewMetric()
+
+	state.processMetrics()
+
+	if len(state.latencyMetrics) != 1 {
+		t.Fatalf("latency metrics = %d, want 1", len(state.latencyMetrics))
+	}
+}
 
 func TestPageAlignFaultAddress(t *testing.T) {
 	region := GuestRegionUffdMapping{

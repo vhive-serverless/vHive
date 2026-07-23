@@ -308,7 +308,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	//	}
 	//}
 
-	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID, TimeoutSeconds: 1}); err != nil {
 		logger.WithError(err).Error("failed to stop firecracker-containerd VM")
 	}
 
@@ -526,10 +526,6 @@ func lazyRecipePageServer(ctx context.Context, lazy bool, store snapshotting.Art
 
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
-	if err := o.validateUPFMode(); err != nil {
-		return nil, nil, err
-	}
-
 	var (
 		loadSnapshotMetric = metrics.NewMetric()
 		tStart             time.Time

@@ -79,6 +79,11 @@ func newFirecrackerCoordinator(orch *ctriface.Orchestrator, opts ...coordinatorO
 	c.snapshotManager = snapshotting.NewSnapshotManager(snapshotsDir)
 	if !c.withoutOrchestrator && orch.ArtifactStore() != nil {
 		c.snapshotManager.EnableRemoteTransfer(orch.ArtifactStore(), orch.GetCacheSnaps())
+		if chunkSize := orch.GetChunkedMemorySize(); chunkSize != 0 {
+			if err := c.snapshotManager.EnableChunkedMemory(chunkSize); err != nil {
+				log.Panicf("Failed to enable chunked remote snapshot memory: %v", err)
+			}
+		}
 	}
 	c.snapshotCatalog = c.snapshotManager.Catalog()
 

@@ -183,15 +183,17 @@ func (s *SnapshotState) processMetrics() {
 		return
 	}
 
-	if s.isRecordReady {
-		if s.IsLazyMode {
-			s.totalPFServed = append(s.totalPFServed, float64(s.replayedNum))
-			s.reusedPFServed = append(s.reusedPFServed, float64(s.replayedNum-s.uniqueNum))
-		}
-
-		s.uniquePFServed = append(s.uniquePFServed, float64(s.uniqueNum))
-		s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
+	// Snapshot restores use a fresh SnapshotState per VM. Consequently the
+	// first run of both lazy and non-lazy modes is a recording run, but its
+	// page-fault latency is still a valid sample. Benchmarks exclude setup
+	// samples explicitly, rather than silently dropping them here.
+	if s.IsLazyMode {
+		s.totalPFServed = append(s.totalPFServed, float64(s.replayedNum))
+		s.reusedPFServed = append(s.reusedPFServed, float64(s.replayedNum-s.uniqueNum))
 	}
+
+	s.uniquePFServed = append(s.uniquePFServed, float64(s.uniqueNum))
+	s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
 	s.currentMetric = nil
 }
 

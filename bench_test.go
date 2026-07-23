@@ -112,10 +112,9 @@ func TestBenchParallelServe(t *testing.T) {
 		require.NoError(t, err, "Function returned error, "+message)
 
 		if *isUPFEnabledTest {
-			memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "-0")
+			memManagerMetrics, err := funcPool.GetUPFLatencyStats(vmIDString, imageName)
 			require.NoError(t, err, "Failed to ge tupf metrics")
-			require.Equal(t, len(memManagerMetrics), 1, "wrong length")
-			upfMetrics[i] = memManagerMetrics[0]
+			upfMetrics[i] = benchmarkUPFMetrics(t, memManagerMetrics, 1)[0]
 		}
 	}
 
@@ -177,7 +176,7 @@ func TestBenchWarmServe(t *testing.T) {
 		err = funcPool.DumpUPFPageStats(vmIDString, imageName, *funcName, getOutFile("pageStats.csv"))
 		require.NoError(t, err, "Failed to dump page stats for"+*funcName)
 
-		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "-0")
+		memManagerMetrics, err = funcPool.GetUPFLatencyStats(vmIDString, imageName)
 		require.NoError(t, err, "Failed to dump get stats for "+*funcName)
 		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
 	}
@@ -230,12 +229,12 @@ func TestBenchServe(t *testing.T) {
 
 		serveMetrics[k] = met
 
-		time.Sleep(1 * time.Second) // this helps kworker hanging
+		// time.Sleep(1 * time.Second) // this helps kworker hanging
 
 		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
 
-		time.Sleep(3 * time.Second) // this helps kworker hanging
+		// time.Sleep(3 * time.Second) // this helps kworker hanging
 	}
 
 	// FUSE
@@ -244,13 +243,22 @@ func TestBenchServe(t *testing.T) {
 		err = funcPool.DumpUPFPageStats(vmIDString, imageName, *funcName, getOutFile("pageStats.csv"))
 		require.NoError(t, err, "Failed to dump page stats for"+*funcName)
 
-		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "-0")
+		memManagerMetrics, err = funcPool.GetUPFLatencyStats(vmIDString, imageName)
 		require.NoError(t, err, "Failed to dump get stats for "+*funcName)
-		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
+		memManagerMetrics = benchmarkUPFMetrics(t, memManagerMetrics, len(serveMetrics))
 	}
 
 	fusePrintMetrics(t, serveMetrics, memManagerMetrics, isUPFEnabledTest, true, *funcName, "serve.csv")
 
+}
+
+// benchmarkUPFMetrics returns metrics from the measurement phase. Setup runs
+// may create a recording VM before the benchmarked restores; these metrics are
+// useful for recording analysis but must not be merged into benchmark samples.
+func benchmarkUPFMetrics(t *testing.T, allMetrics []*metrics.Metric, samples int) []*metrics.Metric {
+	t.Helper()
+	require.GreaterOrEqual(t, len(allMetrics), samples, "insufficient UPF metrics")
+	return allMetrics[len(allMetrics)-samples:]
 }
 
 // /////////////////////////////////////////////////////////////////////////////

@@ -27,3 +27,6 @@
 vhive
 setup_tool
 go.work.sum
+
+# Bench results
+bench_results

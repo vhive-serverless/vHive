@@ -294,7 +294,7 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		defer func() { _ = state.userFaultFD.Close() }()
 	}
 
-	if !state.isRecordReady && !state.IsLazyMode {
+	if !state.isRecordReady {
 		pageSize, err := guestMappingPageSize(state.guestRegionMappings)
 		if err != nil {
 			return err
@@ -424,9 +424,9 @@ func getLazyHeaderStats(state *SnapshotState, functionName string) ([]string, []
 		"StdDev",
 	}
 
-	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
-	totalMean, totalStd := stat.MeanStdDev(state.totalPFServed, nil)
-	reusedMean, reusedStd := stat.MeanStdDev(state.reusedPFServed, nil)
+	uniqueMean, uniqueStd := meanStdDevOrZero(state.uniquePFServed)
+	totalMean, totalStd := meanStdDevOrZero(state.totalPFServed)
+	reusedMean, reusedStd := meanStdDevOrZero(state.reusedPFServed)
 
 	stats := []string{
 		functionName,
@@ -451,7 +451,7 @@ func getRecRepHeaderStats(state *SnapshotState, functionName string) ([]string, 
 		"StdDev",
 	}
 
-	uniqueMean, uniqueStd := stat.MeanStdDev(state.uniquePFServed, nil)
+	uniqueMean, uniqueStd := meanStdDevOrZero(state.uniquePFServed)
 
 	stats := []string{
 		functionName,
@@ -462,6 +462,17 @@ func getRecRepHeaderStats(state *SnapshotState, functionName string) ([]string, 
 	}
 
 	return header, stats
+}
+
+func meanStdDevOrZero(values []float64) (float64, float64) {
+	if len(values) == 0 {
+		return 0, 0
+	}
+	if len(values) == 1 {
+		return values[0], 0
+	}
+
+	return stat.MeanStdDev(values, nil)
 }
 
 func writeUPFPageStats(metricsOutFilePath string, statHeader, stats []string) error {

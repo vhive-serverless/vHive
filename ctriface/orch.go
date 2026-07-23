@@ -117,6 +117,7 @@ type Orchestrator struct {
 	artifactStore       snapshotting.ArtifactStore
 	artifactStoreConfig *snapshotting.MinIOArtifactStoreConfig
 	cacheSnaps          bool
+	chunkedMemorySize   int
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -192,6 +193,10 @@ func (o *Orchestrator) ArtifactStore() snapshotting.ArtifactStore {
 // GetCacheSnaps reports whether remote snapshots remain on local disk after
 // publishing. It is false by default, so remote mode exercises cache misses.
 func (o *Orchestrator) GetCacheSnaps() bool { return o.cacheSnaps }
+
+// GetChunkedMemorySize returns the remote memory chunk size in bytes. A zero
+// value keeps remote snapshot memory as a single artifact.
+func (o *Orchestrator) GetChunkedMemorySize() int { return o.chunkedMemorySize }
 
 func getK8sDNS() []string {
 	//using googleDNS as a backup

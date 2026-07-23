@@ -165,6 +165,15 @@ func (p *FuncPool) DumpUPFLatencyStats(fID, imageName, functionName, latencyOutF
 	return f.DumpUPFLatencyStats(functionName, latencyOutFilePath)
 }
 
+// GetUPFLatencyStats returns the memory-manager latency metrics for every VM
+// created for a function. A function can be restored into a new VM on every
+// invocation, so f.vmID alone only identifies its most recent instance.
+func (p *FuncPool) GetUPFLatencyStats(fID, imageName string) ([]*metrics.Metric, error) {
+	f := p.getFunction(fID, imageName)
+
+	return f.GetUPFLatencyStats()
+}
+
 //////////////////////////////// Function type //////////////////////////////////////////////
 
 // Function type
@@ -174,6 +183,7 @@ type Function struct {
 	fID                    string
 	imageName              string
 	vmID                   string
+	vmIDs                  []string
 	lastInstanceID         int
 	isPinnedInMem          bool // if pinned, the orchestrator does not stop/offload it)
 	stats                  *Stats
@@ -362,22 +372,22 @@ func (f *Function) AddInstance() *metrics.Metric {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
+	vmID := f.getVMID()
 	if f.isSnapshotReady {
 		var resp *ctriface.StartVMResponse
 
-		resp, metr = f.LoadInstance(f.getVMID())
+		resp, metr = f.LoadInstance(vmID)
 		f.guestIP = resp.GuestIP
-		f.vmID = f.getVMID()
-		f.lastInstanceID++
 	} else {
-		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
+		resp, _, err := orch.StartVM(ctx, vmID, f.imageName)
 		if err != nil {
 			log.Panic(err)
 		}
 		f.guestIP = resp.GuestIP
-		f.vmID = f.getVMID()
-		f.lastInstanceID++
 	}
+	f.vmID = vmID
+	f.vmIDs = append(f.vmIDs, vmID)
+	f.lastInstanceID++
 
 	tStart := time.Now()
 	funcClient, err := f.getFuncClient()
@@ -443,6 +453,26 @@ func (f *Function) DumpUPFPageStats(functionName, metricsOutFilePath string) err
 // DumpUPFLatencyStats Dumps the memory manager's latency stats
 func (f *Function) DumpUPFLatencyStats(functionName, latencyOutFilePath string) error {
 	return orch.DumpUPFLatencyStats(f.vmID, functionName, latencyOutFilePath)
+}
+
+// GetUPFLatencyStats returns latency metrics from all VMs created for this
+// function. Snapshot and record VMs contribute no entries, while each replay
+// VM contributes its own metric.
+func (f *Function) GetUPFLatencyStats() ([]*metrics.Metric, error) {
+	f.RLock()
+	vmIDs := append([]string(nil), f.vmIDs...)
+	f.RUnlock()
+
+	allMetrics := make([]*metrics.Metric, 0)
+	for _, vmID := range vmIDs {
+		vmMetrics, err := orch.GetUPFLatencyStats(vmID)
+		if err != nil {
+			return nil, err
+		}
+		allMetrics = append(allMetrics, vmMetrics...)
+	}
+
+	return allMetrics, nil
 }
 
 // CreateInstanceSnapshot Creates a snapshot of the instance
