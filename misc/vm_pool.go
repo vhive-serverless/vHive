@@ -52,6 +52,13 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 		logger.Panic("Allocate (VM): VM exists in the map")
 	}
 
+	if v, ok := p.preparedMap.Load(vmID); ok {
+		vm := v.(*VM)
+		p.preparedMap.Delete(vmID)
+		p.vmMap.Store(vmID, vm)
+		return vm, nil
+	}
+
 	vm := NewVM(vmID)
 
 	var err error
@@ -62,7 +69,35 @@ func (p *VMPool) Allocate(vmID string) (*VM, error) {
 	}
 
 	p.vmMap.Store(vmID, vm)
+	return vm, nil
+}
 
+// Prepare creates the VM's network ahead of time without making it active.
+// A later Allocate for the same ID adopts this prepared VM without creating a
+// second network namespace.
+func (p *VMPool) Prepare(vmID string) (*VM, error) {
+	if v, ok := p.vmMap.Load(vmID); ok {
+		return v.(*VM), nil
+	}
+	if v, ok := p.preparedMap.Load(vmID); ok {
+		return v.(*VM), nil
+	}
+
+	vm := NewVM(vmID)
+	netConfig, err := p.networkManager.CreateNetwork(vmID)
+	if err != nil {
+		return nil, err
+	}
+	vm.NetConfig = netConfig
+	actual, loaded := p.preparedMap.LoadOrStore(vmID, vm)
+	if loaded {
+		// Another goroutine won the race. Remove the network we created rather
+		// than leaking it, then return the already prepared VM.
+		if err := p.networkManager.RemoveNetwork(vmID); err != nil {
+			return nil, err
+		}
+		return actual.(*VM), nil
+	}
 	return vm, nil
 }
 
@@ -102,12 +137,15 @@ func (p *VMPool) GetVMMap() map[string]*VM {
 // GetVM Returns a pointer to the VM
 func (p *VMPool) GetVM(vmID string) (*VM, error) {
 	vm, found := p.vmMap.Load(vmID)
-	if !found {
-		log.WithFields(log.Fields{"vmID": vmID}).Error("VM is not in the VM map")
-		return nil, NonExistErr("GetVM: VM is not in the VM map")
+	if found {
+		return vm.(*VM), nil
+	}
+	if vm, found = p.preparedMap.Load(vmID); found {
+		return vm.(*VM), nil
 	}
 
-	return vm.(*VM), nil
+	log.WithFields(log.Fields{"vmID": vmID}).Error("VM is not in the VM map")
+	return nil, NonExistErr("GetVM: VM is not in the VM map")
 }
 
 // CleanupNetwork Removes the networks created by the network manager

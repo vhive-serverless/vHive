@@ -105,6 +105,8 @@ func TestMain(m *testing.M) {
 		ctriface.WithLazyMode(*isLazyModeTest),
 		ctriface.WithWSCoalescing(*wsCoalesceTest),
 		ctriface.WithDockerCredentials(*dockerCredentialsTest),
+		ctriface.WithShimPoolSize(2),
+		ctriface.WithNetPoolSize(2),
 	}
 	if *isRemoteSnapshotsTest {
 		// The in-memory store exercises the remote publication/download path

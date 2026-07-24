@@ -376,16 +376,23 @@ func (f *Function) AddInstance() *metrics.Metric {
 	defer cancel()
 
 	vmID := f.getVMID()
+	// An empty ID asks the orchestrator to acquire a pre-created shim. The
+	// response carries the actual VM ID used for all later lifecycle calls.
+	if orch.ShimPoolEnabled() {
+		vmID = ""
+	}
 	if f.isSnapshotReady {
 		var resp *ctriface.StartVMResponse
 
 		resp, metr = f.LoadInstance(vmID)
+		vmID = resp.VMID
 		f.guestIP = resp.GuestIP
 	} else {
 		resp, _, err := orch.StartVM(ctx, vmID, f.imageName)
 		if err != nil {
 			log.Panic(err)
 		}
+		vmID = resp.VMID
 		f.guestIP = resp.GuestIP
 	}
 	f.vmID = vmID
@@ -550,6 +557,7 @@ func (f *Function) LoadInstance(vmID string) (*ctriface.StartVMResponse, *metric
 	if err != nil {
 		log.Panic(err)
 	}
+	vmID = resp.VMID
 
 	resumeMetr, err := orch.ResumeVM(ctx, vmID)
 	if err != nil {

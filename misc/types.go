@@ -47,6 +47,7 @@ type VM struct {
 // VMPool Pool of active VMs (can be in several states though)
 type VMPool struct {
 	vmMap          sync.Map
+	preparedMap    sync.Map
 	networkManager *networking.NetworkManager
 }
 

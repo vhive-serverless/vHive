@@ -3,7 +3,7 @@ module github.com/vhive-serverless/vhive
 go 1.26.2
 
 replace (
-	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20260713114451-bb007a1ef569
+	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20260724123623-bf386bf22584
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
 	github.com/vhive-serverless/vhive/networking => ./networking
 )

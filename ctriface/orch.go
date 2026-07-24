@@ -23,7 +23,9 @@
 package ctriface
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -38,6 +40,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/containerd/containerd"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 
 	fcclient "github.com/firecracker-microvm/firecracker-containerd/firecracker-control/client"
 	// note: from the original repo
@@ -91,6 +94,7 @@ type DockerCredentials struct {
 // Orchestrator Drives all VMs
 type Orchestrator struct {
 	vmPool            *misc.VMPool
+	shimPool          *ShimPool
 	cachedImages      map[string]containerd.Image
 	workloadIo        sync.Map // vmID string -> WorkloadIoWriter
 	snapshotter       string
@@ -107,6 +111,7 @@ type Orchestrator struct {
 	snapshotsDir     string
 	isMetricsMode    bool
 	netPoolSize      int
+	shimPoolSize     int
 	dns              []string
 
 	vethPrefix  string
@@ -179,6 +184,25 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	}
 	log.Info("Created firecracker client")
 
+	if o.shimPoolSize > 0 {
+		o.shimPool = NewShimPool(o.fcClient, o.shimPoolSize, func(vmID string) *proto.CreateVMRequest {
+			vm, err := o.vmPool.GetVM(vmID)
+			if err != nil {
+				return &proto.CreateVMRequest{VMID: vmID}
+			}
+			return o.getVMConfig(vm)
+		}, func(vmID string) error {
+			_, err := o.vmPool.Prepare(vmID)
+			return err
+		}, func(vmID string) string {
+			if o.snapshotter == "proxy" {
+				return vmID
+			}
+			return namespaceName
+		})
+		o.shimPool.Initialize(context.Background())
+	}
+
 	o.devMapper = devmapper.NewDeviceMapper(o.client)
 	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
 
@@ -232,11 +256,42 @@ func (o *Orchestrator) setupCloseHandler() {
 // Cleanup Removes the bridges created by the VM pool's tap manager
 // Cleans up snapshots directory
 func (o *Orchestrator) Cleanup() {
+	if o.shimPool != nil {
+		if err := o.shimPool.Cleanup(context.Background()); err != nil {
+			log.WithError(err).Warn("failed to clean up shim pool")
+		}
+	}
 	o.vmPool.CleanupNetwork()
 	if err := os.RemoveAll(o.snapshotsDir); err != nil {
 		log.Panic("failed to delete snapshots dir", err)
 	}
 }
+
+// AcquireShimFromPool obtains an ID whose shim and network are already
+// prepared. A disabled pool returns an error so callers can fall back to an
+// explicit VM ID.
+func (o *Orchestrator) AcquireShimFromPool(ctx context.Context) (string, error) {
+	if o.shimPool == nil {
+		return "", fmt.Errorf("shim pool is disabled")
+	}
+	return o.shimPool.Acquire(ctx)
+}
+
+func (o *Orchestrator) DiscardShim(ctx context.Context, vmID string) error {
+	if o.shimPool == nil {
+		return nil
+	}
+	return o.shimPool.Discard(ctx, vmID)
+}
+
+func (o *Orchestrator) GetShimPoolStats() int {
+	if o.shimPool == nil {
+		return 0
+	}
+	return o.shimPool.Available()
+}
+
+func (o *Orchestrator) ShimPoolEnabled() bool { return o.shimPool != nil }
 
 // GetSnapshotsEnabled Returns the snapshots mode of the orchestrator
 func (o *Orchestrator) GetSnapshotsEnabled() bool {

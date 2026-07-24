@@ -130,6 +130,12 @@ func WithNetPoolSize(netPoolSize int) OrchestratorOption {
 	}
 }
 
+// WithShimPoolSize pre-creates this many firecracker-containerd shims.
+// Set it to zero to retain the explicit-VM-ID launch path.
+func WithShimPoolSize(shimPoolSize int) OrchestratorOption {
+	return func(o *Orchestrator) { o.shimPoolSize = shimPoolSize }
+}
+
 func WithVethPrefix(vethPrefix string) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.vethPrefix = vethPrefix

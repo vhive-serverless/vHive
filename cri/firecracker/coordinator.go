@@ -153,7 +153,7 @@ func (c *coordinator) insertActive(containerID string, fi *funcInstance) error {
 }
 
 func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, envVariables []string) (*funcInstance, error) {
-	vmID := c.getVMID()
+	vmID := ""
 	logger := log.WithFields(
 		log.Fields{
 			"vmID":     vmID,
@@ -179,13 +179,16 @@ func (c *coordinator) orchStartVM(ctx context.Context, image, revision string, e
 		}
 	}
 
+	if resp != nil {
+		vmID = resp.VMID
+	}
 	fi := newFuncInstance(vmID, image, revision, false, resp)
 	logger.Debug("successfully created fresh instance")
 	return fi, err
 }
 
 func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.Snapshot) (*funcInstance, error) {
-	vmID := c.getVMID()
+	vmID := ""
 	logger := log.WithFields(
 		log.Fields{
 			"vmID":  vmID,
@@ -204,6 +207,7 @@ func (c *coordinator) orchLoadInstance(ctx context.Context, snap *snapshotting.S
 		return nil, err
 	}
 
+	vmID = resp.VMID
 	if _, err := c.orch.ResumeVM(ctxTimeout, vmID); err != nil {
 		logger.WithError(err).Error("failed to load VM")
 		return nil, err

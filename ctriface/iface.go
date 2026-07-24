@@ -58,6 +58,9 @@ import (
 // StartVMResponse is the response returned by StartVM
 // TODO: Integrate response with non-cri API
 type StartVMResponse struct {
+	// VMID is the effective VM ID. It differs from the requested ID when a
+	// pre-created shim was acquired from the shim pool.
+	VMID string
 	// GuestIP is the IP of the guest MicroVM
 	GuestIP string
 }
@@ -86,8 +89,24 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		tStart        time.Time
 	)
 
+	pooledShim := vmID == ""
+	if pooledShim {
+		var err error
+		vmID, err = o.AcquireShimFromPool(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	logger := log.WithFields(log.Fields{"vmID": vmID, "image": imageName})
 	logger.Debug("StartVM: Received StartVM")
+	defer func() {
+		if retErr != nil && pooledShim {
+			if err := o.DiscardShim(ctx, vmID); err != nil {
+				logger.WithError(err).Warn("failed to discard shim after VM launch failure")
+			}
+		}
+	}()
 
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
@@ -263,7 +282,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 
 	logger.Debug("Successfully started a VM")
 
-	return &StartVMResponse{GuestIP: vm.GetIP()}, startVMMetric, nil
+	return &StartVMResponse{VMID: vmID, GuestIP: vm.GetIP()}, startVMMetric, nil
 }
 
 // StopSingleVM Shuts down a VM
@@ -548,8 +567,24 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		lazyPageServer     *manager.PageServer
 	)
 
+	pooledShim := vmID == ""
+	if pooledShim {
+		var err error
+		vmID, err = o.AcquireShimFromPool(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
+	defer func() {
+		if retErr != nil && pooledShim {
+			if err := o.DiscardShim(ctx, vmID); err != nil {
+				logger.WithError(err).Warn("failed to discard shim after snapshot-load failure")
+			}
+		}
+	}()
 
 	ctx = withNamespace(ctx, o.snapshotter, vmID)
 
@@ -708,5 +743,5 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	vm.SnapBooted = true
 
-	return &StartVMResponse{GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
+	return &StartVMResponse{VMID: vmID, GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
 }

@@ -64,6 +64,7 @@ var (
 	criSock            *string
 	hostIface          *string
 	netPoolSize        *int
+	shimPoolSize       *int
 )
 
 func main() {
@@ -84,6 +85,7 @@ func main() {
 	criSock = flag.String("criSock", "/etc/vhive-cri/vhive-cri.sock", "Socket address for CRI service")
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
+	shimPoolSize = flag.Int("shimPoolSize", 5, "Number of pre-created firecracker-containerd shims")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
@@ -141,6 +143,7 @@ func main() {
 			ctriface.WithLazyMode(*isLazyMode),
 			ctriface.WithWSCoalescing(*wsCoalescing),
 			ctriface.WithNetPoolSize(*netPoolSize),
+			ctriface.WithShimPoolSize(*shimPoolSize),
 			ctriface.WithVethPrefix(*vethPrefix),
 			ctriface.WithClonePrefix(*clonePrefix),
 			ctriface.WithDockerCredentials(*dockerCredentials),
