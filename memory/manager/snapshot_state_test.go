@@ -290,6 +290,39 @@ func TestTraceProcessRecordPersistsWorkingSetAndTrace(t *testing.T) {
 	}
 }
 
+func TestTraceProcessRecordFromPageServerDoesNotRequireMemoryFile(t *testing.T) {
+	baseDir := t.TempDir()
+	workingSetPath := filepath.Join(baseDir, "working_set_pages")
+	tracePath := filepath.Join(baseDir, "working_set_trace")
+	pageSize := uint64(os.Getpagesize())
+	guestMemory := make([]byte, 4*int(pageSize))
+	for i := range guestMemory {
+		guestMemory[i] = byte(i % 251)
+	}
+
+	server, err := NewPageServer(&testPageSource{data: guestMemory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = server.Close() }()
+
+	trace := initTrace(tracePath)
+	trace.AppendRecord(Record{offset: pageSize})
+	trace.AppendRecord(Record{offset: 2 * pageSize})
+	if err := trace.ProcessRecordFromPageServer(server, workingSetPath, pageSize); err != nil {
+		t.Fatalf("ProcessRecordFromPageServer returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(workingSetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := guestMemory[pageSize : 3*pageSize]
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("working set contents do not match recipe page source")
+	}
+}
+
 func TestReceiveUffdMappingsAndFD(t *testing.T) {
 	mappings := []GuestRegionUffdMapping{{
 		BaseHostVirtAddr: 0x100000,

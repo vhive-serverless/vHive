@@ -281,13 +281,6 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		logger.Error("Failed to munmap guest memory")
 		return err
 	}
-	if state.PageServer != nil {
-		if err := state.PageServer.Close(); err != nil {
-			logger.WithError(err).Error("Failed to close lazy page server")
-			return err
-		}
-	}
-
 	state.processMetrics()
 
 	if state.userFaultFD != nil {
@@ -299,7 +292,22 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		if err != nil {
 			return err
 		}
-		if err := state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath, pageSize); err != nil {
+		var recordErr error
+		if state.PageServer != nil {
+			recordErr = state.trace.ProcessRecordFromPageServer(state.PageServer, state.WorkingSetPath, pageSize)
+		} else {
+			recordErr = state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath, pageSize)
+		}
+		if recordErr != nil {
+			if state.PageServer != nil {
+				_ = state.PageServer.Close()
+			}
+			return recordErr
+		}
+	}
+	if state.PageServer != nil {
+		if err := state.PageServer.Close(); err != nil {
+			logger.WithError(err).Error("Failed to close lazy page server")
 			return err
 		}
 	}

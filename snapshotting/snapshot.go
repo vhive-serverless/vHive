@@ -103,8 +103,8 @@ func (snp *Snapshot) GetWorkingSetTraceFilePath() string {
 	return filepath.Join(snp.snapDir, "working_set_trace")
 }
 
-// HasMemoryRecipe reports whether this snapshot's memory can be supplied
-// lazily from its remote chunk recipe.
+// HasMemoryRecipe reports whether this snapshot's memory can be supplied from
+// its remote chunk recipe when it has not been reconstructed locally.
 func (snp *Snapshot) HasMemoryRecipe() bool { return snp.memoryRecipe != "" }
 
 func (snp *Snapshot) GetPatchFilePath() string {

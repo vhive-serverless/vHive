@@ -130,6 +130,42 @@ func (t *Trace) containsRecord(rec Record) bool {
 }
 
 func (t *Trace) ProcessRecord(guestMemPath, workingSetPath string, pageSize uint64) error {
+	fSrc, err := os.Open(guestMemPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = fSrc.Close() }()
+
+	return t.processRecord(workingSetPath, pageSize, func(offset, length uint64) ([]byte, error) {
+		buf := make([]byte, int(length))
+		n, err := fSrc.ReadAt(buf, int64(offset))
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		if n != len(buf) {
+			return nil, io.ErrUnexpectedEOF
+		}
+		return buf, nil
+	})
+}
+
+// ProcessRecordFromPageServer persists the recorded working-set pages using
+// the same source that served UFFD faults. It supports recipe-only restores,
+// which intentionally have no local guest memory file.
+func (t *Trace) ProcessRecordFromPageServer(server *PageServer, workingSetPath string, pageSize uint64) error {
+	if server == nil {
+		return fmt.Errorf("page server is required")
+	}
+	return t.processRecord(workingSetPath, pageSize, func(offset, length uint64) ([]byte, error) {
+		page, err := server.Read(offset, length)
+		if err != nil {
+			return nil, err
+		}
+		return page.Bytes, nil
+	})
+}
+
+func (t *Trace) processRecord(workingSetPath string, pageSize uint64, readPages func(uint64, uint64) ([]byte, error)) error {
 	if pageSize == 0 {
 		return errInvalidGuestRegionPageSize
 	}
@@ -140,7 +176,7 @@ func (t *Trace) ProcessRecord(guestMemPath, workingSetPath string, pageSize uint
 	t.pageSize = pageSize
 	t.buildRegionsLocked()
 
-	if err := t.writeWorkingSetPagesToFileLocked(guestMemPath, workingSetPath, pageSize); err != nil {
+	if err := t.writeWorkingSetPagesToFileLocked(workingSetPath, pageSize, readPages); err != nil {
 		return err
 	}
 	return t.writeTraceLocked()
@@ -188,13 +224,7 @@ func (t *Trace) writeTraceLocked() error {
 	})
 }
 
-func (t *Trace) writeWorkingSetPagesToFileLocked(guestMemPath, workingSetPath string, pageSize uint64) error {
-	fSrc, err := os.Open(guestMemPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = fSrc.Close() }()
-
+func (t *Trace) writeWorkingSetPagesToFileLocked(workingSetPath string, pageSize uint64, readPages func(uint64, uint64) ([]byte, error)) error {
 	keys := make([]uint64, 0, len(t.regions))
 	for k := range t.regions {
 		keys = append(keys, k)
@@ -209,16 +239,15 @@ func (t *Trace) writeWorkingSetPagesToFileLocked(guestMemPath, workingSetPath st
 				return fmt.Errorf("working set region too large: %#x", copyLen)
 			}
 
-			buf := make([]byte, int(copyLen))
-			n, err := fSrc.ReadAt(buf, int64(offset))
-			if err != nil && err != io.EOF {
+			buf, err := readPages(offset, copyLen)
+			if err != nil {
 				return err
 			}
-			if n != len(buf) {
+			if len(buf) != int(copyLen) {
 				return io.ErrUnexpectedEOF
 			}
 
-			n, err = fDst.WriteAt(buf, dstOffset)
+			n, err := fDst.WriteAt(buf, dstOffset)
 			if err != nil {
 				return err
 			}
