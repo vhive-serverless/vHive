@@ -31,9 +31,11 @@ import (
 	"testing"
 
 	ctrdlog "github.com/containerd/log"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	ctriface "github.com/vhive-serverless/vhive/ctriface"
+	"github.com/vhive-serverless/vhive/snapshotting"
 )
 
 const (
@@ -46,6 +48,8 @@ var (
 	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
 	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
 	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
+	isRemoteSnapshotsTest  = flag.Bool("remoteSnapshotsTest", false, "Store snapshots remotely during tests")
+	chunkedMemorySizeTest  = flag.Int("chunkedMemorySizeTest", 0, "Remote snapshot memory chunk size in bytes (0 disables chunking)")
 	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
 )
@@ -64,26 +68,62 @@ func TestMain(m *testing.M) {
 	log.SetLevel(log.InfoLevel)
 
 	flag.Parse()
-	if !*isUPFEnabledTest && *isLazyModeTest {
-		log.Error("Lazy page fault serving mode is not supported without user-level page faults")
-		os.Exit(-1)
-	}
 
 	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
 	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
+	log.Infof("Remote snapshots enabled: %t", *isRemoteSnapshotsTest)
+	log.Infof("Remote snapshot memory chunk size: %d", *chunkedMemorySizeTest)
 	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
 	log.Infof("Drop cache: %t", !*isWithCache)
 	log.Infof("Bench dir: %s", *benchDir)
 
-	orch = ctriface.NewOrchestrator(
-		"devmapper",
-		"",
+	if *chunkedMemorySizeTest < 0 {
+		log.Error("Remote snapshot memory chunk size must not be negative")
+		os.Exit(-1)
+	}
+	if *chunkedMemorySizeTest > 0 && !*isRemoteSnapshotsTest {
+		log.Error("Chunked snapshot memory requires remote snapshots")
+		os.Exit(-1)
+	}
+
+	orchOptions := []ctriface.OrchestratorOption{
 		ctriface.WithTestModeOn(true),
 		ctriface.WithSnapshots(*isSnapshotsEnabledTest),
 		ctriface.WithUPF(*isUPFEnabledTest),
 		ctriface.WithMetricsMode(*isMetricsModeTest),
 		ctriface.WithLazyMode(*isLazyModeTest),
+	}
+	if *isRemoteSnapshotsTest {
+		// The in-memory store exercises the remote publication/download path
+		// without making the default benchmark target depend on MinIO.
+		endpoint := os.Getenv("VHIVE_MINIO_ENDPOINT")
+		accessKey := os.Getenv("VHIVE_MINIO_ACCESS_KEY")
+		if accessKey == "" {
+			accessKey = "minio"
+		}
+		secretKey := os.Getenv("VHIVE_MINIO_SECRET_KEY")
+		if secretKey == "" {
+			secretKey = "minio123"
+		}
+		orchOptions = append(orchOptions, ctriface.WithChunkedMemory(*chunkedMemorySizeTest))
+		if endpoint != "" {
+			orchOptions = append(orchOptions,
+				ctriface.WithArtifactStoreConfig(snapshotting.MinIOArtifactStoreConfig{
+					Endpoint: endpoint, AccessKey: accessKey, SecretKey: secretKey,
+					Bucket: "test-" + uuid.NewString(),
+				}),
+			)
+			log.Infof("Using real minio at %s", endpoint)
+		} else {
+			orchOptions = append(orchOptions, ctriface.WithArtifactStore(snapshotting.NewMemoryArtifactStore()))
+		}
+	}
+
+	orch = ctriface.NewOrchestrator(
+		"devmapper",
+		"",
+		orchOptions...,
 	)
 
 	ret := m.Run()

@@ -90,6 +90,9 @@ func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int, testMo
 
 	isTestMode = testModeOn
 
+	p.snapshotManager.EnableRemoteTransfer(orch.ArtifactStore(), false)
+	p.snapshotManager.EnableChunkedMemory(orch.GetChunkedMemorySize())
+
 	return p
 }
 
@@ -287,7 +290,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 
 	// FIXME: keep a strict deadline for forwarding RPCs to a warm function
 	// Eventually, it needs to be RPC-dependent and probably client-defined
-	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*time.Second))
+	ctxFwd, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
 	defer cancel()
 
 	tStart = time.Now()
@@ -447,7 +450,18 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 // DumpUPFPageStats Dumps the memory manager's stats about the number of
 // the unique pages and the number of the pages that are reused across invocations
 func (f *Function) DumpUPFPageStats(functionName, metricsOutFilePath string) error {
-	return orch.DumpUPFPageStats(f.vmID, functionName, metricsOutFilePath)
+	f.RLock()
+	vmIDs := append([]string(nil), f.vmIDs...)
+	f.RUnlock()
+
+	for _, vmID := range vmIDs {
+		err := orch.DumpUPFPageStats(vmID, functionName, metricsOutFilePath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // DumpUPFLatencyStats Dumps the memory manager's latency stats
@@ -481,7 +495,7 @@ func (f *Function) CreateInstanceSnapshot() {
 
 	logger.Debug("Creating instance snapshot")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	err := orch.PauseVM(ctx, f.vmID)
@@ -505,6 +519,11 @@ func (f *Function) CreateInstanceSnapshot() {
 	}
 
 	err = f.snapshotManager.CommitSnapshot(f.fID)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	err = f.snapshotManager.PublishSnapshot(ctx, f.fID)
 	if err != nil {
 		log.Panic(err)
 	}

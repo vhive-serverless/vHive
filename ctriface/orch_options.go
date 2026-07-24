@@ -80,6 +80,12 @@ func WithCacheSnaps(cacheSnaps bool) OrchestratorOption {
 	return func(o *Orchestrator) { o.cacheSnaps = cacheSnaps }
 }
 
+// WithChunkedMemory publishes remote snapshot memory in content-addressed
+// chunks. A zero size leaves chunking disabled.
+func WithChunkedMemory(chunkSize int) OrchestratorOption {
+	return func(o *Orchestrator) { o.chunkedMemorySize = chunkSize }
+}
+
 // WithArtifactStoreConfig requests a MinIO-backed artifact store. Supplying
 // this option is explicit opt-in; the default orchestrator remains local-only.
 func WithArtifactStoreConfig(config snapshotting.MinIOArtifactStoreConfig) OrchestratorOption {

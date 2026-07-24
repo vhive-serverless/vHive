@@ -223,9 +223,11 @@ func TestBenchServe(t *testing.T) {
 			dropPageCache()
 		}
 
+		tStart := time.Now()
 		resp, met, err := funcPool.Serve(context.Background(), vmIDString, imageName, "replay")
 		require.NoError(t, err, "Function returned error")
 		require.Equal(t, resp.Payload, "Hello, replay_response!")
+		met.MetricMap["EndToEnd"] = metrics.ToUS(time.Since(tStart))
 
 		serveMetrics[k] = met
 

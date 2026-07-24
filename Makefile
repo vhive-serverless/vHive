@@ -28,7 +28,7 @@ WITHUPF:=-upfTest
 WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
 WITHREMOTE:=-remoteSnapshotsTest
-WITHCHUNKED512:=-remoteSnapshotsTest -chunkedMemorySizeTest 524288
+WITHCHUNKED512:=-chunkedMemorySizeTest 524288
 CTRDLOGDIR:=/tmp/ctrd-logs
 
 vhive: proto
