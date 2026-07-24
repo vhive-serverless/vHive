@@ -290,6 +290,30 @@ func TestTraceProcessRecordPersistsWorkingSetAndTrace(t *testing.T) {
 	}
 }
 
+func TestTraceProcessTracePersistsOnlyTrace(t *testing.T) {
+	baseDir := t.TempDir()
+	tracePath := filepath.Join(baseDir, "trace")
+	workingSetPath := filepath.Join(baseDir, "working_set_pages")
+	pageSize := uint64(os.Getpagesize())
+
+	trace := initTrace(tracePath)
+	trace.AppendRecord(Record{offset: pageSize})
+	if err := trace.ProcessTrace(pageSize); err != nil {
+		t.Fatalf("ProcessTrace returned error: %v", err)
+	}
+	if _, err := os.Stat(workingSetPath); !os.IsNotExist(err) {
+		t.Fatalf("working-set file exists or stat failed: %v", err)
+	}
+
+	replayed := initTrace(tracePath)
+	if err := replayed.readTrace(); err != nil {
+		t.Fatalf("readTrace returned error: %v", err)
+	}
+	if !replayed.containsRecord(Record{offset: pageSize}) {
+		t.Fatal("persisted trace does not contain recorded page")
+	}
+}
+
 func TestTraceProcessRecordFromPageServerDoesNotRequireMemoryFile(t *testing.T) {
 	baseDir := t.TempDir()
 	workingSetPath := filepath.Join(baseDir, "working_set_pages")

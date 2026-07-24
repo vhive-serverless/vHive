@@ -251,6 +251,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 			BaseDir:        o.getVMBaseDir(vmID),
 			GuestMemSize:   int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
 			IsLazyMode:     o.isLazyMode,
+			WSCoalescing:   o.wsCoalescing,
 			VMMStatePath:   o.getSnapshotFile(vmID),
 			WorkingSetPath: o.getWorkingSetFile(vmID),
 		}
@@ -644,6 +645,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 			BaseDir:             o.getVMBaseDir(vmID),
 			GuestMemSize:        int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
 			IsLazyMode:          o.isLazyMode,
+			WSCoalescing:        o.wsCoalescing,
 			WorkingSetPath:      snap.GetWorkingSetFilePath(),
 			WorkingSetTracePath: snap.GetWorkingSetTraceFilePath(),
 			PageServer:          lazyPageServer,

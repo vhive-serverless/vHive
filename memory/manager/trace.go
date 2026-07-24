@@ -149,6 +149,21 @@ func (t *Trace) ProcessRecord(guestMemPath, workingSetPath string, pageSize uint
 	})
 }
 
+// ProcessTrace persists the recorded page offsets without materializing their
+// contents into a working-set file. Replay can then obtain pages directly from
+// its configured memory source.
+func (t *Trace) ProcessTrace(pageSize uint64) error {
+	if pageSize == 0 {
+		return errInvalidGuestRegionPageSize
+	}
+
+	t.Lock()
+	defer t.Unlock()
+	t.pageSize = pageSize
+	t.buildRegionsLocked()
+	return t.writeTraceLocked()
+}
+
 // ProcessRecordFromPageServer persists the recorded working-set pages using
 // the same source that served UFFD faults. It supports recipe-only restores,
 // which intentionally have no local guest memory file.

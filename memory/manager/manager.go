@@ -293,7 +293,9 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 			return err
 		}
 		var recordErr error
-		if state.PageServer != nil {
+		if !state.WSCoalescing || state.IsLazyMode {
+			recordErr = state.trace.ProcessTrace(pageSize)
+		} else if state.PageServer != nil {
 			recordErr = state.trace.ProcessRecordFromPageServer(state.PageServer, state.WorkingSetPath, pageSize)
 		} else {
 			recordErr = state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath, pageSize)

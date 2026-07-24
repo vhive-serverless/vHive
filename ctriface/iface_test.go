@@ -150,6 +150,7 @@ func TestUPFWorkingSetRecordReplay(t *testing.T) {
 		WithTestModeOn(true),
 		WithUPF(true),
 		WithLazyMode(false),
+		WithWSCoalescing(true),
 		WithMetricsMode(true),
 		WithDockerCredentials(*dockerCredentials),
 	)

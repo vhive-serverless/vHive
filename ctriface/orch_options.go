@@ -101,6 +101,15 @@ func WithLazyMode(isLazyMode bool) OrchestratorOption {
 	}
 }
 
+// WithWSCoalescing controls whether non-lazy replay persists and pre-installs
+// a compact working-set file. Disabled replay uses the trace and its default
+// page source directly.
+func WithWSCoalescing(wsCoalescing bool) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.wsCoalescing = wsCoalescing
+	}
+}
+
 func (o *Orchestrator) validateUPFMode() error {
 	if o.isLazyMode && !o.isUPFEnabled {
 		return errLazyModeRequiresUPF

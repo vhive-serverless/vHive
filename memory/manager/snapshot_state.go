@@ -45,7 +45,11 @@ type SnapshotStateCfg struct {
 	BaseDir          string // base directory for the instance
 	MetricsPath      string // path to csv file where the metrics should be stored
 	IsLazyMode       bool
-	GuestMemSize     int
+	// WSCoalescing persists and pre-installs recorded pages as a compact working
+	// set file. When disabled, replay serves recorded pages from PageServer (or
+	// GuestMemPath) using only the trace.
+	WSCoalescing bool
+	GuestMemSize int
 	// PageServer, when non-nil, supplies lazy pages instead of GuestMemPath.
 	// Keeping it optional preserves the established file-backed restore path.
 	PageServer    *PageServer
@@ -246,7 +250,7 @@ func (s *SnapshotState) fetchState() error {
 		return fmt.Errorf("failed to read working set trace: %w", err)
 	}
 
-	if !s.IsLazyMode {
+	if s.WSCoalescing && !s.IsLazyMode {
 		if err := s.fetchWorkingSet(); err != nil {
 			return err
 		}

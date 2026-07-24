@@ -57,6 +57,7 @@ var (
 	isSnapshotsEnabled *bool
 	isUPFEnabled       *bool
 	isLazyMode         *bool
+	wsCoalescing       *bool
 	isMetricsMode      *bool
 	servedThreshold    *uint64
 	pinnedFuncNum      *int
@@ -79,6 +80,7 @@ func main() {
 	servedThreshold = flag.Uint64("st", 1000*1000, "Functions serves X RPCs before it shuts down (if saveMemory=true)")
 	pinnedFuncNum = flag.Int("hn", 0, "Number of functions pinned in memory (IDs from 0 to X)")
 	isLazyMode = flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
+	wsCoalescing = flag.Bool("wsCoalescing", false, "Create and pre-install a coalesced working-set file during non-lazy UPF replay")
 	criSock = flag.String("criSock", "/etc/vhive-cri/vhive-cri.sock", "Socket address for CRI service")
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
@@ -137,6 +139,7 @@ func main() {
 			ctriface.WithUPF(*isUPFEnabled),
 			ctriface.WithMetricsMode(*isMetricsMode),
 			ctriface.WithLazyMode(*isLazyMode),
+			ctriface.WithWSCoalescing(*wsCoalescing),
 			ctriface.WithNetPoolSize(*netPoolSize),
 			ctriface.WithVethPrefix(*vethPrefix),
 			ctriface.WithClonePrefix(*clonePrefix),

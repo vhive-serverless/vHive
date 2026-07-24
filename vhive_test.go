@@ -49,6 +49,7 @@ var (
 	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
 	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
 	isRemoteSnapshotsTest  = flag.Bool("remoteSnapshotsTest", false, "Store snapshots remotely during tests")
+	wsCoalesceTest         = flag.Bool("wsCoalesceTest", false, "Coalesce working sets into a single file")
 	chunkedMemorySizeTest  = flag.Int("chunkedMemorySizeTest", 0, "Remote snapshot memory chunk size in bytes (0 disables chunking)")
 	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
@@ -72,6 +73,7 @@ func TestMain(m *testing.M) {
 	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
 	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
+	log.Infof("Working-set coalescing enabled: %t", *wsCoalesceTest)
 	log.Infof("Remote snapshots enabled: %t", *isRemoteSnapshotsTest)
 	log.Infof("Remote snapshot memory chunk size: %d", *chunkedMemorySizeTest)
 	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
@@ -93,6 +95,7 @@ func TestMain(m *testing.M) {
 		ctriface.WithUPF(*isUPFEnabledTest),
 		ctriface.WithMetricsMode(*isMetricsModeTest),
 		ctriface.WithLazyMode(*isLazyModeTest),
+		ctriface.WithWSCoalescing(*wsCoalesceTest),
 	}
 	if *isRemoteSnapshotsTest {
 		// The in-memory store exercises the remote publication/download path

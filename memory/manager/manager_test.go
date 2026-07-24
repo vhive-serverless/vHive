@@ -25,6 +25,7 @@ package manager
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -192,6 +193,7 @@ func TestFetchStateLoadsWorkingSetAcrossVMIDs(t *testing.T) {
 		WorkingSetPath:      workingSetPath,
 		WorkingSetTracePath: workingSetTracePath,
 		GuestMemSize:        5 * int(pageSize),
+		WSCoalescing:        true,
 	}
 	if err := manager.RegisterVM(recordCfg); err != nil {
 		t.Fatalf("RegisterVM returned error: %v", err)
@@ -256,6 +258,7 @@ func TestFetchStateRejectsInvalidWorkingSetArtifacts(t *testing.T) {
 				VMMStatePath:        vmmStatePath,
 				WorkingSetPath:      filepath.Join(baseDir, "working_set_pages"),
 				WorkingSetTracePath: tracePath,
+				WSCoalescing:        true,
 			})
 			if err := state.fetchState(); err == nil {
 				t.Fatal("fetchState succeeded for invalid working set artifacts")
@@ -264,6 +267,31 @@ func TestFetchStateRejectsInvalidWorkingSetArtifacts(t *testing.T) {
 				t.Fatal("invalid working set artifacts were marked ready")
 			}
 		})
+	}
+}
+
+func TestFetchStateWithoutWSCoalescingRequiresOnlyTrace(t *testing.T) {
+	baseDir := t.TempDir()
+	vmmStatePath := filepath.Join(baseDir, "snap_file")
+	tracePath := filepath.Join(baseDir, "working_set_trace")
+	pageSize := os.Getpagesize()
+	writeTestFile(t, vmmStatePath, "state")
+	writeTestFile(t, tracePath, fmt.Sprintf(`{"version":1,"page_size":%d,"offsets":[0]}`, pageSize))
+
+	state := NewSnapshotState(SnapshotStateCfg{
+		BaseDir:             baseDir,
+		VMMStatePath:        vmmStatePath,
+		WorkingSetPath:      filepath.Join(baseDir, "working_set_pages"),
+		WorkingSetTracePath: tracePath,
+	})
+	if err := state.fetchState(); err != nil {
+		t.Fatalf("fetchState returned error: %v", err)
+	}
+	if !state.isRecordReady {
+		t.Fatal("trace-only replay was not marked ready")
+	}
+	if state.workingSet != nil {
+		t.Fatal("trace-only replay unexpectedly loaded a working set")
 	}
 }
 

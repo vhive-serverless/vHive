@@ -103,6 +103,7 @@ type Orchestrator struct {
 	snapshotsEnabled bool
 	isUPFEnabled     bool
 	isLazyMode       bool
+	wsCoalescing     bool
 	snapshotsDir     string
 	isMetricsMode    bool
 	netPoolSize      int
