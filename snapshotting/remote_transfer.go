@@ -21,6 +21,9 @@ type remoteSnapshotTransfer struct {
 	cacheSnaps bool
 	chunkSize  int
 	chunkCache ChunkCache
+	// reconstructMemory is intentionally independent from chunking. Chunked
+	// snapshots can instead be consumed through their recipe by a page server.
+	reconstructMemory bool
 
 	mu        sync.Mutex
 	downloads map[string]*remoteDownload
@@ -47,7 +50,12 @@ func persistMemoryRecipe(catalog Catalog, revision, recipe string) error {
 }
 
 func newRemoteSnapshotTransfer(store ArtifactStore, cacheSnaps bool) *remoteSnapshotTransfer {
-	return &remoteSnapshotTransfer{store: store, cacheSnaps: cacheSnaps, downloads: make(map[string]*remoteDownload)}
+	return &remoteSnapshotTransfer{
+		store:             store,
+		cacheSnaps:        cacheSnaps,
+		reconstructMemory: false,
+		downloads:         make(map[string]*remoteDownload),
+	}
 }
 
 func (r *remoteSnapshotTransfer) enableChunkedMemory(chunkSize int) error {
@@ -64,6 +72,12 @@ func (r *remoteSnapshotTransfer) setChunkCache(cache ChunkCache) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.chunkCache = cache
+}
+
+func (r *remoteSnapshotTransfer) setMemoryReconstruction(enabled bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.reconstructMemory = enabled
 }
 
 func (r *remoteSnapshotTransfer) hasDownload(revision string) bool {
@@ -193,29 +207,34 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 			return nil, err
 		}
 	} else {
-		recipe, err := getRecipe(ctx, r.store, revision)
-		if err != nil {
-			return nil, err
-		}
-		memoryPath := filepath.Join(baseFolder, revision, desc.Artifacts.Memory)
-		temporary, err := os.CreateTemp(filepath.Dir(memoryPath), ".reconstructed-memory-*")
-		if err != nil {
-			return nil, fmt.Errorf("create reconstructed memory file: %w", err)
-		}
-		temporaryName := temporary.Name()
-		defer os.Remove(temporaryName)
 		r.mu.Lock()
-		cache := r.chunkCache
+		reconstructMemory := r.reconstructMemory
 		r.mu.Unlock()
-		if err := ReconstructMemoryWithCache(ctx, r.store, cache, recipe, temporary); err != nil {
-			temporary.Close()
-			return nil, err
-		}
-		if err := temporary.Close(); err != nil {
-			return nil, fmt.Errorf("close reconstructed memory file: %w", err)
-		}
-		if err := os.Rename(temporaryName, memoryPath); err != nil {
-			return nil, fmt.Errorf("publish reconstructed memory file: %w", err)
+		if reconstructMemory {
+			recipe, err := getRecipe(ctx, r.store, revision)
+			if err != nil {
+				return nil, err
+			}
+			memoryPath := filepath.Join(baseFolder, revision, desc.Artifacts.Memory)
+			temporary, err := os.CreateTemp(filepath.Dir(memoryPath), ".reconstructed-memory-*")
+			if err != nil {
+				return nil, fmt.Errorf("create reconstructed memory file: %w", err)
+			}
+			temporaryName := temporary.Name()
+			defer os.Remove(temporaryName)
+			r.mu.Lock()
+			cache := r.chunkCache
+			r.mu.Unlock()
+			if err := ReconstructMemoryWithCache(ctx, r.store, cache, recipe, temporary); err != nil {
+				temporary.Close()
+				return nil, err
+			}
+			if err := temporary.Close(); err != nil {
+				return nil, fmt.Errorf("close reconstructed memory file: %w", err)
+			}
+			if err := os.Rename(temporaryName, memoryPath); err != nil {
+				return nil, fmt.Errorf("publish reconstructed memory file: %w", err)
+			}
 		}
 	}
 	// A patch is needed only by devmapper snapshots, so its absence is valid.

@@ -2,6 +2,7 @@ package ctriface
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/vhive-serverless/vhive/memory/manager"
@@ -16,13 +17,20 @@ func (s *lazyRestoreTestSource) ReadAt(_ context.Context, _ uint64, length uint6
 
 func (s *lazyRestoreTestSource) Close() error { s.closed = true; return nil }
 
-func TestLazyRecipePageServerSelection(t *testing.T) {
+func TestRecipePageServerSelection(t *testing.T) {
 	snap := snapshotting.NewSnapshotFromDescriptor(t.TempDir(), &snapshotting.SnapshotDescriptor{
 		Revision:     "recipe-revision",
 		Image:        "test-image",
 		Ready:        true,
 		MemoryRecipe: ".memory-recipe.json",
+		Artifacts:    snapshotting.ArtifactNames{Memory: "mem_file"},
 	})
+	if err := snap.CreateSnapDir(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(snap.GetMemFilePath(), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
 	store := snapshotting.NewMemoryArtifactStore()
 
 	original := newRecipePageSourceForRevision
@@ -37,12 +45,12 @@ func TestLazyRecipePageServerSelection(t *testing.T) {
 		return source, nil
 	}
 
-	server, err := lazyRecipePageServer(context.Background(), true, store, snap)
+	server, err := recipePageServer(context.Background(), store, snap)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !called || server == nil {
-		t.Fatal("eligible lazy recipe restore did not create a page server")
+		t.Fatal("recipe-backed restore did not create a page server")
 	}
 	page, err := server.Read(0, 4096)
 	if err != nil || !page.Zero {
@@ -53,9 +61,9 @@ func TestLazyRecipePageServerSelection(t *testing.T) {
 	}
 }
 
-func TestLazyRecipePageServerLeavesNonRecipeRestoreFileBacked(t *testing.T) {
+func TestRecipePageServerLeavesNonRecipeRestoreFileBacked(t *testing.T) {
 	snap := snapshotting.NewSnapshot("local-revision", t.TempDir(), "test-image")
-	server, err := lazyRecipePageServer(context.Background(), true, snapshotting.NewMemoryArtifactStore(), snap)
+	server, err := recipePageServer(context.Background(), snapshotting.NewMemoryArtifactStore(), snap)
 	if err != nil {
 		t.Fatal(err)
 	}

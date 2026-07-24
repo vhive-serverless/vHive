@@ -264,6 +264,9 @@ func testRemoteSnapshotTransferRestore(t *testing.T, chunkSize int) {
 
 	worker := snapshotting.NewSnapshotManager(workerDir)
 	worker.EnableRemoteTransfer(store, true)
+	if chunkSize != 0 {
+		require.NoError(t, worker.EnableMemoryReconstruction(true), "enable chunked memory reconstruction for file-backed restore")
+	}
 	downloaded, err := worker.AcquireSnapshotContext(ctx, revision)
 	require.NoError(t, err, "download snapshot on clean worker")
 	_, err = worker.Catalog().Get(revision)

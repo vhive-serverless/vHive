@@ -35,6 +35,9 @@ import (
 )
 
 const (
+	// Acquire Snapshot Time it takes to acquire snap (includes the fetch)
+	AcquireSnap = "AcquireSnap"
+
 	// FcResume Time it takes to resume a VM from containerd
 	FcResume = "FcResume"
 	// ConnectFuncClient Time it takes to reconnect function client

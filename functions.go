@@ -539,10 +539,12 @@ func (f *Function) LoadInstance(vmID string) (*ctriface.StartVMResponse, *metric
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
+	tStart := time.Now()
 	snap, err := f.snapshotManager.AcquireSnapshot(f.fID)
 	if err != nil {
 		log.Panic(err)
 	}
+	acquireTime := time.Since(tStart)
 
 	resp, loadMetr, err := orch.LoadSnapshot(ctx, vmID, snap)
 	if err != nil {
@@ -557,6 +559,7 @@ func (f *Function) LoadInstance(vmID string) (*ctriface.StartVMResponse, *metric
 	for k, v := range resumeMetr.MetricMap {
 		loadMetr.MetricMap[k] = v
 	}
+	loadMetr.MetricMap[metrics.AcquireSnap] = metrics.ToUS(acquireTime)
 
 	return resp, loadMetr
 }

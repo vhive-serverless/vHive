@@ -497,15 +497,20 @@ func configureSnapshotMemoryBackend(conf *proto.CreateVMRequest, backendType, ba
 
 var newRecipePageSourceForRevision = snapshotting.NewRecipePageSourceForRevision
 
-// lazyRecipePageServer selects recipe-backed lazy restore only when both lazy
-// mode and a chunked remote snapshot are explicitly in use. Local snapshots
-// deliberately retain the existing mmap-backed UFFD behavior.
-func lazyRecipePageServer(ctx context.Context, lazy bool, store snapshotting.ArtifactStore, snap *snapshotting.Snapshot) (*manager.PageServer, error) {
-	if !lazy || snap == nil || !snap.HasMemoryRecipe() {
+// recipePageServer supplies chunked memory through UFFD only when the
+// SnapshotManager did not materialize a complete local memory file. Lazy mode
+// itself is exclusively the working-set-trace replay policy.
+func recipePageServer(ctx context.Context, store snapshotting.ArtifactStore, snap *snapshotting.Snapshot) (*manager.PageServer, error) {
+	if snap == nil || !snap.HasMemoryRecipe() {
 		return nil, nil
 	}
+	if _, err := os.Stat(snap.GetMemFilePath()); err == nil {
+		return nil, nil
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("stat reconstructed memory file: %w", err)
+	}
 	if store == nil {
-		return nil, fmt.Errorf("lazy recipe restore requires an artifact store")
+		return nil, fmt.Errorf("recipe-backed restore requires an artifact store")
 	}
 	source, err := newRecipePageSourceForRevision(ctx, store, nil, snap.GetId())
 	if err != nil {
@@ -558,12 +563,12 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf := o.getVMConfig(vm)
 	conf.LoadSnapshot = true
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
-	configureSnapshotMemoryBackend(conf, "File", snap.GetMemFilePath())
 	uffdSock := filepath.Join(o.getVMBaseDir(vmID), "uffd.sock")
+	configureSnapshotMemoryBackend(conf, "File", snap.GetMemFilePath())
 	if o.GetUPFEnabled() {
-		lazyPageServer, err = lazyRecipePageServer(ctx, o.isLazyMode, o.artifactStore, snap)
+		lazyPageServer, err = recipePageServer(ctx, o.artifactStore, snap)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "prepare lazy recipe restore")
+			return nil, nil, errors.Wrap(err, "prepare recipe-backed restore")
 		}
 	}
 	defer func() {

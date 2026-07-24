@@ -119,6 +119,7 @@ func TestRemoteChunkedMemoryRoundTripDeduplicatesAcrossSnapshots(t *testing.T) {
 
 	worker := NewSnapshotManager(t.TempDir())
 	worker.EnableRemoteTransfer(store, true)
+	require.NoError(t, worker.EnableMemoryReconstruction(true))
 	for revision, want := range map[string][]byte{"revision-a": []byte("AAAABBBBCCCC"), "revision-b": []byte("AAAABBBBDDDD")} {
 		snapshot, err := worker.AcquireSnapshotContext(context.Background(), revision)
 		require.NoError(t, err)
@@ -130,6 +131,29 @@ func TestRemoteChunkedMemoryRoundTripDeduplicatesAcrossSnapshots(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, reacquired.HasMemoryRecipe(), "local catalog retains recipe marker")
 	}
+}
+
+func TestRemoteChunkedMemoryDefaultsToRecipeOnly(t *testing.T) {
+	store := NewMemoryArtifactStore()
+	source := NewSnapshotManager(t.TempDir())
+	source.EnableRemoteTransfer(store, false)
+	require.NoError(t, source.EnableChunkedMemory(4))
+	snapshot, err := source.InitSnapshot("revision-a", "example:image")
+	require.NoError(t, err)
+	require.NoError(t, snapshot.CreateSnapDir())
+	require.NoError(t, os.WriteFile(snapshot.GetSnapshotFilePath(), []byte("vm-state"), 0600))
+	require.NoError(t, os.WriteFile(snapshot.GetMemFilePath(), []byte("AAAABBBB"), 0600))
+	require.NoError(t, snapshot.SerializeSnapInfo())
+	require.NoError(t, source.CommitSnapshot("revision-a"))
+	require.NoError(t, source.PublishSnapshot(context.Background(), "revision-a"))
+
+	worker := NewSnapshotManager(t.TempDir())
+	worker.EnableRemoteTransfer(store, true)
+	downloaded, err := worker.AcquireSnapshotContext(context.Background(), "revision-a")
+	require.NoError(t, err)
+	require.True(t, downloaded.HasMemoryRecipe())
+	_, err = os.Stat(downloaded.GetMemFilePath())
+	require.ErrorIs(t, err, os.ErrNotExist, "recipe-only download must not reconstruct memory")
 }
 
 type countingStore struct {

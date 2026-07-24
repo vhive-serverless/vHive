@@ -75,6 +75,24 @@ func (mgr *SnapshotManager) EnableChunkedMemory(chunkSize int) error {
 	return remote.enableChunkedMemory(chunkSize)
 }
 
+// EnableMemoryReconstruction controls whether a chunked remote snapshot is
+// materialized into a complete local memory file during download. It is
+// disabled by default, so consumers can supply memory directly from the recipe
+// (for example, through UFFD). Enable it for consumers that require a local
+// memory file.
+//
+// It must be called after EnableRemoteTransfer.
+func (mgr *SnapshotManager) EnableMemoryReconstruction(enabled bool) error {
+	mgr.Lock()
+	remote := mgr.remote
+	mgr.Unlock()
+	if remote == nil {
+		return fmt.Errorf("remote transfer is not enabled")
+	}
+	remote.setMemoryReconstruction(enabled)
+	return nil
+}
+
 // EnableChunkCache uses directory for recipe chunk reuse during remote
 // reconstruction. It is independent of snapshot retention and affects only
 // chunked remote snapshots. Passing an empty directory disables the cache.
