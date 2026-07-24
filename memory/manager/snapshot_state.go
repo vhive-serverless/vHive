@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -68,6 +69,7 @@ type SnapshotState struct {
 	wakeFD              int
 	quitCh              chan int
 	pollDoneCh          chan struct{}
+	terminating         atomic.Bool
 
 	// to indicate whether the instance has even been activated. this is to
 	// get around cases where offload is called for the first time
@@ -131,6 +133,7 @@ func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 	s.firstPageFaultOnce = nil
 	s.userFaultFD = nil
 	s.guestRegionMappings = nil
+	s.terminating.Store(false)
 	s.trace = initTrace(cfg.WorkingSetTracePath)
 	s.epfd = 0
 	s.wakeFD = -1
@@ -168,6 +171,7 @@ func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 func (s *SnapshotState) setupStateOnActivate() {
 	s.isActive = true
 	s.isEverActivated = true
+	s.terminating.Store(false)
 	s.firstPageFaultOnce = new(sync.Once)
 	s.wakeFD = -1
 	s.quitCh = make(chan int, 1)

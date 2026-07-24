@@ -452,8 +452,7 @@ func (s *SnapshotState) pollUserPageFaults(readyCh chan error) {
 				}
 
 				address := binary.LittleEndian.Uint64(goMsg[16:])
-
-				if err := s.servePageFault(fd, address); err != nil {
+				if err := s.servePageFault(fd, address, s.shouldRecordPageFault()); err != nil {
 					logger.WithError(err).WithField("address", fmt.Sprintf("%#x", address)).Error("Failed to serve page fault")
 					return
 				}
@@ -553,7 +552,7 @@ func (s *SnapshotState) closeWakeFD() {
 }
 
 // servePageFault copies the requested guest page or installs the recorded working set.
-func (s *SnapshotState) servePageFault(fd int, address uint64) error {
+func (s *SnapshotState) servePageFault(fd int, address uint64, recordFault bool) error {
 	var (
 		tStart              time.Time
 		workingSetInstalled bool
@@ -565,7 +564,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 	}
 
 	rec := Record{offset: copyArgs.srcOffset}
-	if s.firstPageFaultOnce != nil {
+	if recordFault && s.firstPageFaultOnce != nil {
 		s.firstPageFaultOnce.Do(func() {
 			if !s.isRecordReady || s.IsLazyMode || !s.WSCoalescing {
 				return
@@ -607,13 +606,13 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 		return err
 	}
 
-	if !s.isRecordReady {
+	if recordFault && !s.isRecordReady {
 		s.trace.AppendRecord(rec)
-	} else {
+	} else if recordFault {
 		log.Debug("Serving a page that is missing from the working set")
 	}
 
-	if s.metricsModeOn {
+	if recordFault && s.metricsModeOn {
 		if s.isRecordReady {
 			if s.IsLazyMode {
 				if !s.trace.containsRecord(rec) {
@@ -629,11 +628,17 @@ func (s *SnapshotState) servePageFault(fd int, address uint64) error {
 
 	err = installRegionBytes(fd, src, copyArgs.dstAddr, copyArgs.copyMode, copyArgs.copyLen)
 
-	if s.metricsModeOn {
+	if recordFault && s.metricsModeOn {
 		s.currentMetric.MetricMap[serveUniqueMetric] += metrics.ToUS(time.Since(tStart))
 	}
 
 	return err
+}
+
+// shouldRecordPageFault reports whether trace and metrics should include a
+// fault. Termination faults still need to be served to unblock Firecracker.
+func (s *SnapshotState) shouldRecordPageFault() bool {
+	return !s.terminating.Load()
 }
 
 // installWorkingSetPages copies recorded pages before waking the first fault.

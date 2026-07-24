@@ -242,6 +242,20 @@ func (m *MemoryManager) FetchState(vmID string) error {
 	return err
 }
 
+// MarkTerminating stops UFFD faults from changing workload trace and metrics.
+// The handler continues serving them until Deactivate stops the poller.
+func (m *MemoryManager) MarkTerminating(vmID string) error {
+	m.Lock()
+	state, ok := m.instances[vmID]
+	m.Unlock()
+	if !ok {
+		return errors.New("VM not registered with the memory manager")
+	}
+
+	state.terminating.Store(true)
+	return nil
+}
+
 // Deactivate Removes the epoller which serves page faults for the VM
 func (m *MemoryManager) Deactivate(vmID string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})

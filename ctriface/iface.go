@@ -309,6 +309,12 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	//	}
 	//}
 
+	if o.GetUPFEnabled() {
+		if err := o.memoryManager.MarkTerminating(vmID); err != nil {
+			logger.WithError(err).Warn("failed to mark VM as terminating in memory manager")
+		}
+	}
+
 	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID, TimeoutSeconds: 1}); err != nil {
 		logger.WithError(err).Error("failed to stop firecracker-containerd VM")
 	}

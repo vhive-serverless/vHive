@@ -42,6 +42,18 @@ func TestProcessMetricsIncludesLazyRecordingRun(t *testing.T) {
 	}
 }
 
+func TestShouldRecordPageFaultStopsDuringTermination(t *testing.T) {
+	state := &SnapshotState{}
+	if !state.shouldRecordPageFault() {
+		t.Fatal("fault was excluded before termination")
+	}
+
+	state.terminating.Store(true)
+	if state.shouldRecordPageFault() {
+		t.Fatal("fault was recorded after termination began")
+	}
+}
+
 func TestPageAlignFaultAddress(t *testing.T) {
 	region := GuestRegionUffdMapping{
 		BaseHostVirtAddr: 0x100000,
