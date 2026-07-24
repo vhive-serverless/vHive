@@ -53,6 +53,9 @@ var (
 	chunkedMemorySizeTest  = flag.Int("chunkedMemorySizeTest", 0, "Remote snapshot memory chunk size in bytes (0 disables chunking)")
 	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
+	snapshotterTest        = flag.String("ss", "devmapper", "Snapshotter to use")
+	testImage              = flag.String("img", testImageName, "Test image")
+	dockerCredentialsTest  = flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM")
 )
 
 func TestMain(m *testing.M) {
@@ -69,6 +72,9 @@ func TestMain(m *testing.M) {
 	log.SetLevel(log.InfoLevel)
 
 	flag.Parse()
+	// Keep the existing tests' image references while allowing integration runs
+	// to select an eStargz image with -img.
+	testImageName = *testImage
 
 	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
@@ -79,6 +85,8 @@ func TestMain(m *testing.M) {
 	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
 	log.Infof("Drop cache: %t", !*isWithCache)
 	log.Infof("Bench dir: %s", *benchDir)
+	log.Infof("Snapshotter: %s", *snapshotterTest)
+	log.Infof("Test image: %s", testImageName)
 
 	if *chunkedMemorySizeTest < 0 {
 		log.Error("Remote snapshot memory chunk size must not be negative")
@@ -96,6 +104,7 @@ func TestMain(m *testing.M) {
 		ctriface.WithMetricsMode(*isMetricsModeTest),
 		ctriface.WithLazyMode(*isLazyModeTest),
 		ctriface.WithWSCoalescing(*wsCoalesceTest),
+		ctriface.WithDockerCredentials(*dockerCredentialsTest),
 	}
 	if *isRemoteSnapshotsTest {
 		// The in-memory store exercises the remote publication/download path
@@ -124,7 +133,7 @@ func TestMain(m *testing.M) {
 	}
 
 	orch = ctriface.NewOrchestrator(
-		"devmapper",
+		*snapshotterTest,
 		"",
 		orchOptions...,
 	)
@@ -172,7 +181,7 @@ func TestSnapshotRoundTripServesIndependentVMs(t *testing.T) {
 	}
 
 	const (
-		functionID = "stage0-snapshot-roundtrip"
+		functionID = "snap-rt"
 		request    = "world"
 		response   = "Hello, world!"
 	)

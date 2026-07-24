@@ -28,6 +28,8 @@ WITHUPF:=-upfTest
 WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
 WITHREMOTE:=-remoteSnapshotsTest
+WITHWSCOALESCING:=-wsCoalesceTest
+STARGZ:=-ss 'proxy' -img 'ghcr.io/vhive-serverless/helloworld:var_workload-esgz' -dockerCredentials '{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}'
 WITHCHUNKED512:=-chunkedMemorySizeTest 524288
 CTRDLOGDIR:=/tmp/ctrd-logs
 
@@ -44,6 +46,73 @@ test-all: test-subdirs test-orch
 
 test-orch: test test-man
 
+test-snapshare:
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS)
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(STARGZ)
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS)
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF)
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING)
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING) $(WITHREMOTE)
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -timeout 20m -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHREMOTE) $(WITHCHUNKED512)
+	./scripts/clean_fcctr.sh
+
+bench-snapshare:
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) -benchDirTest bench_results/configBase -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHUPF) $(WITHLAZY) -benchDirTest bench_results/configUPF -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHUPF) $(WITHWSCOALESCING) -benchDirTest bench_results/configREAP -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHREMOTE) -benchDirTest bench_results/configRemote -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHUPF) $(WITHWSCOALESCING) $(WITHREMOTE) -benchDirTest bench_results/configRemoteREAP -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHUPF) $(WITHLAZY) $(WITHREMOTE) $(WITHCHUNKED512) -benchDirTest bench_results/configRemoteLazyChunks -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHUPF) $(WITHREMOTE) $(WITHCHUNKED512) -benchDirTest bench_results/configRemoteChunks -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+
 test:
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
@@ -53,16 +122,10 @@ test:
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
-	./scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY) $(WITHREMOTE)
-	./scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY) $(WITHREMOTE) $(WITHCHUNKED512)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
 	sudo env "PATH=$(PATH)" go test -short $(EXTRAGOARGS) -run TestProfileSingleConfiguration -args -test -loadStep 100 && sudo rm -rf bench_results
@@ -78,7 +141,7 @@ test-man:
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestServeThree -args $(WITHSNAPSHOTS)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_both_log_man_travis.out 2>$(CTRDLOGDIR)/fccd_orch_both_log_man_travis.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestServeThree -args $(WITHSNAPSHOTS) $(WITHUPF)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestServeThree -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_both_lazy_log_man_travis.out 2>$(CTRDLOGDIR)/fccd_orch_both_lazy_log_man_travis.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestServeThree -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
@@ -89,7 +152,7 @@ test-skip:
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS_NORACE) -run TestParallelServe -args $(WITHSNAPSHOTS)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_both_log_man_skip.out 2>$(CTRDLOGDIR)/fccd_orch_both_log_man_skip.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS_NORACE) -run TestParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF)
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS_NORACE) -run TestParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_both_lazy_log_man_skip.out 2>$(CTRDLOGDIR)/fccd_orch_both_lazy_log_man_skip.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS_NORACE) -run TestParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
@@ -98,35 +161,23 @@ test-skip:
 bench:
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) -benchDirTest bench_results/configBase -metricsTest -funcName helloworld
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) -benchDirTest configBase -metricsTest -funcName helloworld && sudo rm -rf configBase
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(WITHUPF) -benchDirTest bench_results/configREAP -metricsTest -funcName helloworld
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING) -benchDirTest configREAP -metricsTest -funcName helloworld && sudo rm -rf configREAP
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY) -benchDirTest bench_results/configLazy -metricsTest -funcName helloworld
-	./scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY) $(WITHREMOTE) -benchDirTest bench_results/configRemote -metricsTest -funcName helloworld
-	./scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY) $(WITHREMOTE) $(WITHCHUNKED512) -benchDirTest bench_results/configRemoteChunked512KiB -metricsTest -funcName helloworld
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 $(WITHSNAPSHOTS) $(WITHLAZY) -benchDirTest configLazy -metricsTest -funcName helloworld && sudo rm -rf configLazy
 	./scripts/clean_fcctr.sh
 
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) -benchDirTest bench_results/configBaseParallel -metricsTest -funcName helloworld
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) -benchDirTest configBase -metricsTest -funcName helloworld && sudo rm -rf configBase
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) -benchDirTest bench_results/configREAPParallel -metricsTest -funcName helloworld
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING) -benchDirTest configREAP -metricsTest -funcName helloworld && sudo rm -rf configREAP
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY) -benchDirTest bench_results/configLazyParallel -metricsTest -funcName helloworld
-	./scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY) $(WITHREMOTE) -benchDirTest bench_results/configRemoteParallel -metricsTest -funcName helloworld
-	./scripts/clean_fcctr.sh
-	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY) $(WITHREMOTE) $(WITHCHUNKED512) -benchDirTest bench_results/configRemoteChunked512KiBParallel -metricsTest -funcName helloworld
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchParallelServe -args $(WITHSNAPSHOTS) $(WITHLAZY) -benchDirTest configLazy -metricsTest -funcName helloworld && sudo rm -rf configLazy
 	./scripts/clean_fcctr.sh
 
 test-man-bench:
@@ -139,7 +190,7 @@ nightly-test:
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -run TestAllFunctions $(EXTRAGOARGS) -args $(WITHSNAPSHOTS)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -run TestAllFunctions $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF)
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -run TestAllFunctions $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.out 2>$(CTRDLOGDIR)/fccd_orch_upf_lazy_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -run TestAllFunctions $(EXTRAGOARGS) -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)

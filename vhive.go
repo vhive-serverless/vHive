@@ -44,11 +44,11 @@ import (
 const (
 	port    = ":3333"
 	fwdPort = ":3334"
-
-	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
 )
 
 var (
+	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
+
 	flog     *os.File
 	orch     *ctriface.Orchestrator
 	funcPool *FuncPool
