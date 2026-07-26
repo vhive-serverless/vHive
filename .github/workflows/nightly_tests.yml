@@ -56,9 +56,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # User-level page faults are temporarily disabled (gh-807)
-        # vhive_args: ["-dbg", "-dbg -snapshots", "-dbg -snapshots -upf"]
-        vhive_args: [ "-dbg", "-dbg -snapshots" ]
+        vhive_args: ["-dbg", "-dbg -snapshots", "-dbg -snapshots -upf"]
     env:
         GITHUB_RUN_ID: ${{ github.run_id }}
         GITHUB_JOB: ${{ github.job }}

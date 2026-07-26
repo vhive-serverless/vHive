@@ -112,9 +112,10 @@ func TestBenchParallelServe(t *testing.T) {
 		require.NoError(t, err, "Function returned error, "+message)
 
 		if *isUPFEnabledTest {
-			memManagerMetrics, err := orch.GetUPFLatencyStats(vmIDString + "-0")
-			require.NoError(t, err, "Failed to ge tupf metrics")
-			require.Equal(t, len(memManagerMetrics), 1, "wrong length")
+			f := funcPool.getFunction(vmIDString, imageName)
+			memManagerMetrics, err := orch.GetUPFLatencyStats(f.vmID)
+			require.NoError(t, err, "Failed to get UPF metrics")
+			require.Len(t, memManagerMetrics, 1, "wrong metrics length")
 			upfMetrics[i] = memManagerMetrics[0]
 		}
 	}
@@ -235,6 +236,14 @@ func TestBenchServe(t *testing.T) {
 		message, err := funcPool.RemoveInstance(vmIDString, imageName, isSyncOffload)
 		require.NoError(t, err, "Function returned error, "+message)
 
+		if orch.GetUPFEnabled() {
+			f := funcPool.getFunction(vmIDString, imageName)
+			instanceMetrics, err := orch.GetUPFLatencyStats(f.vmID)
+			require.NoError(t, err, "Failed to get UPF metrics for "+f.vmID)
+			require.Len(t, instanceMetrics, 1, "wrong metrics length for "+f.vmID)
+			memManagerMetrics = append(memManagerMetrics, instanceMetrics[0])
+		}
+
 		time.Sleep(3 * time.Second) // this helps kworker hanging
 	}
 
@@ -243,9 +252,6 @@ func TestBenchServe(t *testing.T) {
 		// Page stats
 		err = funcPool.DumpUPFPageStats(vmIDString, imageName, *funcName, getOutFile("pageStats.csv"))
 		require.NoError(t, err, "Failed to dump page stats for"+*funcName)
-
-		memManagerMetrics, err = orch.GetUPFLatencyStats(vmIDString + "-0")
-		require.NoError(t, err, "Failed to dump get stats for "+*funcName)
 		require.Equal(t, len(serveMetrics), len(memManagerMetrics), "different metrics lengths")
 	}
 

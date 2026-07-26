@@ -53,6 +53,7 @@ type SnapshotStateCfg struct {
 // of the VM.
 type SnapshotState struct {
 	SnapshotStateCfg
+	deactivateMu        sync.Mutex
 	firstPageFaultOnce  *sync.Once
 	userFaultFD         *os.File
 	guestRegionMappings []GuestRegionUffdMapping

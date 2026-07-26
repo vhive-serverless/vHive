@@ -127,12 +127,15 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.vethPrefix = "172.17"
 	o.clonePrefix = "172.18"
 
-	o.dns = getK8sDNS()
-
 	for _, opt := range opts {
 		opt(o)
 	}
 
+	if err := o.validateUPFMode(); err != nil {
+		panic(err)
+	}
+
+	o.dns = getK8sDNS()
 	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize, o.vethPrefix, o.clonePrefix, o.setExpIface)
 
 	if _, err := os.Stat(o.snapshotsDir); err != nil {

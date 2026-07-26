@@ -264,6 +264,9 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	m.Unlock()
 
+	state.deactivateMu.Lock()
+	defer state.deactivateMu.Unlock()
+
 	if !state.isEverActivated {
 		return nil
 	}
@@ -288,12 +291,17 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 		defer func() { _ = state.userFaultFD.Close() }()
 	}
 
-	if !state.isRecordReady && !state.IsLazyMode {
+	if !state.isRecordReady {
 		pageSize, err := guestMappingPageSize(state.guestRegionMappings)
 		if err != nil {
 			return err
 		}
-		if err := state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath, pageSize); err != nil {
+		if state.IsLazyMode {
+			err = state.trace.persistTrace(pageSize)
+		} else {
+			err = state.trace.ProcessRecord(state.GuestMemPath, state.WorkingSetPath, pageSize)
+		}
+		if err != nil {
 			return err
 		}
 	}

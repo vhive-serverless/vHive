@@ -38,11 +38,9 @@ test:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(UPFARGS)
 	./../scripts/clean_fcctr.sh
-	@set -e; \
-	trap './../scripts/clean_fcctr.sh' EXIT; \
-	sudo mkdir -m777 -p $(CTRDLOGDIR); \
-	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_working_set.out 2>$(CTRDLOGDIR)/ctriface_log_upf_working_set.err & \
+	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_working_set.out 2>$(CTRDLOGDIR)/ctriface_log_upf_working_set.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -run '^TestUPFWorkingSetRecordReplay$$' -args $(UPF_WORKING_SET_ARGS)
+	./../scripts/clean_fcctr.sh
 
 test-man:
 	./../scripts/clean_fcctr.sh

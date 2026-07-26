@@ -80,6 +80,12 @@ func TestValidateUPFMode(t *testing.T) {
 	}
 }
 
+func TestNewOrchestratorRejectsInvalidUPFMode(t *testing.T) {
+	require.PanicsWithValue(t, errLazyModeRequiresUPF, func() {
+		NewOrchestrator("", "", WithLazyMode(true))
+	})
+}
+
 func TestStartSnapStopLoad(t *testing.T) {
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,

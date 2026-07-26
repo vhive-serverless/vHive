@@ -263,6 +263,28 @@ func TestTraceProcessRecordPersistsWorkingSetAndTrace(t *testing.T) {
 	}
 }
 
+func TestTracePersistTraceForLazyReplay(t *testing.T) {
+	baseDir := t.TempDir()
+	tracePath := filepath.Join(baseDir, "working_set_trace")
+	pageSize := uint64(os.Getpagesize())
+
+	trace := initTrace(tracePath)
+	trace.AppendRecord(Record{offset: 2 * pageSize})
+	trace.AppendRecord(Record{offset: pageSize})
+
+	if err := trace.persistTrace(pageSize); err != nil {
+		t.Fatalf("persistTrace returned error: %v", err)
+	}
+
+	loadedTrace := initTrace(tracePath)
+	if err := loadedTrace.readTrace(); err != nil {
+		t.Fatalf("readTrace returned error: %v", err)
+	}
+	if !reflect.DeepEqual(loadedTrace.trace, trace.trace) {
+		t.Fatal("loaded trace records do not match persisted records")
+	}
+}
+
 func TestReceiveUffdMappingsAndFD(t *testing.T) {
 	mappings := []GuestRegionUffdMapping{{
 		BaseHostVirtAddr: 0x100000,

@@ -331,8 +331,25 @@ func TestMemoryManagerActivateReceivesFirecrackerMappings(t *testing.T) {
 		t.Fatalf("validateGuestMemory mapped memory returned error: %v", err)
 	}
 
-	if err := manager.Deactivate(vmID); err != nil {
-		t.Fatalf("Deactivate returned error: %v", err)
+	const deactivatorCount = 8
+	start := make(chan struct{})
+	deactivateErrCh := make(chan error, deactivatorCount)
+	for range deactivatorCount {
+		go func() {
+			<-start
+			deactivateErrCh <- manager.Deactivate(vmID)
+		}()
+	}
+	close(start)
+
+	successes := 0
+	for range deactivatorCount {
+		if err := <-deactivateErrCh; err == nil {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("successful Deactivate calls = %d, want 1", successes)
 	}
 	if err := manager.DeregisterVM(vmID); err != nil {
 		t.Fatalf("DeregisterVM returned error: %v", err)

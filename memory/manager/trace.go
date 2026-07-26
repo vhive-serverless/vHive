@@ -50,7 +50,7 @@ type Trace struct {
 	regions          map[uint64]int
 }
 
-type workingSetTraceMetadata struct {
+type serializedWorkingSet struct {
 	Version  int      `json:"version"`
 	PageSize uint64   `json:"page_size"`
 	Offsets  []uint64 `json:"offsets"`
@@ -82,20 +82,20 @@ func (t *Trace) readTrace() error {
 		return err
 	}
 
-	var metadata workingSetTraceMetadata
-	if err := json.Unmarshal(data, &metadata); err != nil {
+	var workingSet serializedWorkingSet
+	if err := json.Unmarshal(data, &workingSet); err != nil {
 		return err
 	}
-	if metadata.Version != workingSetTraceVersion {
-		return fmt.Errorf("unsupported working set trace version: %d", metadata.Version)
+	if workingSet.Version != workingSetTraceVersion {
+		return fmt.Errorf("unsupported working set trace version: %d", workingSet.Version)
 	}
-	if metadata.PageSize == 0 {
+	if workingSet.PageSize == 0 {
 		return errInvalidGuestRegionPageSize
 	}
 
-	containedOffsets := make(map[uint64]struct{}, len(metadata.Offsets))
-	records := make([]Record, 0, len(metadata.Offsets))
-	for _, offset := range metadata.Offsets {
+	containedOffsets := make(map[uint64]struct{}, len(workingSet.Offsets))
+	records := make([]Record, 0, len(workingSet.Offsets))
+	for _, offset := range workingSet.Offsets {
 		if _, ok := containedOffsets[offset]; ok {
 			return fmt.Errorf("duplicate working set trace offset: %#x", offset)
 		}
@@ -106,7 +106,7 @@ func (t *Trace) readTrace() error {
 	t.Lock()
 	defer t.Unlock()
 
-	t.pageSize = metadata.PageSize
+	t.pageSize = workingSet.PageSize
 	t.containedOffsets = containedOffsets
 	t.trace = records
 	t.buildRegionsLocked()
@@ -146,6 +146,19 @@ func (t *Trace) ProcessRecord(guestMemPath, workingSetPath string, pageSize uint
 	return t.writeTraceLocked()
 }
 
+func (t *Trace) persistTrace(pageSize uint64) error {
+	if pageSize == 0 {
+		return errInvalidGuestRegionPageSize
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	t.pageSize = pageSize
+	t.buildRegionsLocked()
+	return t.writeTraceLocked()
+}
+
 func (t *Trace) buildRegionsLocked() {
 	sort.Slice(t.trace, func(i, j int) bool {
 		return t.trace[i].offset < t.trace[j].offset
@@ -173,7 +186,7 @@ func (t *Trace) writeTraceLocked() error {
 		offsets[i] = rec.offset
 	}
 
-	data, err := json.Marshal(workingSetTraceMetadata{
+	data, err := json.Marshal(serializedWorkingSet{
 		Version:  workingSetTraceVersion,
 		PageSize: t.pageSize,
 		Offsets:  offsets,

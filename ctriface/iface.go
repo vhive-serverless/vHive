@@ -497,10 +497,6 @@ func configureSnapshotMemoryBackend(conf *proto.CreateVMRequest, backendType, ba
 
 // LoadSnapshot Loads a snapshot of a VM
 func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snapshotting.Snapshot) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
-	if err := o.validateUPFMode(); err != nil {
-		return nil, nil, err
-	}
-
 	var (
 		loadSnapshotMetric = metrics.NewMetric()
 		tStart             time.Time
