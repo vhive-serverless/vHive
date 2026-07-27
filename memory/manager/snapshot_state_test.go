@@ -17,7 +17,11 @@ import (
 )
 
 func TestProcessMetricsIncludesNonLazyRecordingRun(t *testing.T) {
-	state := NewSnapshotState(SnapshotStateCfg{metricsModeOn: true})
+	server, err := NewPageServer(&testPageSource{downloadedChunks: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := NewSnapshotState(SnapshotStateCfg{metricsModeOn: true, PageServer: server})
 	state.currentMetric = metrics.NewMetric()
 	state.uniqueNum = 3
 
@@ -28,6 +32,9 @@ func TestProcessMetricsIncludesNonLazyRecordingRun(t *testing.T) {
 	}
 	if len(state.uniquePFServed) != 1 || state.uniquePFServed[0] != 3 {
 		t.Fatalf("unique page-fault metrics = %v, want [3]", state.uniquePFServed)
+	}
+	if len(state.downloadedChunks) != 1 || state.downloadedChunks[0] != 2 {
+		t.Fatalf("downloaded chunk metrics = %v, want [2]", state.downloadedChunks)
 	}
 }
 

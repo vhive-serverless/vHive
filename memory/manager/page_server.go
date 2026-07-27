@@ -21,6 +21,12 @@ type PageSource interface {
 	Close() error
 }
 
+// ChunkDownloadCounter is optionally implemented by page sources backed by
+// remote, chunked memory. It reports downloads made while serving pages.
+type ChunkDownloadCounter interface {
+	DownloadedChunkCount() uint64
+}
+
 // PageServer serializes shutdown with page lookups. The UFFD loop calls Read;
 // closing it waits for an in-flight lookup before releasing source handles.
 // This prevents a remove/shutdown event from invalidating a page buffer while
@@ -65,4 +71,16 @@ func (s *PageServer) Close() error {
 	}
 	s.closed = true
 	return s.source.Close()
+}
+
+// DownloadedChunkCount returns the number of remote chunks downloaded by the
+// underlying page source. Sources that are not recipe-backed report zero.
+func (s *PageServer) DownloadedChunkCount() uint64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	counter, ok := s.source.(ChunkDownloadCounter)
+	if !ok {
+		return 0
+	}
+	return counter.DownloadedChunkCount()
 }

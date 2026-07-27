@@ -79,11 +79,23 @@ type memoryChunkHandle struct {
 	released bool
 }
 
-func (h *memoryChunkHandle) Open() (io.ReadCloser, error) {
+// cachedBytes exposes the immutable cache entry without another allocation.
+// It is intentionally private: only the recipe reader may use this fast path.
+func (h *memoryChunkHandle) cachedBytes() ([]byte, error) {
 	if h.released {
 		return nil, fmt.Errorf("cached chunk handle is released")
 	}
-	return io.NopCloser(bytes.NewReader(h.data)), nil
+	return h.data, nil
+}
+
+// Open satisfies ChunkHandle for callers that need a stream. Recipe reads use
+// cachedBytes instead so page faults do not copy the entry through io.ReadAll.
+func (h *memoryChunkHandle) Open() (io.ReadCloser, error) {
+	data, err := h.cachedBytes()
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
 func (h *memoryChunkHandle) Release() error {

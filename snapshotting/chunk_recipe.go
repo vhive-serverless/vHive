@@ -23,6 +23,13 @@ type RecipeChunk struct {
 	Size int     `json:"size"`
 }
 
+// inMemoryChunkHandle is implemented only by the ephemeral in-memory cache.
+// Its bytes remain valid after Release because that cache has no eviction and
+// belongs to the lifetime of a single reconstruction or page source.
+type inMemoryChunkHandle interface {
+	cachedBytes() ([]byte, error)
+}
+
 // MemoryRecipe preserves the exact order and length of a chunked memory file.
 // The final chunk may be shorter than ChunkSize; empty input has no chunks.
 type MemoryRecipe struct {
@@ -198,7 +205,7 @@ func ReconstructMemoryWithCache(ctx context.Context, store ArtifactStore, cache 
 		return err
 	}
 	for _, expected := range recipe.Chunks {
-		data, err := readRecipeChunk(ctx, store, cache, expected)
+		data, _, err := readRecipeChunk(ctx, store, cache, expected)
 		if err != nil {
 			return err
 		}
@@ -212,38 +219,52 @@ func ReconstructMemoryWithCache(ctx context.Context, store ArtifactStore, cache 
 	return nil
 }
 
-func readRecipeChunk(ctx context.Context, store ArtifactStore, cache ChunkCache, expected RecipeChunk) ([]byte, error) {
+// readRecipeChunk returns whether it fetched the chunk from remote storage.
+func readRecipeChunk(ctx context.Context, store ArtifactStore, cache ChunkCache, expected RecipeChunk) ([]byte, bool, error) {
 	if cache == nil {
-		return readRemoteChunk(ctx, store, expected.ID)
+		data, err := readRemoteChunk(ctx, store, expected.ID)
+		return data, err == nil, err
 	}
 	handle, err := cache.Acquire(ctx, expected.ID)
+	downloaded := false
 	if errors.Is(err, ErrChunkCacheMiss) {
 		data, fetchErr := readRemoteChunk(ctx, store, expected.ID)
 		if fetchErr != nil {
-			return nil, fetchErr
+			return nil, false, fetchErr
 		}
 		if len(data) != expected.Size || chunkID(data) != expected.ID {
-			return nil, fmt.Errorf("corrupt chunk %s", expected.ID)
+			return nil, false, fmt.Errorf("corrupt chunk %s", expected.ID)
 		}
 		handle, err = cache.Insert(ctx, expected.ID, data)
+		downloaded = err == nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("acquire cached chunk %s: %w", expected.ID, err)
+		return nil, false, fmt.Errorf("acquire cached chunk %s: %w", expected.ID, err)
 	}
 	defer handle.Release()
+	if inMemory, ok := handle.(inMemoryChunkHandle); ok {
+		data, err := inMemory.cachedBytes()
+		if err != nil {
+			return nil, false, err
+		}
+		return data, downloaded, nil
+	}
+
+	// File-backed caches require a read into a page buffer. In-memory caches
+	// return their immutable entry above, without copying it for every fault.
 	reader, err := handle.Open()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	data, readErr := io.ReadAll(reader)
 	closeErr := reader.Close()
 	if readErr != nil {
-		return nil, fmt.Errorf("read cached chunk %s: %w", expected.ID, readErr)
+		return nil, false, fmt.Errorf("read cached chunk %s: %w", expected.ID, readErr)
 	}
 	if closeErr != nil {
-		return nil, fmt.Errorf("close cached chunk %s: %w", expected.ID, closeErr)
+		return nil, false, fmt.Errorf("close cached chunk %s: %w", expected.ID, closeErr)
 	}
-	return data, nil
+	return data, downloaded, nil
 }
 
 func readRemoteChunk(ctx context.Context, store ArtifactStore, id ChunkID) ([]byte, error) {

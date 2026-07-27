@@ -71,6 +71,9 @@ func TestRecipePageSourceUsesEphemeralCacheForRepeatedReads(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("AAAA"), second.Bytes)
 	require.Equal(t, 1, store.GetCount(), "one page source should fetch a duplicate chunk once")
+	counter, ok := source.(manager.ChunkDownloadCounter)
+	require.True(t, ok, "recipe page source must report chunk downloads")
+	require.EqualValues(t, 1, counter.DownloadedChunkCount(), "cache hit must not count as another download")
 }
 
 func TestRestoreMaterializerLazyRecipeMissingChunk(t *testing.T) {

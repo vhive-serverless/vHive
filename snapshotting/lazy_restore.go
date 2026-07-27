@@ -3,6 +3,7 @@ package snapshotting
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/vhive-serverless/vhive/memory/manager"
 )
@@ -37,10 +38,11 @@ func NewRecipePageSourceForRevision(ctx context.Context, store ArtifactStore, ca
 }
 
 type recipePageSource struct {
-	store  ArtifactStore
-	cache  ChunkCache
-	recipe MemoryRecipe
-	closed bool
+	store            ArtifactStore
+	cache            ChunkCache
+	recipe           MemoryRecipe
+	downloadedChunks atomic.Uint64
+	closed           bool
 }
 
 func (s *recipePageSource) ReadAt(ctx context.Context, offset uint64, length uint64) (manager.PageData, error) {
@@ -65,9 +67,12 @@ func (s *recipePageSource) ReadAt(ctx context.Context, offset uint64, length uin
 		if offset+length <= cursor {
 			break
 		}
-		data, err := readRecipeChunk(ctx, s.store, s.cache, chunk)
+		data, downloaded, err := readRecipeChunk(ctx, s.store, s.cache, chunk)
 		if err != nil {
 			return manager.PageData{}, err
+		}
+		if downloaded {
+			s.downloadedChunks.Add(1)
 		}
 		if len(data) != chunk.Size || chunkID(data) != chunk.ID {
 			return manager.PageData{}, fmt.Errorf("corrupt chunk %s", chunk.ID)
@@ -104,4 +109,11 @@ func (s *recipePageSource) Close() error {
 	return nil
 }
 
+// DownloadedChunkCount reports successful remote chunk downloads made while
+// this source served page reads. Cache hits do not increase the count.
+func (s *recipePageSource) DownloadedChunkCount() uint64 {
+	return s.downloadedChunks.Load()
+}
+
 var _ manager.PageSource = (*recipePageSource)(nil)
+var _ manager.ChunkDownloadCounter = (*recipePageSource)(nil)

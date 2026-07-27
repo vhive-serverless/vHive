@@ -52,6 +52,27 @@ func TestReconstructMemoryUsesEphemeralCacheForDuplicateChunks(t *testing.T) {
 	require.Equal(t, 2, store.GetCount(), "one reconstruction should fetch each unique chunk once")
 }
 
+func TestReadRecipeChunkReturnsInMemoryCacheEntryDirectly(t *testing.T) {
+	ctx := context.Background()
+	data := []byte("page")
+	cache := newMemoryChunkCache()
+	_, err := cache.Insert(ctx, chunkID(data), data)
+	require.NoError(t, err)
+
+	got, downloaded, err := readRecipeChunk(ctx, NewMemoryArtifactStore(), cache, RecipeChunk{ID: chunkID(data), Size: len(data)})
+	require.NoError(t, err)
+	require.False(t, downloaded)
+
+	handle, err := cache.Acquire(ctx, chunkID(data))
+	require.NoError(t, err)
+	defer handle.Release()
+	inMemory, ok := handle.(inMemoryChunkHandle)
+	require.True(t, ok)
+	cached, err := inMemory.cachedBytes()
+	require.NoError(t, err)
+	require.Equal(t, &cached[0], &got[0], "read must reuse the in-memory cache entry")
+}
+
 func TestFileChunkCacheCleanupKeepsPinnedHandleReadable(t *testing.T) {
 	cache, err := NewFileChunkCache(t.TempDir())
 	require.NoError(t, err)

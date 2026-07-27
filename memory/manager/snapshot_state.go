@@ -83,10 +83,11 @@ type SnapshotState struct {
 	workingSet []byte
 
 	// Stats
-	totalPFServed  []float64
-	uniquePFServed []float64
-	reusedPFServed []float64
-	latencyMetrics []*metrics.Metric
+	totalPFServed    []float64
+	uniquePFServed   []float64
+	reusedPFServed   []float64
+	downloadedChunks []float64
+	latencyMetrics   []*metrics.Metric
 
 	replayedNum   int
 	uniqueNum     int
@@ -104,6 +105,7 @@ func NewSnapshotState(cfg SnapshotStateCfg) *SnapshotState {
 		s.totalPFServed = make([]float64, 0)
 		s.uniquePFServed = make([]float64, 0)
 		s.reusedPFServed = make([]float64, 0)
+		s.downloadedChunks = make([]float64, 0)
 		s.latencyMetrics = make([]*metrics.Metric, 0)
 	}
 
@@ -127,6 +129,7 @@ func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 	totalPFServed := s.totalPFServed
 	uniquePFServed := s.uniquePFServed
 	reusedPFServed := s.reusedPFServed
+	downloadedChunks := s.downloadedChunks
 	latencyMetrics := s.latencyMetrics
 
 	s.SnapshotStateCfg = cfg
@@ -147,6 +150,7 @@ func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 	s.totalPFServed = totalPFServed
 	s.uniquePFServed = uniquePFServed
 	s.reusedPFServed = reusedPFServed
+	s.downloadedChunks = downloadedChunks
 	s.latencyMetrics = latencyMetrics
 	s.replayedNum = 0
 	s.uniqueNum = 0
@@ -161,6 +165,9 @@ func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 		}
 		if s.reusedPFServed == nil {
 			s.reusedPFServed = make([]float64, 0)
+		}
+		if s.downloadedChunks == nil {
+			s.downloadedChunks = make([]float64, 0)
 		}
 		if s.latencyMetrics == nil {
 			s.latencyMetrics = make([]*metrics.Metric, 0)
@@ -201,6 +208,11 @@ func (s *SnapshotState) processMetrics() {
 	}
 
 	s.uniquePFServed = append(s.uniquePFServed, float64(s.uniqueNum))
+	downloadedChunks := uint64(0)
+	if s.PageServer != nil {
+		downloadedChunks = s.PageServer.DownloadedChunkCount()
+	}
+	s.downloadedChunks = append(s.downloadedChunks, float64(downloadedChunks))
 	s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
 	s.currentMetric = nil
 }

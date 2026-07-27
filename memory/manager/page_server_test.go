@@ -7,9 +7,10 @@ import (
 )
 
 type testPageSource struct {
-	data   []byte
-	closed bool
-	err    error
+	data             []byte
+	closed           bool
+	err              error
+	downloadedChunks uint64
 }
 
 func (s *testPageSource) ReadAt(_ context.Context, offset, length uint64) (PageData, error) {
@@ -28,7 +29,8 @@ func (s *testPageSource) ReadAt(_ context.Context, offset, length uint64) (PageD
 	}
 	return PageData{Bytes: page, Zero: zero}, nil
 }
-func (s *testPageSource) Close() error { s.closed = true; return nil }
+func (s *testPageSource) Close() error                 { s.closed = true; return nil }
+func (s *testPageSource) DownloadedChunkCount() uint64 { return s.downloadedChunks }
 
 func TestPageServerPageHitZeroAndClose(t *testing.T) {
 	source := &testPageSource{data: []byte{1, 2, 0, 0}}
@@ -64,5 +66,15 @@ func TestPageServerPropagatesMissingPage(t *testing.T) {
 	_, err = server.Read(0, 4096)
 	if !errors.Is(err, missing) {
 		t.Fatalf("Read error = %v, want %v", err, missing)
+	}
+}
+
+func TestPageServerReportsSourceChunkDownloads(t *testing.T) {
+	server, err := NewPageServer(&testPageSource{downloadedChunks: 7})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := server.DownloadedChunkCount(); got != 7 {
+		t.Fatalf("DownloadedChunkCount() = %d, want 7", got)
 	}
 }

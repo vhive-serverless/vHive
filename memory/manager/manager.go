@@ -446,11 +446,14 @@ func getLazyHeaderStats(state *SnapshotState, functionName string) ([]string, []
 		"StdDev",
 		"Unique",
 		"StdDev",
+		"DownloadedChunks",
+		"StdDev",
 	}
 
 	uniqueMean, uniqueStd := meanStdDevOrZero(state.uniquePFServed)
 	totalMean, totalStd := meanStdDevOrZero(state.totalPFServed)
 	reusedMean, reusedStd := meanStdDevOrZero(state.reusedPFServed)
+	downloadedChunksMean, downloadedChunksStd := meanStdDevOrZero(state.downloadedChunks)
 
 	stats := []string{
 		functionName,
@@ -461,6 +464,8 @@ func getLazyHeaderStats(state *SnapshotState, functionName string) ([]string, []
 		fmt.Sprintf("%.1f", reusedStd),
 		strconv.Itoa(int(uniqueMean)),
 		fmt.Sprintf("%.1f", uniqueStd),
+		strconv.Itoa(int(downloadedChunksMean)),
+		fmt.Sprintf("%.1f", downloadedChunksStd),
 	}
 
 	return header, stats
@@ -473,9 +478,12 @@ func getRecRepHeaderStats(state *SnapshotState, functionName string) ([]string, 
 		"RecRegions",
 		"Unique",
 		"StdDev",
+		"DownloadedChunks",
+		"StdDev",
 	}
 
 	uniqueMean, uniqueStd := meanStdDevOrZero(state.uniquePFServed)
+	downloadedChunksMean, downloadedChunksStd := meanStdDevOrZero(state.downloadedChunks)
 
 	stats := []string{
 		functionName,
@@ -483,6 +491,8 @@ func getRecRepHeaderStats(state *SnapshotState, functionName string) ([]string, 
 		strconv.Itoa(len(state.trace.regions)),
 		strconv.Itoa(int(uniqueMean)),
 		fmt.Sprintf("%.1f", uniqueStd),
+		strconv.Itoa(int(downloadedChunksMean)),
+		fmt.Sprintf("%.1f", downloadedChunksStd),
 	}
 
 	return header, stats
