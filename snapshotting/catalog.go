@@ -21,18 +21,22 @@ var (
 // catalog deliberately records names rather than paths, so later storage
 // implementations need not expose the local filesystem layout.
 type ArtifactNames struct {
-	VMState string `json:"vmState"`
-	Memory  string `json:"memory"`
-	Patch   string `json:"patch"`
-	Info    string `json:"info"`
+	VMState         string `json:"vmState"`
+	Memory          string `json:"memory"`
+	Patch           string `json:"patch"`
+	Info            string `json:"info"`
+	WorkingSetPages string `json:"workingSetPages,omitempty"`
+	WorkingSetTrace string `json:"workingSetTrace,omitempty"`
 }
 
 func defaultArtifactNames() ArtifactNames {
 	return ArtifactNames{
-		VMState: "snap_file",
-		Memory:  "mem_file",
-		Patch:   "patch_file",
-		Info:    "info_file",
+		VMState:         "snap_file",
+		Memory:          "mem_file",
+		Patch:           "patch_file",
+		Info:            "info_file",
+		WorkingSetPages: "working_set_pages",
+		WorkingSetTrace: "working_set_trace",
 	}
 }
 
@@ -44,6 +48,7 @@ type SnapshotDescriptor struct {
 	Ready        bool          `json:"ready"`
 	Artifacts    ArtifactNames `json:"artifacts"`
 	MemoryRecipe string        `json:"memoryRecipe,omitempty"`
+	WorkingSet   bool          `json:"workingSet,omitempty"`
 }
 
 // Catalog owns the lifecycle metadata for snapshots. The local implementation

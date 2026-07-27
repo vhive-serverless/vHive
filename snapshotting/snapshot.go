@@ -96,11 +96,11 @@ func (snp *Snapshot) GetMemFilePath() string {
 }
 
 func (snp *Snapshot) GetWorkingSetFilePath() string {
-	return filepath.Join(snp.snapDir, "working_set_pages")
+	return filepath.Join(snp.snapDir, snp.artifacts.WorkingSetPages)
 }
 
 func (snp *Snapshot) GetWorkingSetTraceFilePath() string {
-	return filepath.Join(snp.snapDir, "working_set_trace")
+	return filepath.Join(snp.snapDir, snp.artifacts.WorkingSetTrace)
 }
 
 // HasMemoryRecipe reports whether this snapshot's memory can be supplied from

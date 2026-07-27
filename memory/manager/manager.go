@@ -231,12 +231,12 @@ func (m *MemoryManager) FetchState(vmID string) error {
 	if state.metricsModeOn && state.currentMetric == nil {
 		state.currentMetric = metrics.NewMetric()
 	}
-	if state.metricsModeOn && !state.IsLazyMode {
+	if state.metricsModeOn {
 		tStart = time.Now()
 	}
 
 	err := state.fetchState()
-	if err == nil && state.isRecordReady && !tStart.IsZero() {
+	if err == nil && !tStart.IsZero() {
 		state.currentMetric.MetricMap[fetchStateMetric] = metrics.ToUS(time.Since(tStart))
 	}
 	return err

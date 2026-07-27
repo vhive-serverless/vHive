@@ -421,11 +421,29 @@ func (f *Function) RemoveInstanceAsync() {
 	logger.Debug("Removing instance (async)")
 
 	go func(vmID string) {
-		err := orch.StopSingleVM(context.Background(), vmID)
+		err := f.stopInstance(vmID)
 		if err != nil {
 			log.Warn(err)
 		}
 	}(f.vmID)
+}
+
+// stopInstance finalizes a recorded working set before making the snapshot
+// available remotely. This is necessary when snapshots are not cached: the
+// next restore otherwise fetches the older remote snapshot and records again.
+func (f *Function) stopInstance(vmID string) error {
+	if err := orch.StopSingleVM(context.Background(), vmID); err != nil {
+		return err
+	}
+	if !orch.GetSnapshotsEnabled() {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := f.snapshotManager.PublishSnapshot(ctx, f.fID); err != nil && !errors.Is(err, snapshotting.ErrSnapshotNotFound) {
+		return fmt.Errorf("publish recorded snapshot: %w", err)
+	}
+	return nil
 }
 
 // RemoveInstance Stops an instance (VM) of the function.
@@ -445,7 +463,7 @@ func (f *Function) RemoveInstance(isSync bool) (string, error) {
 	f.OnceAddInstance = new(sync.Once)
 
 	if isSync {
-		err = orch.StopSingleVM(context.Background(), f.vmID)
+		err = f.stopInstance(f.vmID)
 	} else {
 		f.RemoveInstanceAsync()
 		r = "Successfully removed (async) instance " + f.vmID

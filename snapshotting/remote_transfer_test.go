@@ -94,6 +94,56 @@ func TestRemoteWholeFileSnapshotConcurrentDownloadUsesOneTransfer(t *testing.T) 
 	require.Equal(t, 5, store.gets, "one descriptor, state, memory, metadata, and optional patch lookup")
 }
 
+func TestRemoteWholeFileSnapshotWithoutCacheDownloadsOnEveryAcquire(t *testing.T) {
+	base := NewMemoryArtifactStore()
+	createPublishedSnapshot(t, t.TempDir(), "revision-a", base, true)
+	store := &countingStore{ArtifactStore: base}
+	worker := NewSnapshotManager(t.TempDir())
+	worker.EnableRemoteTransfer(store, false)
+
+	first, err := worker.AcquireSnapshotContext(context.Background(), "revision-a")
+	require.NoError(t, err)
+	firstState, err := os.ReadFile(first.GetSnapshotFilePath())
+	require.NoError(t, err)
+	require.Equal(t, []byte("vm-state"), firstState)
+	require.Equal(t, 5, store.GetCount())
+
+	second, err := worker.AcquireSnapshotContext(context.Background(), "revision-a")
+	require.NoError(t, err)
+	secondState, err := os.ReadFile(second.GetSnapshotFilePath())
+	require.NoError(t, err)
+	require.Equal(t, []byte("vm-state"), secondState)
+	require.Equal(t, 10, store.GetCount(), "cacheSnaps=false must fetch each acquire from remote storage")
+}
+
+func TestRemoteWholeFileSnapshotTransfersWorkingSet(t *testing.T) {
+	store := NewMemoryArtifactStore()
+	base := t.TempDir()
+	source := NewSnapshotManager(base)
+	source.EnableRemoteTransfer(store, true)
+	snapshot, err := source.InitSnapshot("revision-a", "example:image")
+	require.NoError(t, err)
+	require.NoError(t, snapshot.CreateSnapDir())
+	require.NoError(t, os.WriteFile(snapshot.GetSnapshotFilePath(), []byte("vm-state"), 0600))
+	require.NoError(t, os.WriteFile(snapshot.GetMemFilePath(), fixedMemoryFixture(16), 0600))
+	require.NoError(t, os.WriteFile(snapshot.GetWorkingSetFilePath(), []byte("working-set-pages"), 0600))
+	require.NoError(t, os.WriteFile(snapshot.GetWorkingSetTraceFilePath(), []byte("working-set-trace"), 0600))
+	require.NoError(t, snapshot.SerializeSnapInfo())
+	require.NoError(t, source.CommitSnapshot("revision-a"))
+	require.NoError(t, source.PublishSnapshot(context.Background(), "revision-a"))
+
+	worker := NewSnapshotManager(t.TempDir())
+	worker.EnableRemoteTransfer(store, true)
+	downloaded, err := worker.AcquireSnapshotContext(context.Background(), "revision-a")
+	require.NoError(t, err)
+	pages, err := os.ReadFile(downloaded.GetWorkingSetFilePath())
+	require.NoError(t, err)
+	require.Equal(t, []byte("working-set-pages"), pages)
+	trace, err := os.ReadFile(downloaded.GetWorkingSetTraceFilePath())
+	require.NoError(t, err)
+	require.Equal(t, []byte("working-set-trace"), trace)
+}
+
 func TestRemoteChunkedMemoryRoundTripDeduplicatesAcrossSnapshots(t *testing.T) {
 	store := NewMemoryArtifactStore()
 	base := t.TempDir()

@@ -177,10 +177,22 @@ func (mgr *SnapshotManager) AcquireSnapshot(revision string) (*Snapshot, error) 
 }
 
 // AcquireSnapshotContext returns a local snapshot, fetching a committed remote
-// copy on a local cache miss when remote transfer has been enabled.
+// copy on a local cache miss when remote transfer has been enabled. When
+// snapshot caching is disabled, it removes any previous local copy first so
+// every acquire fetches the snapshot from remote storage.
 func (mgr *SnapshotManager) AcquireSnapshotContext(ctx context.Context, revision string) (*Snapshot, error) {
 	mgr.Lock()
-	descriptor, err := mgr.catalog.Get(revision)
+	remote := mgr.remote
+	catalog := mgr.catalog
+	if remote != nil && !remote.cacheSnaps {
+		delete(mgr.snapshots, revision)
+		mgr.Unlock()
+		if err := catalog.Delete(revision); err != nil && !errors.Is(err, ErrSnapshotNotFound) {
+			return nil, fmt.Errorf("remove uncached local snapshot %s: %w", revision, err)
+		}
+		mgr.Lock()
+	}
+	descriptor, err := catalog.Get(revision)
 	if err == nil {
 		if snap, ok := mgr.snapshots[revision]; ok {
 			mgr.Unlock()
@@ -189,7 +201,6 @@ func (mgr *SnapshotManager) AcquireSnapshotContext(ctx context.Context, revision
 		mgr.Unlock()
 		return NewSnapshotFromDescriptor(mgr.baseFolder, descriptor), nil
 	}
-	remote := mgr.remote
 	mgr.Unlock()
 	if remote == nil || (!errors.Is(err, ErrSnapshotNotFound) && !(errors.Is(err, ErrSnapshotNotReady) && remote.hasDownload(revision))) {
 		return nil, err

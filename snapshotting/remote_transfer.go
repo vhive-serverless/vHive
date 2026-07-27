@@ -104,6 +104,23 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 	if chunkSize == 0 {
 		artifacts = append([]string{desc.Artifacts.Memory}, artifacts...)
 	}
+	workingSetArtifacts := []string{desc.Artifacts.WorkingSetPages, desc.Artifacts.WorkingSetTrace}
+	hasWorkingSet := true
+	for _, artifact := range workingSetArtifacts {
+		if _, err := os.Stat(filepath.Join(baseFolder, revision, artifact)); err != nil {
+			if os.IsNotExist(err) {
+				hasWorkingSet = false
+				break
+			}
+			return fmt.Errorf("stat snapshot working-set artifact %s: %w", artifact, err)
+		}
+	}
+	if hasWorkingSet {
+		artifacts = append(artifacts, workingSetArtifacts...)
+		copy := *desc
+		desc = &copy
+		desc.WorkingSet = true
+	}
 	for _, artifact := range artifacts {
 		file := filepath.Join(baseFolder, revision, artifact)
 		if artifact == desc.Artifacts.Patch {
@@ -132,7 +149,6 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 			return err
 		}
 	}
-
 	data, err := json.Marshal(desc)
 	if err != nil {
 		return fmt.Errorf("encode remote descriptor: %w", err)
@@ -197,7 +213,11 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 		}
 	}()
 
-	for _, artifact := range []string{desc.Artifacts.VMState, desc.Artifacts.Info} {
+	artifacts := []string{desc.Artifacts.VMState, desc.Artifacts.Info}
+	if desc.WorkingSet {
+		artifacts = append(artifacts, desc.Artifacts.WorkingSetPages, desc.Artifacts.WorkingSetTrace)
+	}
+	for _, artifact := range artifacts {
 		if err := getFile(ctx, r.store, revision, artifact, filepath.Join(baseFolder, revision, artifact)); err != nil {
 			return nil, err
 		}

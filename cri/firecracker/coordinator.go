@@ -119,14 +119,28 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 		return nil
 	}
 
+	publishSnapshot := fi.SnapBooted
 	if c.orch != nil && c.orch.GetSnapshotsEnabled() && !fi.SnapBooted {
 		err := c.orchCreateSnapshot(ctx, fi)
 		if err != nil {
 			log.Printf("Err creating snapshot %s\n", err)
+		} else {
+			publishSnapshot = true
 		}
 	}
 
-	return c.orchStopVM(ctx, fi)
+	if err := c.orchStopVM(ctx, fi); err != nil {
+		return err
+	}
+	if !publishSnapshot {
+		return nil
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
+	defer cancel()
+	if err := c.snapshotManager.PublishSnapshot(ctxTimeout, fi.Revision); err != nil {
+		return fmt.Errorf("publish remote snapshot: %w", err)
+	}
+	return nil
 }
 
 // for testing
@@ -255,11 +269,6 @@ func (c *coordinator) orchCreateSnapshot(ctx context.Context, fi *funcInstance) 
 		fi.Logger.WithError(err).Error("failed to commit snapshot")
 		return err
 	}
-	if err := c.snapshotManager.PublishSnapshot(ctxTimeout, fi.Revision); err != nil {
-		fi.Logger.WithError(err).Error("failed to publish remote snapshot")
-		return err
-	}
-
 	return nil
 }
 
