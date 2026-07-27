@@ -8,6 +8,29 @@
 
 ### Fixed
 
+## Release v1.9.0
+
+### Added
+
+- Add UPF working-set recording and replay, with working sets stored in snapshots and preserved across restores.
+- Add configurable experiment network interfaces, including routing for uVM experiment IPs and a fixed MAC address for the gateway TAP device.
+- Add UPF interface and memory-manager test coverage to CI.
+
+### Changed
+
+- Run gVisor as a containerd runtime plugin and update its installation and workload configuration.
+- Update Firecracker, firecracker-containerd, and UPF runtime binaries for Firecracker 1.13 compatibility.
+- Split networking into its own Go module.
+- Update Containerd, gRPC, Gonum, Go dependencies, and GitHub Actions used by CI.
+- Use tmux instead of screen in cluster setup scripts.
+
+### Fixed
+
+- Fix a shutdown race in the UFFD poller and improve UPF snapshot loading and UFFD fault mapping handling.
+- Avoid appending a nil network configuration when releasing a missing configuration.
+- Retrieve Kubernetes DNS only when creating an orchestrator.
+- Fix the OpenYurt deployer module dependency and CI linting issues.
+
 ## Release v1.8.2
 
 ### Added
