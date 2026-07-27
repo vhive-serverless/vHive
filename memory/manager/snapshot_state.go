@@ -256,7 +256,10 @@ func (s *SnapshotState) fetchState() error {
 
 	if s.WSCoalescing && !s.IsLazyMode {
 		if err := s.fetchWorkingSet(); err != nil {
-			return err
+			if !os.IsNotExist(err) {
+				return err
+			}
+			log.Debug("Working-set pages are unavailable; replaying the trace without coalescing")
 		}
 	}
 

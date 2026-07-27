@@ -49,6 +49,9 @@ type SnapshotDescriptor struct {
 	Artifacts    ArtifactNames `json:"artifacts"`
 	MemoryRecipe string        `json:"memoryRecipe,omitempty"`
 	WorkingSet   bool          `json:"workingSet,omitempty"`
+	// WorkingSetTrace is independent of WorkingSet because chunked snapshots
+	// can replay a trace without materializing coalesced page bytes locally.
+	WorkingSetTrace bool `json:"workingSetTrace,omitempty"`
 }
 
 // Catalog owns the lifecycle metadata for snapshots. The local implementation

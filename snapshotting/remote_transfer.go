@@ -104,22 +104,21 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 	if chunkSize == 0 {
 		artifacts = append([]string{desc.Artifacts.Memory}, artifacts...)
 	}
-	workingSetArtifacts := []string{desc.Artifacts.WorkingSetPages, desc.Artifacts.WorkingSetTrace}
-	hasWorkingSet := true
-	for _, artifact := range workingSetArtifacts {
-		if _, err := os.Stat(filepath.Join(baseFolder, revision, artifact)); err != nil {
-			if os.IsNotExist(err) {
-				hasWorkingSet = false
-				break
-			}
-			return fmt.Errorf("stat snapshot working-set artifact %s: %w", artifact, err)
-		}
-	}
-	if hasWorkingSet {
-		artifacts = append(artifacts, workingSetArtifacts...)
+	tracePath := filepath.Join(baseFolder, revision, desc.Artifacts.WorkingSetTrace)
+	if _, err := os.Stat(tracePath); err == nil {
+		artifacts = append(artifacts, desc.Artifacts.WorkingSetTrace)
 		copy := *desc
 		desc = &copy
-		desc.WorkingSet = true
+		desc.WorkingSetTrace = true
+		pagesPath := filepath.Join(baseFolder, revision, desc.Artifacts.WorkingSetPages)
+		if _, err := os.Stat(pagesPath); err == nil {
+			artifacts = append(artifacts, desc.Artifacts.WorkingSetPages)
+			desc.WorkingSet = true
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("stat snapshot working-set artifact %s: %w", desc.Artifacts.WorkingSetPages, err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat snapshot working-set artifact %s: %w", desc.Artifacts.WorkingSetTrace, err)
 	}
 	for _, artifact := range artifacts {
 		file := filepath.Join(baseFolder, revision, artifact)
@@ -163,8 +162,8 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 	return nil
 }
 
-// publishWorkingSet updates a remote descriptor only when both working-set
-// artifacts have been recorded locally. It deliberately does not touch the
+// publishWorkingSet updates a remote descriptor with a recorded trace and,
+// when available, its coalesced page bytes. It deliberately does not touch
 // memory, VM state, or other snapshot artifacts.
 func (r *remoteSnapshotTransfer) publishWorkingSet(ctx context.Context, catalog Catalog, baseFolder, revision string) (bool, error) {
 	desc, err := catalog.Get(revision)
@@ -174,22 +173,31 @@ func (r *remoteSnapshotTransfer) publishWorkingSet(ctx context.Context, catalog 
 	if err := validateRemoteDescriptor(desc, revision); err != nil {
 		return false, err
 	}
-	artifacts := []string{desc.Artifacts.WorkingSetPages, desc.Artifacts.WorkingSetTrace}
-	for _, artifact := range artifacts {
-		if _, err := os.Stat(filepath.Join(baseFolder, revision, artifact)); err != nil {
-			if os.IsNotExist(err) {
-				return false, nil
-			}
-			return false, fmt.Errorf("stat snapshot working-set artifact %s: %w", artifact, err)
+	tracePath := filepath.Join(baseFolder, revision, desc.Artifacts.WorkingSetTrace)
+	if _, err := os.Stat(tracePath); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
 		}
+		return false, fmt.Errorf("stat snapshot working-set artifact %s: %w", desc.Artifacts.WorkingSetTrace, err)
 	}
-	for _, artifact := range artifacts {
+	for _, artifact := range []string{desc.Artifacts.WorkingSetTrace} {
 		if err := putFile(ctx, r.store, revision, artifact, filepath.Join(baseFolder, revision, artifact)); err != nil {
 			return false, err
 		}
 	}
 	copy := *desc
-	copy.WorkingSet = true
+	copy.WorkingSetTrace = true
+	pagesPath := filepath.Join(baseFolder, revision, desc.Artifacts.WorkingSetPages)
+	if _, err := os.Stat(pagesPath); err == nil {
+		if err := putFile(ctx, r.store, revision, desc.Artifacts.WorkingSetPages, pagesPath); err != nil {
+			return false, err
+		}
+		copy.WorkingSet = true
+	} else if os.IsNotExist(err) {
+		copy.WorkingSet = false
+	} else {
+		return false, fmt.Errorf("stat snapshot working-set artifact %s: %w", desc.Artifacts.WorkingSetPages, err)
+	}
 	data, err := json.Marshal(&copy)
 	if err != nil {
 		return false, fmt.Errorf("encode remote descriptor: %w", err)
@@ -255,8 +263,11 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 	}()
 
 	artifacts := []string{desc.Artifacts.VMState, desc.Artifacts.Info}
+	if desc.WorkingSetTrace {
+		artifacts = append(artifacts, desc.Artifacts.WorkingSetTrace)
+	}
 	if desc.WorkingSet {
-		artifacts = append(artifacts, desc.Artifacts.WorkingSetPages, desc.Artifacts.WorkingSetTrace)
+		artifacts = append(artifacts, desc.Artifacts.WorkingSetPages)
 	}
 	for _, artifact := range artifacts {
 		if err := getFile(ctx, r.store, revision, artifact, filepath.Join(baseFolder, revision, artifact)); err != nil {

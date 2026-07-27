@@ -236,9 +236,10 @@ func TestFetchStateRejectsInvalidWorkingSetArtifacts(t *testing.T) {
 		name         string
 		traceContent string
 		writePages   bool
+		expectReady  bool
 	}{
 		{name: "invalid trace", traceContent: "{"},
-		{name: "missing pages", traceContent: `{"version":1,"page_size":4096,"offsets":[0]}`},
+		{name: "missing pages", traceContent: `{"version":1,"page_size":4096,"offsets":[0]}`, expectReady: true},
 		{name: "wrong page data size", traceContent: `{"version":1,"page_size":4096,"offsets":[0]}`, writePages: true},
 	}
 
@@ -260,11 +261,18 @@ func TestFetchStateRejectsInvalidWorkingSetArtifacts(t *testing.T) {
 				WorkingSetTracePath: tracePath,
 				WSCoalescing:        true,
 			})
-			if err := state.fetchState(); err == nil {
-				t.Fatal("fetchState succeeded for invalid working set artifacts")
-			}
-			if state.isRecordReady {
-				t.Fatal("invalid working set artifacts were marked ready")
+			err := state.fetchState()
+			if tt.expectReady {
+				if err != nil || !state.isRecordReady {
+					t.Fatalf("trace-only working set was not ready: err=%v", err)
+				}
+			} else {
+				if err == nil {
+					t.Fatal("fetchState succeeded for invalid working set artifacts")
+				}
+				if state.isRecordReady {
+					t.Fatal("invalid working set artifacts were marked ready")
+				}
 			}
 		})
 	}

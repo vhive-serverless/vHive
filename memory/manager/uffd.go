@@ -566,7 +566,7 @@ func (s *SnapshotState) servePageFault(fd int, address uint64, recordFault bool)
 	rec := Record{offset: copyArgs.srcOffset}
 	if recordFault && s.firstPageFaultOnce != nil {
 		s.firstPageFaultOnce.Do(func() {
-			if !s.isRecordReady || s.IsLazyMode || !s.WSCoalescing {
+			if !s.isRecordReady || s.IsLazyMode || !s.WSCoalescing || len(s.workingSet) == 0 {
 				return
 			}
 
