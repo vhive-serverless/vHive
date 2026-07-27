@@ -187,7 +187,7 @@ func getRecipe(ctx context.Context, store ArtifactStore, revision string) (Memor
 
 // ReconstructMemory writes a recipe eagerly and verifies every fetched chunk.
 func ReconstructMemory(ctx context.Context, store ArtifactStore, recipe MemoryRecipe, writer io.Writer) error {
-	return ReconstructMemoryWithCache(ctx, store, nil, recipe, writer)
+	return ReconstructMemoryWithCache(ctx, store, newMemoryChunkCache(), recipe, writer)
 }
 
 // ReconstructMemoryWithCache writes a recipe eagerly, using cache when it is

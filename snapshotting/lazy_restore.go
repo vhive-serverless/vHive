@@ -17,6 +17,12 @@ func NewRecipePageSource(store ArtifactStore, cache ChunkCache, recipe MemoryRec
 	if store == nil {
 		return nil, fmt.Errorf("artifact store is required")
 	}
+	// A page source represents one restore. When no persistent cache has been
+	// selected, retain fetched chunks in memory for that source's lifetime so
+	// repeated page faults do not re-download identical recipe chunks.
+	if cache == nil {
+		cache = newMemoryChunkCache()
+	}
 	return &recipePageSource{store: store, cache: cache, recipe: recipe}, nil
 }
 

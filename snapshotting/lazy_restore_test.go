@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/memory/manager"
 )
 
@@ -48,6 +49,28 @@ func TestRestoreMaterializerLazyRecipePages(t *testing.T) {
 	if !zero.Zero {
 		t.Fatal("zero page was not identified")
 	}
+}
+
+func TestRecipePageSourceUsesEphemeralCacheForRepeatedReads(t *testing.T) {
+	base := NewMemoryArtifactStore()
+	ctx := context.Background()
+	data := []byte("AAAABBBBAAAA")
+	recipe, err := SplitMemory(bytes.NewReader(data), 4, func(id ChunkID, chunk []byte) error {
+		return putChunkIfAbsent(ctx, base, id, chunk)
+	})
+	require.NoError(t, err)
+	store := &countingStore{ArtifactStore: base}
+
+	source, err := NewRecipePageSource(store, nil, recipe)
+	require.NoError(t, err)
+	defer source.Close()
+	first, err := source.ReadAt(ctx, 0, 4)
+	require.NoError(t, err)
+	require.Equal(t, []byte("AAAA"), first.Bytes)
+	second, err := source.ReadAt(ctx, 8, 4)
+	require.NoError(t, err)
+	require.Equal(t, []byte("AAAA"), second.Bytes)
+	require.Equal(t, 1, store.GetCount(), "one page source should fetch a duplicate chunk once")
 }
 
 func TestRestoreMaterializerLazyRecipeMissingChunk(t *testing.T) {

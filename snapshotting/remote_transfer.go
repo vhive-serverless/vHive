@@ -286,6 +286,13 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 			r.mu.Lock()
 			cache := r.chunkCache
 			r.mu.Unlock()
+			// With no persistent cache configured, keep chunks only for this
+			// reconstruction. A recipe may reference one content-addressed chunk
+			// more than once, and re-downloading it during a single restore is
+			// unnecessary.
+			if cache == nil {
+				cache = newMemoryChunkCache()
+			}
 			if err := ReconstructMemoryWithCache(ctx, r.store, cache, recipe, temporary); err != nil {
 				temporary.Close()
 				return nil, err

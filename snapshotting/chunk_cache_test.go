@@ -37,6 +37,21 @@ func TestReconstructMemoryWithCacheAvoidsSecondRemoteRead(t *testing.T) {
 	require.Equal(t, int64(8), metrics.Bytes)
 }
 
+func TestReconstructMemoryUsesEphemeralCacheForDuplicateChunks(t *testing.T) {
+	base := NewMemoryArtifactStore()
+	input := []byte("AAAABBBBAAAA")
+	recipe, err := SplitMemory(bytes.NewReader(input), 4, func(id ChunkID, data []byte) error {
+		return putChunkIfAbsent(context.Background(), base, id, data)
+	})
+	require.NoError(t, err)
+	store := &countingStore{ArtifactStore: base}
+
+	var reconstructed bytes.Buffer
+	require.NoError(t, ReconstructMemory(context.Background(), store, recipe, &reconstructed))
+	require.Equal(t, input, reconstructed.Bytes())
+	require.Equal(t, 2, store.GetCount(), "one reconstruction should fetch each unique chunk once")
+}
+
 func TestFileChunkCacheCleanupKeepsPinnedHandleReadable(t *testing.T) {
 	cache, err := NewFileChunkCache(t.TempDir())
 	require.NoError(t, err)
