@@ -30,6 +30,7 @@ WITHSNAPSHOTS:=-snapshotsTest
 WITHREMOTE:=-remoteSnapshotsTest
 WITHWSCOALESCING:=-wsCoalesceTest
 STARGZ:=-ss 'proxy' -img 'ghcr.io/vhive-serverless/helloworld:var_workload-esgz' -dockerCredentials '{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}'
+BASESNAP:=-baseSnapshotTest
 WITHCHUNKED512:=-chunkedMemorySizeTest 524288
 CTRDLOGDIR:=/tmp/ctrd-logs
 
@@ -55,6 +56,11 @@ test-snapshare:
 	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(STARGZ)
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(STARGZ) $(BASESNAP)
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) -short $(EXTRAGOARGS) -args $(WITHSNAPSHOTS)

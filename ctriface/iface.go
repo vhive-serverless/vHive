@@ -66,7 +66,8 @@ type StartVMResponse struct {
 }
 
 const (
-	testImageName = "ghcr.io/ease-lab/helloworld:var_workload"
+	testImageName        = "ghcr.io/ease-lab/helloworld:var_workload"
+	baseSnapshotRevision = "vhive-base-snapshot"
 )
 
 func withNamespace(ctx context.Context, snapshotter, vmID string) context.Context {
@@ -84,6 +85,13 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 }
 
 func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+	if err := o.validateBaseSnapshotMode(); err != nil {
+		return nil, nil, err
+	}
+	if o.baseSnapshotEnabled {
+		return o.startVMFromBaseSnapshot(ctx, vmID, imageName, environmentVariables)
+	}
+
 	var (
 		startVMMetric = metrics.NewMetric()
 		tStart        time.Time
@@ -166,24 +174,139 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 	}
 
-	logger.Debug("StartVM: Creating a new container")
+	if err := o.startContainerTask(ctx, vm, environmentVariables, startVMMetric, int(conf.MachineCfg.MemSizeMib)); err != nil {
+		return nil, nil, err
+	}
 
+	logger.Debug("Successfully started a VM")
+
+	return &StartVMResponse{VMID: vmID, GuestIP: vm.GetIP()}, startVMMetric, nil
+}
+
+// startVMFromBaseSnapshot restores an image-less VM and only then pulls the
+// requested image. Remote snapshotters require that ordering because image
+// resolution happens in the guest.
+func (o *Orchestrator) startVMFromBaseSnapshot(ctx context.Context, vmID, imageName string, environmentVariables []string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+	pooledShim := vmID == ""
+	defer func() {
+		if retErr != nil && pooledShim && vmID != "" {
+			if err := o.DiscardShim(ctx, vmID); err != nil {
+				log.WithError(err).WithField("vmID", vmID).Warn("failed to discard shim after base snapshot launch failure")
+			}
+		}
+	}()
+
+	if err := o.ensureBaseSnapshot(ctx); err != nil {
+		return nil, nil, err
+	}
+	snap, err := o.baseSnapshotManager.AcquireSnapshotContext(ctx, baseSnapshotRevision)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "acquire base snapshot")
+	}
+
+	resp, metric, err := o.LoadSnapshot(ctx, vmID, snap)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "restore base snapshot")
+	}
+	vmID = resp.VMID
+	ctx = withNamespace(ctx, o.snapshotter, vmID)
+	if _, err := o.fcClient.SetVMMetadata(ctx, &proto.SetVMMetadataRequest{VMID: vmID, Metadata: o.GetDockerCredentials()}); err != nil {
+		_ = o.StopSingleVM(ctx, vmID)
+		return nil, nil, errors.Wrap(err, "set VM metadata after base restore")
+	}
+	resumeMetric, err := o.ResumeVM(ctx, vmID)
+	if err != nil {
+		_ = o.StopSingleVM(ctx, vmID)
+		return nil, nil, errors.Wrap(err, "resume base snapshot")
+	}
+	for name, value := range resumeMetric.MetricMap {
+		metric.MetricMap[name] = value
+	}
+
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		_ = o.StopSingleVM(ctx, vmID)
+		return nil, nil, err
+	}
+	tStart := time.Now()
+	if vm.Image, err = o.getImage(ctx, imageName); err != nil {
+		_ = o.StopSingleVM(ctx, vmID)
+		return nil, nil, errors.Wrapf(err, "get/pull image after base restore")
+	}
+	metric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
+	if err := o.startContainerTask(ctx, vm, environmentVariables, metric, int(o.getVMConfig(vm).MachineCfg.MemSizeMib)); err != nil {
+		_ = o.StopSingleVM(ctx, vmID)
+		return nil, nil, err
+	}
+	return &StartVMResponse{VMID: vmID, GuestIP: vm.GetIP()}, metric, nil
+}
+
+// ensureBaseSnapshot records and publishes exactly one image-less VM snapshot.
+// It deliberately never registers the VM with the memory manager, so no
+// working set is captured or published for this shared base.
+func (o *Orchestrator) ensureBaseSnapshot(ctx context.Context) error {
+	o.baseSnapshotOnce.Do(func() {
+		if _, err := o.baseSnapshotManager.AcquireSnapshotContext(ctx, baseSnapshotRevision); err == nil {
+			return
+		} else if !errors.Is(err, snapshotting.ErrSnapshotNotFound) && !errors.Is(err, snapshotting.ErrArtifactNotFound) {
+			o.baseSnapshotErr = err
+			return
+		}
+
+		vmID := baseSnapshotRevision
+		vm, err := o.vmPool.Allocate(vmID)
+		if err != nil {
+			o.baseSnapshotErr = err
+			return
+		}
+		baseCtx := withNamespace(ctx, o.snapshotter, vmID)
+		defer func() { _ = o.vmPool.Free(vmID) }()
+		defer func() { _, _ = o.fcClient.StopVM(baseCtx, &proto.StopVMRequest{VMID: vmID, TimeoutSeconds: 1}) }()
+
+		if _, err = o.fcClient.CreateVM(baseCtx, o.getVMConfig(vm)); err != nil {
+			o.baseSnapshotErr = errors.Wrap(err, "create image-less base VM")
+			return
+		}
+		if err = o.PauseVM(baseCtx, vmID); err != nil {
+			o.baseSnapshotErr = errors.Wrap(err, "pause image-less base VM")
+			return
+		}
+		var snap *snapshotting.Snapshot
+		snap, err = o.baseSnapshotManager.InitSnapshot(baseSnapshotRevision, "")
+		if err == nil {
+			err = o.CreateSnapshot(baseCtx, vmID, snap)
+		}
+		if err == nil {
+			err = o.baseSnapshotManager.CommitSnapshot(baseSnapshotRevision)
+		}
+		if err == nil {
+			err = o.baseSnapshotManager.PublishSnapshot(baseCtx, baseSnapshotRevision)
+		}
+		if err != nil {
+			o.baseSnapshotErr = errors.Wrap(err, "create base snapshot")
+		}
+	})
+	return o.baseSnapshotErr
+}
+
+// startContainerTask attaches an image-specific container and task to an
+// already booted VM. Fresh boots and restored base snapshots share this exact
+// path; only the VM boot operation differs.
+func (o *Orchestrator) startContainerTask(ctx context.Context, vm *misc.VM, environmentVariables []string, metric *metrics.Metric, memSizeMiB int) (retErr error) {
+	logger := log.WithField("vmID", vm.ID)
 	specOpts := []oci.SpecOpts{
 		oci.WithEnv(environmentVariables),
-		firecrackeroci.WithVMID(vmID),
+		firecrackeroci.WithVMID(vm.ID),
 		firecrackeroci.WithVMNetwork,
 	}
 	if o.snapshotter == "proxy" {
-		// We can't use the regular oci.WithImageConfig from containerd because it will attempt to get UIDs and GIDs from inside the
-		// container by mounting the container's filesystem. With remote snapshotters, that filesystem is inside a VM and inaccessible to the host.
-		// The firecrackeroci variation instructs the firecracker-containerd agent that runs inside the VM to perform those UID/GID lookups because
-		// it has access to the container's filesystem
+		// Remote snapshotters keep the image filesystem in the guest, so the
+		// agent must resolve image user/group settings there.
 		specOpts = append(specOpts, firecrackeroci.WithVMLocalImageConfig(*vm.Image))
 	} else {
 		specOpts = append(specOpts, oci.WithImageConfig(*vm.Image))
 	}
-
-	tStart = time.Now()
+	tStart := time.Now()
 	container, err := o.client.NewContainer(
 		ctx,
 		vm.ContainerSnapKey,
@@ -192,97 +315,89 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		containerd.WithNewSpec(specOpts...),
 		containerd.WithRuntime("aws.firecracker", nil),
 	)
-	startVMMetric.MetricMap[metrics.NewContainer] = metrics.ToUS(time.Since(tStart))
+	metric.MetricMap[metrics.NewContainer] = metrics.ToUS(time.Since(tStart))
 	vm.Container = &container
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to create a container")
+		return errors.Wrap(err, "failed to create a container")
 	}
-
 	defer func() {
 		if retErr != nil {
 			if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-				logger.WithError(err).Errorf("failed to delete container after failure")
+				logger.WithError(err).Error("failed to delete container after failure")
 			}
 		}
 	}()
 
-	iologger := NewWorkloadIoWriter(vmID)
-	o.workloadIo.Store(vmID, &iologger)
+	iologger := NewWorkloadIoWriter(vm.ID)
+	o.workloadIo.Store(vm.ID, &iologger)
+	defer func() {
+		if retErr != nil {
+			o.workloadIo.Delete(vm.ID)
+		}
+	}()
 	logger.Debug("StartVM: Creating a new task")
 	tStart = time.Now()
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, iologger, iologger)))
-	startVMMetric.MetricMap[metrics.NewTask] = metrics.ToUS(time.Since(tStart))
+	metric.MetricMap[metrics.NewTask] = metrics.ToUS(time.Since(tStart))
 	vm.Task = &task
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to create a task")
+		return errors.Wrap(err, "failed to create a task")
 	}
-
 	defer func() {
 		if retErr != nil {
 			if _, err := task.Delete(ctx); err != nil {
-				logger.WithError(err).Errorf("failed to delete task after failure")
+				logger.WithError(err).Debug("failed to delete task after launch failure")
 			}
 		}
 	}()
-
 	logger.Debug("StartVM: Waiting for the task to get ready")
 	tStart = time.Now()
 	ch, err := task.Wait(ctx)
-	startVMMetric.MetricMap[metrics.TaskWait] = metrics.ToUS(time.Since(tStart))
+	metric.MetricMap[metrics.TaskWait] = metrics.ToUS(time.Since(tStart))
 	vm.TaskCh = ch
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to wait for a task")
+		return errors.Wrap(err, "failed to wait for a task")
 	}
-
 	defer func() {
 		if retErr != nil {
 			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
-				logger.WithError(err).Errorf("failed to kill task after failure")
+				logger.WithError(err).Debug("failed to kill task after launch failure")
 			}
 		}
 	}()
-
 	logger.Debug("StartVM: Starting the task")
 	tStart = time.Now()
 	if err := task.Start(ctx); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to start a task")
+		return errors.Wrap(err, "failed to start a task")
 	}
-	startVMMetric.MetricMap[metrics.TaskStart] = metrics.ToUS(time.Since(tStart))
-
+	metric.MetricMap[metrics.TaskStart] = metrics.ToUS(time.Since(tStart))
 	defer func() {
 		if retErr != nil {
 			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
-				logger.WithError(err).Errorf("failed to kill task after failure")
+				logger.WithError(err).Debug("failed to kill task after launch failure")
 			}
 		}
 	}()
 
-	if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
-		logger.Error("Failed to create VM base dir")
-		return nil, nil, err
+	if err := os.MkdirAll(o.getVMBaseDir(vm.ID), 0777); err != nil {
+		return err
 	}
 	if o.GetUPFEnabled() {
 		logger.Debug("Registering VM with the memory manager")
-
-		stateCfg := manager.SnapshotStateCfg{
-			VMID:           vmID,
-			GuestMemPath:   o.getMemoryFile(vmID),
-			BaseDir:        o.getVMBaseDir(vmID),
-			GuestMemSize:   int(conf.MachineCfg.MemSizeMib) * 1024 * 1024,
+		if err := o.memoryManager.RegisterVM(manager.SnapshotStateCfg{
+			VMID:           vm.ID,
+			GuestMemPath:   o.getMemoryFile(vm.ID),
+			BaseDir:        o.getVMBaseDir(vm.ID),
+			GuestMemSize:   memSizeMiB * 1024 * 1024,
 			IsLazyMode:     o.isLazyMode,
 			WSCoalescing:   o.wsCoalescing,
-			VMMStatePath:   o.getSnapshotFile(vmID),
-			WorkingSetPath: o.getWorkingSetFile(vmID),
-		}
-		if err := o.memoryManager.RegisterVM(stateCfg); err != nil {
-			return nil, nil, errors.Wrap(err, "failed to register VM with memory manager")
-			// NOTE (Plamen): Potentially need a defer(DeregisteVM) here if RegisterVM is not last to execute
+			VMMStatePath:   o.getSnapshotFile(vm.ID),
+			WorkingSetPath: o.getWorkingSetFile(vm.ID),
+		}); err != nil {
+			return errors.Wrap(err, "register VM with memory manager")
 		}
 	}
-
-	logger.Debug("Successfully started a VM")
-
-	return &StartVMResponse{VMID: vmID, GuestIP: vm.GetIP()}, startVMMetric, nil
+	return nil
 }
 
 // StopSingleVM Shuts down a VM
@@ -607,7 +722,10 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	conf.SnapshotPath = snap.GetSnapshotFilePath()
 	uffdSock := filepath.Join(o.getVMBaseDir(vmID), "uffd.sock")
 	configureSnapshotMemoryBackend(conf, "File", snap.GetMemFilePath())
-	if o.GetUPFEnabled() {
+	// The shared base must not acquire a working set. Its restored VM is
+	// registered afresh for the image-specific workload below instead.
+	enableUPF := o.GetUPFEnabled() && snap.GetId() != baseSnapshotRevision
+	if enableUPF {
 		lazyPageServer, err = recipePageServer(ctx, o.artifactStore, snap)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "prepare recipe-backed restore")
@@ -675,7 +793,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		conf.ContainerSnapshotPath = stubPath
 	}
 
-	if o.GetUPFEnabled() {
+	if enableUPF {
 		configureSnapshotMemoryBackend(conf, "Uffd", uffdSock)
 
 		if err := o.memoryManager.PrepareSnapshotLoad(manager.SnapshotStateCfg{
@@ -701,7 +819,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	tStart = time.Now()
 
-	if o.GetUPFEnabled() {
+	if enableUPF {
 		activateErrChan = make(chan error, 1)
 		socketReadyChan := make(chan struct{}, 1)
 		go func() {

@@ -65,6 +65,7 @@ var (
 	hostIface          *string
 	netPoolSize        *int
 	shimPoolSize       *int
+	baseSnapshot       *bool
 )
 
 func main() {
@@ -86,6 +87,7 @@ func main() {
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	shimPoolSize = flag.Int("shimPoolSize", 5, "Number of pre-created firecracker-containerd shims")
+	baseSnapshot = flag.Bool("baseSnapshot", false, "Start functions from a shared image-less base snapshot (requires -ss=proxy)")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
@@ -103,6 +105,10 @@ func main() {
 	}
 	if !*isUPFEnabled && *isLazyMode {
 		log.Error("Lazy page fault serving mode is not supported without user-level page faults")
+		return
+	}
+	if *baseSnapshot && *snapshotter != "proxy" {
+		log.Error("Base snapshot mode requires the stargz proxy snapshotter (-ss=proxy)")
 		return
 	}
 
@@ -144,6 +150,7 @@ func main() {
 			ctriface.WithWSCoalescing(*wsCoalescing),
 			ctriface.WithNetPoolSize(*netPoolSize),
 			ctriface.WithShimPoolSize(*shimPoolSize),
+			ctriface.WithBaseSnapshot(*baseSnapshot),
 			ctriface.WithVethPrefix(*vethPrefix),
 			ctriface.WithClonePrefix(*clonePrefix),
 			ctriface.WithDockerCredentials(*dockerCredentials),

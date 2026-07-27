@@ -30,7 +30,10 @@ import (
 	"github.com/vhive-serverless/vhive/snapshotting"
 )
 
-var errLazyModeRequiresUPF = errors.New("lazy mode requires UPF")
+var (
+	errLazyModeRequiresUPF        = errors.New("lazy mode requires UPF")
+	errBaseSnapshotRequiresStargz = errors.New("base snapshot mode requires the stargz proxy snapshotter")
+)
 
 // OrchestratorOption Options to pass to Orchestrator
 type OrchestratorOption func(*Orchestrator)
@@ -86,6 +89,13 @@ func WithChunkedMemory(chunkSize int) OrchestratorOption {
 	return func(o *Orchestrator) { o.chunkedMemorySize = chunkSize }
 }
 
+// WithBaseSnapshot starts functions from one image-less VM snapshot. It is
+// intentionally opt-in and is supported only by the stargz proxy snapshotter:
+// the function image is pulled from inside the restored VM.
+func WithBaseSnapshot(enabled bool) OrchestratorOption {
+	return func(o *Orchestrator) { o.baseSnapshotEnabled = enabled }
+}
+
 // WithArtifactStoreConfig requests a MinIO-backed artifact store. Supplying
 // this option is explicit opt-in; the default orchestrator remains local-only.
 func WithArtifactStoreConfig(config snapshotting.MinIOArtifactStoreConfig) OrchestratorOption {
@@ -114,6 +124,13 @@ func WithWSCoalescing(wsCoalescing bool) OrchestratorOption {
 func (o *Orchestrator) validateUPFMode() error {
 	if o.isLazyMode && !o.isUPFEnabled {
 		return errLazyModeRequiresUPF
+	}
+	return nil
+}
+
+func (o *Orchestrator) validateBaseSnapshotMode() error {
+	if o.baseSnapshotEnabled && o.snapshotter != "proxy" {
+		return errBaseSnapshotRequiresStargz
 	}
 	return nil
 }

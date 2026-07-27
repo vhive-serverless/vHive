@@ -124,6 +124,10 @@ type Orchestrator struct {
 	artifactStoreConfig *snapshotting.MinIOArtifactStoreConfig
 	cacheSnaps          bool
 	chunkedMemorySize   int
+	baseSnapshotEnabled bool
+	baseSnapshotManager *snapshotting.SnapshotManager
+	baseSnapshotOnce    sync.Once
+	baseSnapshotErr     error
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -205,6 +209,17 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 
 	o.devMapper = devmapper.NewDeviceMapper(o.client)
 	o.imageManager = image.NewImageManager(o.client, o.snapshotter)
+	if o.baseSnapshotEnabled {
+		// Keep this lifecycle separate from function snapshots: function pools
+		// clean their snapshot directory at construction time.
+		o.baseSnapshotManager = snapshotting.NewSnapshotManager(o.snapshotsDir + "-base")
+		o.baseSnapshotManager.EnableRemoteTransfer(o.artifactStore, o.cacheSnaps)
+		if o.chunkedMemorySize != 0 {
+			if err := o.baseSnapshotManager.EnableChunkedMemory(o.chunkedMemorySize); err != nil {
+				log.Panicf("Failed to enable chunked base snapshot memory: %v", err)
+			}
+		}
+	}
 
 	return o
 }
@@ -222,6 +237,10 @@ func (o *Orchestrator) GetCacheSnaps() bool { return o.cacheSnaps }
 // GetChunkedMemorySize returns the remote memory chunk size in bytes. A zero
 // value keeps remote snapshot memory as a single artifact.
 func (o *Orchestrator) GetChunkedMemorySize() int { return o.chunkedMemorySize }
+
+// GetBaseSnapshotEnabled reports whether new VMs are booted from the shared,
+// image-less base snapshot before their function image is pulled.
+func (o *Orchestrator) GetBaseSnapshotEnabled() bool { return o.baseSnapshotEnabled }
 
 func getK8sDNS() []string {
 	//using googleDNS as a backup

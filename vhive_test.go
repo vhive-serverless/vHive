@@ -48,6 +48,7 @@ var (
 	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
 	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
 	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
+	isBaseSnapshotTest     = flag.Bool("baseSnapshotTest", false, "Start functions from a shared image-less base snapshot (requires -ss=proxy)")
 	isRemoteSnapshotsTest  = flag.Bool("remoteSnapshotsTest", false, "Store snapshots remotely during tests")
 	wsCoalesceTest         = flag.Bool("wsCoalesceTest", false, "Coalesce working sets into a single file")
 	chunkedMemorySizeTest  = flag.Int("chunkedMemorySizeTest", 0, "Remote snapshot memory chunk size in bytes (0 disables chunking)")
@@ -79,6 +80,7 @@ func TestMain(m *testing.M) {
 	log.Infof("Orchestrator snapshots enabled: %t", *isSnapshotsEnabledTest)
 	log.Infof("Orchestrator UPF enabled: %t", *isUPFEnabledTest)
 	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
+	log.Infof("Orchestrator base snapshot mode enabled: %t", *isBaseSnapshotTest)
 	log.Infof("Working-set coalescing enabled: %t", *wsCoalesceTest)
 	log.Infof("Remote snapshots enabled: %t", *isRemoteSnapshotsTest)
 	log.Infof("Remote snapshot memory chunk size: %d", *chunkedMemorySizeTest)
@@ -96,6 +98,10 @@ func TestMain(m *testing.M) {
 		log.Error("Chunked snapshot memory requires remote snapshots")
 		os.Exit(-1)
 	}
+	if *isBaseSnapshotTest && *snapshotterTest != "proxy" {
+		log.Error("Base snapshot mode requires the stargz proxy snapshotter (-ss=proxy)")
+		os.Exit(-1)
+	}
 
 	orchOptions := []ctriface.OrchestratorOption{
 		ctriface.WithTestModeOn(true),
@@ -103,6 +109,7 @@ func TestMain(m *testing.M) {
 		ctriface.WithUPF(*isUPFEnabledTest),
 		ctriface.WithMetricsMode(*isMetricsModeTest),
 		ctriface.WithLazyMode(*isLazyModeTest),
+		ctriface.WithBaseSnapshot(*isBaseSnapshotTest),
 		ctriface.WithWSCoalescing(*wsCoalesceTest),
 		ctriface.WithDockerCredentials(*dockerCredentialsTest),
 		ctriface.WithShimPoolSize(2),
