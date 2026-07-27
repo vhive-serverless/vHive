@@ -163,6 +163,47 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 	return nil
 }
 
+// publishWorkingSet updates a remote descriptor only when both working-set
+// artifacts have been recorded locally. It deliberately does not touch the
+// memory, VM state, or other snapshot artifacts.
+func (r *remoteSnapshotTransfer) publishWorkingSet(ctx context.Context, catalog Catalog, baseFolder, revision string) (bool, error) {
+	desc, err := catalog.Get(revision)
+	if err != nil {
+		return false, err
+	}
+	if err := validateRemoteDescriptor(desc, revision); err != nil {
+		return false, err
+	}
+	artifacts := []string{desc.Artifacts.WorkingSetPages, desc.Artifacts.WorkingSetTrace}
+	for _, artifact := range artifacts {
+		if _, err := os.Stat(filepath.Join(baseFolder, revision, artifact)); err != nil {
+			if os.IsNotExist(err) {
+				return false, nil
+			}
+			return false, fmt.Errorf("stat snapshot working-set artifact %s: %w", artifact, err)
+		}
+	}
+	for _, artifact := range artifacts {
+		if err := putFile(ctx, r.store, revision, artifact, filepath.Join(baseFolder, revision, artifact)); err != nil {
+			return false, err
+		}
+	}
+	copy := *desc
+	copy.WorkingSet = true
+	data, err := json.Marshal(&copy)
+	if err != nil {
+		return false, fmt.Errorf("encode remote descriptor: %w", err)
+	}
+	key, err := RevisionArtifactKey(revision, remoteDescriptorArtifact)
+	if err != nil {
+		return false, err
+	}
+	if err := r.store.Put(ctx, key, bytes.NewReader(data), int64(len(data))); err != nil {
+		return false, fmt.Errorf("upload remote descriptor for %s: %w", revision, err)
+	}
+	return true, nil
+}
+
 func (r *remoteSnapshotTransfer) download(ctx context.Context, catalog Catalog, baseFolder, revision string) (*SnapshotDescriptor, error) {
 	r.mu.Lock()
 	if active := r.downloads[revision]; active != nil {

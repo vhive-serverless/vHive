@@ -204,6 +204,20 @@ func TestRemoteChunkedMemoryDefaultsToRecipeOnly(t *testing.T) {
 	require.True(t, downloaded.HasMemoryRecipe())
 	_, err = os.Stat(downloaded.GetMemFilePath())
 	require.ErrorIs(t, err, os.ErrNotExist, "recipe-only download must not reconstruct memory")
+	require.NoError(t, os.WriteFile(downloaded.GetWorkingSetFilePath(), []byte("working-set-pages"), 0600))
+	require.NoError(t, os.WriteFile(downloaded.GetWorkingSetTraceFilePath(), []byte("working-set-trace"), 0600))
+	require.NoError(t, worker.PublishWorkingSet(context.Background(), "revision-a"), "working-set publication must not require a local memory file")
+
+	reuser := NewSnapshotManager(t.TempDir())
+	reuser.EnableRemoteTransfer(store, true)
+	reused, err := reuser.AcquireSnapshotContext(context.Background(), "revision-a")
+	require.NoError(t, err)
+	pages, err := os.ReadFile(reused.GetWorkingSetFilePath())
+	require.NoError(t, err)
+	require.Equal(t, []byte("working-set-pages"), pages)
+	trace, err := os.ReadFile(reused.GetWorkingSetTraceFilePath())
+	require.NoError(t, err)
+	require.Equal(t, []byte("working-set-trace"), trace)
 }
 
 type countingStore struct {

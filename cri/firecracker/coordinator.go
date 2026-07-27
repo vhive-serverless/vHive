@@ -137,7 +137,13 @@ func (c *coordinator) stopVM(ctx context.Context, containerID string) error {
 	}
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*60)
 	defer cancel()
-	if err := c.snapshotManager.PublishSnapshot(ctxTimeout, fi.Revision); err != nil {
+	var err error
+	if fi.SnapBooted {
+		err = c.snapshotManager.PublishWorkingSet(ctxTimeout, fi.Revision)
+	} else {
+		err = c.snapshotManager.PublishSnapshot(ctxTimeout, fi.Revision)
+	}
+	if err != nil {
 		return fmt.Errorf("publish remote snapshot: %w", err)
 	}
 	return nil

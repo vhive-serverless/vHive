@@ -440,7 +440,7 @@ func (f *Function) stopInstance(vmID string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	if err := f.snapshotManager.PublishSnapshot(ctx, f.fID); err != nil && !errors.Is(err, snapshotting.ErrSnapshotNotFound) {
+	if err := f.snapshotManager.PublishWorkingSet(ctx, f.fID); err != nil && !errors.Is(err, snapshotting.ErrSnapshotNotFound) {
 		return fmt.Errorf("publish recorded snapshot: %w", err)
 	}
 	return nil

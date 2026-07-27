@@ -282,6 +282,34 @@ func (mgr *SnapshotManager) PublishSnapshot(ctx context.Context, revision string
 	return nil
 }
 
+// PublishWorkingSet updates only the optional working-set artifacts of an
+// already published snapshot. It is intended for a restored snapshot after
+// shutdown, when chunked memory may be recipe-backed and therefore has no
+// local memory file to upload.
+func (mgr *SnapshotManager) PublishWorkingSet(ctx context.Context, revision string) error {
+	mgr.Lock()
+	remote := mgr.remote
+	catalog := mgr.catalog
+	baseFolder := mgr.baseFolder
+	mgr.Unlock()
+	if remote == nil {
+		return nil
+	}
+	published, err := remote.publishWorkingSet(ctx, catalog, baseFolder, revision)
+	if err != nil || !published {
+		return err
+	}
+	if !remote.cacheSnaps {
+		mgr.Lock()
+		delete(mgr.snapshots, revision)
+		mgr.Unlock()
+		if err := catalog.Delete(revision); err != nil {
+			return fmt.Errorf("remove published local working set %s: %w", revision, err)
+		}
+	}
+	return nil
+}
+
 func (mgr *SnapshotManager) RemoteTransferEnabled() bool {
 	mgr.Lock()
 	defer mgr.Unlock()
