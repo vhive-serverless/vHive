@@ -566,21 +566,24 @@ func (s *SnapshotState) servePageFault(fd int, address uint64, recordFault bool)
 	rec := Record{offset: copyArgs.srcOffset}
 	if recordFault && s.firstPageFaultOnce != nil {
 		s.firstPageFaultOnce.Do(func() {
-			if !s.isRecordReady || s.IsLazyMode || !s.WSCoalescing || len(s.workingSet) == 0 {
+			// Lazy mode intentionally bypasses batch installation. Otherwise, a
+			// ready trace is sufficient: WSCoalescing controls whether page bytes
+			// were persisted as a compact local file, while a recipe-backed
+			// PageServer can supply them directly.
+			if !s.isRecordReady || s.IsLazyMode {
 				return
 			}
 
 			if s.metricsModeOn {
 				tStart = time.Now()
 			}
-			err = s.installWorkingSetPages(fd, copyArgs.dstAddr, copyArgs.copyLen)
+			workingSetInstalled, err = s.installWorkingSetPages(fd, copyArgs.dstAddr, copyArgs.copyLen)
 			if err != nil {
 				return
 			}
-			if s.metricsModeOn {
+			if s.metricsModeOn && workingSetInstalled {
 				s.currentMetric.MetricMap[installWSMetric] = metrics.ToUS(time.Since(tStart))
 			}
-			workingSetInstalled = true
 		})
 		if err != nil {
 			return err
@@ -642,9 +645,16 @@ func (s *SnapshotState) shouldRecordPageFault() bool {
 }
 
 // installWorkingSetPages copies recorded pages before waking the first fault.
-func (s *SnapshotState) installWorkingSetPages(fd int, faultPageAddr, pageSize uint64) error {
-	if len(s.workingSet) == 0 || len(s.trace.regions) == 0 {
-		return nil
+// If coalesced page bytes are unavailable, it reads each recorded page directly
+// from PageServer. This keeps trace replay independent of a local working-set
+// file, which is essential for recipe-backed chunked snapshots.
+func (s *SnapshotState) installWorkingSetPages(fd int, faultPageAddr, pageSize uint64) (bool, error) {
+	if len(s.trace.regions) == 0 {
+		return false, nil
+	}
+	useWorkingSet := len(s.workingSet) != 0
+	if !useWorkingSet && s.PageServer == nil {
+		return false, nil
 	}
 	if s.trace.pageSize != 0 {
 		pageSize = s.trace.pageSize
@@ -667,21 +677,36 @@ func (s *SnapshotState) installWorkingSetPages(fd int, faultPageAddr, pageSize u
 				uint64(C.const_UFFDIO_COPY_MODE_DONTWAKE),
 			)
 			if err != nil {
-				return err
+				return false, err
 			}
 
-			src, err := guestMemPointer(s.workingSet, workingSetOffset, copyArgs.copyLen)
-			if err != nil {
-				return err
+			var src uint64
+			if useWorkingSet {
+				src, err = guestMemPointer(s.workingSet, workingSetOffset, copyArgs.copyLen)
+				if err != nil {
+					return false, err
+				}
+				workingSetOffset += copyArgs.copyLen
+			} else {
+				page, readErr := s.PageServer.Read(copyArgs.srcOffset, copyArgs.copyLen)
+				if readErr != nil {
+					return false, readErr
+				}
+				src, err = guestMemPointer(page.Bytes, 0, copyArgs.copyLen)
+				if err != nil {
+					return false, err
+				}
 			}
 			if err := installRegionBytes(fd, src, copyArgs.dstAddr, copyArgs.copyMode, copyArgs.copyLen); err != nil {
-				return err
+				return false, err
 			}
-			workingSetOffset += copyArgs.copyLen
 		}
 	}
 
-	return wake(fd, faultPageAddr, pageSize)
+	if err := wake(fd, faultPageAddr, pageSize); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // installRegionBytes resolves missing pages with UFFDIO_COPY.

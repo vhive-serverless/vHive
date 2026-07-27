@@ -102,8 +102,9 @@ func WithLazyMode(isLazyMode bool) OrchestratorOption {
 }
 
 // WithWSCoalescing controls whether non-lazy replay persists and pre-installs
-// a compact working-set file. Disabled replay uses the trace and its default
-// page source directly.
+// a compact working-set file. Disabled replay persists only the trace; a
+// recipe-backed restore can still install that trace directly from its page
+// source.
 func WithWSCoalescing(wsCoalescing bool) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.wsCoalescing = wsCoalescing
