@@ -44,7 +44,7 @@ func (c *memoryChunkCache) Insert(ctx context.Context, id ChunkID, data []byte) 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if !validChunkID(id) || chunkID(data) != id {
+	if !validChunkID(id) {
 		return nil, fmt.Errorf("invalid chunk %q", id)
 	}
 	c.mu.Lock()

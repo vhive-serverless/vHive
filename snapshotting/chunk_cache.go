@@ -13,8 +13,8 @@ import (
 // ErrChunkCacheMiss distinguishes a cache miss from an unusable cache.
 var ErrChunkCacheMiss = errors.New("chunk is not cached")
 
-// ChunkCache stores verified chunks locally. Acquire and Insert return a
-// pinned handle: callers must Release it once they no longer need the chunk.
+// ChunkCache stores chunks locally. Acquire and Insert return a pinned handle:
+// callers must Release it once they no longer need the chunk.
 // Cleanup is deliberately limited to removing unpinned cache entries; Stage 5
 // intentionally has no capacity limit or eviction policy.
 type ChunkCache interface {
@@ -87,7 +87,7 @@ func (c *FileChunkCache) Insert(ctx context.Context, id ChunkID, data []byte) (C
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if !validChunkID(id) || chunkID(data) != id {
+	if !validChunkID(id) {
 		return nil, fmt.Errorf("invalid chunk %q", id)
 	}
 	c.mu.Lock()

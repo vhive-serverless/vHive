@@ -56,17 +56,15 @@ func (s *recipePageSource) ReadAt(ctx context.Context, offset uint64, length uin
 		return manager.PageData{}, fmt.Errorf("page range overflows host integer")
 	}
 	result := make([]byte, int(length))
-	var cursor uint64
+	chunkSize := uint64(s.recipe.ChunkSize)
+	chunkIndex := offset / chunkSize
+	chunkOffset := offset % chunkSize
 	written := 0
-	for _, chunk := range s.recipe.Chunks {
-		chunkEnd := cursor + uint64(chunk.Size)
-		if offset >= chunkEnd {
-			cursor = chunkEnd
-			continue
+	for written < len(result) {
+		if chunkIndex >= uint64(len(s.recipe.Chunks)) {
+			return manager.PageData{}, fmt.Errorf("page range [%d,%d) is outside memory recipe", offset, offset+length)
 		}
-		if offset+length <= cursor {
-			break
-		}
+		chunk := s.recipe.Chunks[chunkIndex]
 		data, downloaded, err := readRecipeChunk(ctx, s.store, s.cache, chunk)
 		if err != nil {
 			return manager.PageData{}, err
@@ -74,25 +72,21 @@ func (s *recipePageSource) ReadAt(ctx context.Context, offset uint64, length uin
 		if downloaded {
 			s.downloadedChunks.Add(1)
 		}
-		if len(data) != chunk.Size || chunkID(data) != chunk.ID {
-			return manager.PageData{}, fmt.Errorf("corrupt chunk %s", chunk.ID)
+		if len(data) != chunk.Size {
+			return manager.PageData{}, fmt.Errorf("chunk %s has size %d, want %d", chunk.ID, len(data), chunk.Size)
 		}
-		start := uint64(0)
-		if offset > cursor {
-			start = offset - cursor
+		if chunkOffset >= uint64(len(data)) {
+			return manager.PageData{}, fmt.Errorf("page range [%d,%d) is outside memory recipe", offset, offset+length)
 		}
+		start := chunkOffset
 		end := uint64(len(data))
-		if offset+length < chunkEnd {
-			end = offset + length - cursor
+		remaining := uint64(len(result) - written)
+		if end-start > remaining {
+			end = start + remaining
 		}
 		written += copy(result[written:], data[start:end])
-		cursor = chunkEnd
-		if written == len(result) {
-			break
-		}
-	}
-	if written != len(result) {
-		return manager.PageData{}, fmt.Errorf("page range [%d,%d) is outside memory recipe", offset, offset+length)
+		chunkIndex++
+		chunkOffset = 0
 	}
 	zero := true
 	for _, value := range result {

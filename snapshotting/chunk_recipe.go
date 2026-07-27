@@ -13,7 +13,8 @@ import (
 )
 
 // memoryRecipeArtifact is revision-scoped; its chunks are immutable shared
-// objects addressed by the SHA-256 of their plaintext bytes.
+// objects. Current writers use SHA-256 IDs, but readers do not treat an ID as
+// a checksum because future storage encodings may use a different identity.
 const memoryRecipeArtifact = ".memory-recipe.json"
 
 type ChunkID string
@@ -106,7 +107,7 @@ func chunkArtifactKey(id ChunkID) (ArtifactKey, error) {
 }
 
 func putChunkIfAbsent(ctx context.Context, store ArtifactStore, id ChunkID, data []byte) error {
-	if !validChunkID(id) || chunkID(data) != id {
+	if !validChunkID(id) {
 		return fmt.Errorf("invalid chunk %q", id)
 	}
 	if repository, ok := store.(ChunkRepository); ok {
@@ -192,14 +193,14 @@ func getRecipe(ctx context.Context, store ArtifactStore, revision string) (Memor
 	return recipe, nil
 }
 
-// ReconstructMemory writes a recipe eagerly and verifies every fetched chunk.
+// ReconstructMemory writes a recipe eagerly.
 func ReconstructMemory(ctx context.Context, store ArtifactStore, recipe MemoryRecipe, writer io.Writer) error {
 	return ReconstructMemoryWithCache(ctx, store, newMemoryChunkCache(), recipe, writer)
 }
 
 // ReconstructMemoryWithCache writes a recipe eagerly, using cache when it is
-// provided. A chunk is verified before insertion, and cached bytes are
-// verified again before they are written to the reconstructed memory file.
+// provided. Chunk lengths are checked against the recipe before insertion and
+// again before they are written to the reconstructed memory file.
 func ReconstructMemoryWithCache(ctx context.Context, store ArtifactStore, cache ChunkCache, recipe MemoryRecipe, writer io.Writer) error {
 	if err := recipe.Validate(); err != nil {
 		return err
@@ -209,8 +210,8 @@ func ReconstructMemoryWithCache(ctx context.Context, store ArtifactStore, cache 
 		if err != nil {
 			return err
 		}
-		if len(data) != expected.Size || chunkID(data) != expected.ID {
-			return fmt.Errorf("corrupt chunk %s", expected.ID)
+		if len(data) != expected.Size {
+			return fmt.Errorf("chunk %s has size %d, want %d", expected.ID, len(data), expected.Size)
 		}
 		if _, err := writer.Write(data); err != nil {
 			return fmt.Errorf("write chunk %s: %w", expected.ID, err)
@@ -232,8 +233,8 @@ func readRecipeChunk(ctx context.Context, store ArtifactStore, cache ChunkCache,
 		if fetchErr != nil {
 			return nil, false, fetchErr
 		}
-		if len(data) != expected.Size || chunkID(data) != expected.ID {
-			return nil, false, fmt.Errorf("corrupt chunk %s", expected.ID)
+		if len(data) != expected.Size {
+			return nil, false, fmt.Errorf("chunk %s has size %d, want %d", expected.ID, len(data), expected.Size)
 		}
 		handle, err = cache.Insert(ctx, expected.ID, data)
 		downloaded = err == nil

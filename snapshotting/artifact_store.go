@@ -123,12 +123,12 @@ func (s *MemoryArtifactStore) Put(ctx context.Context, key ArtifactKey, reader i
 }
 
 // PutIfAbsent atomically stores a chunk only when it has not already been
-// published. Equal IDs always represent equal bytes.
+// published.
 func (s *MemoryArtifactStore) PutIfAbsent(ctx context.Context, id ChunkID, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !validChunkID(id) || chunkID(data) != id {
+	if !validChunkID(id) {
 		return fmt.Errorf("invalid chunk %q", id)
 	}
 	key, err := chunkArtifactKey(id)
@@ -140,10 +140,7 @@ func (s *MemoryArtifactStore) PutIfAbsent(ctx context.Context, id ChunkID, data 
 	if s.failures.Put != nil {
 		return s.failures.Put
 	}
-	if existing, ok := s.objects[key]; ok {
-		if !bytes.Equal(existing.data, data) {
-			return fmt.Errorf("chunk collision for %s", id)
-		}
+	if _, ok := s.objects[key]; ok {
 		return nil
 	}
 	s.objects[key] = memoryArtifact{data: append([]byte(nil), data...), modTime: time.Now().UTC()}

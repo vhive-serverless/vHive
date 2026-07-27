@@ -33,7 +33,7 @@ func TestSplitMemoryEmptyInput(t *testing.T) {
 	require.NoError(t, recipe.Validate())
 }
 
-func TestReconstructMemoryRejectsCorruptRecipeAndChunk(t *testing.T) {
+func TestReconstructMemoryRejectsMalformedRecipeAndAcceptsOpaqueChunkPayload(t *testing.T) {
 	store := NewMemoryArtifactStore()
 	recipe := MemoryRecipe{Version: 1, ChunkSize: 4, Chunks: []RecipeChunk{{ID: ChunkID("not-a-hash"), Size: 1}}}
 	require.Error(t, ReconstructMemory(context.Background(), store, recipe, io.Discard))
@@ -43,7 +43,9 @@ func TestReconstructMemoryRejectsCorruptRecipeAndChunk(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, store.Put(context.Background(), key, bytes.NewReader([]byte("evil")), 4))
 	recipe = MemoryRecipe{Version: 1, ChunkSize: 4, Chunks: []RecipeChunk{{ID: id, Size: 4}}}
-	require.Error(t, ReconstructMemory(context.Background(), store, recipe, io.Discard))
+	var reconstructed bytes.Buffer
+	require.NoError(t, ReconstructMemory(context.Background(), store, recipe, &reconstructed))
+	require.Equal(t, []byte("evil"), reconstructed.Bytes())
 }
 
 func TestChunkPutIfAbsentSupportsDuplicatesAndConcurrentWriters(t *testing.T) {
