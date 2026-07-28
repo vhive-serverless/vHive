@@ -33,6 +33,14 @@ type inMemoryChunkHandle interface {
 	cachedBytes() ([]byte, error)
 }
 
+// asyncChunkCache accepts downloaded chunks for write-behind persistence.
+// It is deliberately private: callers of ChunkCache retain the synchronous
+// Insert contract, while recipe reads can keep disk writes off their critical
+// path when the selected cache supports it.
+type asyncChunkCache interface {
+	InsertAsync(id ChunkID, data []byte)
+}
+
 // MemoryRecipe preserves the order of fixed-size chunks in a memory file.
 type MemoryRecipe struct {
 	Version   int           `json:"version"`
@@ -231,6 +239,10 @@ func readRecipeChunk(ctx context.Context, store ArtifactStore, cache ChunkCache,
 		data, fetchErr := readRemoteChunk(ctx, store, id, chunkSize)
 		if fetchErr != nil {
 			return nil, false, fetchErr
+		}
+		if async, ok := cache.(asyncChunkCache); ok {
+			async.InsertAsync(id, data)
+			return data, true, nil
 		}
 		handle, err = cache.Insert(ctx, id, data)
 		downloaded = err == nil

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -25,6 +26,9 @@ func TestReconstructMemoryWithCacheAvoidsSecondRemoteRead(t *testing.T) {
 	require.NoError(t, ReconstructMemoryWithCache(context.Background(), store, cache, recipe, &first))
 	require.Equal(t, input, first.Bytes())
 	require.Equal(t, 2, store.GetCount(), "only unique chunks should be fetched")
+	require.Eventually(t, func() bool {
+		return cache.Metrics().Bytes == 8
+	}, time.Second, time.Millisecond, "write-behind chunks must reach the file cache")
 
 	store.ResetGetCount()
 	var second bytes.Buffer

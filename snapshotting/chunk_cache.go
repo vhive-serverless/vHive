@@ -43,6 +43,10 @@ type FileChunkCache struct {
 
 	mu      sync.Mutex
 	entries map[ChunkID]*fileCacheEntry
+	// pending retains a fetched chunk until its asynchronous write reaches the
+	// file cache. It lets concurrent page faults use the downloaded bytes
+	// without waiting for disk I/O or fetching the same chunk again.
+	pending map[ChunkID][]byte
 	metrics ChunkCacheMetrics
 }
 
@@ -58,7 +62,11 @@ func NewFileChunkCache(directory string) (*FileChunkCache, error) {
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return nil, fmt.Errorf("create chunk cache directory: %w", err)
 	}
-	return &FileChunkCache{directory: directory, entries: make(map[ChunkID]*fileCacheEntry)}, nil
+	return &FileChunkCache{
+		directory: directory,
+		entries:   make(map[ChunkID]*fileCacheEntry),
+		pending:   make(map[ChunkID][]byte),
+	}, nil
 }
 
 func (c *FileChunkCache) Acquire(ctx context.Context, id ChunkID) (ChunkHandle, error) {
@@ -72,15 +80,87 @@ func (c *FileChunkCache) Acquire(ctx context.Context, id ChunkID) (ChunkHandle, 
 	defer c.mu.Unlock()
 	entry, err := c.entryLocked(id)
 	if err != nil {
-		if errors.Is(err, ErrChunkCacheMiss) {
-			c.metrics.Misses++
+		if !errors.Is(err, ErrChunkCacheMiss) {
+			return nil, err
 		}
+		if data := c.pending[id]; data != nil {
+			c.metrics.Hits++
+			c.metrics.Accesses++
+			return &memoryChunkHandle{data: data}, nil
+		}
+		c.metrics.Misses++
 		return nil, err
 	}
 	entry.pins++
 	c.metrics.Hits++
 	c.metrics.Accesses++
 	return &fileChunkHandle{cache: c, id: id}, nil
+}
+
+// InsertAsync schedules a write-behind insertion. It is used only after a
+// chunk was successfully downloaded, so the caller can return those bytes to
+// the page-fault path without waiting for local disk I/O. Until the cache file
+// is published, Acquire serves the pending bytes directly from memory.
+//
+// Cache persistence is an optimization: a failed asynchronous write simply
+// leaves the chunk uncached for a later download.
+func (c *FileChunkCache) InsertAsync(id ChunkID, data []byte) {
+	if !validChunkID(id) {
+		return
+	}
+	c.mu.Lock()
+	if _, err := c.entryLocked(id); err == nil {
+		c.mu.Unlock()
+		return
+	} else if !errors.Is(err, ErrChunkCacheMiss) {
+		c.mu.Unlock()
+		return
+	}
+	if _, ok := c.pending[id]; ok {
+		c.mu.Unlock()
+		return
+	}
+	c.pending[id] = data
+	c.mu.Unlock()
+
+	go c.persistAsync(id, data)
+}
+
+func (c *FileChunkCache) persistAsync(id ChunkID, data []byte) {
+	temporary, err := os.CreateTemp(c.directory, ".chunk-*")
+	if err != nil {
+		c.clearPending(id)
+		return
+	}
+	temporaryName := temporary.Name()
+	defer os.Remove(temporaryName)
+	if _, err := temporary.Write(data); err != nil {
+		_ = temporary.Close()
+		c.clearPending(id)
+		return
+	}
+	if err := temporary.Close(); err != nil {
+		c.clearPending(id)
+		return
+	}
+	if err := os.Rename(temporaryName, c.filename(id)); err != nil && !os.IsExist(err) {
+		c.clearPending(id)
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.pending, id)
+	if _, ok := c.entries[id]; !ok {
+		entry := &fileCacheEntry{size: int64(len(data))}
+		c.entries[id] = entry
+		c.metrics.Bytes += entry.size
+	}
+}
+
+func (c *FileChunkCache) clearPending(id ChunkID) {
+	c.mu.Lock()
+	delete(c.pending, id)
+	c.mu.Unlock()
 }
 
 func (c *FileChunkCache) Insert(ctx context.Context, id ChunkID, data []byte) (ChunkHandle, error) {
