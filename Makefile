@@ -29,9 +29,11 @@ WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
 WITHREMOTE:=-remoteSnapshotsTest
 WITHWSCOALESCING:=-wsCoalesceTest
+WITHPROVENANCEWS:=-provenanceWorkingSetTest
 STARGZ:=-ss 'proxy' -img 'ghcr.io/vhive-serverless/helloworld:var_workload-esgz' -dockerCredentials '{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}'
 BASESNAP:=-baseSnapshotTest
 WITHCHUNKED512:=-chunkedMemorySizeTest 524288
+WITHCHUNKED4:=-chunkedMemorySizeTest 4096
 CTRDLOGDIR:=/tmp/ctrd-logs
 
 vhive: proto
@@ -117,6 +119,16 @@ bench-snapshare:
 	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHUPF) $(WITHREMOTE) $(WITHCHUNKED512) -benchDirTest bench_results/configRemoteChunks -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHUPF) $(WITHWSCOALESCING) $(WITHREMOTE) $(WITHCHUNKED4) -benchDirTest bench_results/configRemoteWS -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
+	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 5 $(WITHSNAPSHOTS) $(STARGZ) $(WITHUPF) $(WITHWSCOALESCING) $(WITHREMOTE) $(WITHCHUNKED4) $(BASESNAP) $(WITHPROVENANCEWS) -benchDirTest bench_results/configRemoteSnapShare -metricsTest -funcName helloworld
 	./scripts/clean_fcctr.sh
 
 test:

@@ -104,15 +104,20 @@ type Orchestrator struct {
 	imageManager      *image.ImageManager
 	dockerCredentials DockerCredentials
 	// store *skv.KVStore
-	snapshotsEnabled bool
-	isUPFEnabled     bool
-	isLazyMode       bool
-	wsCoalescing     bool
-	snapshotsDir     string
-	isMetricsMode    bool
-	netPoolSize      int
-	shimPoolSize     int
-	dns              []string
+	snapshotsEnabled         bool
+	isUPFEnabled             bool
+	isLazyMode               bool
+	wsCoalescing             bool
+	provenanceWorkingSets    bool
+	provenanceBaseIdentity   string
+	provenanceImageSourceDir string
+	provenancePolicy         snapshotting.ProvenancePolicy
+	contentProvenance        *snapshotting.ContentHashProvenance
+	snapshotsDir             string
+	isMetricsMode            bool
+	netPoolSize              int
+	shimPoolSize             int
+	dns                      []string
 
 	vethPrefix  string
 	clonePrefix string
@@ -153,6 +158,22 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 			log.Panicf("Failed to construct remote artifact store: %v", err)
 		}
 		o.artifactStore = store
+	}
+	if o.provenanceWorkingSets {
+		rootfsSources := []string(nil)
+		if _, err := os.Stat(filepath.Join("bin", "default-rootfs.img")); err == nil {
+			rootfsSources = append(rootfsSources, filepath.Join("bin", "default-rootfs.img"))
+		} else if !os.IsNotExist(err) {
+			log.Panicf("stat default rootfs for provenance: %v", err)
+		} else {
+			log.Warn("Default rootfs is unavailable for provenance classification; rootfs pages remain private")
+		}
+		policy, err := snapshotting.NewContentHashProvenance(uint64(os.Getpagesize()), rootfsSources, nil)
+		if err != nil {
+			log.Panicf("Failed to build provenance content registry: %v", err)
+		}
+		o.contentProvenance = policy
+		o.provenancePolicy = policy
 	}
 
 	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize, o.vethPrefix, o.clonePrefix, o.setExpIface)
@@ -214,9 +235,20 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		// clean their snapshot directory at construction time.
 		o.baseSnapshotManager = snapshotting.NewSnapshotManager(o.snapshotsDir + "-base")
 		o.baseSnapshotManager.EnableRemoteTransfer(o.artifactStore, o.cacheSnaps)
+		if o.provenanceWorkingSets && o.artifactStore != nil {
+			if err := o.baseSnapshotManager.EnableProvenanceWorkingSets(o.ProvenancePolicy(), o.provenanceBaseIdentity); err != nil {
+				log.Panicf("Failed to enable provenance base working sets: %v", err)
+			}
+		}
 		if o.chunkedMemorySize != 0 {
 			if err := o.baseSnapshotManager.EnableChunkedMemory(o.chunkedMemorySize); err != nil {
 				log.Panicf("Failed to enable chunked base snapshot memory: %v", err)
+			}
+			// The image-less base is restored before the UPF/page-server path is
+			// enabled for an image-specific workload. It therefore needs a local
+			// memory file even when ordinary function snapshots stay recipe-backed.
+			if err := o.baseSnapshotManager.EnableMemoryReconstruction(true); err != nil {
+				log.Panicf("Failed to enable base snapshot memory reconstruction: %v", err)
 			}
 		}
 	}
@@ -233,6 +265,21 @@ func (o *Orchestrator) ArtifactStore() snapshotting.ArtifactStore {
 // GetCacheSnaps reports whether remote snapshots remain on local disk after
 // publishing. It is false by default, so remote mode exercises cache misses.
 func (o *Orchestrator) GetCacheSnaps() bool { return o.cacheSnaps }
+
+// ProvenanceWorkingSetsEnabled reports whether snapshot publication should
+// convert coalesced working sets into provenance-partitioned artifacts.
+func (o *Orchestrator) ProvenanceWorkingSetsEnabled() bool { return o.provenanceWorkingSets }
+
+func (o *Orchestrator) ProvenanceBaseIdentity() string { return o.provenanceBaseIdentity }
+
+func (o *Orchestrator) ProvenanceImageSourceDir() string { return o.provenanceImageSourceDir }
+
+func (o *Orchestrator) ProvenancePolicy() snapshotting.ProvenancePolicy {
+	if o.provenancePolicy == nil {
+		return snapshotting.AllPrivateProvenance{}
+	}
+	return o.provenancePolicy
+}
 
 // GetChunkedMemorySize returns the remote memory chunk size in bytes. A zero
 // value keeps remote snapshot memory as a single artifact.

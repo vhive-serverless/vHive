@@ -88,6 +88,11 @@ type SnapshotState struct {
 	reusedPFServed   []float64
 	downloadedChunks []float64
 	latencyMetrics   []*metrics.Metric
+	// downloadedChunksAtTermination is captured when the VM reports its
+	// response.  The UFFD handler must continue serving termination faults,
+	// but chunks downloaded for those faults are outside the measurement.
+	downloadedChunksAtTermination atomic.Uint64
+	hasTerminationChunkSnapshot   atomic.Bool
 
 	replayedNum   int
 	uniqueNum     int
@@ -155,6 +160,8 @@ func (s *SnapshotState) refreshSnapshotLoad(cfg SnapshotStateCfg) {
 	s.replayedNum = 0
 	s.uniqueNum = 0
 	s.currentMetric = nil
+	s.downloadedChunksAtTermination.Store(0)
+	s.hasTerminationChunkSnapshot.Store(false)
 
 	if s.metricsModeOn {
 		if s.totalPFServed == nil {
@@ -179,6 +186,8 @@ func (s *SnapshotState) setupStateOnActivate() {
 	s.isActive = true
 	s.isEverActivated = true
 	s.terminating.Store(false)
+	s.downloadedChunksAtTermination.Store(0)
+	s.hasTerminationChunkSnapshot.Store(false)
 	s.firstPageFaultOnce = new(sync.Once)
 	s.wakeFD = -1
 	s.quitCh = make(chan int, 1)
@@ -208,13 +217,25 @@ func (s *SnapshotState) processMetrics() {
 	}
 
 	s.uniquePFServed = append(s.uniquePFServed, float64(s.uniqueNum))
-	downloadedChunks := uint64(0)
-	if s.PageServer != nil {
+	downloadedChunks := s.downloadedChunksAtTermination.Load()
+	if !s.hasTerminationChunkSnapshot.Load() && s.PageServer != nil {
 		downloadedChunks = s.PageServer.DownloadedChunkCount()
 	}
 	s.downloadedChunks = append(s.downloadedChunks, float64(downloadedChunks))
 	s.latencyMetrics = append(s.latencyMetrics, s.currentMetric)
 	s.currentMetric = nil
+}
+
+// captureTerminationChunkCount records the download count at the measurement
+// boundary. The UFFD handler may subsequently download chunks while serving
+// termination faults, which must not affect this run's metrics.
+func (s *SnapshotState) captureTerminationChunkCount() {
+	downloadedChunks := uint64(0)
+	if s.PageServer != nil {
+		downloadedChunks = s.PageServer.DownloadedChunkCount()
+	}
+	s.downloadedChunksAtTermination.Store(downloadedChunks)
+	s.hasTerminationChunkSnapshot.Store(true)
 }
 
 func (s *SnapshotState) mapGuestMemory() error {

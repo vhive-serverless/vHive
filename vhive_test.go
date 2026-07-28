@@ -44,19 +44,22 @@ const (
 )
 
 var (
-	isUPFEnabledTest       = flag.Bool("upfTest", false, "Enable user-level page faults guest memory management")
-	isSnapshotsEnabledTest = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
-	isMetricsModeTest      = flag.Bool("metricsTest", false, "Calculate UPF metrics")
-	isLazyModeTest         = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
-	isBaseSnapshotTest     = flag.Bool("baseSnapshotTest", false, "Start functions from a shared image-less base snapshot (requires -ss=proxy)")
-	isRemoteSnapshotsTest  = flag.Bool("remoteSnapshotsTest", false, "Store snapshots remotely during tests")
-	wsCoalesceTest         = flag.Bool("wsCoalesceTest", false, "Coalesce working sets into a single file")
-	chunkedMemorySizeTest  = flag.Int("chunkedMemorySizeTest", 0, "Remote snapshot memory chunk size in bytes (0 disables chunking)")
-	isWithCache            = flag.Bool("withCache", false, "Do not drop the cache before measurements")
-	benchDir               = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
-	snapshotterTest        = flag.String("ss", "devmapper", "Snapshotter to use")
-	testImage              = flag.String("img", testImageName, "Test image")
-	dockerCredentialsTest  = flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM")
+	isUPFEnabledTest           = flag.Bool("upfTest", false, "Enable user-level page faults guest memory management")
+	isSnapshotsEnabledTest     = flag.Bool("snapshotsTest", false, "Use VM snapshots when adding function instances")
+	isMetricsModeTest          = flag.Bool("metricsTest", false, "Calculate UPF metrics")
+	isLazyModeTest             = flag.Bool("lazyTest", false, "Enable lazy serving mode when UPFs are enabled")
+	isBaseSnapshotTest         = flag.Bool("baseSnapshotTest", false, "Start functions from a shared image-less base snapshot (requires -ss=proxy)")
+	isRemoteSnapshotsTest      = flag.Bool("remoteSnapshotsTest", false, "Store snapshots remotely during tests")
+	wsCoalesceTest             = flag.Bool("wsCoalesceTest", false, "Coalesce working sets into a single file")
+	provenanceWorkingSetTest   = flag.Bool("provenanceWorkingSetTest", false, "Publish coalesced working sets in provenance-aware sources (requires remote snapshots)")
+	provenanceBaseIDTest       = flag.String("provenanceBaseIDTest", "base-v1", "Stable base/rootfs identity for provenance working sets")
+	provenanceImageSourcesTest = flag.String("provenanceImageSourcesTest", "/var/lib/vhive/provenance-images/", "Directory produced by scripts/stargz/pull_provenance_images.sh")
+	chunkedMemorySizeTest      = flag.Int("chunkedMemorySizeTest", 0, "Remote snapshot memory chunk size in bytes (0 disables chunking)")
+	isWithCache                = flag.Bool("withCache", false, "Do not drop the cache before measurements")
+	benchDir                   = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
+	snapshotterTest            = flag.String("ss", "devmapper", "Snapshotter to use")
+	testImage                  = flag.String("img", testImageName, "Test image")
+	dockerCredentialsTest      = flag.String("dockerCredentials", "", "Docker credentials for pulling images from inside a microVM")
 )
 
 func TestMain(m *testing.M) {
@@ -82,6 +85,7 @@ func TestMain(m *testing.M) {
 	log.Infof("Orchestrator lazy serving mode enabled: %t", *isLazyModeTest)
 	log.Infof("Orchestrator base snapshot mode enabled: %t", *isBaseSnapshotTest)
 	log.Infof("Working-set coalescing enabled: %t", *wsCoalesceTest)
+	log.Infof("Provenance working sets enabled: %t", *provenanceWorkingSetTest)
 	log.Infof("Remote snapshots enabled: %t", *isRemoteSnapshotsTest)
 	log.Infof("Remote snapshot memory chunk size: %d", *chunkedMemorySizeTest)
 	log.Infof("Orchestrator UPF metrics enabled: %t", *isMetricsModeTest)
@@ -96,6 +100,14 @@ func TestMain(m *testing.M) {
 	}
 	if *chunkedMemorySizeTest > 0 && !*isRemoteSnapshotsTest {
 		log.Error("Chunked snapshot memory requires remote snapshots")
+		os.Exit(-1)
+	}
+	if *provenanceWorkingSetTest && !*isRemoteSnapshotsTest {
+		log.Error("Provenance working sets require remote snapshots")
+		os.Exit(-1)
+	}
+	if *provenanceWorkingSetTest && !*wsCoalesceTest {
+		log.Error("Provenance working sets require working-set coalescing")
 		os.Exit(-1)
 	}
 	if *isBaseSnapshotTest && *snapshotterTest != "proxy" {
@@ -114,6 +126,12 @@ func TestMain(m *testing.M) {
 		ctriface.WithDockerCredentials(*dockerCredentialsTest),
 		ctriface.WithShimPoolSize(2),
 		ctriface.WithNetPoolSize(2),
+	}
+	if *provenanceWorkingSetTest {
+		orchOptions = append(orchOptions, ctriface.WithProvenanceWorkingSets(*provenanceBaseIDTest))
+		if *provenanceImageSourcesTest != "" {
+			orchOptions = append(orchOptions, ctriface.WithProvenanceImageSourceDir(*provenanceImageSourcesTest))
+		}
 	}
 	if *isRemoteSnapshotsTest {
 		// The in-memory store exercises the remote publication/download path

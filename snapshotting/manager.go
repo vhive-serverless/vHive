@@ -115,6 +115,24 @@ func (mgr *SnapshotManager) EnableChunkCache(directory string) error {
 	return nil
 }
 
+// EnableProvenanceWorkingSets makes subsequent working-set publication split
+// coalesced pages according to policy. It is opt-in; without it the historical
+// revision-local coalesced artifact remains the only working-set format.
+func (mgr *SnapshotManager) EnableProvenanceWorkingSets(policy ProvenancePolicy, baseIdentity string) error {
+	mgr.Lock()
+	remote := mgr.remote
+	mgr.Unlock()
+	if remote == nil {
+		return fmt.Errorf("remote transfer is not enabled")
+	}
+	repository, err := NewWorkingSetRepository(remote.store, policy, baseIdentity)
+	if err != nil {
+		return err
+	}
+	remote.setWorkingSetRepository(repository)
+	return nil
+}
+
 // CleanupChunkCache removes only unpinned chunk files from the configured
 // cache. It has no effect when no chunk cache is enabled.
 func (mgr *SnapshotManager) CleanupChunkCache(ctx context.Context) error {

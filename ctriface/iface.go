@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -139,6 +140,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		if vm.Image, err = o.getImage(ctx, imageName); err != nil {
 			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
 		}
+		o.registerImageProvenance(ctx, imageName, *vm.Image)
 		startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 	}
 
@@ -171,6 +173,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 		if vm.Image, err = o.getImage(ctx, imageName); err != nil {
 			return nil, nil, errors.Wrapf(err, "Failed to get/pull image")
 		}
+		o.registerImageProvenance(ctx, imageName, *vm.Image)
 		startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 	}
 
@@ -233,6 +236,7 @@ func (o *Orchestrator) startVMFromBaseSnapshot(ctx context.Context, vmID, imageN
 		_ = o.StopSingleVM(ctx, vmID)
 		return nil, nil, errors.Wrapf(err, "get/pull image after base restore")
 	}
+	o.registerImageProvenance(ctx, imageName, *vm.Image)
 	metric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 	if err := o.startContainerTask(ctx, vm, environmentVariables, metric, int(o.getVMConfig(vm).MachineCfg.MemSizeMib)); err != nil {
 		_ = o.StopSingleVM(ctx, vmID)
@@ -275,6 +279,9 @@ func (o *Orchestrator) ensureBaseSnapshot(ctx context.Context) error {
 		snap, err = o.baseSnapshotManager.InitSnapshot(baseSnapshotRevision, "")
 		if err == nil {
 			err = o.CreateSnapshot(baseCtx, vmID, snap)
+		}
+		if err == nil && o.contentProvenance != nil {
+			err = o.contentProvenance.AddBaseRootfsFiles(uint64(os.Getpagesize()), snap.GetMemFilePath())
 		}
 		if err == nil {
 			err = o.baseSnapshotManager.CommitSnapshot(baseSnapshotRevision)
@@ -483,6 +490,51 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 	return o.imageManager.GetImage(ctx, imageName, o.snapshotter != "proxy")
 }
 
+// registerImageProvenance adds page hashes from the immutable devmapper image
+// parent before any container-specific writable snapshot is created. A failed
+// lookup is conservative: those pages stay revision-private.
+func (o *Orchestrator) registerImageProvenance(ctx context.Context, imageName string, imageRef containerd.Image) {
+	if o.contentProvenance == nil {
+		return
+	}
+	if o.snapshotter == "devmapper" {
+		snapshot, err := o.devMapper.GetImageSnapshot(ctx, imageRef)
+		if err != nil {
+			log.WithError(err).WithField("image", imageName).Warn("image provenance unavailable; image pages remain private")
+			return
+		}
+		if err := o.contentProvenance.AddImageFiles(uint64(os.Getpagesize()), imageName, snapshot.GetDevicePath()); err != nil {
+			log.WithError(err).WithField("image", imageName).Warn("failed to index image provenance; image pages remain private")
+		}
+		return
+	}
+	path, ok := provenanceImageSourcePath(o.ProvenanceImageSourceDir(), imageName)
+	if !ok {
+		log.WithField("image", imageName).Warn("stargz image provenance source unavailable; image pages remain private")
+		return
+	}
+	if err := o.contentProvenance.AddImageFiles(uint64(os.Getpagesize()), imageName, path); err != nil {
+		log.WithError(err).WithField("image", imageName).Warn("failed to index stargz image provenance; image pages remain private")
+	}
+}
+
+func provenanceImageSourcePath(directory, image string) (string, bool) {
+	if directory == "" {
+		return "", false
+	}
+	data, err := os.ReadFile(filepath.Join(directory, "index.tsv"))
+	if err != nil {
+		return "", false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 && parts[0] == image {
+			return parts[1], true
+		}
+	}
+	return "", false
+}
+
 func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 	kernelArgs := "ro noapic reboot=k panic=1 acpi=off pci=off nomodules systemd.log_color=false systemd.journald.forward_to_console systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet ipv6.disable=1 console=ttyS0"
 
@@ -637,6 +689,7 @@ func configureSnapshotMemoryBackend(conf *proto.CreateVMRequest, backendType, ba
 }
 
 var newRecipePageSourceForRevision = snapshotting.NewRecipePageSourceForRevision
+var newProvenanceWorkingSetPageSource = snapshotting.NewProvenanceWorkingSetPageSource
 
 // recipePageServer supplies chunked memory through UFFD only when the
 // SnapshotManager did not materialize a complete local memory file. Lazy mode
@@ -656,6 +709,14 @@ func recipePageServer(ctx context.Context, store snapshotting.ArtifactStore, sna
 	source, err := newRecipePageSourceForRevision(ctx, store, nil, snap.GetId())
 	if err != nil {
 		return nil, err
+	}
+	// A missing manifest is the normal compatibility case for snapshots
+	// published before provenance-aware working sets were enabled.
+	if provenanceSource, provenanceErr := newProvenanceWorkingSetPageSource(ctx, store, snap.GetId(), source); provenanceErr == nil {
+		source = provenanceSource
+	} else if !errors.Is(provenanceErr, snapshotting.ErrArtifactNotFound) {
+		_ = source.Close()
+		return nil, fmt.Errorf("load provenance working set: %w", provenanceErr)
 	}
 	input, err := (manager.RestoreMaterializer{}).MaterializeLazy(source)
 	if err != nil {

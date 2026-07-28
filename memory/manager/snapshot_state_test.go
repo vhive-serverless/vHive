@@ -49,6 +49,23 @@ func TestProcessMetricsIncludesLazyRecordingRun(t *testing.T) {
 	}
 }
 
+func TestProcessMetricsUsesTerminationChunkSnapshot(t *testing.T) {
+	server, err := NewPageServer(&testPageSource{downloadedChunks: 7})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := NewSnapshotState(SnapshotStateCfg{metricsModeOn: true, PageServer: server})
+	state.currentMetric = metrics.NewMetric()
+	state.downloadedChunksAtTermination.Store(3)
+	state.hasTerminationChunkSnapshot.Store(true)
+
+	state.processMetrics()
+
+	if got := state.downloadedChunks; len(got) != 1 || got[0] != 3 {
+		t.Fatalf("downloaded chunk metrics = %v, want [3]", got)
+	}
+}
+
 func TestShouldRecordPageFaultStopsDuringTermination(t *testing.T) {
 	state := &SnapshotState{}
 	if !state.shouldRecordPageFault() {

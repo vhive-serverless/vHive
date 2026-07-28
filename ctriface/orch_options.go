@@ -121,6 +121,23 @@ func WithWSCoalescing(wsCoalescing bool) OrchestratorOption {
 	}
 }
 
+// WithProvenanceWorkingSets enables versioned provenance working-set
+// publication. The default all-private policy is intentionally used until a
+// deployment supplies a trusted base/image provenance map.
+func WithProvenanceWorkingSets(baseIdentity string) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.provenanceWorkingSets = true
+		o.provenanceBaseIdentity = baseIdentity
+	}
+}
+
+// WithProvenanceImageSourceDir points to the output of
+// scripts/stargz/pull_provenance_images.sh. It lets proxy/stargz restores
+// classify pages against the host-mounted immutable image filesystem.
+func WithProvenanceImageSourceDir(directory string) OrchestratorOption {
+	return func(o *Orchestrator) { o.provenanceImageSourceDir = directory }
+}
+
 func (o *Orchestrator) validateUPFMode() error {
 	if o.isLazyMode && !o.isUPFEnabled {
 		return errLazyModeRequiresUPF

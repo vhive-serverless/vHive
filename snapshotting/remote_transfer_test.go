@@ -46,6 +46,15 @@ func TestRemoteWholeFileSnapshotRoundTripAcrossWorkers(t *testing.T) {
 	require.NoError(t, err, "download commits only after all artifacts validate")
 }
 
+func TestRemoteImageLessBaseSnapshotDescriptorIsValid(t *testing.T) {
+	desc := &SnapshotDescriptor{
+		Revision:  "vhive-base-snapshot",
+		Ready:     true,
+		Artifacts: defaultArtifactNames(),
+	}
+	require.NoError(t, validateRemoteDescriptor(desc, desc.Revision))
+}
+
 func TestRemoteWholeFileSnapshotMissingMetadataLeavesNoLocalEntry(t *testing.T) {
 	store := NewMemoryArtifactStore()
 	createPublishedSnapshot(t, t.TempDir(), "revision-a", store, true)

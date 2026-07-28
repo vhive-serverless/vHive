@@ -253,6 +253,7 @@ func (m *MemoryManager) MarkTerminating(vmID string) error {
 	}
 
 	state.terminating.Store(true)
+	state.captureTerminationChunkCount()
 	return nil
 }
 
@@ -289,13 +290,13 @@ func (m *MemoryManager) Deactivate(vmID string) error {
 
 	state.stopPolling()
 	state.waitForPoller()
+	state.processMetrics()
 	state.closeWakeFD()
 
 	if err := state.unmapGuestMemory(); err != nil {
 		logger.Error("Failed to munmap guest memory")
 		return err
 	}
-	state.processMetrics()
 
 	if state.userFaultFD != nil {
 		defer func() { _ = state.userFaultFD.Close() }()

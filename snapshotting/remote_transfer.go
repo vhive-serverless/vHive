@@ -17,10 +17,11 @@ const remoteDescriptorArtifact = ".snapshot-descriptor.json"
 // remoteSnapshotTransfer keeps the whole-file remote protocol separate from
 // SnapshotManager's local lifecycle. Chunking deliberately belongs to stage 4.
 type remoteSnapshotTransfer struct {
-	store      ArtifactStore
-	cacheSnaps bool
-	chunkSize  int
-	chunkCache ChunkCache
+	store       ArtifactStore
+	cacheSnaps  bool
+	chunkSize   int
+	chunkCache  ChunkCache
+	workingSets *WorkingSetRepository
 	// reconstructMemory is intentionally independent from chunking. Chunked
 	// snapshots can instead be consumed through their recipe by a page server.
 	reconstructMemory bool
@@ -80,6 +81,12 @@ func (r *remoteSnapshotTransfer) setMemoryReconstruction(enabled bool) {
 	r.reconstructMemory = enabled
 }
 
+func (r *remoteSnapshotTransfer) setWorkingSetRepository(repository *WorkingSetRepository) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.workingSets = repository
+}
+
 func (r *remoteSnapshotTransfer) hasDownload(revision string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -99,6 +106,7 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 	// readiness marker and therefore must be last.
 	r.mu.Lock()
 	chunkSize := r.chunkSize
+	workingSets := r.workingSets
 	r.mu.Unlock()
 	artifacts := []string{desc.Artifacts.VMState, desc.Artifacts.Info, desc.Artifacts.Patch}
 	if chunkSize == 0 {
@@ -132,6 +140,14 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 		if err := putFile(ctx, r.store, revision, artifact, file); err != nil {
 			return err
 		}
+	}
+	if workingSets != nil && desc.WorkingSetTrace && desc.WorkingSet {
+		if _, err := workingSets.PublishFiles(ctx, revision, desc.Image, tracePath, filepath.Join(baseFolder, revision, desc.Artifacts.WorkingSetPages)); err != nil {
+			return fmt.Errorf("publish provenance working set: %w", err)
+		}
+		copy := *desc
+		desc = &copy
+		desc.ProvenanceWorkingSet = true
 	}
 	if chunkSize > 0 {
 		recipe, err := uploadChunkedMemory(ctx, r.store, filepath.Join(baseFolder, revision, desc.Artifacts.Memory), chunkSize)
@@ -187,14 +203,24 @@ func (r *remoteSnapshotTransfer) publishWorkingSet(ctx context.Context, catalog 
 	}
 	copy := *desc
 	copy.WorkingSetTrace = true
+	r.mu.Lock()
+	workingSets := r.workingSets
+	r.mu.Unlock()
 	pagesPath := filepath.Join(baseFolder, revision, desc.Artifacts.WorkingSetPages)
 	if _, err := os.Stat(pagesPath); err == nil {
+		if workingSets != nil {
+			if _, err := workingSets.PublishFiles(ctx, revision, desc.Image, tracePath, pagesPath); err != nil {
+				return false, fmt.Errorf("publish provenance working set: %w", err)
+			}
+			copy.ProvenanceWorkingSet = true
+		}
 		if err := putFile(ctx, r.store, revision, desc.Artifacts.WorkingSetPages, pagesPath); err != nil {
 			return false, err
 		}
 		copy.WorkingSet = true
 	} else if os.IsNotExist(err) {
 		copy.WorkingSet = false
+		copy.ProvenanceWorkingSet = false
 	} else {
 		return false, fmt.Errorf("stat snapshot working-set artifact %s: %w", desc.Artifacts.WorkingSetPages, err)
 	}
@@ -268,6 +294,16 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 	}
 	if desc.WorkingSet {
 		artifacts = append(artifacts, desc.Artifacts.WorkingSetPages)
+	}
+	// The manifest and private source are revision scoped. Shared sources stay
+	// immutable in the shared namespace and are read directly by the lazy page
+	// source, so they must not be copied into a local snapshot directory.
+	if desc.ProvenanceWorkingSet {
+		for _, artifact := range []string{provenanceManifestArtifact, privateContentArtifact, privateIndexArtifact} {
+			if err := getFile(ctx, r.store, revision, artifact, filepath.Join(baseFolder, revision, artifact)); err != nil {
+				return nil, err
+			}
+		}
 	}
 	for _, artifact := range artifacts {
 		if err := getFile(ctx, r.store, revision, artifact, filepath.Join(baseFolder, revision, artifact)); err != nil {
@@ -350,7 +386,10 @@ func (r *remoteSnapshotTransfer) getDescriptor(ctx context.Context, revision str
 }
 
 func validateRemoteDescriptor(desc *SnapshotDescriptor, revision string) error {
-	if desc == nil || desc.Revision != revision || !desc.Ready || desc.Image == "" {
+	// Image-less base snapshots are valid: they are restored before a function
+	// image is selected and pulled. Function snapshots still carry their image
+	// identity when one exists.
+	if desc == nil || desc.Revision != revision || !desc.Ready {
 		return fmt.Errorf("invalid remote descriptor for %s", revision)
 	}
 	for _, artifact := range []string{desc.Artifacts.VMState, desc.Artifacts.Memory, desc.Artifacts.Info, desc.Artifacts.Patch} {

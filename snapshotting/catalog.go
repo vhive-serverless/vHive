@@ -52,6 +52,9 @@ type SnapshotDescriptor struct {
 	// WorkingSetTrace is independent of WorkingSet because chunked snapshots
 	// can replay a trace without materializing coalesced page bytes locally.
 	WorkingSetTrace bool `json:"workingSetTrace,omitempty"`
+	// ProvenanceWorkingSet points readers at the versioned three-source working
+	// set. WorkingSet remains the legacy coalesced-file compatibility marker.
+	ProvenanceWorkingSet bool `json:"provenanceWorkingSet,omitempty"`
 }
 
 // Catalog owns the lifecycle metadata for snapshots. The local implementation
