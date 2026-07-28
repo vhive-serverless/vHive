@@ -16,7 +16,7 @@ import (
 func TestRestoreMaterializerLazyRecipePages(t *testing.T) {
 	store := NewMemoryArtifactStore()
 	ctx := context.Background()
-	data := []byte{1, 2, 3, 4, 0, 0, 0, 0, 9, 10}
+	data := []byte{1, 2, 3, 4, 0, 0, 0, 0, 9, 10, 11, 12}
 	recipe, err := SplitMemory(bytes.NewReader(data), 4, func(id ChunkID, chunk []byte) error {
 		return putChunkIfAbsent(ctx, store, id, chunk)
 	})
@@ -78,7 +78,7 @@ func TestRecipePageSourceUsesEphemeralCacheForRepeatedReads(t *testing.T) {
 
 func TestRestoreMaterializerLazyRecipeMissingChunk(t *testing.T) {
 	store := NewMemoryArtifactStore()
-	recipe := MemoryRecipe{Version: 1, ChunkSize: 4, Chunks: []RecipeChunk{{ID: ChunkID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), Size: 4}}}
+	recipe := MemoryRecipe{Version: memoryRecipeVersion, ChunkSize: 4, Chunks: []RecipeChunk{{ID: ChunkID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}}}
 	source, err := NewRecipePageSource(store, nil, recipe)
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func TestRestoreMaterializerLazyRecipeMissingChunk(t *testing.T) {
 func TestRestoreMaterializerEagerRecipe(t *testing.T) {
 	store := NewMemoryArtifactStore()
 	ctx := context.Background()
-	data := []byte("recipe-backed eager restore")
+	data := []byte("1234567812345678")
 	recipe, err := SplitMemory(bytes.NewReader(data), 8, func(id ChunkID, chunk []byte) error { return putChunkIfAbsent(ctx, store, id, chunk) })
 	if err != nil {
 		t.Fatal(err)

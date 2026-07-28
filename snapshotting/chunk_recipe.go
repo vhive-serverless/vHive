@@ -15,13 +15,15 @@ import (
 // memoryRecipeArtifact is revision-scoped; its chunks are immutable shared
 // objects. Current writers use SHA-256 IDs, but readers do not treat an ID as
 // a checksum because future storage encodings may use a different identity.
-const memoryRecipeArtifact = ".memory-recipe.json"
+const (
+	memoryRecipeArtifact = ".memory-recipe.json"
+	memoryRecipeVersion  = 2
+)
 
 type ChunkID string
 
 type RecipeChunk struct {
-	ID   ChunkID `json:"id"`
-	Size int     `json:"size"`
+	ID ChunkID `json:"id"`
 }
 
 // inMemoryChunkHandle is implemented only by the ephemeral in-memory cache.
@@ -31,8 +33,7 @@ type inMemoryChunkHandle interface {
 	cachedBytes() ([]byte, error)
 }
 
-// MemoryRecipe preserves the exact order and length of a chunked memory file.
-// The final chunk may be shorter than ChunkSize; empty input has no chunks.
+// MemoryRecipe preserves the order of fixed-size chunks in a memory file.
 type MemoryRecipe struct {
 	Version   int           `json:"version"`
 	ChunkSize int           `json:"chunkSize"`
@@ -61,34 +62,35 @@ func SplitMemory(reader io.Reader, chunkSize int, fn func(ChunkID, []byte) error
 	if fn == nil {
 		return MemoryRecipe{}, fmt.Errorf("chunk callback is required")
 	}
-	recipe := MemoryRecipe{Version: 1, ChunkSize: chunkSize}
+	recipe := MemoryRecipe{Version: memoryRecipeVersion, ChunkSize: chunkSize}
 	buf := make([]byte, chunkSize)
 	for {
-		n, err := io.ReadFull(reader, buf)
-		if n > 0 {
-			chunk := append([]byte(nil), buf[:n]...)
+		_, err := io.ReadFull(reader, buf)
+		if err == nil {
+			chunk := append([]byte(nil), buf...)
 			id := chunkID(chunk)
-			recipe.Chunks = append(recipe.Chunks, RecipeChunk{ID: id, Size: n})
+			recipe.Chunks = append(recipe.Chunks, RecipeChunk{ID: id})
 			if callbackErr := fn(id, chunk); callbackErr != nil {
 				return MemoryRecipe{}, callbackErr
 			}
-		}
-		if err == nil {
 			continue
 		}
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
+		if err == io.EOF {
 			return recipe, nil
+		}
+		if err == io.ErrUnexpectedEOF {
+			return MemoryRecipe{}, fmt.Errorf("memory size is not divisible by chunk size %d", chunkSize)
 		}
 		return MemoryRecipe{}, fmt.Errorf("read memory chunk: %w", err)
 	}
 }
 
 func (r MemoryRecipe) Validate() error {
-	if r.Version != 1 || r.ChunkSize <= 0 {
+	if r.Version != memoryRecipeVersion || r.ChunkSize <= 0 {
 		return fmt.Errorf("invalid memory recipe header")
 	}
 	for index, chunk := range r.Chunks {
-		if !validChunkID(chunk.ID) || chunk.Size <= 0 || chunk.Size > r.ChunkSize || (index < len(r.Chunks)-1 && chunk.Size != r.ChunkSize) {
+		if !validChunkID(chunk.ID) {
 			return fmt.Errorf("invalid memory recipe chunk %d", index)
 		}
 	}
@@ -206,12 +208,9 @@ func ReconstructMemoryWithCache(ctx context.Context, store ArtifactStore, cache 
 		return err
 	}
 	for _, expected := range recipe.Chunks {
-		data, _, err := readRecipeChunk(ctx, store, cache, expected)
+		data, _, err := readRecipeChunk(ctx, store, cache, expected.ID, recipe.ChunkSize)
 		if err != nil {
 			return err
-		}
-		if len(data) != expected.Size {
-			return fmt.Errorf("chunk %s has size %d, want %d", expected.ID, len(data), expected.Size)
 		}
 		if _, err := writer.Write(data); err != nil {
 			return fmt.Errorf("write chunk %s: %w", expected.ID, err)
@@ -221,26 +220,23 @@ func ReconstructMemoryWithCache(ctx context.Context, store ArtifactStore, cache 
 }
 
 // readRecipeChunk returns whether it fetched the chunk from remote storage.
-func readRecipeChunk(ctx context.Context, store ArtifactStore, cache ChunkCache, expected RecipeChunk) ([]byte, bool, error) {
+func readRecipeChunk(ctx context.Context, store ArtifactStore, cache ChunkCache, id ChunkID, chunkSize int) ([]byte, bool, error) {
 	if cache == nil {
-		data, err := readRemoteChunk(ctx, store, expected.ID)
+		data, err := readRemoteChunk(ctx, store, id, chunkSize)
 		return data, err == nil, err
 	}
-	handle, err := cache.Acquire(ctx, expected.ID)
+	handle, err := cache.Acquire(ctx, id)
 	downloaded := false
 	if errors.Is(err, ErrChunkCacheMiss) {
-		data, fetchErr := readRemoteChunk(ctx, store, expected.ID)
+		data, fetchErr := readRemoteChunk(ctx, store, id, chunkSize)
 		if fetchErr != nil {
 			return nil, false, fetchErr
 		}
-		if len(data) != expected.Size {
-			return nil, false, fmt.Errorf("chunk %s has size %d, want %d", expected.ID, len(data), expected.Size)
-		}
-		handle, err = cache.Insert(ctx, expected.ID, data)
+		handle, err = cache.Insert(ctx, id, data)
 		downloaded = err == nil
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("acquire cached chunk %s: %w", expected.ID, err)
+		return nil, false, fmt.Errorf("acquire cached chunk %s: %w", id, err)
 	}
 	defer handle.Release()
 	if inMemory, ok := handle.(inMemoryChunkHandle); ok {
@@ -257,29 +253,45 @@ func readRecipeChunk(ctx context.Context, store ArtifactStore, cache ChunkCache,
 	if err != nil {
 		return nil, false, err
 	}
-	data, readErr := io.ReadAll(reader)
+	data, readErr := readExactChunk(reader, id, chunkSize)
 	closeErr := reader.Close()
 	if readErr != nil {
-		return nil, false, fmt.Errorf("read cached chunk %s: %w", expected.ID, readErr)
+		return nil, false, fmt.Errorf("read cached chunk %s: %w", id, readErr)
 	}
 	if closeErr != nil {
-		return nil, false, fmt.Errorf("close cached chunk %s: %w", expected.ID, closeErr)
+		return nil, false, fmt.Errorf("close cached chunk %s: %w", id, closeErr)
 	}
 	return data, downloaded, nil
 }
 
-func readRemoteChunk(ctx context.Context, store ArtifactStore, id ChunkID) ([]byte, error) {
+func readRemoteChunk(ctx context.Context, store ArtifactStore, id ChunkID, chunkSize int) ([]byte, error) {
 	reader, err := getChunk(ctx, store, id)
 	if err != nil {
 		return nil, err
 	}
-	data, readErr := io.ReadAll(reader)
+	data, readErr := readExactChunk(reader, id, chunkSize)
 	closeErr := reader.Close()
 	if readErr != nil {
-		return nil, fmt.Errorf("read chunk %s: %w", id, readErr)
+		return nil, readErr
 	}
 	if closeErr != nil {
 		return nil, fmt.Errorf("close chunk %s: %w", id, closeErr)
+	}
+	return data, nil
+}
+
+// readExactChunk allocates the recipe-declared size once and rejects remote
+// objects or cache entries that are shorter or longer than that declaration.
+func readExactChunk(reader io.Reader, id ChunkID, chunkSize int) ([]byte, error) {
+	data := make([]byte, chunkSize)
+	if _, err := io.ReadFull(reader, data); err != nil {
+		return nil, fmt.Errorf("read chunk %s: corrupt size: %w", id, err)
+	}
+	var extra [1]byte
+	if n, err := reader.Read(extra[:]); n != 0 {
+		return nil, fmt.Errorf("read chunk %s: corrupt size: got more than %d bytes", id, chunkSize)
+	} else if err != io.EOF {
+		return nil, fmt.Errorf("read chunk %s: check size: %w", id, err)
 	}
 	return data, nil
 }

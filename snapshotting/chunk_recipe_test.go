@@ -11,19 +11,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSplitMemoryPreservesOrderDuplicatesAndFinalChunk(t *testing.T) {
-	input := []byte("abcabcde")
+func TestSplitMemoryPreservesOrderAndDuplicates(t *testing.T) {
+	input := []byte("abcabcabc")
 	var got [][]byte
 	recipe, err := SplitMemory(bytes.NewReader(input), 3, func(_ ChunkID, chunk []byte) error {
 		got = append(got, append([]byte(nil), chunk...))
 		return nil
 	})
 	require.NoError(t, err)
-	require.Equal(t, [][]byte{[]byte("abc"), []byte("abc"), []byte("de")}, got)
+	require.Equal(t, [][]byte{[]byte("abc"), []byte("abc"), []byte("abc")}, got)
 	require.Len(t, recipe.Chunks, 3)
 	require.Equal(t, recipe.Chunks[0].ID, recipe.Chunks[1].ID)
-	require.Equal(t, 2, recipe.Chunks[2].Size)
 	require.NoError(t, recipe.Validate())
+}
+
+func TestSplitMemoryRejectsPartialFinalChunk(t *testing.T) {
+	_, err := SplitMemory(bytes.NewReader([]byte("abcabcde")), 3, func(ChunkID, []byte) error { return nil })
+	require.ErrorContains(t, err, "not divisible")
 }
 
 func TestSplitMemoryEmptyInput(t *testing.T) {
@@ -35,17 +39,43 @@ func TestSplitMemoryEmptyInput(t *testing.T) {
 
 func TestReconstructMemoryRejectsMalformedRecipeAndAcceptsOpaqueChunkPayload(t *testing.T) {
 	store := NewMemoryArtifactStore()
-	recipe := MemoryRecipe{Version: 1, ChunkSize: 4, Chunks: []RecipeChunk{{ID: ChunkID("not-a-hash"), Size: 1}}}
+	recipe := MemoryRecipe{Version: memoryRecipeVersion, ChunkSize: 4, Chunks: []RecipeChunk{{ID: ChunkID("not-a-hash")}}}
 	require.Error(t, ReconstructMemory(context.Background(), store, recipe, io.Discard))
 
 	id := chunkID([]byte("good"))
 	key, err := chunkArtifactKey(id)
 	require.NoError(t, err)
 	require.NoError(t, store.Put(context.Background(), key, bytes.NewReader([]byte("evil")), 4))
-	recipe = MemoryRecipe{Version: 1, ChunkSize: 4, Chunks: []RecipeChunk{{ID: id, Size: 4}}}
+	recipe = MemoryRecipe{Version: memoryRecipeVersion, ChunkSize: 4, Chunks: []RecipeChunk{{ID: id}}}
 	var reconstructed bytes.Buffer
 	require.NoError(t, ReconstructMemory(context.Background(), store, recipe, &reconstructed))
 	require.Equal(t, []byte("evil"), reconstructed.Bytes())
+}
+
+func TestReadRemoteChunkAllocatesAndValidatesDeclaredSize(t *testing.T) {
+	const size = 4
+	id := chunkID([]byte("identity"))
+	key, err := chunkArtifactKey(id)
+	require.NoError(t, err)
+
+	for name, payload := range map[string][]byte{
+		"short": []byte("bad"),
+		"long":  []byte("longer"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := NewMemoryArtifactStore()
+			require.NoError(t, store.Put(context.Background(), key, bytes.NewReader(payload), int64(len(payload))))
+			_, err := readRemoteChunk(context.Background(), store, id, size)
+			require.ErrorContains(t, err, "corrupt size")
+		})
+	}
+
+	store := NewMemoryArtifactStore()
+	require.NoError(t, store.Put(context.Background(), key, bytes.NewReader([]byte("good")), size))
+	data, err := readRemoteChunk(context.Background(), store, id, size)
+	require.NoError(t, err)
+	require.Equal(t, []byte("good"), data)
+	require.Equal(t, size, cap(data), "the chunk buffer should be allocated at its declared size")
 }
 
 func TestChunkPutIfAbsentSupportsDuplicatesAndConcurrentWriters(t *testing.T) {

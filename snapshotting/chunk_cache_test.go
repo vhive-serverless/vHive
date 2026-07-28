@@ -59,7 +59,7 @@ func TestReadRecipeChunkReturnsInMemoryCacheEntryDirectly(t *testing.T) {
 	_, err := cache.Insert(ctx, chunkID(data), data)
 	require.NoError(t, err)
 
-	got, downloaded, err := readRecipeChunk(ctx, NewMemoryArtifactStore(), cache, RecipeChunk{ID: chunkID(data), Size: len(data)})
+	got, downloaded, err := readRecipeChunk(ctx, NewMemoryArtifactStore(), cache, chunkID(data), len(data))
 	require.NoError(t, err)
 	require.False(t, downloaded)
 

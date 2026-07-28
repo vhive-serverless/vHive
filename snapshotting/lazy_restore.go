@@ -65,15 +65,12 @@ func (s *recipePageSource) ReadAt(ctx context.Context, offset uint64, length uin
 			return manager.PageData{}, fmt.Errorf("page range [%d,%d) is outside memory recipe", offset, offset+length)
 		}
 		chunk := s.recipe.Chunks[chunkIndex]
-		data, downloaded, err := readRecipeChunk(ctx, s.store, s.cache, chunk)
+		data, downloaded, err := readRecipeChunk(ctx, s.store, s.cache, chunk.ID, s.recipe.ChunkSize)
 		if err != nil {
 			return manager.PageData{}, err
 		}
 		if downloaded {
 			s.downloadedChunks.Add(1)
-		}
-		if len(data) != chunk.Size {
-			return manager.PageData{}, fmt.Errorf("chunk %s has size %d, want %d", chunk.ID, len(data), chunk.Size)
 		}
 		if chunkOffset >= uint64(len(data)) {
 			return manager.PageData{}, fmt.Errorf("page range [%d,%d) is outside memory recipe", offset, offset+length)
