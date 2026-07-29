@@ -23,7 +23,7 @@
 SUBDIRS:=ctriface taps misc profile
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
-EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go
+EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go relay.go
 WITHUPF:=-upfTest
 WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest

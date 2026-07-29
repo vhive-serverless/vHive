@@ -66,6 +66,8 @@ var (
 	netPoolSize        *int
 	shimPoolSize       *int
 	baseSnapshot       *bool
+	relayEndpoint      *string
+	relayImageMap      *string
 )
 
 func main() {
@@ -88,6 +90,8 @@ func main() {
 	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	shimPoolSize = flag.Int("shimPoolSize", 5, "Number of pre-created firecracker-containerd shims")
 	baseSnapshot = flag.Bool("baseSnapshot", false, "Start functions from a shared image-less base snapshot (requires -ss=proxy)")
+	relayEndpoint = flag.String("relayEndpoint", "", "HTTP endpoint for the single-use instance relay (for example :8080)")
+	relayImageMap = flag.String("relayImageMap", "", "Optional JSON image map used by the HTTP relay")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
@@ -156,6 +160,9 @@ func main() {
 			ctriface.WithDockerCredentials(*dockerCredentials),
 		)
 		funcPool = NewFuncPool(*isSaveMemory, *servedThreshold, *pinnedFuncNum, testModeOn)
+		if *relayEndpoint != "" {
+			go relayServe(*relayEndpoint, *relayImageMap)
+		}
 		go setupFirecrackerCRI()
 		go orchServe()
 		fwdServe()

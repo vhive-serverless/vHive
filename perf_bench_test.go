@@ -247,18 +247,31 @@ func TestBindSocket(t *testing.T) {
 	for _, tCase := range cases {
 		testName := fmt.Sprintf("vmNum=%d", tCase.vmNum)
 		t.Run(testName, func(t *testing.T) {
+			existingPIDs := make(map[string]struct{})
+			if pidBytes, err := getFirecrackerPid(); err == nil {
+				for _, pid := range strings.Fields(string(pidBytes)) {
+					existingPIDs[pid] = struct{}{}
+				}
+			}
+
 			bootVMs(t, testImage, 0, tCase.vmNum)
 
 			pidBytes, err := getFirecrackerPid()
 			require.NoError(t, err, "Cannot get Firecracker PID")
-			vmPidList := strings.Split(string(pidBytes), " ")
+			var vmPidList []string
+			for _, pid := range strings.Fields(string(pidBytes)) {
+				if _, alreadyRunning := existingPIDs[pid]; !alreadyRunning {
+					vmPidList = append(vmPidList, pid)
+				}
+			}
+			require.Lenf(t, vmPidList, tCase.vmNum,
+				"expected one new Firecracker process per test VM; found PIDs %v", vmPidList)
 
 			cpuBytes, err := exec.Command("taskset", "-cp", strings.TrimSpace(vmPidList[0])).Output()
 			require.NoError(t, err, "Cannot get CPU affinity")
 			cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])
 			require.Equal(t, tCase.expected[0], cpuAffinity, "VM was not binded correctly")
 			for _, vm := range vmPidList[1:] {
-				vm = strings.TrimSpace(vm)
 				cpuBytes, err := exec.Command("taskset", "-cp", vm).Output()
 				require.NoError(t, err, "Cannot get CPU affinity")
 				cpuAffinity := strings.TrimSpace(strings.Split(string(cpuBytes), ":")[1])

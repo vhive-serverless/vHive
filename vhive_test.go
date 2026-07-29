@@ -28,6 +28,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	ctrdlog "github.com/containerd/log"
@@ -271,6 +272,31 @@ func TestSendToFunctionParallel(t *testing.T) {
 
 	message, err := funcPool.RemoveInstance(fID, testImageName, true)
 	require.NoError(t, err, "Function returned error, "+message)
+}
+
+func TestRelayInstanceIDsOverlapSafely(t *testing.T) {
+	const requests = 100
+	atomic.StoreUint64(&relayInstanceID, 0)
+
+	ids := make(chan string, requests)
+	var group sync.WaitGroup
+	for range requests {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			ids <- relayVMID("same-revision")
+		}()
+	}
+	group.Wait()
+	close(ids)
+
+	seen := make(map[string]struct{}, requests)
+	for id := range ids {
+		_, duplicate := seen[id]
+		require.False(t, duplicate, "overlapping requests received the same VM ID: %s", id)
+		seen[id] = struct{}{}
+	}
+	require.Len(t, seen, requests)
 }
 
 func TestStartSendStopTwice(t *testing.T) {
