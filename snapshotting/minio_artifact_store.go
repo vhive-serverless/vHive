@@ -1,6 +1,7 @@
 package snapshotting
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -31,6 +32,8 @@ type MinIOArtifactStore struct {
 	client *minio.Client
 	bucket string
 }
+
+var _ ChunkRepository = (*MinIOArtifactStore)(nil)
 
 func NewMinIOArtifactStore(config MinIOArtifactStoreConfig) (*MinIOArtifactStore, error) {
 	if err := config.validate(); err != nil {
@@ -72,6 +75,35 @@ func (s *MinIOArtifactStore) Put(ctx context.Context, key ArtifactKey, reader io
 		return fmt.Errorf("put artifact %q: %w", key, err)
 	}
 	return nil
+}
+
+// PutIfAbsent publishes an immutable content-addressed chunk without the
+// Stat request used by the generic ArtifactStore fallback. At page-sized
+// chunks that fallback serializes tens of thousands of HEAD requests before
+// the upload can complete. MinIO's conditional PUT keeps the operation
+// atomic while reducing it to one request per chunk.
+func (s *MinIOArtifactStore) PutIfAbsent(ctx context.Context, id ChunkID, data []byte) error {
+	key, err := chunkArtifactKey(id)
+	if err != nil {
+		return err
+	}
+	options := minio.PutObjectOptions{}
+	options.SetMatchETagExcept("*")
+	if _, err := s.client.PutObject(ctx, s.bucket, string(key), bytes.NewReader(data), int64(len(data)), options); err != nil {
+		if minio.ToErrorResponse(err).Code == "PreconditionFailed" {
+			return nil
+		}
+		return fmt.Errorf("put chunk %q: %w", key, err)
+	}
+	return nil
+}
+
+func (s *MinIOArtifactStore) GetChunk(ctx context.Context, id ChunkID) (io.ReadCloser, error) {
+	key, err := chunkArtifactKey(id)
+	if err != nil {
+		return nil, err
+	}
+	return s.Get(ctx, key)
 }
 
 func (s *MinIOArtifactStore) Get(ctx context.Context, key ArtifactKey) (io.ReadCloser, error) {

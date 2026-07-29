@@ -548,7 +548,12 @@ func (f *Function) CreateInstanceSnapshot() {
 		log.Panic(err)
 	}
 
-	err = f.snapshotManager.PublishSnapshot(ctx, f.fID)
+	// Publishing a chunked memory image can involve many thousands of remote
+	// objects. It must not inherit the one-minute VM pause/snapshot deadline,
+	// which has mostly elapsed before upload begins.
+	publishCtx, publishCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer publishCancel()
+	err = f.snapshotManager.PublishSnapshot(publishCtx, f.fID)
 	if err != nil {
 		log.Panic(err)
 	}

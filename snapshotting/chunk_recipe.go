@@ -11,7 +11,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
+
+const chunkUploadWorkers = 32
 
 // memoryRecipeArtifact is revision-scoped; its chunks are immutable shared
 // objects. Current writers use SHA-256 IDs, but readers do not treat an ID as
@@ -121,7 +124,13 @@ type ChunkRepository interface {
 }
 
 func chunkArtifactKey(id ChunkID) (ArtifactKey, error) {
-	return SharedArtifactKey("chunks", string(id))
+	if !validChunkID(id) {
+		return "", fmt.Errorf("invalid chunk id %q", id)
+	}
+	// Keep chunks in 256 prefix bins. Small chunk sizes can create hundreds of
+	// thousands of objects; a flat shared/chunks prefix makes filesystem-backed
+	// object stores spend increasingly long finding each object for Stat calls.
+	return ArtifactKey("shared/chunks/" + string(id[:2]) + "/" + string(id)), nil
 }
 
 func putChunkIfAbsent(ctx context.Context, store ArtifactStore, id ChunkID, data []byte) error {
@@ -170,7 +179,58 @@ func uploadChunkedMemory(ctx context.Context, store ArtifactStore, filename stri
 		return MemoryRecipe{}, fmt.Errorf("open memory file: %w", err)
 	}
 	defer file.Close()
-	return SplitMemory(file, chunkSize, func(id ChunkID, data []byte) error { return putChunkIfAbsent(ctx, store, id, data) })
+
+	// Page-sized chunks can mean hundreds of thousands of remote operations.
+	// Keep recipe construction ordered while allowing a bounded number of chunk
+	// uploads to make progress concurrently.
+	type chunkUpload struct {
+		id   ChunkID
+		data []byte
+	}
+	uploadCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	jobs := make(chan chunkUpload, chunkUploadWorkers*2)
+	var workers sync.WaitGroup
+	var uploadErr error
+	var uploadErrOnce sync.Once
+	recordError := func(err error) {
+		uploadErrOnce.Do(func() {
+			uploadErr = err
+			cancel()
+		})
+	}
+	for range chunkUploadWorkers {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for chunk := range jobs {
+				if err := putChunkIfAbsent(uploadCtx, store, chunk.id, chunk.data); err != nil {
+					recordError(err)
+					return
+				}
+			}
+		}()
+	}
+	recipe, splitErr := SplitMemory(file, chunkSize, func(id ChunkID, data []byte) error {
+		select {
+		case <-uploadCtx.Done():
+			if uploadErr != nil {
+				return uploadErr
+			}
+			return uploadCtx.Err()
+		case jobs <- chunkUpload{id: id, data: data}:
+			return nil
+		}
+	})
+	close(jobs)
+	workers.Wait()
+	if splitErr != nil {
+		return MemoryRecipe{}, splitErr
+	}
+	if uploadErr != nil {
+		return MemoryRecipe{}, uploadErr
+	}
+	return recipe, nil
 }
 
 func putRecipe(ctx context.Context, store ArtifactStore, revision string, recipe MemoryRecipe) error {
