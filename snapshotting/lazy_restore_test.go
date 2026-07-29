@@ -13,6 +13,39 @@ import (
 	"github.com/vhive-serverless/vhive/memory/manager"
 )
 
+// BenchmarkRecipePageSourceForLargeRevision profiles the restore-time work
+// required to load a chunk recipe. A 4 KiB chunk size for a 512 MiB guest
+// produces this many entries, which is representative of the large recipes
+// that make page-server preparation visible in cold-start latency.
+func BenchmarkRecipePageSourceForLargeRevision(b *testing.B) {
+	const chunkCount = 131072
+	ctx := context.Background()
+	store := NewMemoryArtifactStore()
+	recipe := MemoryRecipe{
+		Version:   memoryRecipeVersion,
+		ChunkSize: 4096,
+		Chunks:    make([]RecipeChunk, chunkCount),
+	}
+	for i := range recipe.Chunks {
+		recipe.Chunks[i].ID = ChunkID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	}
+	if err := putRecipe(ctx, store, "large-recipe", recipe); err != nil {
+		b.Fatal(err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		source, err := NewRecipePageSourceForRevision(ctx, store, nil, "large-recipe")
+		if err != nil {
+			b.Fatal(err)
+		}
+		if err := source.Close(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestRestoreMaterializerLazyRecipePages(t *testing.T) {
 	store := NewMemoryArtifactStore()
 	ctx := context.Background()

@@ -529,6 +529,27 @@ func validateWorkingSetManifest(m *WorkingSetManifest) error {
 // ordinary memory source. Unknown pages (and non-page-aligned reads) retain
 // the normal recipe/local-file behaviour.
 func NewProvenanceWorkingSetPageSource(ctx context.Context, store ArtifactStore, revision string, fallback manager.PageSource) (manager.PageSource, error) {
+	workingSet, err := LoadProvenanceWorkingSet(ctx, store, revision)
+	if err != nil {
+		return nil, err
+	}
+	return workingSet.NewPageSource(ctx, store, "", fallback)
+}
+
+// ProvenanceWorkingSet contains only immutable shared base/image working-set
+// data. Private pages are deliberately loaded into each page source and are
+// never retained in this restore cache.
+type ProvenanceWorkingSet struct {
+	pageSize   uint64
+	pages      map[uint64]workingSetPageRef
+	privateRef workingSetSourceRef
+	shared     map[ContentScope]map[string][]byte
+}
+
+// LoadProvenanceWorkingSet downloads and validates a revision's shared
+// provenance working-set data. Callers may retain the result because it
+// intentionally excludes private page contents.
+func LoadProvenanceWorkingSet(ctx context.Context, store ArtifactStore, revision string) (*ProvenanceWorkingSet, error) {
 	repo, err := NewWorkingSetRepository(store, nil, "default")
 	if err != nil {
 		return nil, err
@@ -537,49 +558,136 @@ func NewProvenanceWorkingSetPageSource(ctx context.Context, store ArtifactStore,
 	if err != nil {
 		return nil, err
 	}
-	return newProvenancePageSource(ctx, store, manifest, fallback)
+	return newProvenanceWorkingSet(ctx, store, manifest)
+}
+
+// NewPageSource loads a fresh private working set for one restore and combines
+// it with the cached shared data and a per-restore fallback memory source.
+func (s *ProvenanceWorkingSet) NewPageSource(ctx context.Context, store ArtifactStore, privateCacheDir string, fallback manager.PageSource) (manager.PageSource, error) {
+	private := make(map[uint64][]byte)
+	if err := loadPrivateFromCacheOrStore(ctx, store, privateCacheDir, s.privateRef, private); err != nil {
+		return nil, err
+	}
+	return &provenancePageSource{ProvenanceWorkingSet: s, private: private, fallback: fallback}, nil
 }
 
 type provenancePageSource struct {
-	fallback manager.PageSource
-	pageSize uint64
-	pages    map[uint64]workingSetPageRef
+	*ProvenanceWorkingSet
 	private  map[uint64][]byte
-	shared   map[ContentScope]map[string][]byte
+	fallback manager.PageSource
 }
 
-func newProvenancePageSource(ctx context.Context, store ArtifactStore, m *WorkingSetManifest, fallback manager.PageSource) (manager.PageSource, error) {
-	s := &provenancePageSource{fallback: fallback, pageSize: m.PageSize, pages: map[uint64]workingSetPageRef{}, private: map[uint64][]byte{}, shared: map[ContentScope]map[string][]byte{}}
+func newProvenanceWorkingSet(ctx context.Context, store ArtifactStore, m *WorkingSetManifest) (*ProvenanceWorkingSet, error) {
+	s := &ProvenanceWorkingSet{pageSize: m.PageSize, pages: map[uint64]workingSetPageRef{}, privateRef: m.Private, shared: map[ContentScope]map[string][]byte{}}
 	for _, p := range m.Pages {
 		s.pages[p.PFN] = p
 	}
-	if err := loadPrivate(ctx, store, m.Private, s.private); err != nil {
-		return nil, err
+
+	// The two shared sources are immutable and independent. Fetch them in
+	// parallel; private data is intentionally loaded per page source below.
+	type sharedResult struct {
+		scope ContentScope
+		pages map[string][]byte
+		err   error
 	}
-	for scope, ref := range map[ContentScope]workingSetSourceRef{BaseRootfsScope: m.Base, ImageScope: m.Image} {
-		values, err := loadShared(ctx, store, ref)
-		if err != nil {
-			return nil, err
-		}
-		if len(values) != 0 {
-			s.shared[scope] = values
+	sharedCh := make(chan sharedResult, 2)
+	for _, source := range []struct {
+		scope ContentScope
+		ref   workingSetSourceRef
+	}{
+		{scope: BaseRootfsScope, ref: m.Base},
+		{scope: ImageScope, ref: m.Image},
+	} {
+		go func(scope ContentScope, ref workingSetSourceRef) {
+			pages, err := loadShared(ctx, store, ref)
+			sharedCh <- sharedResult{scope: scope, pages: pages, err: err}
+		}(source.scope, source.ref)
+	}
+
+	shared := map[ContentScope]sharedResult{}
+	for range 2 {
+		result := <-sharedCh
+		shared[result.scope] = result
+	}
+	if result := shared[BaseRootfsScope]; result.err != nil {
+		return nil, result.err
+	}
+	if result := shared[ImageScope]; result.err != nil {
+		return nil, result.err
+	}
+	for _, scope := range []ContentScope{BaseRootfsScope, ImageScope} {
+		result := shared[scope]
+		if len(result.pages) != 0 {
+			s.shared[result.scope] = result.pages
 		}
 	}
 	return s, nil
+}
+
+func readArtifactPair(ctx context.Context, store ArtifactStore, contentKey, indexKey ArtifactKey) ([]byte, []byte, error) {
+	type result struct {
+		content bool
+		data    []byte
+		err     error
+	}
+	results := make(chan result, 2)
+	go func() {
+		data, err := readArtifact(ctx, store, contentKey)
+		results <- result{content: true, data: data, err: err}
+	}()
+	go func() {
+		data, err := readArtifact(ctx, store, indexKey)
+		results <- result{data: data, err: err}
+	}()
+
+	first, second := <-results, <-results
+	if first.err != nil {
+		return nil, nil, first.err
+	}
+	if second.err != nil {
+		return nil, nil, second.err
+	}
+	if first.content {
+		return first.data, second.data, nil
+	}
+	return second.data, first.data, nil
 }
 
 func loadPrivate(ctx context.Context, store ArtifactStore, ref workingSetSourceRef, out map[uint64][]byte) error {
 	if ref.Content == "" {
 		return nil
 	}
-	content, err := readArtifact(ctx, store, ArtifactKey(ref.Content))
+	content, raw, err := readArtifactPair(ctx, store, ArtifactKey(ref.Content), ArtifactKey(ref.Index))
 	if err != nil {
 		return err
 	}
-	raw, err := readArtifact(ctx, store, ArtifactKey(ref.Index))
-	if err != nil {
-		return err
+	return decodePrivate(ref, content, raw, out)
+}
+
+// loadPrivateFromCacheOrStore uses the local snapshot copy only when the
+// caller explicitly selected snapshot retention. A missing local copy falls
+// back to the remote store so a newly published snapshot remains restorable.
+func loadPrivateFromCacheOrStore(ctx context.Context, store ArtifactStore, privateCacheDir string, ref workingSetSourceRef, out map[uint64][]byte) error {
+	if ref.Content == "" {
+		return nil
 	}
+	if privateCacheDir != "" {
+		content, contentErr := os.ReadFile(filepath.Join(privateCacheDir, privateContentArtifact))
+		raw, indexErr := os.ReadFile(filepath.Join(privateCacheDir, privateIndexArtifact))
+		if contentErr == nil && indexErr == nil {
+			return decodePrivate(ref, content, raw, out)
+		}
+		if (contentErr != nil && !os.IsNotExist(contentErr)) || (indexErr != nil && !os.IsNotExist(indexErr)) {
+			if contentErr != nil {
+				return fmt.Errorf("read cached private working-set content: %w", contentErr)
+			}
+			return fmt.Errorf("read cached private working-set index: %w", indexErr)
+		}
+	}
+	return loadPrivate(ctx, store, ref, out)
+}
+
+func decodePrivate(ref workingSetSourceRef, content, raw []byte, out map[uint64][]byte) error {
 	var index []privateIndexEntry
 	if err := json.Unmarshal(raw, &index); err != nil {
 		return err
@@ -597,11 +705,7 @@ func loadShared(ctx context.Context, store ArtifactStore, ref workingSetSourceRe
 	if ref.Content == "" {
 		return out, nil
 	}
-	content, err := readArtifact(ctx, store, ArtifactKey(ref.Content))
-	if err != nil {
-		return nil, err
-	}
-	raw, err := readArtifact(ctx, store, ArtifactKey(ref.Index))
+	content, raw, err := readArtifactPair(ctx, store, ArtifactKey(ref.Content), ArtifactKey(ref.Index))
 	if err != nil {
 		return nil, err
 	}

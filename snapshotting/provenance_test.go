@@ -4,12 +4,47 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/memory/manager"
 )
+
+func TestProvenancePrivatePagesPreferRetainedSnapshotFiles(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryArtifactStore()
+	repository, err := NewWorkingSetRepository(store, AllPrivateProvenance{}, "base-v1")
+	require.NoError(t, err)
+	manifest, err := repository.Publish(ctx, "revision-a", "image", 4, []WorkingSetPage{{PFN: 0, Bytes: []byte("priv")}})
+	require.NoError(t, err)
+	workingSet, err := LoadProvenanceWorkingSet(ctx, store, "revision-a")
+	require.NoError(t, err)
+
+	cacheDir := t.TempDir()
+	for _, artifact := range []struct {
+		key  ArtifactKey
+		name string
+	}{
+		{key: ArtifactKey(manifest.Private.Content), name: privateContentArtifact},
+		{key: ArtifactKey(manifest.Private.Index), name: privateIndexArtifact},
+	} {
+		data, err := readArtifact(ctx, store, artifact.key)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(cacheDir, artifact.name), data, 0600))
+	}
+
+	store.SetFailures(ArtifactStoreFailures{Get: errors.New("remote unavailable")})
+	source, err := workingSet.NewPageSource(ctx, store, cacheDir, nil)
+	require.NoError(t, err)
+	page, err := source.ReadAt(ctx, 0, 4)
+	require.NoError(t, err)
+	require.Equal(t, []byte("priv"), page.Bytes)
+
+	_, err = workingSet.NewPageSource(ctx, store, "", nil)
+	require.ErrorContains(t, err, "remote unavailable")
+}
 
 type provenanceFallback struct{ data []byte }
 

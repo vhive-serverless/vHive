@@ -37,6 +37,9 @@ import (
 const (
 	// Acquire Snapshot Time it takes to acquire snap (includes the fetch)
 	AcquireSnap = "AcquireSnap"
+	// PrepareRecipePageServer is the time spent preparing the chunked-memory
+	// page source used by a recipe-backed restore.
+	PrepareRecipePageServer = "PrepareRecipePageServer"
 
 	// FcResume Time it takes to resume a VM from containerd
 	FcResume = "FcResume"

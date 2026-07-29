@@ -124,15 +124,17 @@ type Orchestrator struct {
 
 	setExpIface bool
 
-	memoryManager       *manager.MemoryManager
-	artifactStore       snapshotting.ArtifactStore
-	artifactStoreConfig *snapshotting.MinIOArtifactStoreConfig
-	cacheSnaps          bool
-	chunkedMemorySize   int
-	baseSnapshotEnabled bool
-	baseSnapshotManager *snapshotting.SnapshotManager
-	baseSnapshotOnce    sync.Once
-	baseSnapshotErr     error
+	memoryManager             *manager.MemoryManager
+	artifactStore             snapshotting.ArtifactStore
+	provenanceWorkingSetMu    sync.Mutex
+	provenanceWorkingSetCache map[string]*snapshotting.ProvenanceWorkingSet
+	artifactStoreConfig       *snapshotting.MinIOArtifactStoreConfig
+	cacheSnaps                bool
+	chunkedMemorySize         int
+	baseSnapshotEnabled       bool
+	baseSnapshotManager       *snapshotting.SnapshotManager
+	baseSnapshotOnce          sync.Once
+	baseSnapshotErr           error
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -141,6 +143,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 
 	o := new(Orchestrator)
 	o.cachedImages = make(map[string]containerd.Image)
+	o.provenanceWorkingSetCache = make(map[string]*snapshotting.ProvenanceWorkingSet)
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
 	o.netPoolSize = 10

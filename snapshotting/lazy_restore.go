@@ -15,6 +15,10 @@ func NewRecipePageSource(store ArtifactStore, cache ChunkCache, recipe MemoryRec
 	if err := recipe.Validate(); err != nil {
 		return nil, err
 	}
+	return newRecipePageSource(store, cache, recipe)
+}
+
+func newRecipePageSource(store ArtifactStore, cache ChunkCache, recipe MemoryRecipe) (manager.PageSource, error) {
 	if store == nil {
 		return nil, fmt.Errorf("artifact store is required")
 	}
@@ -34,7 +38,7 @@ func NewRecipePageSourceForRevision(ctx context.Context, store ArtifactStore, ca
 	if err != nil {
 		return nil, err
 	}
-	return NewRecipePageSource(store, cache, recipe)
+	return newRecipePageSource(store, cache, recipe)
 }
 
 type recipePageSource struct {

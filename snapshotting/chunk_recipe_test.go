@@ -3,6 +3,7 @@ package snapshotting
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"sync"
@@ -10,6 +11,21 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetRecipeReadsLegacyJSON(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryArtifactStore()
+	recipe := MemoryRecipe{Version: memoryRecipeVersion, ChunkSize: 4, Chunks: []RecipeChunk{{ID: chunkID([]byte("page"))}}}
+	data, err := json.Marshal(recipe)
+	require.NoError(t, err)
+	key, err := RevisionArtifactKey("legacy-recipe", memoryRecipeArtifact)
+	require.NoError(t, err)
+	require.NoError(t, store.Put(ctx, key, bytes.NewReader(data), int64(len(data))))
+
+	got, err := getRecipe(ctx, store, "legacy-recipe")
+	require.NoError(t, err)
+	require.Equal(t, recipe, got)
+}
 
 func TestSplitMemoryPreservesOrderAndDuplicates(t *testing.T) {
 	input := []byte("abcabcabc")

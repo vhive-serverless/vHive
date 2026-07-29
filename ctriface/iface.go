@@ -691,10 +691,49 @@ func configureSnapshotMemoryBackend(conf *proto.CreateVMRequest, backendType, ba
 var newRecipePageSourceForRevision = snapshotting.NewRecipePageSourceForRevision
 var newProvenanceWorkingSetPageSource = snapshotting.NewProvenanceWorkingSetPageSource
 
+type provenancePageSourceLoader func(context.Context, snapshotting.ArtifactStore, string, string, manager.PageSource) (manager.PageSource, error)
+
 // recipePageServer supplies chunked memory through UFFD only when the
 // SnapshotManager did not materialize a complete local memory file. Lazy mode
 // itself is exclusively the working-set-trace replay policy.
 func recipePageServer(ctx context.Context, store snapshotting.ArtifactStore, snap *snapshotting.Snapshot) (*manager.PageServer, error) {
+	return recipePageServerWithProvenance(ctx, store, snap, "", func(ctx context.Context, store snapshotting.ArtifactStore, revision, _ string, fallback manager.PageSource) (manager.PageSource, error) {
+		return newProvenanceWorkingSetPageSource(ctx, store, revision, fallback)
+	})
+}
+
+// recipePageServer reuses the decoded, immutable provenance working set while
+// retaining a fresh recipe source (and chunk cache) for each restore.
+func (o *Orchestrator) recipePageServer(ctx context.Context, snap *snapshotting.Snapshot) (*manager.PageServer, error) {
+	privateCacheDir := ""
+	if o.cacheSnaps {
+		privateCacheDir = filepath.Dir(snap.GetSnapshotFilePath())
+	}
+	return recipePageServerWithProvenance(ctx, o.artifactStore, snap, privateCacheDir, o.provenancePageSource)
+}
+
+func (o *Orchestrator) provenancePageSource(ctx context.Context, store snapshotting.ArtifactStore, revision, privateCacheDir string, fallback manager.PageSource) (manager.PageSource, error) {
+	o.provenanceWorkingSetMu.Lock()
+	workingSet := o.provenanceWorkingSetCache[revision]
+	o.provenanceWorkingSetMu.Unlock()
+	if workingSet != nil {
+		return workingSet.NewPageSource(ctx, store, privateCacheDir, fallback)
+	}
+
+	loaded, err := snapshotting.LoadProvenanceWorkingSet(ctx, store, revision)
+	if err != nil {
+		return nil, err
+	}
+	o.provenanceWorkingSetMu.Lock()
+	if workingSet = o.provenanceWorkingSetCache[revision]; workingSet == nil {
+		o.provenanceWorkingSetCache[revision] = loaded
+		workingSet = loaded
+	}
+	o.provenanceWorkingSetMu.Unlock()
+	return workingSet.NewPageSource(ctx, store, privateCacheDir, fallback)
+}
+
+func recipePageServerWithProvenance(ctx context.Context, store snapshotting.ArtifactStore, snap *snapshotting.Snapshot, privateCacheDir string, loadProvenance provenancePageSourceLoader) (*manager.PageServer, error) {
 	if snap == nil || !snap.HasMemoryRecipe() {
 		return nil, nil
 	}
@@ -712,7 +751,7 @@ func recipePageServer(ctx context.Context, store snapshotting.ArtifactStore, sna
 	}
 	// A missing manifest is the normal compatibility case for snapshots
 	// published before provenance-aware working sets were enabled.
-	if provenanceSource, provenanceErr := newProvenanceWorkingSetPageSource(ctx, store, snap.GetId(), source); provenanceErr == nil {
+	if provenanceSource, provenanceErr := loadProvenance(ctx, store, snap.GetId(), privateCacheDir, source); provenanceErr == nil {
 		source = provenanceSource
 	} else if !errors.Is(provenanceErr, snapshotting.ErrArtifactNotFound) {
 		_ = source.Close()
@@ -787,10 +826,12 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	// registered afresh for the image-specific workload below instead.
 	enableUPF := o.GetUPFEnabled() && snap.GetId() != baseSnapshotRevision
 	if enableUPF {
-		lazyPageServer, err = recipePageServer(ctx, o.artifactStore, snap)
+		tStart = time.Now()
+		lazyPageServer, err = o.recipePageServer(ctx, snap)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "prepare recipe-backed restore")
 		}
+		loadSnapshotMetric.MetricMap[metrics.PrepareRecipePageServer] = metrics.ToUS(time.Since(tStart))
 	}
 	defer func() {
 		if retErr != nil && lazyPageServer != nil {

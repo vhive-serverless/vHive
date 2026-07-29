@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,8 @@ import (
 const (
 	memoryRecipeArtifact = ".memory-recipe.json"
 	memoryRecipeVersion  = 2
+	memoryRecipeMagic    = "VHR2"
+	memoryRecipeHeader   = len(memoryRecipeMagic) + 4 + 4 + 8
 )
 
 type ChunkID string
@@ -57,8 +60,13 @@ func validChunkID(id ChunkID) bool {
 	if len(id) != sha256.Size*2 {
 		return false
 	}
-	_, err := hex.DecodeString(string(id))
-	return err == nil
+	for i := 0; i < len(id); i++ {
+		value := id[i]
+		if !((value >= '0' && value <= '9') || (value >= 'a' && value <= 'f') || (value >= 'A' && value <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 // SplitMemory emits fixed-size chunks in reader order. fn is called before
@@ -169,7 +177,7 @@ func putRecipe(ctx context.Context, store ArtifactStore, revision string, recipe
 	if err := recipe.Validate(); err != nil {
 		return err
 	}
-	data, err := json.Marshal(recipe)
+	data, err := encodeRecipe(recipe)
 	if err != nil {
 		return fmt.Errorf("encode memory recipe: %w", err)
 	}
@@ -193,14 +201,75 @@ func getRecipe(ctx context.Context, store ArtifactStore, revision string) (Memor
 		return MemoryRecipe{}, fmt.Errorf("download memory recipe: %w", err)
 	}
 	defer reader.Close()
-	var recipe MemoryRecipe
-	if err := json.NewDecoder(reader).Decode(&recipe); err != nil {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return MemoryRecipe{}, fmt.Errorf("read memory recipe: %w", err)
+	}
+	recipe, legacyJSON, err := decodeRecipe(data)
+	if err != nil {
 		return MemoryRecipe{}, fmt.Errorf("decode memory recipe: %w", err)
 	}
-	if err := recipe.Validate(); err != nil {
-		return MemoryRecipe{}, err
+	if legacyJSON {
+		if err := recipe.Validate(); err != nil {
+			return MemoryRecipe{}, err
+		}
 	}
 	return recipe, nil
+}
+
+func decodeRecipe(data []byte) (MemoryRecipe, bool, error) {
+	if len(data) < len(memoryRecipeMagic) || string(data[:len(memoryRecipeMagic)]) != memoryRecipeMagic {
+		var recipe MemoryRecipe
+		if err := json.Unmarshal(data, &recipe); err != nil {
+			return MemoryRecipe{}, true, err
+		}
+		return recipe, true, nil
+	}
+	if len(data) < memoryRecipeHeader {
+		return MemoryRecipe{}, false, fmt.Errorf("truncated binary memory recipe header")
+	}
+	version := binary.LittleEndian.Uint32(data[4:])
+	chunkSize := binary.LittleEndian.Uint32(data[8:])
+	chunkCount := binary.LittleEndian.Uint64(data[12:])
+	expectedLength := uint64(memoryRecipeHeader) + chunkCount*uint64(sha256.Size)
+	if chunkCount > uint64((len(data)-memoryRecipeHeader)/sha256.Size) || expectedLength != uint64(len(data)) {
+		return MemoryRecipe{}, false, fmt.Errorf("invalid binary memory recipe length")
+	}
+	if version != memoryRecipeVersion || chunkSize == 0 {
+		return MemoryRecipe{}, false, fmt.Errorf("invalid binary memory recipe header")
+	}
+	if uint64(chunkSize) > uint64(^uint(0)>>1) {
+		return MemoryRecipe{}, false, fmt.Errorf("memory recipe chunk size overflows host int")
+	}
+	recipe := MemoryRecipe{Version: int(version), ChunkSize: int(chunkSize), Chunks: make([]RecipeChunk, int(chunkCount))}
+	offset := memoryRecipeHeader
+	for i := range recipe.Chunks {
+		recipe.Chunks[i].ID = ChunkID(hex.EncodeToString(data[offset : offset+sha256.Size]))
+		offset += sha256.Size
+	}
+	return recipe, false, nil
+}
+
+// encodeRecipe uses fixed-width binary chunk IDs to keep large recipes small
+// and cheap to decode on the restore path. The artifact name is retained so
+// existing snapshot descriptors need not change.
+func encodeRecipe(recipe MemoryRecipe) ([]byte, error) {
+	if uint64(len(recipe.Chunks)) > uint64(^uint32(0)) {
+		return nil, fmt.Errorf("too many memory recipe chunks: %d", len(recipe.Chunks))
+	}
+	data := make([]byte, memoryRecipeHeader+len(recipe.Chunks)*sha256.Size)
+	copy(data, memoryRecipeMagic)
+	binary.LittleEndian.PutUint32(data[4:], uint32(recipe.Version))
+	binary.LittleEndian.PutUint32(data[8:], uint32(recipe.ChunkSize))
+	binary.LittleEndian.PutUint64(data[12:], uint64(len(recipe.Chunks)))
+	offset := memoryRecipeHeader
+	for _, chunk := range recipe.Chunks {
+		if _, err := hex.Decode(data[offset:offset+sha256.Size], []byte(chunk.ID)); err != nil {
+			return nil, fmt.Errorf("decode chunk ID %q: %w", chunk.ID, err)
+		}
+		offset += sha256.Size
+	}
+	return data, nil
 }
 
 // ReconstructMemory writes a recipe eagerly.
