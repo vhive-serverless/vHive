@@ -17,7 +17,7 @@ require (
 	github.com/go-multierror/multierror v1.0.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
-	github.com/montanaflynn/stats v0.7.1
+	github.com/montanaflynn/stats v0.12.2
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
