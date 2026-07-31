@@ -40,12 +40,23 @@ type memoryRecipeCatalog interface {
 	SetMemoryRecipe(revision, recipe string) error
 }
 
+type workingSetMetadataCatalog interface {
+	SetWorkingSetMetadata(revision string, workingSet, trace, provenance bool) error
+}
+
 func persistMemoryRecipe(catalog Catalog, revision, recipe string) error {
 	if recipe == "" {
 		return nil
 	}
 	if local, ok := catalog.(memoryRecipeCatalog); ok {
 		return local.SetMemoryRecipe(revision, recipe)
+	}
+	return nil
+}
+
+func persistWorkingSetMetadata(catalog Catalog, revision string, desc *SnapshotDescriptor) error {
+	if local, ok := catalog.(workingSetMetadataCatalog); ok {
+		return local.SetWorkingSetMetadata(revision, desc.WorkingSet, desc.WorkingSetTrace, desc.ProvenanceWorkingSet)
 	}
 	return nil
 }
@@ -164,6 +175,9 @@ func (r *remoteSnapshotTransfer) publish(ctx context.Context, catalog Catalog, b
 			return err
 		}
 	}
+	if err := persistWorkingSetMetadata(catalog, revision, desc); err != nil {
+		return err
+	}
 	data, err := json.Marshal(desc)
 	if err != nil {
 		return fmt.Errorf("encode remote descriptor: %w", err)
@@ -235,6 +249,9 @@ func (r *remoteSnapshotTransfer) publishWorkingSet(ctx context.Context, catalog 
 	if err := r.store.Put(ctx, key, bytes.NewReader(data), int64(len(data))); err != nil {
 		return false, fmt.Errorf("upload remote descriptor for %s: %w", revision, err)
 	}
+	if err := persistWorkingSetMetadata(catalog, revision, &copy); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -280,6 +297,9 @@ func (r *remoteSnapshotTransfer) downloadOnce(ctx context.Context, catalog Catal
 		return nil, err
 	}
 	if err := persistMemoryRecipe(catalog, revision, desc.MemoryRecipe); err != nil {
+		return nil, err
+	}
+	if err := persistWorkingSetMetadata(catalog, revision, desc); err != nil {
 		return nil, err
 	}
 	defer func() {

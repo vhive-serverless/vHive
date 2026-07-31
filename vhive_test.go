@@ -56,6 +56,7 @@ var (
 	provenanceBaseIDTest       = flag.String("provenanceBaseIDTest", "base-v1", "Stable base/rootfs identity for provenance working sets")
 	provenanceImageSourcesTest = flag.String("provenanceImageSourcesTest", "/var/lib/vhive/provenance-images/", "Directory produced by scripts/stargz/pull_provenance_images.sh")
 	chunkedMemorySizeTest      = flag.Int("chunkedMemorySizeTest", 0, "Remote snapshot memory chunk size in bytes (0 disables chunking)")
+	workingSetCacheBench       = flag.Bool("workingSetCacheBench", false, "Run the three-function working-set cache eviction benchmark")
 	isWithCache                = flag.Bool("withCache", false, "Do not drop the cache before measurements")
 	benchDir                   = flag.String("benchDirTest", "bench_results", "Directory where stats should be saved")
 	snapshotterTest            = flag.String("ss", "devmapper", "Snapshotter to use")
@@ -115,6 +116,10 @@ func TestMain(m *testing.M) {
 		log.Error("Base snapshot mode requires the stargz proxy snapshotter (-ss=proxy)")
 		os.Exit(-1)
 	}
+	if *workingSetCacheBench && (!*isSnapshotsEnabledTest || !*isUPFEnabledTest || !*isRemoteSnapshotsTest || !*wsCoalesceTest) {
+		log.Error("Working-set cache benchmark requires -snapshotsTest -upfTest -remoteSnapshotsTest -wsCoalesceTest")
+		os.Exit(-1)
+	}
 
 	orchOptions := []ctriface.OrchestratorOption{
 		ctriface.WithTestModeOn(true),
@@ -158,6 +163,11 @@ func TestMain(m *testing.M) {
 		} else {
 			orchOptions = append(orchOptions, ctriface.WithArtifactStore(snapshotting.NewMemoryArtifactStore()))
 		}
+	}
+	if *workingSetCacheBench {
+		// Retain downloaded snapshots between round-robin calls; the benchmark
+		// itself changes only the working-set/chunk cache budget.
+		orchOptions = append(orchOptions, ctriface.WithCacheSnaps(true))
 	}
 
 	orch = ctriface.NewOrchestrator(

@@ -89,6 +89,12 @@ func WithChunkedMemory(chunkSize int) OrchestratorOption {
 	return func(o *Orchestrator) { o.chunkedMemorySize = chunkSize }
 }
 
+// WithSnapshotDiskCacheSize bounds local remote-snapshot cache data (chunks
+// and downloaded working sets) in bytes. A negative value keeps it unlimited.
+func WithSnapshotDiskCacheSize(bytes int64) OrchestratorOption {
+	return func(o *Orchestrator) { o.snapshotDiskCacheSize = bytes }
+}
+
 // WithBaseSnapshot starts functions from one image-less VM snapshot. It is
 // intentionally opt-in and is supported only by the stargz proxy snapshotter:
 // the function image is pulled from inside the restored VM.

@@ -97,3 +97,25 @@ func TestFileChunkCacheCleanupKeepsPinnedHandleReadable(t *testing.T) {
 	_, err = cache.Acquire(context.Background(), chunkID(data))
 	require.True(t, errors.Is(err, ErrChunkCacheMiss))
 }
+
+func TestFileChunkCacheCapacityEvictsLeastRecentlyUsedUnpinnedChunk(t *testing.T) {
+	cache, err := NewFileChunkCache(t.TempDir())
+	require.NoError(t, err)
+	first := []byte("first")
+	second := []byte("second")
+
+	firstHandle, err := cache.Insert(context.Background(), chunkID(first), first)
+	require.NoError(t, err)
+	require.NoError(t, firstHandle.Release())
+	secondHandle, err := cache.Insert(context.Background(), chunkID(second), second)
+	require.NoError(t, err)
+	require.NoError(t, secondHandle.Release())
+
+	require.NoError(t, cache.SetCapacity(int64(len(second))))
+	_, err = cache.Acquire(context.Background(), chunkID(first))
+	require.ErrorIs(t, err, ErrChunkCacheMiss)
+	handle, err := cache.Acquire(context.Background(), chunkID(second))
+	require.NoError(t, err)
+	require.NoError(t, handle.Release())
+	require.Equal(t, int64(len(second)), cache.Metrics().Bytes)
+}

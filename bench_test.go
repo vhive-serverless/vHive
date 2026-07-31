@@ -254,6 +254,89 @@ func TestBenchServe(t *testing.T) {
 
 }
 
+// TestBenchWorkingSetCacheEviction compares a cache that can retain one
+// helloworld working set with one that can retain all three. Each scenario
+// invokes the same three functions in round-robin order and records per-call
+// restore metrics in working_set_cache.csv.
+//
+// Run with:
+//
+//	go test -run TestBenchWorkingSetCacheEviction -args \
+//	  -workingSetCacheBench -snapshotsTest -upfTest -remoteSnapshotsTest -wsCoalesceTest
+func TestBenchWorkingSetCacheEviction(t *testing.T) {
+	if !*workingSetCacheBench {
+		t.Skip("enable with -workingSetCacheBench")
+	}
+
+	const (
+		workingSetBytes    = int64(16 * 1024 * 1024)
+		workingSetOverhead = int64(1 * 1024 * 1024) // trace/metadata headroom
+		functionCount      = 3
+	)
+	imageName, ok := getAllImages(*snapshotterTest)["helloworld"]
+	require.True(t, ok, "helloworld image is unavailable for snapshotter %q", *snapshotterTest)
+
+	var servedTh uint64
+	funcPool = NewFuncPool(true, servedTh, 0, isTestModeConst)
+	createResultsDir()
+
+	functionIDs := []string{"cache-0", "cache-1", "cache-2"}
+	for _, functionID := range functionIDs {
+		// The first invocation creates and publishes the snapshot. The second
+		// records and publishes its coalesced working set.
+		for range 2 {
+			resp, _, err := funcPool.Serve(context.Background(), functionID, imageName, "record")
+			require.NoError(t, err)
+			require.Equal(t, "Hello, record_response!", resp.Payload)
+			message, err := funcPool.RemoveInstance(functionID, imageName, true)
+			require.NoError(t, err, message)
+		}
+	}
+
+	for _, scenario := range []struct {
+		name  string
+		limit int64
+	}{
+		{name: "working-set-cache-one-16MiB-working-set", limit: workingSetBytes + workingSetOverhead},
+		{name: "working-set-cache-three-16MiB-working-sets", limit: functionCount * (workingSetBytes + workingSetOverhead)},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			// Start every scenario cold with respect to the snapshot cache. The
+			// The one-working-set run evicts a previous function on each round;
+			// the three-working-set run warms after its first three restores.
+			require.NoError(t, funcPool.snapshotManager.SetDiskCacheSize(0))
+			require.NoError(t, funcPool.snapshotManager.SetDiskCacheSize(scenario.limit))
+			before := funcPool.snapshotManager.DiskCacheMetrics()
+
+			samples := make([]*metrics.Metric, 0, functionCount*max(1, *iterNum))
+			for call := 0; call < cap(samples); call++ {
+				if !*isWithCache {
+					dropPageCache()
+				}
+				functionID := functionIDs[call%functionCount]
+				started := time.Now()
+				resp, metric, err := funcPool.Serve(context.Background(), functionID, imageName, "replay")
+				require.NoError(t, err)
+				require.Equal(t, "Hello, replay_response!", resp.Payload)
+				require.NotNil(t, metric, "round-robin call should restore from a snapshot")
+				metric.MetricMap["EndToEnd"] = metrics.ToUS(time.Since(started))
+				samples = append(samples, metric)
+
+				message, err := funcPool.RemoveInstance(functionID, imageName, true)
+				require.NoError(t, err, message)
+			}
+			require.NoError(t, metrics.PrintMeanStd(getOutFile("working_set_cache.csv"), scenario.name, samples...))
+			after := funcPool.snapshotManager.DiskCacheMetrics()
+			log.WithFields(log.Fields{
+				"scenario":                  scenario.name,
+				"working_set_evictions":     after.WorkingSetEvictions - before.WorkingSetEvictions,
+				"working_set_evicted_bytes": after.WorkingSetBytes - before.WorkingSetBytes,
+				"remote_reloads":            after.RemoteReloads - before.RemoteReloads,
+			}).Info("Working-set cache benchmark activity")
+		})
+	}
+}
+
 // benchmarkUPFMetrics returns metrics from the measurement phase. Setup runs
 // may create a recording VM before the benchmarked restores; these metrics are
 // useful for recording analysis but must not be merged into benchmark samples.

@@ -131,6 +131,7 @@ type Orchestrator struct {
 	artifactStoreConfig       *snapshotting.MinIOArtifactStoreConfig
 	cacheSnaps                bool
 	chunkedMemorySize         int
+	snapshotDiskCacheSize     int64
 	baseSnapshotEnabled       bool
 	baseSnapshotManager       *snapshotting.SnapshotManager
 	baseSnapshotOnce          sync.Once
@@ -149,6 +150,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.netPoolSize = 10
 	o.vethPrefix = "172.17"
 	o.clonePrefix = "172.18"
+	o.snapshotDiskCacheSize = -1
 
 	o.dns = getK8sDNS()
 
@@ -238,6 +240,9 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		// clean their snapshot directory at construction time.
 		o.baseSnapshotManager = snapshotting.NewSnapshotManager(o.snapshotsDir + "-base")
 		o.baseSnapshotManager.EnableRemoteTransfer(o.artifactStore, o.cacheSnaps)
+		if err := o.baseSnapshotManager.SetDiskCacheSize(o.snapshotDiskCacheSize); err != nil {
+			log.Panicf("Failed to configure base snapshot disk cache: %v", err)
+		}
 		if o.provenanceWorkingSets && o.artifactStore != nil {
 			if err := o.baseSnapshotManager.EnableProvenanceWorkingSets(o.ProvenancePolicy(), o.provenanceBaseIdentity); err != nil {
 				log.Panicf("Failed to enable provenance base working sets: %v", err)
@@ -252,6 +257,11 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 			// memory file even when ordinary function snapshots stay recipe-backed.
 			if err := o.baseSnapshotManager.EnableMemoryReconstruction(true); err != nil {
 				log.Panicf("Failed to enable base snapshot memory reconstruction: %v", err)
+			}
+			if o.snapshotDiskCacheSize >= 0 && o.artifactStore != nil {
+				if err := o.baseSnapshotManager.EnableChunkCache(filepath.Join(o.snapshotsDir+"-base", ".chunks")); err != nil {
+					log.Panicf("Failed to enable base snapshot chunk cache: %v", err)
+				}
 			}
 		}
 	}
@@ -287,6 +297,10 @@ func (o *Orchestrator) ProvenancePolicy() snapshotting.ProvenancePolicy {
 // GetChunkedMemorySize returns the remote memory chunk size in bytes. A zero
 // value keeps remote snapshot memory as a single artifact.
 func (o *Orchestrator) GetChunkedMemorySize() int { return o.chunkedMemorySize }
+
+// GetSnapshotDiskCacheSize returns the local chunk and working-set cache
+// budget in bytes. A negative value disables size-based eviction.
+func (o *Orchestrator) GetSnapshotDiskCacheSize() int64 { return o.snapshotDiskCacheSize }
 
 // GetBaseSnapshotEnabled reports whether new VMs are booted from the shared,
 // image-less base snapshot before their function image is pulled.

@@ -66,6 +66,7 @@ var (
 	netPoolSize        *int
 	shimPoolSize       *int
 	baseSnapshot       *bool
+	snapshotCacheSize  *int64
 	relayEndpoint      *string
 	relayImageMap      *string
 )
@@ -90,6 +91,7 @@ func main() {
 	netPoolSize = flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	shimPoolSize = flag.Int("shimPoolSize", 5, "Number of pre-created firecracker-containerd shims")
 	baseSnapshot = flag.Bool("baseSnapshot", false, "Start functions from a shared image-less base snapshot (requires -ss=proxy)")
+	snapshotCacheSize = flag.Int64("snapshotCacheSize", -1, "Maximum on-disk remote snapshot cache size in bytes; negative disables eviction")
 	relayEndpoint = flag.String("relayEndpoint", "", "HTTP endpoint for the single-use instance relay (for example :8080)")
 	relayImageMap = flag.String("relayImageMap", "", "Optional JSON image map used by the HTTP relay")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker")
@@ -155,6 +157,7 @@ func main() {
 			ctriface.WithNetPoolSize(*netPoolSize),
 			ctriface.WithShimPoolSize(*shimPoolSize),
 			ctriface.WithBaseSnapshot(*baseSnapshot),
+			ctriface.WithSnapshotDiskCacheSize(*snapshotCacheSize),
 			ctriface.WithVethPrefix(*vethPrefix),
 			ctriface.WithClonePrefix(*clonePrefix),
 			ctriface.WithDockerCredentials(*dockerCredentials),

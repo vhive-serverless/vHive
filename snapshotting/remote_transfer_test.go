@@ -153,6 +153,37 @@ func TestRemoteWholeFileSnapshotTransfersWorkingSet(t *testing.T) {
 	require.Equal(t, []byte("working-set-trace"), trace)
 }
 
+func TestDiskCacheEvictsWorkingSetAndFetchesItAgainOnDemand(t *testing.T) {
+	store := NewMemoryArtifactStore()
+	base := t.TempDir()
+	source := NewSnapshotManager(base)
+	source.EnableRemoteTransfer(store, true)
+	snapshot, err := source.InitSnapshot("revision-a", "example:image")
+	require.NoError(t, err)
+	require.NoError(t, snapshot.CreateSnapDir())
+	require.NoError(t, os.WriteFile(snapshot.GetSnapshotFilePath(), []byte("vm-state"), 0600))
+	require.NoError(t, os.WriteFile(snapshot.GetMemFilePath(), fixedMemoryFixture(16), 0600))
+	require.NoError(t, os.WriteFile(snapshot.GetWorkingSetFilePath(), []byte("working-set-pages"), 0600))
+	require.NoError(t, os.WriteFile(snapshot.GetWorkingSetTraceFilePath(), []byte("working-set-trace"), 0600))
+	require.NoError(t, snapshot.SerializeSnapInfo())
+	require.NoError(t, source.CommitSnapshot("revision-a"))
+	require.NoError(t, source.PublishSnapshot(context.Background(), "revision-a"))
+
+	worker := NewSnapshotManager(t.TempDir())
+	worker.EnableRemoteTransfer(store, true)
+	loaded, err := worker.AcquireSnapshotContext(context.Background(), "revision-a")
+	require.NoError(t, err)
+	require.NoError(t, worker.SetDiskCacheSize(0))
+	_, err = os.Stat(loaded.GetWorkingSetFilePath())
+	require.True(t, os.IsNotExist(err), "working-set pages should be evicted")
+
+	reloaded, err := worker.AcquireSnapshotContext(context.Background(), "revision-a")
+	require.NoError(t, err)
+	pages, err := os.ReadFile(reloaded.GetWorkingSetFilePath())
+	require.NoError(t, err)
+	require.Equal(t, []byte("working-set-pages"), pages)
+}
+
 func TestRemoteChunkedMemoryRoundTripDeduplicatesAcrossSnapshots(t *testing.T) {
 	store := NewMemoryArtifactStore()
 	base := t.TempDir()
@@ -225,6 +256,25 @@ func TestRemoteChunkedMemoryDefaultsToRecipeOnly(t *testing.T) {
 	trace, err := os.ReadFile(reused.GetWorkingSetTraceFilePath())
 	require.NoError(t, err)
 	require.Equal(t, []byte("working-set-trace"), trace)
+}
+
+func TestChunkedCachedSnapshotAcquireUsesPersistedRecipe(t *testing.T) {
+	store := NewMemoryArtifactStore()
+	manager := NewSnapshotManager(t.TempDir())
+	manager.EnableRemoteTransfer(store, true)
+	require.NoError(t, manager.EnableChunkedMemory(4))
+	snapshot, err := manager.InitSnapshot("revision-a", "example:image")
+	require.NoError(t, err)
+	require.NoError(t, snapshot.CreateSnapDir())
+	require.NoError(t, os.WriteFile(snapshot.GetSnapshotFilePath(), []byte("vm-state"), 0600))
+	require.NoError(t, os.WriteFile(snapshot.GetMemFilePath(), []byte("AAAABBBB"), 0600))
+	require.NoError(t, snapshot.SerializeSnapInfo())
+	require.NoError(t, manager.CommitSnapshot("revision-a"))
+	require.NoError(t, manager.PublishSnapshot(context.Background(), "revision-a"))
+
+	acquired, err := manager.AcquireSnapshotContext(context.Background(), "revision-a")
+	require.NoError(t, err)
+	require.True(t, acquired.HasMemoryRecipe(), "cached acquire must retain the recipe marker written at publication")
 }
 
 type countingStore struct {

@@ -141,6 +141,22 @@ func (c *LocalCatalog) SetMemoryRecipe(revision, recipe string) error {
 	return c.write(descriptor)
 }
 
+// SetWorkingSetMetadata persists the optional remote working-set artifacts
+// before commit. Without this a restored snapshot cannot distinguish an
+// evicted working set from one that was never published.
+func (c *LocalCatalog) SetWorkingSetMetadata(revision string, workingSet, trace, provenance bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	descriptor, err := c.read(revision)
+	if err != nil {
+		return err
+	}
+	descriptor.WorkingSet = workingSet
+	descriptor.WorkingSetTrace = trace
+	descriptor.ProvenanceWorkingSet = provenance
+	return c.write(descriptor)
+}
+
 func (c *LocalCatalog) Delete(revision string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()

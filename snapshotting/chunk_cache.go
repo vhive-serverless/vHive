@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 )
 
@@ -15,8 +16,8 @@ var ErrChunkCacheMiss = errors.New("chunk is not cached")
 
 // ChunkCache stores chunks locally. Acquire and Insert return a pinned handle:
 // callers must Release it once they no longer need the chunk.
-// Cleanup is deliberately limited to removing unpinned cache entries; Stage 5
-// intentionally has no capacity limit or eviction policy.
+// Cleanup removes unpinned entries. File-backed implementations may also
+// enforce a capacity while retaining pinned entries.
 type ChunkCache interface {
 	Acquire(ctx context.Context, id ChunkID) (ChunkHandle, error)
 	Insert(ctx context.Context, id ChunkID, data []byte) (ChunkHandle, error)
@@ -46,13 +47,16 @@ type FileChunkCache struct {
 	// pending retains a fetched chunk until its asynchronous write reaches the
 	// file cache. It lets concurrent page faults use the downloaded bytes
 	// without waiting for disk I/O or fetching the same chunk again.
-	pending map[ChunkID][]byte
-	metrics ChunkCacheMetrics
+	pending  map[ChunkID][]byte
+	metrics  ChunkCacheMetrics
+	capacity int64 // negative means unlimited
+	clock    uint64
 }
 
 type fileCacheEntry struct {
-	size int64
-	pins int
+	size       int64
+	pins       int
+	lastAccess uint64
 }
 
 func NewFileChunkCache(directory string) (*FileChunkCache, error) {
@@ -66,7 +70,51 @@ func NewFileChunkCache(directory string) (*FileChunkCache, error) {
 		directory: directory,
 		entries:   make(map[ChunkID]*fileCacheEntry),
 		pending:   make(map[ChunkID][]byte),
+		capacity:  -1,
 	}, nil
+}
+
+// SetCapacity sets the maximum number of bytes retained on disk. A negative
+// value disables eviction. Pinned chunks are never removed, so a temporary
+// overage is possible until their handles are released.
+func (c *FileChunkCache) SetCapacity(capacity int64) error {
+	if capacity < -1 {
+		return fmt.Errorf("chunk cache capacity must be non-negative or -1")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.capacity = capacity
+	if err := c.loadEntriesLocked(); err != nil {
+		return err
+	}
+	return c.evictLocked()
+}
+
+// loadEntriesLocked accounts for chunks left by a previous process so a
+// capacity is enforced across restarts as well as within one process.
+func (c *FileChunkCache) loadEntriesLocked() error {
+	items, err := os.ReadDir(c.directory)
+	if err != nil {
+		return fmt.Errorf("read chunk cache directory: %w", err)
+	}
+	for _, item := range items {
+		id := ChunkID(item.Name())
+		if item.IsDir() || !validChunkID(id) || c.entries[id] != nil {
+			continue
+		}
+		info, err := item.Info()
+		if err != nil {
+			return fmt.Errorf("stat cached chunk %s: %w", id, err)
+		}
+		if !info.Mode().IsRegular() {
+			continue
+		}
+		entry := &fileCacheEntry{size: info.Size()}
+		c.touchLocked(entry)
+		c.entries[id] = entry
+		c.metrics.Bytes += entry.size
+	}
+	return nil
 }
 
 func (c *FileChunkCache) Acquire(ctx context.Context, id ChunkID) (ChunkHandle, error) {
@@ -92,6 +140,7 @@ func (c *FileChunkCache) Acquire(ctx context.Context, id ChunkID) (ChunkHandle, 
 		return nil, err
 	}
 	entry.pins++
+	c.touchLocked(entry)
 	c.metrics.Hits++
 	c.metrics.Accesses++
 	return &fileChunkHandle{cache: c, id: id}, nil
@@ -152,9 +201,11 @@ func (c *FileChunkCache) persistAsync(id ChunkID, data []byte) {
 	delete(c.pending, id)
 	if _, ok := c.entries[id]; !ok {
 		entry := &fileCacheEntry{size: int64(len(data))}
+		c.touchLocked(entry)
 		c.entries[id] = entry
 		c.metrics.Bytes += entry.size
 	}
+	_ = c.evictLocked()
 }
 
 func (c *FileChunkCache) clearPending(id ChunkID) {
@@ -174,6 +225,7 @@ func (c *FileChunkCache) Insert(ctx context.Context, id ChunkID, data []byte) (C
 	defer c.mu.Unlock()
 	if entry, err := c.entryLocked(id); err == nil {
 		entry.pins++
+		c.touchLocked(entry)
 		c.metrics.Hits++
 		c.metrics.Accesses++
 		return &fileChunkHandle{cache: c, id: id}, nil
@@ -197,6 +249,7 @@ func (c *FileChunkCache) Insert(ctx context.Context, id ChunkID, data []byte) (C
 		return nil, fmt.Errorf("publish cached chunk: %w", err)
 	}
 	entry := &fileCacheEntry{size: int64(len(data)), pins: 1}
+	c.touchLocked(entry)
 	c.entries[id] = entry
 	c.metrics.Bytes += entry.size
 	c.metrics.Accesses++
@@ -260,6 +313,7 @@ func (c *FileChunkCache) entryLocked(id ChunkID) (*fileCacheEntry, error) {
 		return nil, fmt.Errorf("cached chunk %s is not a regular file", id)
 	}
 	entry := &fileCacheEntry{size: info.Size()}
+	c.touchLocked(entry)
 	c.entries[id] = entry
 	c.metrics.Bytes += entry.size
 	return entry, nil
@@ -296,5 +350,39 @@ func (h *fileChunkHandle) Release() error {
 	}
 	entry.pins--
 	h.released = true
+	return h.cache.evictLocked()
+}
+
+func (c *FileChunkCache) touchLocked(entry *fileCacheEntry) {
+	c.clock++
+	entry.lastAccess = c.clock
+}
+
+// evictLocked discards least-recently-used unpinned files until the cache is
+// within its configured capacity. c.mu must be held.
+func (c *FileChunkCache) evictLocked() error {
+	if c.capacity < 0 || c.metrics.Bytes <= c.capacity {
+		return nil
+	}
+	ids := make([]ChunkID, 0, len(c.entries))
+	for id, entry := range c.entries {
+		if entry.pins == 0 {
+			ids = append(ids, id)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		return c.entries[ids[i]].lastAccess < c.entries[ids[j]].lastAccess
+	})
+	for _, id := range ids {
+		if c.metrics.Bytes <= c.capacity {
+			break
+		}
+		entry := c.entries[id]
+		if err := os.Remove(c.filename(id)); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("evict cached chunk %s: %w", id, err)
+		}
+		delete(c.entries, id)
+		c.metrics.Bytes -= entry.size
+	}
 	return nil
 }

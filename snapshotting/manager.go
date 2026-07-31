@@ -27,7 +27,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -41,6 +44,12 @@ type SnapshotManager struct {
 	baseFolder string
 	catalog    Catalog
 	remote     *remoteSnapshotTransfer
+	// diskCacheLimit bounds local chunk and working-set cache data. A negative
+	// value leaves the historical unbounded behaviour in place.
+	diskCacheLimit         int64
+	diskCacheEvictions     uint64
+	diskCacheEvictedBytes  int64
+	diskCacheRemoteReloads uint64
 }
 
 // EnableRemoteTransfer makes committed snapshots available to other workers
@@ -111,8 +120,56 @@ func (mgr *SnapshotManager) EnableChunkCache(directory string) error {
 	if err != nil {
 		return err
 	}
+	mgr.Lock()
+	limit := mgr.diskCacheLimit
+	mgr.Unlock()
+	if limit >= 0 {
+		if err := cache.SetCapacity(limit); err != nil {
+			return err
+		}
+	}
 	remote.setChunkCache(cache)
 	return nil
+}
+
+// SetDiskCacheSize bounds on-disk snapshot cache data in bytes. The budget is
+// shared by recipe chunks and downloaded working-set files. A negative value
+// disables the limit. Evicted data is deliberately not treated as a snapshot
+// failure: AcquireSnapshotContext detects an evicted working set and fetches a
+// fresh copy from the configured remote store.
+func (mgr *SnapshotManager) SetDiskCacheSize(bytes int64) error {
+	if bytes < -1 {
+		return fmt.Errorf("snapshot disk cache size must be non-negative or -1")
+	}
+	mgr.Lock()
+	mgr.diskCacheLimit = bytes
+	mgr.Unlock()
+	return mgr.trimDiskCache(context.Background(), "")
+}
+
+// EnableDiskCacheSize is a compatibility-friendly spelling for configuring a
+// bounded snapshot cache.
+func (mgr *SnapshotManager) EnableDiskCacheSize(bytes int64) error {
+	return mgr.SetDiskCacheSize(bytes)
+}
+
+// SnapshotDiskCacheMetrics makes cache activity observable to benchmark and
+// operational callers. RemoteReloads counts acquires that found an evicted
+// working set and therefore had to fetch the snapshot again.
+type SnapshotDiskCacheMetrics struct {
+	WorkingSetEvictions uint64
+	WorkingSetBytes     int64
+	RemoteReloads       uint64
+}
+
+func (mgr *SnapshotManager) DiskCacheMetrics() SnapshotDiskCacheMetrics {
+	mgr.Lock()
+	defer mgr.Unlock()
+	return SnapshotDiskCacheMetrics{
+		WorkingSetEvictions: mgr.diskCacheEvictions,
+		WorkingSetBytes:     mgr.diskCacheEvictedBytes,
+		RemoteReloads:       mgr.diskCacheRemoteReloads,
+	}
 }
 
 // EnableProvenanceWorkingSets makes subsequent working-set publication split
@@ -173,6 +230,7 @@ func NewSnapshotManager(baseFolder string) *SnapshotManager {
 	manager := new(SnapshotManager)
 	manager.snapshots = make(map[string]*Snapshot)
 	manager.baseFolder = baseFolder
+	manager.diskCacheLimit = -1
 
 	// Clean & init basefolder
 	_ = os.RemoveAll(manager.baseFolder)
@@ -212,11 +270,31 @@ func (mgr *SnapshotManager) AcquireSnapshotContext(ctx context.Context, revision
 	}
 	descriptor, err := catalog.Get(revision)
 	if err == nil {
-		if snap, ok := mgr.snapshots[revision]; ok {
+		if remote != nil && !mgr.hasWorkingSetFiles(descriptor) {
 			mgr.Unlock()
+			mgr.Lock()
+			mgr.diskCacheRemoteReloads++
+			mgr.Unlock()
+			log.WithField("revision", revision).Info("Snapshot working set was evicted; re-fetching remote snapshot")
+			if err := catalog.Delete(revision); err != nil {
+				return nil, fmt.Errorf("remove evicted local snapshot %s: %w", revision, err)
+			}
+			return mgr.AcquireSnapshotContext(ctx, revision)
+		}
+		// A snapshot created locally predates remote publication. Chunked
+		// publication records the recipe in the catalog, but that original
+		// in-memory Snapshot cannot see the new recipe marker. Rebuild the
+		// filesystem adapter from the descriptor so recipe-backed restores use
+		// UFFD instead of attempting to open a non-existent mem_file.
+		if snap, ok := mgr.snapshots[revision]; ok && descriptor.MemoryRecipe == "" {
+			mgr.Unlock()
+			mgr.touchWorkingSet(descriptor)
+			_ = mgr.trimDiskCache(ctx, revision)
 			return snap, nil
 		}
 		mgr.Unlock()
+		mgr.touchWorkingSet(descriptor)
+		_ = mgr.trimDiskCache(ctx, revision)
 		return NewSnapshotFromDescriptor(mgr.baseFolder, descriptor), nil
 	}
 	mgr.Unlock()
@@ -228,7 +306,144 @@ func (mgr *SnapshotManager) AcquireSnapshotContext(ctx context.Context, revision
 	if err != nil {
 		return nil, err
 	}
+	mgr.touchWorkingSet(descriptor)
+	if err := mgr.trimDiskCache(ctx, revision); err != nil {
+		return nil, err
+	}
 	return NewSnapshotFromDescriptor(mgr.baseFolder, descriptor), nil
+}
+
+func (mgr *SnapshotManager) hasWorkingSetFiles(desc *SnapshotDescriptor) bool {
+	for _, artifact := range []struct {
+		enabled bool
+		name    string
+	}{
+		{desc.WorkingSetTrace, desc.Artifacts.WorkingSetTrace},
+		{desc.WorkingSet, desc.Artifacts.WorkingSetPages},
+	} {
+		if !artifact.enabled {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(mgr.baseFolder, desc.Revision, artifact.name)); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func (mgr *SnapshotManager) touchWorkingSet(desc *SnapshotDescriptor) {
+	if desc == nil {
+		return
+	}
+	now := time.Now()
+	for _, artifact := range []struct {
+		enabled bool
+		name    string
+	}{
+		{desc.WorkingSetTrace, desc.Artifacts.WorkingSetTrace},
+		{desc.WorkingSet, desc.Artifacts.WorkingSetPages},
+	} {
+		if artifact.enabled {
+			_ = os.Chtimes(filepath.Join(mgr.baseFolder, desc.Revision, artifact.name), now, now)
+		}
+	}
+}
+
+type workingSetCacheFile struct {
+	path     string
+	size     int64
+	access   time.Time
+	revision string
+}
+
+// trimDiskCache removes the least-recently-used working-set files before
+// handing the remaining budget to the chunk cache. keepRevision is the
+// snapshot currently being acquired and is never evicted in that operation.
+func (mgr *SnapshotManager) trimDiskCache(ctx context.Context, keepRevision string) error {
+	mgr.Lock()
+	limit, baseFolder, remote := mgr.diskCacheLimit, mgr.baseFolder, mgr.remote
+	mgr.Unlock()
+	// Local-only snapshots have no recovery source, so they are never treated
+	// as cache entries.
+	if limit < 0 || remote == nil {
+		return nil
+	}
+	var cache *FileChunkCache
+	if remote != nil {
+		remote.mu.Lock()
+		cache, _ = remote.chunkCache.(*FileChunkCache)
+		remote.mu.Unlock()
+	}
+	chunkBytes := int64(0)
+	if cache != nil {
+		// First account for persisted chunks from earlier processes.
+		if err := cache.SetCapacity(-1); err != nil {
+			return err
+		}
+		chunkBytes = cache.Metrics().Bytes
+	}
+	files, err := findWorkingSetCacheFiles(baseFolder, keepRevision)
+	if err != nil {
+		return err
+	}
+	workingSetBytes := int64(0)
+	for _, file := range files {
+		workingSetBytes += file.size
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].access.Before(files[j].access) })
+	for _, file := range files {
+		if workingSetBytes+chunkBytes <= limit {
+			break
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := os.Remove(file.path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("evict cached working set %s: %w", file.path, err)
+		}
+		mgr.Lock()
+		mgr.diskCacheEvictions++
+		mgr.diskCacheEvictedBytes += file.size
+		mgr.Unlock()
+		log.WithFields(log.Fields{
+			"revision": file.revision,
+			"artifact": filepath.Base(file.path),
+			"bytes":    file.size,
+			"limit":    limit,
+		}).Info("Evicted snapshot working-set cache artifact")
+		workingSetBytes -= file.size
+	}
+	if cache != nil {
+		return cache.SetCapacity(limit - workingSetBytes)
+	}
+	return nil
+}
+
+func findWorkingSetCacheFiles(baseFolder, keepRevision string) ([]workingSetCacheFile, error) {
+	dirs, err := os.ReadDir(baseFolder)
+	if err != nil {
+		return nil, fmt.Errorf("read snapshot cache directory: %w", err)
+	}
+	var files []workingSetCacheFile
+	for _, dir := range dirs {
+		if !dir.IsDir() || dir.Name() == keepRevision {
+			continue
+		}
+		for _, name := range []string{defaultArtifactNames().WorkingSetTrace, defaultArtifactNames().WorkingSetPages} {
+			path := filepath.Join(baseFolder, dir.Name(), name)
+			info, err := os.Stat(path)
+			if os.IsNotExist(err) {
+				continue
+			}
+			if err != nil {
+				return nil, fmt.Errorf("stat cached working set %s: %w", path, err)
+			}
+			if info.Mode().IsRegular() {
+				files = append(files, workingSetCacheFile{path: path, size: info.Size(), access: info.ModTime(), revision: dir.Name()})
+			}
+		}
+	}
+	return files, nil
 }
 
 // InitSnapshot initializes a snapshot by adding its metadata to the SnapshotManager. Once the snapshot has

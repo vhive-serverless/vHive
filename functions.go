@@ -28,6 +28,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -90,8 +91,16 @@ func NewFuncPool(saveMemoryMode bool, servedTh uint64, pinnedFuncNum int, testMo
 
 	isTestMode = testModeOn
 
-	p.snapshotManager.EnableRemoteTransfer(orch.ArtifactStore(), false)
+	p.snapshotManager.EnableRemoteTransfer(orch.ArtifactStore(), orch.GetCacheSnaps())
 	p.snapshotManager.EnableChunkedMemory(orch.GetChunkedMemorySize())
+	if err := p.snapshotManager.SetDiskCacheSize(orch.GetSnapshotDiskCacheSize()); err != nil {
+		log.Panicf("Failed to configure snapshot disk cache: %v", err)
+	}
+	if orch.GetSnapshotDiskCacheSize() >= 0 && orch.ArtifactStore() != nil && orch.GetChunkedMemorySize() > 0 {
+		if err := p.snapshotManager.EnableChunkCache(filepath.Join("/fccd/snapshots", ".chunks")); err != nil {
+			log.Panicf("Failed to enable snapshot chunk cache: %v", err)
+		}
+	}
 
 	return p
 }

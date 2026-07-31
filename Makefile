@@ -177,6 +177,12 @@ test-skip:
 	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS_NORACE) -run TestParallelServe -args $(WITHSNAPSHOTS) $(WITHUPF) $(WITHLAZY)
 	./scripts/clean_fcctr.sh
 
+bench-evict:
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchWorkingSetCacheEviction -args -workingSetCacheBench -iter 3 $(WITHSNAPSHOTS) $(WITHUPF) $(WITHWSCOALESCING) $(WITHREMOTE) $(WITHCHUNKED512) -benchDirTest bench_results/configCache -metricsTest -funcName helloworld
+	./scripts/clean_fcctr.sh
+
 bench:
 	./scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
