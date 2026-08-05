@@ -30,8 +30,8 @@ require (
 	gonum.org/v1/gonum v0.17.0
 	gonum.org/v1/plot v0.17.0
 	google.golang.org/grpc v1.82.0
-	google.golang.org/protobuf v1.36.11
-	k8s.io/cri-api v0.27.1
+	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
+	k8s.io/cri-api v0.36.2
 )
 
 require (
