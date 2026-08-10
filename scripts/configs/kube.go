@@ -30,7 +30,6 @@ type KubeConfigStruct struct {
 	ApiserverPort             string
 	ApiserverToken            string
 	ApiserverTokenHash        string
-	CalicoVersion             string
 }
 
 var Kube = KubeConfigStruct{}

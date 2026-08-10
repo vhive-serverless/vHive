@@ -66,7 +66,6 @@ type KubeConfigStruct struct {
 	ApiserverPort             string
 	ApiserverToken            string
 	ApiserverTokenHash        string
-	CalicoVersion             string
 }
 
 type SystemEnvironmentStruct struct {

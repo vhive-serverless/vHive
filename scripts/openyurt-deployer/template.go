@@ -15,12 +15,10 @@ done <<< ${existingPods}
 IFS=${originalIFS}`
 )
 
-var vHiveConfigsURL = "https://raw.githubusercontent.com/anshalshukla/vHive/release-1.9/configs"
-
 func GetRestartPodsShell() string {
 	return restartPodsShellTemplate
 }
 
 func GetNetworkAddonConfigURL() string {
-	return vHiveConfigsURL + "/calico/canal.yaml"
+	return "https://raw.githubusercontent.com/TomQuartz/kubedirect-ae/main/manifests/kubeadm/flannel.yaml"
 }

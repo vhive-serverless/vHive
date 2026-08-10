@@ -501,9 +501,9 @@ func (node *Node) KubeMasterInit() (string, string, string, string) {
 		node.Configs.System.UserHomeDir)
 	utils.CheckErrorWithMsg(err, "Failed to make kubectl work for non-root user!\n")
 
-	// Install Calico network add-on
-	configs.Kube.CalicoVersion = node.Configs.Kube.CalicoVersion // TODO: @jchua99, pls fix
-	cluster.InstallCalico()
+	// Install the shared Flannel network add-on.
+	configs.Kube.PodNetworkCidr = node.Configs.Kube.PodNetworkCidr
+	utils.CheckErrorWithMsg(cluster.InstallFlannel(), "Failed to install Flannel network add-on!\n")
 
 	// Extract master node information from logs
 	utils.WaitPrintf("Extracting master node information from logs")

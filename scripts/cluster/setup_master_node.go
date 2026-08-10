@@ -23,8 +23,10 @@
 package cluster
 
 import (
+	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	configs "github.com/vhive-serverless/vHive/scripts/configs"
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
@@ -33,7 +35,7 @@ import (
 func SetupMasterNode(stockContainerd string) error {
 	// Original Bash Scripts: scripts/cluster/setup_master_node.sh
 
-	err := InstallCalico()
+	err := InstallFlannel()
 	if err != nil {
 		return err
 	}
@@ -111,27 +113,55 @@ func SetupMasterNode(stockContainerd string) error {
 	return nil
 }
 
-// Install Calico network add-on
-func InstallCalico() error {
+const kubeDirectFlannelManifestURL = "https://raw.githubusercontent.com/TomQuartz/kubedirect-ae/main/manifests/kubeadm/flannel.yaml"
+
+const (
+	kubeDirectIfaceRegex   = "--iface-regex=10\\.10\\.*\\.*"
+	experimentalIfaceRegex = "--iface-regex=10\\.0\\.*\\.*"
+)
+
+// InstallFlannel installs the Flannel configuration used by kubedirect-ae. The
+// manifest pins flannel-cni-plugin to v1.5.1-flannel1 and the Flannel daemon to
+// v0.25.5.
+func InstallFlannel() error {
 	utils.WaitPrintf("Installing pod network")
 
-	_, err := utils.ExecShellCmd("wget -nc https://raw.githubusercontent.com/projectcalico/calico/v%s/manifests/calico.yaml -P %s",
-		configs.Kube.CalicoVersion, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico")))
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to download stock version of Calico!\n") {
+	flannelConfigDir := path.Join(configs.VHive.VHiveRepoPath, "configs", "flannel")
+	flannelManifestPath := path.Join(flannelConfigDir, "flannel.yaml")
+	if err := os.MkdirAll(flannelConfigDir, 0o755); err != nil {
+		return err
+	}
+	_, err := utils.ExecShellCmd("wget -O %s %s", flannelManifestPath, kubeDirectFlannelManifestURL)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to download the kubedirect-ae Flannel manifest!\n") {
 		return err
 	}
 
-	_, err = utils.ExecShellCmd(`yq -i '(select (.kind == "DaemonSet" and .metadata.name == "calico-node" and
-	.spec.template.spec.containers[].name == "calico-node") |
-	.spec.template.spec.containers[].env) += {"name": "IP_AUTODETECTION_METHOD", "value": "kubernetes-internal-ip"}' %s`,
-		path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to patch Calico!\n") {
+	// kubedirect-ae targets CloudLab's 10.10.0.0/16 private network. vHive
+	// experiment profiles assign their experiment-facing interfaces from
+	// 10.0.0.0/16 instead.
+	manifest, err := os.ReadFile(flannelManifestPath)
+	if err != nil {
+		return err
+	}
+	updatedManifest := strings.ReplaceAll(string(manifest), kubeDirectIfaceRegex, experimentalIfaceRegex)
+	if updatedManifest == string(manifest) {
+		return fmt.Errorf("kubedirect-ae Flannel manifest does not contain interface selector %q", kubeDirectIfaceRegex)
+	}
+	if err := os.WriteFile(flannelManifestPath, []byte(updatedManifest), 0o644); err != nil {
+		return err
+	}
+
+	// kubedirect-ae uses 10.244.0.0/16. Keep its manifest otherwise unchanged,
+	// but match vHive's kubeadm --pod-network-cidr setting.
+	_, err = utils.ExecShellCmd(`yq -i 'select(.kind == "ConfigMap" and .metadata.name == "kube-flannel-cfg").data."net-conf.json" |= sub("10.244.0.0/16"; "%s")' %s`,
+		configs.Kube.PodNetworkCidr, flannelManifestPath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure Flannel's pod network CIDR!\n") {
 		return err
 	}
 
 	utils.SuccessPrintf("All nodes are ready!\n")
-	_, err = utils.ExecShellCmd(`kubectl apply -f %s`, path.Join(configs.VHive.VHiveRepoPath, path.Join("configs/calico", "calico.yaml")))
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to apply Calico!\n") {
+	_, err = utils.ExecShellCmd(`kubectl apply -f %s`, flannelManifestPath)
+	if !utils.CheckErrorWithTagAndMsg(err, "Failed to apply Flannel!\n") {
 		return err
 	}
 

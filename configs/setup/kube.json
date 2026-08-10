@@ -1,10 +1,9 @@
 {
-	"K8sVersion": "1.29.1",
+	"K8sVersion": "1.32.0",
 	"AlternativeImageRepo": "",
 	"ApiserverAdvertiseAddress": "",
 	"PodNetworkCidr": "192.168.0.0/16",
 	"ApiserverPort": "6443",
 	"ApiserverToken": "",
-	"ApiserverTokenHash": "",
-	"CalicoVersion": "3.27.3"
+	"ApiserverTokenHash": ""
 }
