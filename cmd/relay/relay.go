@@ -103,9 +103,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	port, err := strconv.Atoi(r.Header.Get("port"))
 	if err != nil {
-		port = 50051
+		port = 80
 	}
 	envArr = append(envArr, fmt.Sprintf("PORT=%d", port))
+	envArr = append(envArr, fmt.Sprintf("FUNC_PORT_ENV=%d", port))
 	log.Debugf("env vars: %v, args: %v", envArr, argsArr)
 
 	var resp *ctriface.StartVMResponse
