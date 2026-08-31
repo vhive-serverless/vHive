@@ -113,7 +113,7 @@ func SetupMasterNode(stockContainerd string) error {
 	return nil
 }
 
-const kubeDirectFlannelManifestURL = "https://raw.githubusercontent.com/TomQuartz/kubedirect-ae/main/manifests/kubeadm/flannel.yaml"
+const kubeDirectFlannelManifestURL = "https://raw.githubusercontent.com/hyscale-lab/kubedirect/pulsenet/manifests/kubeadm/flannel.yaml"
 
 const (
 	kubeDirectIfaceRegex   = "--iface-regex=10\\.10\\.*\\.*"

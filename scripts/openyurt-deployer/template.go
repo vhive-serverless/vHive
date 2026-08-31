@@ -20,5 +20,5 @@ func GetRestartPodsShell() string {
 }
 
 func GetNetworkAddonConfigURL() string {
-	return "https://raw.githubusercontent.com/TomQuartz/kubedirect-ae/main/manifests/kubeadm/flannel.yaml"
+	return "https://raw.githubusercontent.com/hyscale-lab/kubedirect/pulsenet/manifests/kubeadm/flannel.yaml"
 }
