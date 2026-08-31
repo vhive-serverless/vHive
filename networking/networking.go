@@ -587,7 +587,7 @@ func getNetworkStartID() (int, error) {
 		if !entry.IsDir() {
 			netnsName := entry.Name()
 
-			re := regexp.MustCompile(`^uvmns([0-9]+)$`)
+			re := regexp.MustCompile(`^uvmns-pn([0-9]+)$`)
 			regres := re.FindStringSubmatch(netnsName)
 
 			if len(regres) > 1 {
