@@ -230,6 +230,7 @@ func main() {
 	isWSCompression := flag.Bool("wsCompression", false, "Compress monolithic/private working set contents on disk and in MinIO")
 	hostIface := flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize := flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
+	shimPoolSize := flag.Int("shimPoolSize", 5, "Amount of shims to preallocate in a pool")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
 	dockerCredentials := flag.String("dockerCredentials", `{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}`, "Docker credentials for pulling images from inside a microVM") // https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds
@@ -311,7 +312,7 @@ func main() {
 		ctriface.WithMinioAccessKey(minioAccessKey),
 		ctriface.WithMinioSecretKey(minioSecretKey),
 		ctriface.WithSnapshotsStorage(snapDir),
-		ctriface.WithShimPoolSize(5),
+		ctriface.WithShimPoolSize(*shimPoolSize),
 		ctriface.WithCacheSize(*cacheSize),
 		ctriface.WithSecurityMode(*security),
 		ctriface.WithThreads(*threads),
