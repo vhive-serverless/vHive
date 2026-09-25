@@ -98,8 +98,9 @@ func (mgr *ImageManager) pullImage(ctx context.Context, imageName string) error 
 	if local {
 		// Pull local image using HTTP
 		resolver := docker.NewResolver(docker.ResolverOptions{
-			Client: http.DefaultClient,
 			Hosts: docker.ConfigureDefaultRegistries(
+				docker.WithAuthorizer(docker.NewDockerAuthorizer(docker.WithAuthClient(http.DefaultClient))),
+				docker.WithClient(http.DefaultClient),
 				docker.WithPlainHTTP(docker.MatchAllHosts),
 			),
 		})
@@ -181,7 +182,10 @@ func isLocalDomain(s string) (bool, error) {
 // Checks whether a container image uses the eStargz format
 func isEstargzImage(ctx context.Context, client *containerd.Client, imageName string) (bool, error) {
 	resolver := docker.NewResolver(docker.ResolverOptions{
-		Client: http.DefaultClient,
+		Hosts: docker.ConfigureDefaultRegistries(
+			docker.WithAuthorizer(docker.NewDockerAuthorizer(docker.WithAuthClient(http.DefaultClient))),
+			docker.WithClient(http.DefaultClient),
+		),
 	})
 
 	// Pull only the manifest
