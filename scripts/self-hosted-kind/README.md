@@ -1,8 +1,9 @@
 # Self-Hosted Stock-Knative on KinD Runners
 
+> **Note:** This guide is old and may be outdated.
+
 ## Setup
-1. Install Ansible on your **local** machine: \
-   https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#installing-ansible-on-specific-operating-systems
+1. Install Ansible on your **local** machine by following the [official installation guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#installing-ansible-on-specific-operating-systems).
 2. Start a new experiment on Cloudlab:
     - Profile: `small-lan`
     - OS Image: `UBUNTU 18.04`

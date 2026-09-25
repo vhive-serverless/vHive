@@ -180,7 +180,7 @@ inefficient and could be sped up by directly extracting the changed block offset
 and directly reading these blocks from the VM rootfs block device. These extracted blocks could then be written
 back at the correct offsets on top of the base image block device to create a root filesystem for the to be restored
 VM. However, for this approach to work across nodes for remote snapshots, support to [deterministically flatten a
-container image into a filesystem](https://assets.amazon.science/25/06/d2e5ea9c411c9e4d366aa2fbbca5/on-demand-container-loading-in-aws-lambda.pdf)
+container image into a filesystem](https://www.usenix.org/conference/atc23/presentation/brooker)
 (GH-824) would be required to ensure the block devices of identical images pulled to different nodes are bit-identical.
 In addition, further optimisations would be necessary to more efficiently extract filesystem changes from the thinpool
 metadata device.
