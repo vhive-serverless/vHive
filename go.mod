@@ -9,7 +9,7 @@ replace (
 )
 
 require (
-	github.com/containerd/containerd v1.7.33
+	github.com/containerd/containerd v1.7.35
 	github.com/containerd/log v0.1.0
 	github.com/containerd/stargz-snapshotter v0.11.3
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
