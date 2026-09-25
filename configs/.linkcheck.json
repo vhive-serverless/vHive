@@ -8,6 +8,15 @@
         },
         {
             "pattern": "^https://twitter.com*"
+        },
+        {
+            "pattern": "^https://join.slack.com*"
+        },
+        {
+            "pattern": "^https://ieeexplore.ieee.org/document/6844459$"
+        },
+        {
+            "pattern": "^https://docs\\.ansible\\.com/ansible/latest/installation_guide/intro_installation\\.html#installing-ansible-on-specific-operating-systems$"
         }
     ],
     "replacementPatterns": [

@@ -79,7 +79,7 @@
 
 ### Added
 - Added support for arm64 ubuntu 18.04 in stock-only setup with [setup scripts](./scripts/setup.go).
-- Added support for [`K8 Power Manager`](https://networkbuilders.intel.com/solutionslibrary/power-manager-a-kubernetes-power-operator-technology-guide), a Kubernetes operator designed to manage and optimize power consumption in a Kubernetes cluster. More details are described [here](docs/power_manager.md).
+- Added support for [`K8 Power Manager`](https://github.com/intel/kubernetes-power-manager), a Kubernetes operator designed to manage and optimize power consumption in a Kubernetes cluster. More details are described [here](docs/power_manager.md).
 
 ## Changed
 

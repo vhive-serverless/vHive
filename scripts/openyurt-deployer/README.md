@@ -105,7 +105,7 @@ go build .
 ```
 
 ## 4. Demo: Create `NodePool` And Deploy service on it
-**Referenced from [`OpenYurt`](https://openyurt.io/docs/user-manuals/workload/node-pool-management)*
+**Referenced from [`OpenYurt`](https://openyurt.io/docs/user-manuals/node-pool-management/node-pool-management-overview/)*
 
 ### 4.1 
 

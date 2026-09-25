@@ -70,5 +70,5 @@ In contrast, **Broker-Trigger** model has a _star_ topology:
 See [examples/knative-eventing-tutorial](https://github.com/vhive-serverless/vSwarm/blob/main/tools/knative-eventing-tutorial/README.md) for a step by step tutorial with all its source code available.
 
 ## See Also
-- [_Knative Eventing Delivery Methods_ by Mete Atamel](https://medium.com/google-cloud/knative-eventing-delivery-methods-79d4ebe30a68)
+- [_Knative Eventing Delivery Methods_ by Mete Atamel](https://atamel.dev/posts/2020/03-12_knative-eventing-delivery-methods-79d4ebe30a68/)
 - [_Serverless and Knative - Part 3: Knative Eventing_ by Harald Uebele](https://haralduebele.github.io/2020/06/10/serverless-and-knative-part-3-knative-eventing/)
