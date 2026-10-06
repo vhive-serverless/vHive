@@ -27,8 +27,8 @@ func TestZstdWorkingSetRemoteRangeRoundTrip(t *testing.T) {
 		WorkingSet: true,
 		Codec:      CompressionCodecZstd,
 		Level:      3,
-		FrameSize:  64 * 1024,
-		Fetchers:   4,
+		WSLayout:   "streams8-v1",
+		Fetchers:   8,
 	}))
 
 	snap, err := mgr.InitSnapshot("zstd-ws-test", "test-image")
@@ -47,7 +47,7 @@ func TestZstdWorkingSetRemoteRangeRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	defer release()
 	require.Equal(t, raw, decoded)
-	require.Greater(t, store.rangeOpenCount(), 1)
+	require.Equal(t, 8, store.rangeOpenCount())
 }
 
 func TestZstdWorkingSetFailsClosedWithoutManifest(t *testing.T) {
@@ -59,8 +59,8 @@ func TestZstdWorkingSetFailsClosedWithoutManifest(t *testing.T) {
 		WorkingSet: true,
 		Codec:      CompressionCodecZstd,
 		Level:      3,
-		FrameSize:  64 * 1024,
-		Fetchers:   2,
+		WSLayout:   "streams8-v1",
+		Fetchers:   8,
 	}))
 	snap, err := mgr.InitSnapshot("missing-manifest", "test-image")
 	require.NoError(t, err)
@@ -280,6 +280,17 @@ func (store *memoryRangeStorage) DownloadObject(key string) ([]byte, error) {
 		return nil, fmt.Errorf("missing object %s", key)
 	}
 	return data, nil
+}
+
+func (store *memoryRangeStorage) OpenObject(ctx context.Context, key string) (io.ReadCloser, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	data, err := store.DownloadObject(key)
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
 func (store *memoryRangeStorage) Exists(key string) (bool, error) {

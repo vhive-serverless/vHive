@@ -140,12 +140,12 @@ func main() {
 	encryption := flag.Bool("encryption", false, "Use encryption")
 	baseDir := flag.String("baseDir", "/tmp", "Base directory containing images folder")
 	wsCoalescing := flag.Bool("wsCoalescing", false, "Enable WS coalescing")
-	wsCompression := flag.Bool("wsCompression", false, "Store coalesced private/full working sets as independently framed Zstd")
+	wsCompression := flag.Bool("wsCompression", false, "Store coalesced private/full working sets as eight independent long Zstd streams")
 	chunkCompression := flag.Bool("chunkCompression", false, "Store each converted snapshot chunk as an independent Zstd frame")
 	preserveRecipe := flag.Bool("preserveRecipe", false, "Preserve an existing chunk recipe while materializing the configured chunk representation")
 	zstdLevel := flag.Int("zstdLevel", snapshotting.DefaultZstdLevel, "Zstd compression level")
-	zstdFrameSize := flag.Int64("zstdFrameSize", snapshotting.DefaultZstdFrameSize, "Uncompressed bytes per independent WS Zstd frame")
-	zstdFetchers := flag.Int("zstdFetchers", snapshotting.DefaultZstdFetchers, "Maximum concurrent Zstd frame range GET/decode workers")
+	zstdWSLayout := flag.String("zstdWSLayout", "streams8-v1", "Coalesced WS layout (streams8-v1: eight long Range GETs and eight decoders)")
+	zstdFetchers := flag.Int("zstdFetchers", snapshotting.DefaultZstdFetchers, "WS stream range GET/decoder count (must be 8)")
 	wsRecording := flag.Bool("wsRecording", false, "Enable WS recording")
 	lazy := flag.Bool("lazy", false, "Skip reconstructing complete memory files while converting chunked snapshots")
 	chunkSize := flag.Uint64("chunkSize", 4096, "Chunk size for chunking")
@@ -197,13 +197,13 @@ func main() {
 		Chunks:     *chunkCompression,
 		Codec:      snapshotting.CompressionCodecZstd,
 		Level:      *zstdLevel,
-		FrameSize:  *zstdFrameSize,
+		WSLayout:   *zstdWSLayout,
 		Fetchers:   *zstdFetchers,
 	}); err != nil {
 		log.Fatalf("Invalid compression configuration: %v", err)
 	}
-	log.Infof("SNAPSHOT_CONVERTER_COMPRESSION_CONFIG ws=%t chunks=%t codec=zstd level=%d frame_size=%d fetchers=%d",
-		*wsCompression, *chunkCompression, *zstdLevel, *zstdFrameSize, *zstdFetchers)
+	log.Infof("SNAPSHOT_CONVERTER_COMPRESSION_CONFIG ws=%t chunks=%t codec=zstd level=%d layout=%s fetchers=%d",
+		*wsCompression, *chunkCompression, *zstdLevel, *zstdWSLayout, *zstdFetchers)
 	log.Info("Waiting for snapshot manager to initialize chunks...")
 	mgr.WaitForInit()
 

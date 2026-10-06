@@ -55,7 +55,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/vhive-serverless/vhive/snapshotting/zstdstream"
+	"github.com/vhive-serverless/vhive/snapshotting/zstdstreams"
 	"github.com/vhive-serverless/vhive/storage"
 	"golang.org/x/sys/unix"
 )
@@ -79,7 +79,7 @@ const (
 	CompressionCodecZstd       = "zstd"
 	DefaultZstdLevel           = 3
 	DefaultZstdFrameSize       = 1024 * 1024
-	DefaultZstdFetchers        = 10
+	DefaultZstdFetchers        = zstdstreams.MaxStreams
 )
 
 var imageChunks = map[string]map[[16]byte]bool{}
@@ -121,14 +121,15 @@ type CompressionConfig struct {
 	Level      int
 	FrameSize  int64
 	Fetchers   int
+	WSLayout   string
 }
 
 func DefaultCompressionConfig() CompressionConfig {
 	return CompressionConfig{
-		Codec:     CompressionCodecNone,
-		Level:     DefaultZstdLevel,
-		FrameSize: DefaultZstdFrameSize,
-		Fetchers:  DefaultZstdFetchers,
+		Codec:    CompressionCodecNone,
+		Level:    DefaultZstdLevel,
+		Fetchers: DefaultZstdFetchers,
+		WSLayout: zstdstreams.Layout,
 	}
 }
 
@@ -158,6 +159,9 @@ func (mgr *SnapshotManager) GetCleanChunks() bool {
 // SnapshotRemoteFetchStats returns exact response-byte counters when the
 // configured remote object store supports them.
 func (mgr *SnapshotManager) SnapshotRemoteFetchStats() (storage.RemoteFetchStats, bool) {
+	if mgr.storage == nil {
+		return storage.RemoteFetchStats{StorageDisabled: true, Classes: map[string]storage.RemoteFetchClassStats{}}, true
+	}
 	tracked, ok := mgr.storage.(storage.RemoteFetchStatsStorage)
 	if !ok {
 		return storage.RemoteFetchStats{}, false
@@ -168,6 +172,9 @@ func (mgr *SnapshotManager) SnapshotRemoteFetchStats() (storage.RemoteFetchStats
 // ResetRemoteFetchStats resets process-local counters at an experiment
 // boundary. Callers must ensure no restore is active.
 func (mgr *SnapshotManager) ResetRemoteFetchStats() bool {
+	if mgr.storage == nil {
+		return true
+	}
 	tracked, ok := mgr.storage.(storage.RemoteFetchStatsStorage)
 	if !ok {
 		return false
@@ -829,6 +836,10 @@ type SnapshotManager struct {
 	wsPersistLock    sync.Map // image name -> *sync.Mutex
 	chunkEncoderPool sync.Pool
 	chunkDecoderPool sync.Pool
+	wsStreamEpoch    sync.Map // revision -> *atomic.Uint64; invalidates asynchronous cache publications
+	wsStreamPublish  sync.Map // revision -> *sync.Mutex; serializes final cache publication
+	wsStreamWrites   sync.WaitGroup
+	wsStreamPending  atomic.Int64
 
 	// Used to store remote snapshots
 	storage storage.ObjectStorage
@@ -881,7 +892,7 @@ func readTarChunkHashes(tarFilePath string, chunkSize uint64) (map[[16]byte]bool
 }
 
 func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking, skipCleanup, lazy, wsPulling, optimizeWS, wsRecording bool,
-	chunkSize uint64, cacheSize uint64, securityMode string, threads int, encryption, cleanChunks bool) *SnapshotManager {
+	chunkSize uint64, cacheSize uint64, securityMode string, threads int, encryption, cleanChunks bool, cacheHTTPAddress ...string) *SnapshotManager {
 	manager := &SnapshotManager{
 		snapshots:     make(map[string]*Snapshot),
 		baseFolder:    baseFolder,
@@ -915,7 +926,13 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 		_ = manager.RecoverSnapshots()
 	}
 
-	manager.startWorkingSetCacheServer()
+	cacheEndpoint := ":8081"
+	if len(cacheHTTPAddress) > 0 {
+		cacheEndpoint = cacheHTTPAddress[0]
+	}
+	if cacheEndpoint != "" {
+		manager.startWorkingSetCacheServer(cacheEndpoint)
+	}
 
 	manager.initWg.Add(1)
 	go func() {
@@ -924,12 +941,14 @@ func NewSnapshotManager(baseFolder string, store storage.ObjectStorage, chunking
 			return
 		}
 
-		imagesDir := filepath.Join(baseFolder, "..", "images")
-		if _, err := os.Stat(imagesDir); err != nil {
+		// WalkDir does not traverse a symlink supplied as its root. Isolated
+		// caches reuse immutable classification assets via a sibling symlink.
+		imagesDir, err := filepath.EvalSymlinks(filepath.Join(baseFolder, "..", "images"))
+		if err != nil {
 			log.Errorf("failed to read images directory: %v", err)
 			return
 		}
-		err := filepath.WalkDir(imagesDir, func(path string, entry os.DirEntry, walkErr error) error {
+		err = filepath.WalkDir(imagesDir, func(path string, entry os.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
@@ -977,14 +996,16 @@ func (mgr *SnapshotManager) ConfigureCompression(config CompressionConfig) error
 	if (config.WorkingSet || config.Chunks) && config.Codec != CompressionCodecZstd {
 		return fmt.Errorf("enabled compression requires codec %q", CompressionCodecZstd)
 	}
-	if config.FrameSize <= 0 {
-		return fmt.Errorf("compression frame size must be positive")
-	}
-	if config.FrameSize%4096 != 0 {
-		return fmt.Errorf("compression frame size %d must be 4-KiB aligned", config.FrameSize)
-	}
-	if config.Fetchers < 1 {
-		return fmt.Errorf("compression fetchers must be positive")
+	if config.WorkingSet {
+		if config.WSLayout == "" {
+			config.WSLayout = zstdstreams.Layout
+		}
+		if config.Fetchers == 0 {
+			config.Fetchers = DefaultZstdFetchers
+		}
+		if config.WSLayout != zstdstreams.Layout || config.Fetchers != zstdstreams.MaxStreams || config.FrameSize != 0 {
+			return fmt.Errorf("compressed WS requires layout=%s, fetchers=8 and no frame-size parameter", zstdstreams.Layout)
+		}
 	}
 	if config.Chunks && !mgr.chunking {
 		return fmt.Errorf("chunk compression requires chunking")
@@ -1083,14 +1104,14 @@ func (mgr *SnapshotManager) decodeChunkRepresentation(stored []byte) ([]byte, er
 }
 
 func workingSetZstdPayloadPath(rawPath string) string {
-	return rawPath + ".zstd.frames"
+	return rawPath + zstdstreams.PayloadSuffix
 }
 
 func workingSetZstdManifestPath(rawPath string) string {
-	return rawPath + ".zstd.json"
+	return rawPath + zstdstreams.ManifestSuffix
 }
 
-func (mgr *SnapshotManager) startWorkingSetCacheServer() {
+func (mgr *SnapshotManager) startWorkingSetCacheServer(endpoint string) {
 	wsCacheHTTPServerOnce.Do(func() {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/cached-working-sets", func(w http.ResponseWriter, r *http.Request) {
@@ -1113,7 +1134,7 @@ func (mgr *SnapshotManager) startWorkingSetCacheServer() {
 		})
 
 		go func() {
-			if err := http.ListenAndServe(":8081", mux); err != nil {
+			if err := http.ListenAndServe(endpoint, mux); err != nil {
 				log.WithError(err).Warn("working-set cache HTTP server stopped")
 			}
 		}()
@@ -1149,6 +1170,9 @@ func (mgr *SnapshotManager) ListCachedWorkingSetRevisions() ([]string, error) {
 
 func hasCachedWorkingSetOnDisk(revisionDir string) bool {
 	for _, file := range workingSetCacheFileNames() {
+		if !hasCommittedStreamCompanion(revisionDir, file) {
+			continue
+		}
 		path := filepath.Join(revisionDir, file)
 		if stat, err := os.Stat(path); err == nil && stat.Size() > 0 {
 			return true
@@ -1428,6 +1452,9 @@ func (mgr *SnapshotManager) DeleteSnapshot(revision string) error {
 		return errors.New(fmt.Sprintf("Delete: Snapshot for revision %s does not exist", revision))
 	}
 
+	mgr.wsRegistry.deletionLock.Lock()
+	defer mgr.wsRegistry.deletionLock.Unlock()
+	mgr.streamEpoch(revision).Add(1)
 	_ = snap.Cleanup()
 	mgr.wsRegistry.UnregisterWorkingSet(revision)
 
@@ -1833,34 +1860,7 @@ func (mgr *SnapshotManager) persistWorkingSetContent(revision, rawPath string, c
 		return mgr.uploadFile(revision, rawPath)
 	}
 
-	started := time.Now()
-	payload, manifest, err := zstdstream.Encode(content, mgr.compression.FrameSize, mgr.compression.Level)
-	if err != nil {
-		return errors.Wrap(err, "encode framed zstd working set")
-	}
-	manifestData, err := zstdstream.MarshalManifest(manifest)
-	if err != nil {
-		return errors.Wrap(err, "serialize framed zstd manifest")
-	}
-	payloadPath := workingSetZstdPayloadPath(rawPath)
-	manifestPath := workingSetZstdManifestPath(rawPath)
-	if err := os.WriteFile(payloadPath, payload, 0644); err != nil {
-		return errors.Wrap(err, "write framed zstd payload")
-	}
-	if err := os.WriteFile(manifestPath, manifestData, 0644); err != nil {
-		return errors.Wrap(err, "write framed zstd manifest")
-	}
-	if err := mgr.uploadFile(revision, payloadPath); err != nil {
-		return errors.Wrap(err, "upload framed zstd payload")
-	}
-	if err := mgr.uploadFile(revision, manifestPath); err != nil {
-		return errors.Wrap(err, "upload framed zstd manifest")
-	}
-	_ = os.Remove(rawPath)
-	log.Infof("ZSTD_WS_ENCODE revision=%s raw_bytes=%d compressed_bytes=%d frames=%d level=%d frame_size=%d elapsed_us=%d",
-		revision, len(content), len(payload), len(manifest.Frames), mgr.compression.Level,
-		mgr.compression.FrameSize, time.Since(started).Microseconds())
-	return nil
+	return mgr.persistWorkingSetStreams(revision, rawPath, content)
 }
 
 func normalizeImageName(imageName string) string {
@@ -2816,54 +2816,19 @@ func (mgr *SnapshotManager) GetWorkingSetContent(snap *Snapshot) ([]byte, error)
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContentSources(snap *Snapshot) (*WorkingSetContentSources, error) {
-	if mgr.securityMode == SecurityModeFull {
-		return nil, nil
-	}
-
-	privateContent, err := mgr.GetWorkingSetContent(snap)
-	if err != nil {
-		if mgr.compression.WorkingSet && !mgr.wsRecording {
-			return nil, errors.Wrap(err, "loading required compressed private working set")
-		}
-		privateContent = nil
-	}
-
-	privateIndex, err := mgr.GetSnapshotFileContent(snap, snap.GetWSPrivateIndexFilePath())
-	if err != nil {
-		privateIndex = nil
-	}
-
-	baseSource, err := mgr.getSharedWSSource("")
+	sources, release, err := mgr.GetWorkingSetContentSourcesManaged(snap)
 	if err != nil {
 		return nil, err
 	}
-
-	var imageSource *WorkingSetContentSource
-	if mgr.sharesImagePages() {
-		imageSource, err = mgr.getSharedWSSource(normalizeImageName(snap.GetImage()))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(privateContent) == 0 && len(privateIndex) == 0 && baseSource == nil && imageSource == nil {
+	defer release()
+	if sources == nil {
 		return nil, nil
 	}
-
-	sources := &WorkingSetContentSources{
-		Private: WorkingSetContentSource{
-			Content: privateContent,
-			Index:   privateIndex,
-		},
-	}
-	if baseSource != nil {
-		sources.BaseRootfs = *baseSource
-	}
-	if imageSource != nil {
-		sources.Image = *imageSource
-	}
-
-	return sources, nil
+	// The unmanaged caller owns private bytes after the managed mmap is released.
+	result := *sources
+	result.Private.Content = append([]byte(nil), sources.Private.Content...)
+	result.Private.Index = append([]byte(nil), sources.Private.Index...)
+	return &result, nil
 }
 
 func (mgr *SnapshotManager) getSharedWSSource(imageName string) (*WorkingSetContentSource, error) {
@@ -3039,6 +3004,14 @@ func (mgr *SnapshotManager) GetWorkingSetPagesManaged(snap *Snapshot) ([]byte, f
 	return mgr.GetSnapshotFileContentManaged(snap, snap.GetWSFilePath())
 }
 
+func (mgr *SnapshotManager) GetWorkingSetPagesManagedContext(ctx context.Context, snap *Snapshot) ([]byte, func(), error) {
+	if !mgr.compression.WorkingSet {
+		return mgr.GetWorkingSetPagesManaged(snap)
+	}
+	data, err := mgr.readWSMetadataContext(ctx, snap, snap.GetWSFilePath())
+	return data, func() {}, err
+}
+
 func (mgr *SnapshotManager) GetUffdMemoryContent(snap *Snapshot, lazy bool) ([]byte, error) {
 	if lazy {
 		return mgr.GetSnapshotFileContent(snap, snap.GetRecipeFilePath())
@@ -3054,11 +3027,18 @@ func (mgr *SnapshotManager) GetUffdMemoryContentManaged(snap *Snapshot, lazy boo
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContentManaged(snap *Snapshot) ([]byte, func(), error) {
+	return mgr.GetWorkingSetContentManagedContext(context.Background(), snap)
+}
+
+func (mgr *SnapshotManager) GetWorkingSetContentManagedContext(ctx context.Context, snap *Snapshot) ([]byte, func(), error) {
 	if mgr.securityMode == SecurityModeFull {
-		return mgr.getWorkingSetPathManaged(snap, snap.GetWSContentFilePath())
+		return mgr.getWorkingSetPathManagedContext(ctx, snap, snap.GetWSContentFilePath())
 	}
 
-	data, releaseFn, err := mgr.getWorkingSetPathManaged(snap, snap.GetWSPrivateContentFilePath())
+	data, releaseFn, err := mgr.getWorkingSetPathManagedContext(ctx, snap, snap.GetWSPrivateContentFilePath())
+	if mgr.compression.WorkingSet {
+		return data, releaseFn, err
+	}
 	if err == nil {
 		return data, releaseFn, nil
 	}
@@ -3072,11 +3052,15 @@ func (mgr *SnapshotManager) GetWorkingSetContentManaged(snap *Snapshot) ([]byte,
 }
 
 func (mgr *SnapshotManager) GetWorkingSetContentSourcesManaged(snap *Snapshot) (*WorkingSetContentSources, func(), error) {
+	return mgr.GetWorkingSetContentSourcesManagedContext(context.Background(), snap)
+}
+
+func (mgr *SnapshotManager) GetWorkingSetContentSourcesManagedContext(ctx context.Context, snap *Snapshot) (*WorkingSetContentSources, func(), error) {
 	if mgr.securityMode == SecurityModeFull {
 		return nil, func() {}, nil
 	}
 
-	privateContent, privateContentRelease, err := mgr.GetWorkingSetContentManaged(snap)
+	privateContent, privateContentRelease, err := mgr.GetWorkingSetContentManagedContext(ctx, snap)
 	if err != nil {
 		if mgr.compression.WorkingSet && !mgr.wsRecording {
 			return nil, func() {}, errors.Wrap(err, "loading required compressed private working set")
@@ -3085,8 +3069,18 @@ func (mgr *SnapshotManager) GetWorkingSetContentSourcesManaged(snap *Snapshot) (
 		privateContentRelease = func() {}
 	}
 
-	privateIndex, privateIndexRelease, err := mgr.GetSnapshotFileContentManaged(snap, snap.GetWSPrivateIndexFilePath())
+	var privateIndex []byte
+	privateIndexRelease := func() {}
+	if mgr.compression.WorkingSet {
+		privateIndex, err = mgr.readWSMetadataContext(ctx, snap, snap.GetWSPrivateIndexFilePath())
+	} else {
+		privateIndex, privateIndexRelease, err = mgr.GetSnapshotFileContentManaged(snap, snap.GetWSPrivateIndexFilePath())
+	}
 	if err != nil {
+		if mgr.RequiresCompressedWorkingSet(snap) {
+			combineReleaseFuncs(privateContentRelease, privateIndexRelease)()
+			return nil, func() {}, fmt.Errorf("required private WS index: %w", err)
+		}
 		privateIndex = nil
 		privateIndexRelease = func() {}
 	}
@@ -3161,121 +3155,7 @@ func (writer *fixedSliceWriter) Write(data []byte) (int, error) {
 }
 
 func (mgr *SnapshotManager) getWorkingSetPathManaged(snap *Snapshot, rawPath string) ([]byte, func(), error) {
-	if !mgr.compression.WorkingSet {
-		return mgr.GetSnapshotFileContentManaged(snap, rawPath)
-	}
-
-	started := time.Now()
-	manifestPath := workingSetZstdManifestPath(rawPath)
-	payloadPath := workingSetZstdPayloadPath(rawPath)
-	manifestData, err := mgr.GetSnapshotFileContent(snap, manifestPath)
-	if err != nil {
-		return nil, func() {}, errors.Wrap(err, "compressed working set manifest is required")
-	}
-	manifest, err := zstdstream.ParseManifest(manifestData)
-	if err != nil {
-		return nil, func() {}, err
-	}
-	if manifest.RawSize == 0 {
-		return []byte{}, func() {}, nil
-	}
-	if manifest.RawSize > int64(^uint(0)>>1) {
-		return nil, func() {}, fmt.Errorf("compressed working set raw size %d exceeds addressable memory", manifest.RawSize)
-	}
-	destination, err := unix.Mmap(-1, 0, int(manifest.RawSize), unix.PROT_READ|unix.PROT_WRITE, unix.MAP_PRIVATE|unix.MAP_ANON)
-	if err != nil {
-		return nil, func() {}, errors.Wrap(err, "allocate compressed working set destination")
-	}
-	var releaseOnce sync.Once
-	release := func() {
-		releaseOnce.Do(func() {
-			if err := unix.Munmap(destination); err != nil {
-				log.Warnf("Failed to unmap decoded working set: %v", err)
-			}
-		})
-	}
-
-	localPayload := false
-	if stat, statErr := os.Stat(payloadPath); statErr == nil {
-		if stat.Size() != manifest.CompressedSize {
-			release()
-			return nil, func() {}, fmt.Errorf("cached zstd payload size %d does not match manifest %d", stat.Size(), manifest.CompressedSize)
-		}
-		localPayload = true
-	}
-
-	payloadObjectKey := mgr.getObjectKey(snap.GetId(), filepath.Base(payloadPath))
-	var compressedCache []byte
-	if !localPayload && !mgr.cleanChunks {
-		compressedCache = make([]byte, manifest.CompressedSize)
-	}
-
-	var fallbackOnce sync.Once
-	var fallbackPayload []byte
-	var fallbackErr error
-	openRange := func(offset, length int64) (io.ReadCloser, error) {
-		if localPayload {
-			file, err := os.Open(payloadPath)
-			if err != nil {
-				return nil, err
-			}
-			return &sectionReadCloser{Reader: io.NewSectionReader(file, offset, length), closer: file}, nil
-		}
-
-		if ranged, ok := mgr.storage.(storage.RangeObjectStorage); ok {
-			reader, err := ranged.OpenObjectRange(context.Background(), payloadObjectKey, offset, length)
-			if err != nil {
-				return nil, err
-			}
-			if len(compressedCache) == 0 {
-				return reader, nil
-			}
-			capture := &fixedSliceWriter{data: compressedCache[offset : offset+length]}
-			return &captureReadCloser{Reader: io.TeeReader(reader, capture), closer: reader}, nil
-		}
-
-		fallbackOnce.Do(func() {
-			fallbackPayload, fallbackErr = mgr.storage.DownloadObject(payloadObjectKey)
-		})
-		if fallbackErr != nil {
-			return nil, fallbackErr
-		}
-		if int64(len(fallbackPayload)) != manifest.CompressedSize {
-			return nil, fmt.Errorf("downloaded zstd payload size %d does not match manifest %d", len(fallbackPayload), manifest.CompressedSize)
-		}
-		return io.NopCloser(bytes.NewReader(fallbackPayload[offset : offset+length])), nil
-	}
-
-	if err := zstdstream.Decode(context.Background(), manifest, openRange, destination, mgr.compression.Fetchers); err != nil {
-		release()
-		return nil, func() {}, errors.Wrap(err, "stream-decode compressed working set")
-	}
-
-	if !localPayload && !mgr.cleanChunks {
-		payloadCopy := compressedCache
-		if len(payloadCopy) == 0 && len(fallbackPayload) > 0 {
-			payloadCopy = append([]byte(nil), fallbackPayload...)
-		}
-		if len(payloadCopy) == int(manifest.CompressedSize) {
-			go func() {
-				if err := os.MkdirAll(filepath.Dir(payloadPath), os.ModePerm); err != nil {
-					log.Warnf("Failed to create compressed WS cache directory: %v", err)
-					return
-				}
-				if err := os.WriteFile(payloadPath, payloadCopy, 0644); err != nil {
-					log.Warnf("Failed to cache compressed WS payload: %v", err)
-					return
-				}
-				_ = os.WriteFile(manifestPath, manifestData, 0644)
-				mgr.registerWorkingSetAccessForPath(payloadPath)
-			}()
-		}
-	}
-	mgr.registerWorkingSetAccessForPath(payloadPath)
-	log.Infof("ZSTD_WS_DECODE revision=%s source=%s raw_bytes=%d compressed_bytes=%d frames=%d fetchers=%d elapsed_us=%d",
-		snap.GetId(), map[bool]string{true: "local", false: "remote"}[localPayload], manifest.RawSize,
-		manifest.CompressedSize, len(manifest.Frames), mgr.compression.Fetchers, time.Since(started).Microseconds())
-	return destination, release, nil
+	return mgr.getWorkingSetPathManagedContext(context.Background(), snap, rawPath)
 }
 
 func (mgr *SnapshotManager) GetSnapshotFileContent(snap *Snapshot, localPath string) ([]byte, error) {
@@ -3410,9 +3290,13 @@ func workingSetCacheFileNames() []string {
 		"working_set_pages_content",
 		"working_set_pages_content.zstd.frames",
 		"working_set_pages_content.zstd.json",
+		"working_set_pages_content.zstd.streams",
+		"working_set_pages_content.zstd.streams.json",
 		"working_set_pages_content_private",
 		"working_set_pages_content_private.zstd.frames",
 		"working_set_pages_content_private.zstd.json",
+		"working_set_pages_content_private.zstd.streams",
+		"working_set_pages_content_private.zstd.streams.json",
 		"working_set_pages_index_private",
 	}
 }
@@ -3436,6 +3320,9 @@ func (mgr *SnapshotManager) getWorkingSetSizeInChunks(revision string) uint64 {
 	snapDir := filepath.Join(mgr.baseFolder, revision)
 	var totalSize uint64
 	for _, name := range workingSetCacheFileNames() {
+		if !hasCommittedStreamCompanion(snapDir, name) {
+			continue
+		}
 		path := filepath.Join(snapDir, name)
 		if stat, err := os.Stat(path); err == nil && stat != nil && stat.Size() > 0 {
 			totalSize += uint64(stat.Size())
@@ -3455,6 +3342,8 @@ func (mgr *SnapshotManager) getWorkingSetSizeInChunks(revision string) uint64 {
 }
 
 func (mgr *SnapshotManager) removeWorkingSetFiles(revision string) error {
+	// Caller holds deletionLock exclusively (including eviction's stats lock).
+	mgr.streamEpoch(revision).Add(1)
 	snapDir := filepath.Join(mgr.baseFolder, revision)
 	var firstErr error
 	for _, name := range workingSetCacheFileNames() {

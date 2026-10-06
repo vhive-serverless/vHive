@@ -1,0 +1,51 @@
+{
+  "workloads": [
+    {
+      "profile": "video-analytics-standalone-python-1",
+      "family": "video-analytics-standalone-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-video-analytics-standalone-python-1-direct3072-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker-registry.registry.svc.cluster.local:5000/liquidzk/video-analytics-standalone-python:restore-reconnect-f268d11-r2-20260818",
+      "image_inventory": "video-analytics-standalone-python",
+      "vm_mib": 3072,
+      "function_port": 50051,
+      "function_env": "",
+      "function_args": "--addr=0.0.0.0 --port=50051 --db_addr=mongodb://__BACKEND_PRIVATE_IP__:27017 --connection_mode=per-invocation --mongo_timeout_ms=30000 --default_video=default.mp4 --num_frames=10",
+      "request_path": "direct",
+      "relay_args": [],
+      "fresh_source_delay_seconds": 30,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier3072",
+          "port": 9481,
+          "container": "snapshare-fig916-full-128k-tier3072-20260902-currentbase17-r1-tier3072"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier3072",
+          "port": 9482,
+          "container": "snapshare-fig916-full-4k-tier3072-20260902-currentbase17-r1-tier3072"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier3072",
+          "port": 9482,
+          "container": "snapshare-fig916-full-4k-tier3072-20260902-currentbase17-r1-tier3072"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier3072",
+          "port": 9484,
+          "container": "snapshare-fig916-no-image-4k-tier3072-20260902-currentbase17-r1-tier3072"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier3072",
+          "port": 9485,
+          "container": "snapshare-fig916-partial-4k-tier3072-20260902-currentbase17-r1-tier3072"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier3072",
+          "port": 9486,
+          "container": "snapshare-fig916-full-dedup-oracle-tier3072-20260902-currentbase17-r1"
+        }
+      }
+    }
+  ]
+}

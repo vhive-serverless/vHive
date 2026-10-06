@@ -37,6 +37,7 @@ type NetworkManager struct {
 	hostIfaceName string
 	vethPrefix    string
 	clonePrefix   string
+	namePrefix    string
 
 	// Pool of free network configs
 	networkPool []*NetworkConfig
@@ -54,8 +55,11 @@ type NetworkManager struct {
 // using the supplied interface. If no interface is supplied, the default interface is used. To take the network
 // setup of the critical path of a function creation, the network manager tries to maintain a pool of ready to use
 // network configurations of size at least poolSize.
-func NewNetworkManager(hostIfaceName string, poolSize int, vethPrefix, clonePrefix string) (*NetworkManager, error) {
+func NewNetworkManager(hostIfaceName string, poolSize int, vethPrefix, clonePrefix string, namePrefix ...string) (*NetworkManager, error) {
 	manager := new(NetworkManager)
+	if len(namePrefix) > 0 {
+		manager.namePrefix = namePrefix[0]
+	}
 
 	manager.hostIfaceName = hostIfaceName
 	if manager.hostIfaceName == "" {
@@ -70,7 +74,7 @@ func NewNetworkManager(hostIfaceName string, poolSize int, vethPrefix, clonePref
 	manager.netConfigs = make(map[string]*NetworkConfig)
 	manager.networkPool = make([]*NetworkConfig, 0)
 
-	startId, err := getNetworkStartID()
+	startId, err := getNetworkStartID(manager.namePrefix)
 	if err == nil {
 		manager.nextID = startId
 	} else {
@@ -112,7 +116,7 @@ func (mgr *NetworkManager) addNetConfig() {
 	mgr.inCreation.Add(1)
 	mgr.Unlock()
 
-	netCfg := NewNetworkConfig(id, mgr.hostIfaceName, mgr.vethPrefix, mgr.clonePrefix)
+	netCfg := NewNetworkConfig(id, mgr.hostIfaceName, mgr.vethPrefix, mgr.clonePrefix, mgr.namePrefix)
 	if err := netCfg.CreateNetwork(); err != nil {
 		log.Errorf("failed to create network %s:", err)
 	}

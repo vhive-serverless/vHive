@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	ctrdlog "github.com/containerd/containerd/log"
@@ -43,6 +44,8 @@ var (
 	baseSnap         *bool
 	dropCaches       *bool
 	freshSourceDelay *time.Duration
+	activeRequests   atomic.Int64
+	cleanupTasks     atomic.Int64
 )
 
 const (
@@ -50,7 +53,41 @@ const (
 	relayReadyTimeout    = 10 * time.Second
 	readyRetryInterval   = 100 * time.Millisecond
 	remoteFetchStatsPath = "/__snapshare/remote-fetch-stats"
+	runtimeStatePath     = "/__snapshare/runtime-state"
 )
+
+// Cleanup is asynchronous as before, but must survive the HTTP request ending.
+// Decode/restore still use the original cancellable request context.
+func runAsyncCleanup(ctx context.Context, fn func(context.Context)) {
+	cleanupTasks.Add(1)
+	go func() {
+		defer cleanupTasks.Add(-1)
+		fn(context.WithoutCancel(ctx))
+	}()
+}
+
+func handleRuntimeState(w http.ResponseWriter, r *http.Request) bool {
+	if r.URL.Path != runtimeStatePath {
+		return false
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return true
+	}
+	if orch == nil || snapMgr == nil {
+		http.Error(w, "runtime not ready", http.StatusServiceUnavailable)
+		return true
+	}
+	vms, refills, uffd := orch.ExperimentRuntimeState()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"active_requests": activeRequests.Load(), "cleanup_tasks": cleanupTasks.Load(),
+		"active_vm_ids": vms, "pending_shim_refills": refills,
+		"active_uffd_handlers":    uffd,
+		"pending_ws_cache_writes": snapMgr.PendingWorkingSetCacheWrites(),
+	})
+	return true
+}
 
 func handleRemoteFetchStats(w http.ResponseWriter, r *http.Request) bool {
 	if r.URL.Path != remoteFetchStatsPath {
@@ -201,13 +238,16 @@ func (r *statusRecorder) Flush() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	if handleRemoteFetchStats(w, r) {
+	if handleRuntimeState(w, r) || handleRemoteFetchStats(w, r) {
 		return
 	}
+	activeRequests.Add(1)
+	defer activeRequests.Add(-1)
 	log.Debugf("request received, image %s, revision %s", r.Header.Get("image"), r.Header.Get("revision"))
 	startTime := time.Now()
 
-	ctx := context.Background()
+	// Carry client cancellation through LoadSnapshot to all WS Range readers.
+	ctx := r.Context()
 	relayCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	image := r.Header.Get("image")
@@ -252,7 +292,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
-		metric.PrintAll()
+		printRestoreMetrics(rev, resp.VMID, metric)
 	} else if ok, err = snapMgr.SnapshotExists(rev); err == nil && ok { // remote case
 		log.Debugf("Using remote snapshot for rev %s", rev)
 		startDownload := time.Now()
@@ -282,7 +322,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Debugf("Snapshot Load Result: metric: %p", metric)
 		log.Debugf("Loaded snapshot for rev %s in %v", rev, metric.Total())
-		metric.PrintAll()
+		printRestoreMetrics(rev, resp.VMID, metric)
 	} else if *baseSnap { // start from base snapshot case
 		log.Debugf("No snapshot for rev %s, starting from base snapshot", rev)
 		resp, err = orch.StartWithBaseSnapshot(ctx, image, envArr, argsArr)
@@ -318,7 +358,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		// changes the measured execution path.
 		if err := waitForTCP(ctx, functionEndpoint, functionReadyTimeout); err != nil {
 			log.Errorf("function readiness check failed for VM %s: %v", vmId, err)
-			if stopErr := orch.StopSingleVM(ctx, vmId); stopErr != nil {
+			if stopErr := orch.StopSingleVM(context.WithoutCancel(ctx), vmId); stopErr != nil {
 				log.Errorf("failed to stop unready VM %s: %v", vmId, stopErr)
 			}
 			http.Error(w, fmt.Sprintf("Function Readiness Error: %v", err), http.StatusServiceUnavailable)
@@ -337,7 +377,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			mu.Unlock()
 			log.Errorf("failed to allocate auxiliary relay endpoint for VM %s: %v", vmId, err)
-			if stopErr := orch.StopSingleVM(ctx, vmId); stopErr != nil {
+			if stopErr := orch.StopSingleVM(context.WithoutCancel(ctx), vmId); stopErr != nil {
 				log.Errorf("failed to stop VM %s after relay endpoint allocation failure: %v", vmId, stopErr)
 			}
 			http.Error(w, fmt.Sprintf("Relay Endpoint Error: %v", err), http.StatusServiceUnavailable)
@@ -360,7 +400,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		mu.Unlock()
 		if startErr != nil {
 			log.Errorf("failed to start auxiliary relay for VM %s at %s: %v", vmId, endpoint, startErr)
-			if stopErr := orch.StopSingleVM(ctx, vmId); stopErr != nil {
+			if stopErr := orch.StopSingleVM(context.WithoutCancel(ctx), vmId); stopErr != nil {
 				log.Errorf("failed to stop VM %s after relay start failure: %v", vmId, stopErr)
 			}
 			http.Error(w, fmt.Sprintf("Relay Start Error: %v", startErr), http.StatusServiceUnavailable)
@@ -376,7 +416,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		if err := waitForTCP(ctx, endpoint, relayReadyTimeout); err != nil {
 			log.Errorf("vswarm relay readiness check failed for VM %s: %v", vmId, err)
-			if stopErr := orch.StopSingleVM(ctx, vmId); stopErr != nil {
+			if stopErr := orch.StopSingleVM(context.WithoutCancel(ctx), vmId); stopErr != nil {
 				log.Errorf("failed to stop VM %s after relay readiness failure: %v", vmId, stopErr)
 			}
 			http.Error(w, fmt.Sprintf("Relay Readiness Error: %v", err), http.StatusServiceUnavailable)
@@ -402,7 +442,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugf("Invocation to %s completed in %v with HTTP status %d and gRPC status %q", vmId, time.Since(startTime), recorder.status, invocationGRPCStatus)
 
-	go func() {
+	runAsyncCleanup(ctx, func(ctx context.Context) {
 		log.Debugf("removing %s", vmId)
 		if snap == nil && err == nil && invocationOK {
 			snap, err = snapMgr.InitSnapshot(rev, image)
@@ -419,7 +459,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		} else if snap == nil && !invocationOK {
 			log.Warnf("not snapshotting VM %s after failed invocation (HTTP status %d, gRPC status %q)", vmId, recorder.status, invocationGRPCStatus)
 		}
-		orch.StopSingleVM(ctx, vmId)
+		if err := orch.StopSingleVM(ctx, vmId); err != nil {
+			log.WithError(err).Errorf("failed to finish cleanup for VM %s", vmId)
+			return // Do not evict backing files belonging to a still-live VM.
+		}
 		if *cleaning {
 			snapMgr.DeleteSnapshot(rev)
 		}
@@ -427,7 +470,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			dropLinuxPageCaches()
 		}
 		// cancel()
-	}()
+	})
+}
+
+// Preserve legacy text and add an atomic, identity-keyed record. PrintAll's
+// separate stdout writes can interleave when the accepted 1-RPS calls overlap.
+func printRestoreMetrics(revision, vmID string, metric *metrics.Metric) {
+	data, err := json.Marshal(metric.MetricMap)
+	if err != nil {
+		log.WithError(err).Error("invalid restore component metrics")
+		return
+	}
+	log.Debugf("RESTORE_COMPONENTS revision=%s vm_id=%s metrics_us=%s", revision, vmID, data)
+	metric.PrintAll()
 }
 
 func main() {
@@ -439,6 +494,9 @@ func main() {
 
 	isSaveMemory := flag.Bool("ms", false, "Enable memory saving")
 	snapshotMode := flag.String("snapshots", "disabled", "Use VM snapshots when adding function instances, valid options: disabled, local, remote")
+	snapshotsStorage := flag.String("snapshotsDir", snapDir, "Snapshot/chunk/working-set cache root")
+	snapshotsScratch := flag.String("snapshotsScratchDir", "/fccd/snapshots", "Per-relay transient snapshot directory (removed on shutdown)")
+	wsCacheEndpoint := flag.String("wsCacheEndpoint", ":8081", "Working-set cache inventory HTTP endpoint; empty disables it")
 	cacheSnaps := flag.Bool("cacheSnaps", true, "Keep remote snapshots cached localy for future use")
 	isUPFEnabled := flag.Bool("upf", false, "Enable user-level page faults guest memory management")
 	isChunkingEnabled := flag.Bool("chunking", false, "Enable chunking for memory file uploads and downloads")
@@ -447,16 +505,17 @@ func main() {
 	isLazyMode := flag.Bool("lazy", false, "Enable lazy serving mode when UPFs are enabled")
 	isWSEnabled := flag.Bool("ws", false, "Enable working set pulling for UPFs in lazy mode")
 	isWSCoalescing := flag.Bool("wsCoalescing", false, "Enable coalescing of working set pulls for multiple UPF-enabled VMs")
-	isWSCompression := flag.Bool("wsCompression", false, "Store coalesced private/full working sets as independently framed Zstd")
+	isWSCompression := flag.Bool("wsCompression", false, "Store coalesced private/full working sets as eight independent long Zstd streams")
 	isChunkCompression := flag.Bool("chunkCompression", false, "Store each snapshot chunk as an independent Zstd frame")
 	zstdLevel := flag.Int("zstdLevel", snapshotting.DefaultZstdLevel, "Zstd compression level")
-	zstdFrameSize := flag.Int64("zstdFrameSize", snapshotting.DefaultZstdFrameSize, "Uncompressed bytes per independent WS Zstd frame; must be 4-KiB aligned")
-	zstdFetchers := flag.Int("zstdFetchers", snapshotting.DefaultZstdFetchers, "Maximum concurrent Zstd frame range GET/decode workers")
+	zstdWSLayout := flag.String("zstdWSLayout", "streams8-v1", "Coalesced WS layout (streams8-v1: eight long Range GETs and eight decoders)")
+	zstdFetchers := flag.Int("zstdFetchers", snapshotting.DefaultZstdFetchers, "WS stream range GET/decoder count (must be 8)")
 	isWSRecording := flag.Bool("wsRecording", false, "Enable recording of working set pages accessed during function execution")
 	hostIface := flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	netPoolSize := flag.Int("netPoolSize", 10, "Amount of network configs to preallocate in a pool")
 	vethPrefix := flag.String("vethPrefix", "172.17", "Prefix for IP addresses of veth devices, expected subnet is /16")
 	clonePrefix := flag.String("clonePrefix", "172.18", "Prefix for node-accessible IP addresses of uVMs, expected subnet is /16")
+	networkNamePrefix := flag.String("networkNamePrefix", "", "Optional 1-4 letter prefix for this relay's netns/veth names")
 	dnsNameservers := flag.String("dnsNameservers", "", "Comma-separated DNS nameservers for microVMs; empty uses Kubernetes DNS discovery with the existing fallback")
 	vmMemSizeMib := flag.Uint("vmMemSizeMib", 512, "Memory size in MiB for newly created microVMs")
 	dockerCredentials := flag.String("dockerCredentials", `{"docker-credentials":{"ghcr.io":{"username":"","password":""}}}`, "Docker credentials for pulling images from inside a microVM") // https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docker-credential-mmds
@@ -473,6 +532,11 @@ func main() {
 	threads := flag.Int("j", 8, "How many concurrent uploads/downloads to run when transferring snapshots")
 	encryption := flag.Bool("encryption", false, "Enable snapshot encryption")
 	flag.Parse()
+	if len(*networkNamePrefix) > 4 || strings.IndexFunc(*networkNamePrefix, func(r rune) bool {
+		return r < 'a' || r > 'z'
+	}) >= 0 {
+		log.Fatal("networkNamePrefix must contain at most four lowercase letters")
+	}
 	if *freshSourceDelay < 0 {
 		log.Fatal("freshSourceDelay must not be negative")
 	}
@@ -564,13 +628,16 @@ func main() {
 		ctriface.WithNetPoolSize(*netPoolSize),
 		ctriface.WithVethPrefix(*vethPrefix),
 		ctriface.WithClonePrefix(*clonePrefix),
+		ctriface.WithNetworkNamePrefix(*networkNamePrefix),
+		ctriface.WithWSCacheEndpoint(*wsCacheEndpoint),
 		ctriface.WithDNSNameservers(guestDNS),
 		ctriface.WithVMMemSizeMib(uint32(*vmMemSizeMib)),
 		ctriface.WithDockerCredentials(*dockerCredentials),
 		ctriface.WithMinioAddr(minioAddr),
 		ctriface.WithMinioAccessKey(minioAccessKey),
 		ctriface.WithMinioSecretKey(minioSecretKey),
-		ctriface.WithSnapshotsStorage(snapDir),
+		ctriface.WithSnapshotsStorage(*snapshotsStorage),
+		ctriface.WithSnapshotsDir(*snapshotsScratch),
 		ctriface.WithShimPoolSize(5),
 		ctriface.WithCacheSize(*cacheSize),
 		ctriface.WithSecurityMode(*security),
@@ -582,14 +649,16 @@ func main() {
 			Chunks:     *isChunkCompression,
 			Codec:      snapshotting.CompressionCodecZstd,
 			Level:      *zstdLevel,
-			FrameSize:  *zstdFrameSize,
+			WSLayout:   *zstdWSLayout,
 			Fetchers:   *zstdFetchers,
 		}),
 	)
 	// defer orch.Cleanup()
 	snapMgr = orch.GetSnapshotManager()
-	log.Infof("SNAPSHARE_COMPRESSION_CONFIG ws=%t chunks=%t codec=zstd level=%d frame_size=%d fetchers=%d",
-		*isWSCompression, *isChunkCompression, *zstdLevel, *zstdFrameSize, *zstdFetchers)
+	log.Infof("SNAPSHARE_RUNTIME_CONFIG endpoint=%s ws_cache_endpoint=%s snapshots_dir=%s scratch_dir=%s network_name_prefix=%s veth_prefix=%s clone_prefix=%s",
+		*endpoint, *wsCacheEndpoint, *snapshotsStorage, *snapshotsScratch, *networkNamePrefix, *vethPrefix, *clonePrefix)
+	log.Infof("SNAPSHARE_COMPRESSION_CONFIG ws=%t chunks=%t codec=zstd level=%d layout=%s fetchers=%d",
+		*isWSCompression, *isChunkCompression, *zstdLevel, *zstdWSLayout, *zstdFetchers)
 	time.Sleep(1 * time.Second) // Wait for orchestrator to fully initialize
 
 	if *baseSnap {

@@ -34,6 +34,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -109,7 +110,10 @@ type ShimPool struct {
 	// Optional callback to obtain a CreateVMRequest for a given vmID
 	getVMConfig func(string) *proto.CreateVMRequest
 	// Optional callback to prepare the VM (create network, etc.) before shim prep
-	prepareVM func(string) error
+	prepareVM      func(string) error
+	pendingRefills atomic.Int64
+	refillWG       sync.WaitGroup
+	closing        bool // protected by mu; no new acquisition/refill during shutdown
 }
 
 // NewShimPool creates a new shim pool
@@ -136,6 +140,10 @@ func (sp *ShimPool) generateVMID() string {
 // AcquireShim gets a pre-created shim from the pool, or creates a new one if pool is empty
 func (sp *ShimPool) AcquireShim(ctx context.Context) (string, error) {
 	sp.mu.Lock()
+	if sp.closing {
+		sp.mu.Unlock()
+		return "", fmt.Errorf("shim pool is shutting down")
+	}
 	// Try to get a pre-created shim from the pool
 	if len(sp.availableVMID) > 0 {
 		vmID := sp.availableVMID[0]
@@ -144,7 +152,7 @@ func (sp *ShimPool) AcquireShim(ctx context.Context) (string, error) {
 		sp.logger.WithField("vmID", vmID).Debug("Acquired pre-created shim from pool")
 
 		// Asynchronously refill the pool
-		go sp.refillPool(ctx)
+		sp.scheduleRefill(ctx)
 
 		return vmID, nil
 	}
@@ -159,7 +167,7 @@ func (sp *ShimPool) AcquireShim(ctx context.Context) (string, error) {
 	}
 
 	// Asynchronously refill the pool
-	go sp.refillPool(ctx)
+	sp.scheduleRefill(ctx)
 
 	return vmID, nil
 }
@@ -204,13 +212,21 @@ func (sp *ShimPool) createShim(ctx context.Context, vmID string) error {
 	return nil
 }
 
-// removeShim removes a shim using the RemoveShim API
+// removeShim stops its prewarmed VMM before deleting the shim/control sockets.
 func (sp *ShimPool) removeShim(ctx context.Context, vmID string) error {
 	sp.logger.WithField("vmID", vmID).Debug("Removing shim")
 
 	ctx = namespaces.WithNamespace(ctx, vmID)
-	_, err := sp.fcClient.RemoveShim(ctx, &proto.RemoveShimRequest{
-		VMID: vmID,
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	err := stopPreparedVM(ctx, vmID, func(ctx context.Context) error {
+		_, err := sp.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
+		return err
+	}, func(id string) error {
+		return vmProcessesAbsent("/proc", id)
+	}, func(ctx context.Context) error {
+		_, err := sp.fcClient.RemoveShim(ctx, &proto.RemoveShimRequest{VMID: vmID})
+		return err
 	})
 	if err != nil {
 		sp.logger.WithField("vmID", vmID).WithError(err).Error("Failed to remove shim")
@@ -221,12 +237,31 @@ func (sp *ShimPool) removeShim(ctx context.Context, vmID string) error {
 	return nil
 }
 
+func (sp *ShimPool) scheduleRefill(ctx context.Context) {
+	sp.mu.Lock()
+	if sp.closing {
+		sp.mu.Unlock()
+		return
+	}
+	sp.refillWG.Add(1)
+	sp.pendingRefills.Add(1)
+	sp.mu.Unlock()
+	go func() {
+		defer sp.refillWG.Done()
+		defer sp.pendingRefills.Add(-1)
+		sp.refillPool(context.WithoutCancel(ctx))
+	}()
+}
+
 // refillPool ensures the pool has the target number of pre-created shims
 func (sp *ShimPool) refillPool(ctx context.Context) {
 	time.Sleep(100 * time.Millisecond) // Small delay to avoid overlapping usage with refill
 	sp.mu.Lock()
 	currentSize := len(sp.availableVMID)
 	needed := sp.poolSize - currentSize
+	if sp.closing {
+		needed = 0
+	}
 	sp.mu.Unlock()
 
 	if needed <= 0 {
@@ -247,7 +282,7 @@ func (sp *ShimPool) refillPool(ctx context.Context) {
 		sp.mu.Unlock()
 	}
 
-	sp.logger.WithField("poolSize", len(sp.availableVMID)).Debug("Pool refilled")
+	sp.logger.WithField("poolSize", sp.GetPoolStats()).Debug("Pool refilled")
 }
 
 // InitializePool pre-creates shims to fill the pool
@@ -273,24 +308,21 @@ func (sp *ShimPool) InitializePool(ctx context.Context) error {
 // Cleanup removes all shims from the pool
 func (sp *ShimPool) Cleanup(ctx context.Context) error {
 	sp.mu.Lock()
+	sp.closing = true
+	sp.mu.Unlock()
+	// scheduleRefill cannot add work after closing is set. Existing refills
+	// finish tracking their VMMs before the pool is drained.
+	sp.refillWG.Wait()
+	sp.mu.Lock()
 	defer sp.mu.Unlock()
 
 	sp.logger.Info("Cleaning up shim pool")
 
-	var errors []error
-
-	// Remove all available shims
-	for _, vmID := range sp.availableVMID {
-		if err := sp.removeShim(ctx, vmID); err != nil {
-			errors = append(errors, err)
-		}
-	}
-
-	sp.availableVMID = nil
-
-	if len(errors) > 0 {
-		sp.logger.WithField("errorCount", len(errors)).Error("Errors during shim pool cleanup")
-		return errors[0] // Return the first error
+	var err error
+	sp.availableVMID, err = cleanupVMList(ctx, sp.availableVMID, sp.removeShim)
+	if err != nil {
+		sp.logger.WithField("remaining", sp.availableVMID).WithError(err).Error("Shim pool cleanup incomplete")
+		return err
 	}
 
 	sp.logger.Debug("Shim pool cleaned up")
@@ -329,10 +361,12 @@ type Orchestrator struct {
 	chunkSize         uint64
 	snapshotsDir      string
 	snapshotsStorage  string
+	wsCacheEndpoint   string
 	snapshotsBucket   string
 	baseSnap          bool
 	isMetricsMode     bool
 	netPoolSize       int
+	networkNamePrefix string
 	shimPoolSize      int
 	cacheSize         uint64
 	threads           int
@@ -350,8 +384,10 @@ type Orchestrator struct {
 
 	memoryManager *manager.MemoryManager
 
-	securityMode string
-	compression  snapshotting.CompressionConfig
+	securityMode  string
+	compression   snapshotting.CompressionConfig
+	activeUFFD    atomic.Int64
+	uffdLifetimes sync.Map // VM ID -> completion channel, closed after backing release.
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -363,6 +399,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.snapshotter = snapshotter
 	o.snapshotsDir = "/fccd/snapshots"
 	o.snapshotsBucket = "snapshots"
+	o.wsCacheEndpoint = ":8081"
 	o.netPoolSize = 10
 	o.shimPoolSize = 5 // Default shim pool size
 	o.vethPrefix = "172.17"
@@ -379,7 +416,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		opt(o)
 	}
 
-	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize, o.vethPrefix, o.clonePrefix)
+	o.vmPool = misc.NewVMPool(hostIface, o.netPoolSize, o.vethPrefix, o.clonePrefix, o.networkNamePrefix)
 
 	if _, err := os.Stat(o.snapshotsDir); err != nil {
 		if !os.IsNotExist(err) {
@@ -462,7 +499,7 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 		}
 	}
 	o.snapshotManager = snapshotting.NewSnapshotManager(o.snapshotsStorage, objectStore, o.isChunkingEnabled, o.cacheSnaps,
-		o.isLazyMode, o.isWSPulling, o.isWSCoalescing, o.isWSRecording, o.chunkSize, o.cacheSize, o.securityMode, o.threads, o.encryption, o.cleanChunks)
+		o.isLazyMode, o.isWSPulling, o.isWSCoalescing, o.isWSRecording, o.chunkSize, o.cacheSize, o.securityMode, o.threads, o.encryption, o.cleanChunks, o.wsCacheEndpoint)
 	if err := o.snapshotManager.ConfigureCompression(o.compression); err != nil {
 		log.WithError(err).Fatal("invalid snapshot compression configuration")
 	}
@@ -494,33 +531,39 @@ func (o *Orchestrator) setupCloseHandler() {
 	go func() {
 		<-c
 		log.Info("\r- Ctrl+C pressed in Terminal")
-		// _ = o.StopActiveVMs()
-		o.Cleanup()
+		if err := o.Cleanup(); err != nil {
+			log.WithError(err).Error("Shutdown incomplete; network/backing resources retained")
+			os.Exit(1)
+		}
 		os.Exit(0)
 	}()
 }
 
 // Cleanup Removes the bridges created by the VM pool's tap manager
 // Cleans up snapshots directory and shim pool
-func (o *Orchestrator) Cleanup() {
-	o.vmPool.CleanupNetwork()
-
+func (o *Orchestrator) Cleanup() error {
 	// Cleanup shim pool
 	if o.shimPool != nil {
 		ctx := context.Background()
 		if err := o.shimPool.Cleanup(ctx); err != nil {
-			log.WithError(err).Error("Failed to cleanup shim pool")
+			return err
 		}
 	}
+	// Active and prewarmed VMMs must be gone before their networks or backing
+	// directories disappear. A failed stop retains those resources for diagnosis.
+	if err := o.StopActiveVMs(); err != nil {
+		return err
+	}
+	o.vmPool.CleanupNetwork()
 
 	if err := os.RemoveAll(o.snapshotsDir); err != nil {
-		log.Panic("failed to delete snapshots dir", err)
+		return fmt.Errorf("failed to delete snapshots dir: %w", err)
 	}
 
 	o.snapshotManager.WriteHitStatsToCSV(o.snapshotsStorage + "/hit_rates.csv")
 	o.snapshotManager.WriteAccessHistoryToTextFile(o.snapshotsStorage + "/access.txt")
 
-	o.StopActiveVMs()
+	return nil
 }
 
 // GetSnapshotMode Returns the snapshots mode of the orchestrator
@@ -648,6 +691,19 @@ func (o *Orchestrator) GetShimPoolStats() (available int) {
 		return 0
 	}
 	return o.shimPool.GetPoolStats()
+}
+
+// ExperimentRuntimeState observes only this relay's pool, never another relay.
+func (o *Orchestrator) ExperimentRuntimeState() ([]string, int64, int64) {
+	ids := make([]string, 0)
+	for id := range o.vmPool.GetVMMap() {
+		ids = append(ids, id)
+	}
+	var pending int64
+	if o.shimPool != nil {
+		pending = o.shimPool.pendingRefills.Load()
+	}
+	return ids, pending, o.activeUFFD.Load()
 }
 
 func (o *Orchestrator) setupHeartbeat() {

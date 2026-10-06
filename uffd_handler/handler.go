@@ -2,6 +2,7 @@ package uffd_handler
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/csv"
 	"encoding/hex"
@@ -1108,6 +1109,27 @@ func tryGetMappingsAndFile(conn *net.UnixConn) (string, int, error) {
 }
 
 func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string, wsData []byte, wsContent []byte, wsSources *snapshotting.WorkingSetContentSources, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, release func(), ready chan<- error) error {
+	return StartUffdHandlerContext(context.Background(), uffdSockPath, memData, traceFilePath, wsData, wsContent, wsSources, lazy, snapMgr, threads, release, ready)
+}
+
+// acceptUffdConnection permits aborting a restore whose VM never connects. Once
+// accepted, the connection belongs to the VM lifetime, not its HTTP request.
+func acceptUffdConnection(ctx context.Context, listener *net.UnixListener) (*net.UnixConn, error) {
+	stop := context.AfterFunc(ctx, func() { listener.Close() })
+	defer stop()
+	conn, err := listener.AcceptUnix()
+	if ctx.Err() != nil {
+		if conn != nil {
+			conn.Close()
+		}
+		return nil, ctx.Err()
+	}
+	return conn, err
+}
+
+// StartUffdHandlerContext cancels only the waiting-for-VM phase. Normal UFFD
+// service, writes and backing-memory release still follow the existing VM path.
+func StartUffdHandlerContext(ctx context.Context, uffdSockPath string, memData []byte, traceFilePath string, wsData []byte, wsContent []byte, wsSources *snapshotting.WorkingSetContentSources, lazy bool, snapMgr *snapshotting.SnapshotManager, threads int, release func(), ready chan<- error) error {
 	log.Debugf("Starting handler at %s", uffdSockPath)
 	if release != nil {
 		defer release()
@@ -1128,7 +1150,7 @@ func StartUffdHandler(uffdSockPath string, memData []byte, traceFilePath string,
 	defer listener.Close()
 
 	// Accept connection from Firecracker
-	conn, err := listener.AcceptUnix()
+	conn, err := acceptUffdConnection(ctx, listener)
 	if err != nil {
 		return fmt.Errorf("cannot accept on UDS socket: %w", err)
 	}

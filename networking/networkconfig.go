@@ -52,11 +52,12 @@ type NetworkConfig struct {
 
 	vethPrefix  string // Prefix for IP addresses of veth devices
 	clonePrefix string // Prefix for IP addresses of clone devices
+	namePrefix  string // Per-relay namespace/veth name prefix; empty keeps legacy names
 }
 
 // NewNetworkConfig creates a new network config with a given id and default host interface
-func NewNetworkConfig(id int, hostIfaceName string, vethPrefix, clonePrefix string) *NetworkConfig {
-	return &NetworkConfig{
+func NewNetworkConfig(id int, hostIfaceName string, vethPrefix, clonePrefix string, namePrefix ...string) *NetworkConfig {
+	cfg := &NetworkConfig{
 		id:            id,
 		containerCIDR: defaultContainerCIDR,
 		gatewayCIDR:   defaultGatewayCIDR,
@@ -67,6 +68,10 @@ func NewNetworkConfig(id int, hostIfaceName string, vethPrefix, clonePrefix stri
 		vethPrefix:  vethPrefix,
 		clonePrefix: clonePrefix,
 	}
+	if len(namePrefix) > 0 {
+		cfg.namePrefix = namePrefix[0]
+	}
+	return cfg
 }
 
 // GetMacAddress returns the mac address used for the uVM
@@ -81,7 +86,7 @@ func (cfg *NetworkConfig) GetHostDevName() string {
 
 // getVeth0Name returns the name for the veth device at the side of the uVM
 func (cfg *NetworkConfig) getVeth0Name() string {
-	return fmt.Sprintf("veth%d-0", cfg.id)
+	return fmt.Sprintf("%sveth%d-0", cfg.namePrefix, cfg.id)
 }
 
 // getVeth0CIDR returns the IP address for the veth device at the side of the uVM in CIDR notation
@@ -91,7 +96,7 @@ func (cfg *NetworkConfig) getVeth0CIDR() string {
 
 // getVeth1Name returns the name for the veth device at the side of the host
 func (cfg *NetworkConfig) getVeth1Name() string {
-	return fmt.Sprintf("veth%d-1", cfg.id)
+	return fmt.Sprintf("%sveth%d-1", cfg.namePrefix, cfg.id)
 }
 
 // getVeth1Name returns the IP address for the veth device at the side of the host in CIDR notation
@@ -111,7 +116,7 @@ func (cfg *NetworkConfig) GetContainerCIDR() string {
 
 // getNamespaceName returns the network namespace name for the uVM
 func (cfg *NetworkConfig) getNamespaceName() string {
-	return fmt.Sprintf("uvmns%d", cfg.id)
+	return fmt.Sprintf("%suvmns%d", cfg.namePrefix, cfg.id)
 }
 
 // GetNamespacePath returns the full path to the network namespace for the uVM

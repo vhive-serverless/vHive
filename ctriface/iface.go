@@ -105,7 +105,7 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, imageName str
 	// Release shim on error
 	defer func() {
 		if retErr != nil {
-			if err := o.ReleaseShimToPool(ctx, vmID); err != nil {
+			if err := o.ReleaseShimToPool(context.WithoutCancel(ctx), vmID); err != nil {
 				logger.WithError(err).Error("failed to release shim to pool after failure")
 			}
 		}
@@ -764,9 +764,22 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 
 	uffd_handler.StopTraceCollection(fmt.Sprintf("/tmp/%s.uffd.sock", vmID))
 
-	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
-		logger.WithError(err).Error("failed to stop firecracker-containerd VM")
+	_, stopErr := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID})
+	var uffdDone <-chan struct{}
+	if done, ok := o.uffdLifetimes.Load(vmID); ok {
+		uffdDone = done.(chan struct{})
 	}
+	// This deadline bounds teardown verification only, never fetch or invocation.
+	verifyCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	method, err := confirmVMTermination(verifyCtx, vmID, stopErr, uffdDone, func(id string) error {
+		return vmProcessesAbsent("/proc", id)
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to confirm VM termination and UFFD release")
+		return errors.Wrap(err, "stopping firecracker-containerd VM")
+	}
+	logger.Debugf("VM_TERMINATION_CONFIRMED vm_id=%s method=%s processes_absent=true uffd_released=true", vmID, method)
 
 	if err := o.vmPool.Free(vmID); err != nil {
 		logger.Error("failed to free VM from VM pool")
@@ -779,6 +792,7 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	// }
 
 	o.workloadIo.Delete(vmID)
+	o.uffdLifetimes.Delete(vmID)
 
 	if vm.SnapBooted && o.snapshotter == "devmapper" {
 		if err := o.devMapper.RemoveDeviceSnapshot(ctx, vm.ContainerSnapKey); err != nil {
@@ -827,14 +841,19 @@ func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
 // StopActiveVMs Shuts down all active VMs
 func (o *Orchestrator) StopActiveVMs() error {
 	var vmGroup sync.WaitGroup
-	for vmID, vm := range o.vmPool.GetVMMap() {
+	vms := o.vmPool.GetVMMap()
+	stopErrors := make(chan error, len(vms))
+	for vmID, vm := range vms {
 		vmGroup.Add(1)
 		logger := log.WithFields(log.Fields{"vmID": vmID})
 		go func(vmID string, vm *misc.VM) {
 			defer vmGroup.Done()
-			err := o.StopSingleVM(context.Background(), vmID)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			err := o.StopSingleVM(ctx, vmID)
 			if err != nil {
 				logger.Warn(err)
+				stopErrors <- err
 			}
 		}(vmID, vm)
 	}
@@ -842,6 +861,14 @@ func (o *Orchestrator) StopActiveVMs() error {
 	log.Info("waiting for goroutines")
 	vmGroup.Wait()
 	log.Info("waiting done")
+	close(stopErrors)
+	var errs []error
+	for err := range stopErrors {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
+		return multierror.Of(errs...)
+	}
 
 	log.Info("Closing fcClient")
 	o.fcClient.Close()
@@ -939,6 +966,8 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		tStart               time.Time
 		loadErr, activateErr error
 		loadDone             = make(chan int)
+		uffdCancel           context.CancelFunc
+		uffdDone             chan struct{}
 	)
 
 	// Acquire a VM ID from the shim pool
@@ -951,11 +980,28 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 	logger := log.WithFields(log.Fields{"vmID": vmID})
 	logger.Debug("Orchestrator received LoadSnapshot")
 
-	// Release shim on error
+	// A failed restore may already have connected UFFD. Keep its network and VM
+	// tracking until shim removal and this VM's handler release are confirmed.
 	defer func() {
 		if retErr != nil {
-			if err := o.ReleaseShimToPool(ctx, vmID); err != nil {
-				logger.WithError(err).Error("failed to release shim to pool after failure")
+			if uffdCancel != nil {
+				uffdCancel()
+			}
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+			defer cancel()
+			err := cleanupFailedVM(cleanupCtx, vmID, func(ctx context.Context) error {
+				return o.ReleaseShimToPool(ctx, vmID)
+			}, uffdDone, func(id string) error {
+				return vmProcessesAbsent("/proc", id)
+			}, func() error {
+				return o.vmPool.Free(vmID)
+			})
+			if err != nil {
+				logger.WithError(err).Error("failed restore cleanup incomplete; VM resources retained")
+				retErr = multierror.Of(retErr, err)
+			} else {
+				o.uffdLifetimes.Delete(vmID)
+				o.workloadIo.Delete(vmID)
 			}
 		}
 	}()
@@ -967,14 +1013,6 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		logger.Error("failed to allocate VM in VM pool")
 		return nil, nil, err
 	}
-
-	defer func() {
-		if retErr != nil {
-			if err := o.vmPool.Free(vmID); err != nil {
-				logger.WithError(err).Errorf("failed to free VM from pool after failure")
-			}
-		}
-	}()
 
 	conf := o.getVMConfig(vm)
 	conf.LoadSnapshot = true
@@ -1093,9 +1131,16 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 		if o.isWSPulling && snap.GetId() != "base" {
 			tStart = time.Now()
 			var wsPagesRelease func()
-			wsPages, wsPagesRelease, err = o.snapshotManager.GetWorkingSetPagesManaged(snap)
+			wsPages, wsPagesRelease, err = o.snapshotManager.GetWorkingSetPagesManagedContext(ctx, snap)
 			loadSnapshotMetric.MetricMap[metrics.GetWorkingSetPages] = metrics.ToUS(time.Since(tStart))
 			if err != nil {
+				if o.isWSCoalescing && o.snapshotManager.RequiresCompressedWorkingSet(snap) {
+					if wsPagesRelease != nil {
+						wsPagesRelease()
+					}
+					releaseAll()
+					return nil, nil, errors.Wrap(err, "loading required WS pages")
+				}
 				logger.Warnf("Failed to get working set pages: %v", err)
 				wsPages = nil
 			} else {
@@ -1112,8 +1157,15 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			if o.isWSCoalescing {
 				tStart = time.Now()
 				var wsSourcesRelease func()
-				wsContentSources, wsSourcesRelease, err = o.snapshotManager.GetWorkingSetContentSourcesManaged(snap)
+				wsContentSources, wsSourcesRelease, err = o.snapshotManager.GetWorkingSetContentSourcesManagedContext(ctx, snap)
 				if err != nil {
+					if o.snapshotManager.RequiresCompressedWorkingSet(snap) {
+						if wsSourcesRelease != nil {
+							wsSourcesRelease()
+						}
+						releaseAll()
+						return nil, nil, errors.Wrap(err, "loading required split WS content")
+					}
 					logger.Warnf("Failed to get split working set content: %v", err)
 					wsContentSources = nil
 				}
@@ -1126,8 +1178,15 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 				}
 				if wsContentSources == nil {
 					var wsContentRelease func()
-					wsContent, wsContentRelease, err = o.snapshotManager.GetWorkingSetContentManaged(snap)
+					wsContent, wsContentRelease, err = o.snapshotManager.GetWorkingSetContentManagedContext(ctx, snap)
 					if err != nil {
+						if o.snapshotManager.RequiresCompressedWorkingSet(snap) {
+							if wsContentRelease != nil {
+								wsContentRelease()
+							}
+							releaseAll()
+							return nil, nil, errors.Wrap(err, "loading required coalesced WS content")
+						}
 						logger.Warnf("Failed to get fallback working set content: %v", err)
 					} else {
 						prevRelease := releaseAll
@@ -1143,8 +1202,16 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, snap *snapshotting.Snap
 			}
 		}
 		uffdReady := make(chan error, 1)
+		uffdCtx, cancel := context.WithCancel(ctx)
+		uffdCancel = cancel
+		uffdDone = make(chan struct{})
+		o.uffdLifetimes.Store(vmID, uffdDone)
+		o.activeUFFD.Add(1)
 		go func() {
-			err := uffd_handler.StartUffdHandler(fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, wsContentSources, o.isLazyMode, o.snapshotManager, o.threads, releaseAll, uffdReady)
+			defer close(uffdDone)
+			defer cancel()
+			defer o.activeUFFD.Add(-1)
+			err := uffd_handler.StartUffdHandlerContext(uffdCtx, fmt.Sprintf("/tmp/%s.uffd.sock", vmID), memData, memPathForTrace+".touched", wsPages, wsContent, wsContentSources, o.isLazyMode, o.snapshotManager, o.threads, releaseAll, uffdReady)
 			if err != nil {
 				logger.Error("Failed to start UFFD handler: ", err)
 			} else if o.isWSRecording && snap.GetId() != "base" {

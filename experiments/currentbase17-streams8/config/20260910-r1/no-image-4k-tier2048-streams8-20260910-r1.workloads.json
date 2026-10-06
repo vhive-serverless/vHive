@@ -1,0 +1,142 @@
+{
+  "workloads": [
+    {
+      "profile": "image-rotate-go-11",
+      "family": "image-rotate-go",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-image-rotate-go-11-direct2048-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker-registry.registry.svc.cluster.local:5000/liquidzk/image-rotate-go:restore-reconnect-f268d11-r2-20260818",
+      "image_inventory": "image-rotate-go",
+      "vm_mib": 2048,
+      "function_port": 50051,
+      "function_env": "",
+      "function_args": "--addr=0.0.0.0:50051 --db_addr=mongodb://__BACKEND_PRIVATE_IP__:27017 --connection_mode=per-invocation --mongo_timeout=30s",
+      "request_path": "direct",
+      "relay_args": [],
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier2048",
+          "port": 9471,
+          "container": "snapshare-fig916-full-128k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier2048",
+          "port": 9472,
+          "container": "snapshare-fig916-full-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier2048",
+          "port": 9472,
+          "container": "snapshare-fig916-full-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier2048",
+          "port": 9474,
+          "container": "snapshare-fig916-no-image-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier2048",
+          "port": 9475,
+          "container": "snapshare-fig916-partial-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier2048",
+          "port": 9476,
+          "container": "snapshare-fig916-full-dedup-oracle-tier2048-20260902-currentbase17-r1"
+        }
+      }
+    },
+    {
+      "profile": "image-rotate-python-11",
+      "family": "image-rotate-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-image-rotate-python-11-direct2048-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker-registry.registry.svc.cluster.local:5000/liquidzk/image-rotate-python:restore-reconnect-f268d11-r2-20260818",
+      "image_inventory": "image-rotate-python",
+      "vm_mib": 2048,
+      "function_port": 50051,
+      "function_env": "",
+      "function_args": "--addr=0.0.0.0 --port=50051 --db_addr=mongodb://__BACKEND_PRIVATE_IP__:27017 --connection_mode=per-invocation --mongo_timeout_ms=30000",
+      "request_path": "direct",
+      "relay_args": [],
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier2048",
+          "port": 9471,
+          "container": "snapshare-fig916-full-128k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier2048",
+          "port": 9472,
+          "container": "snapshare-fig916-full-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier2048",
+          "port": 9472,
+          "container": "snapshare-fig916-full-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier2048",
+          "port": 9474,
+          "container": "snapshare-fig916-no-image-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier2048",
+          "port": 9475,
+          "container": "snapshare-fig916-partial-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier2048",
+          "port": 9476,
+          "container": "snapshare-fig916-full-dedup-oracle-tier2048-20260902-currentbase17-r1"
+        }
+      }
+    },
+    {
+      "profile": "video-processing-python-10",
+      "family": "video-processing-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-video-processing-python-10-direct2048-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker-registry.registry.svc.cluster.local:5000/liquidzk/video-processing-python:restore-reconnect-f268d11-r2-20260818",
+      "image_inventory": "video-processing-python",
+      "vm_mib": 2048,
+      "function_port": 50051,
+      "function_env": "",
+      "function_args": "--addr=0.0.0.0 --port=50051 --db_addr=mongodb://__BACKEND_PRIVATE_IP__:27017 --connection_mode=per-invocation --mongo_timeout_ms=30000 --default_video=default.mp4 --num_frames=10",
+      "request_path": "direct",
+      "relay_args": [],
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier2048",
+          "port": 9471,
+          "container": "snapshare-fig916-full-128k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier2048",
+          "port": 9472,
+          "container": "snapshare-fig916-full-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier2048",
+          "port": 9472,
+          "container": "snapshare-fig916-full-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier2048",
+          "port": 9474,
+          "container": "snapshare-fig916-no-image-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier2048",
+          "port": 9475,
+          "container": "snapshare-fig916-partial-4k-tier2048-20260902-currentbase17-r1-tier2048"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier2048",
+          "port": 9476,
+          "container": "snapshare-fig916-full-dedup-oracle-tier2048-20260902-currentbase17-r1"
+        }
+      }
+    }
+  ]
+}

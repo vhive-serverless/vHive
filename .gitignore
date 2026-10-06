@@ -27,3 +27,13 @@
 vhive
 setup_tool
 go.work.sum
+
+# SplitSnap experiment outputs stay outside the source publication.
+/bin/*streams8*
+/bin/id_rsa
+/experiments/currentbase17-streams8/results/
+/experiments/currentbase17-streams8/provenance/
+/experiments/currentbase17-streams8/verification/
+/experiments/currentbase17-streams8/reproduction/downloads/
+__pycache__/
+*.pyc

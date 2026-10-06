@@ -97,13 +97,15 @@ func remoteFetchClass(objectKey string) int {
 		strings.Contains(objectKey, "/_chunks_zstd_v1/") ||
 		strings.Contains(objectKey, "/_chunks_zstd_v1_l"):
 		return remoteFetchChunks
-	case strings.Contains(base, "working_set_pages_content") && strings.HasSuffix(base, ".zstd.frames"):
+	case strings.Contains(base, "working_set_pages_content") &&
+		(strings.HasSuffix(base, ".zstd.frames") || strings.HasSuffix(base, ".zstd.streams")):
 		return remoteFetchWorkingSetPayload
 	case base == "recipe_file":
 		return remoteFetchRecipe
 	case base == "working_set_pages" ||
 		strings.HasPrefix(base, "working_set_pages_index") ||
-		(strings.Contains(base, "working_set_pages_content") && strings.HasSuffix(base, ".zstd.json")):
+		(strings.Contains(base, "working_set_pages_content") &&
+			(strings.HasSuffix(base, ".zstd.json") || strings.HasSuffix(base, ".zstd.streams.json"))):
 		return remoteFetchWorkingSetMetadata
 	case base == "snap_file" || base == "info_file":
 		return remoteFetchSnapshotMetadata
@@ -255,6 +257,14 @@ func (m *MinioStorage) OpenObjectRange(ctx context.Context, objectKey string, of
 		inner:   obj,
 		counter: &m.fetchStats[remoteFetchClass(objectKey)],
 	}, nil
+}
+
+func (m *MinioStorage) OpenObject(ctx context.Context, objectKey string) (io.ReadCloser, error) {
+	obj, err := m.client.GetObject(ctx, m.bucketName, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return &countingReadCloser{inner: obj, counter: &m.fetchStats[remoteFetchClass(objectKey)]}, nil
 }
 
 func (m *MinioStorage) Exists(objectKey string) (bool, error) {

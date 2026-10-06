@@ -39,8 +39,10 @@ type RemoteFetchClassStats struct {
 // are stable strings so evaluation runners can validate individual data paths
 // without parsing a high-volume external MinIO trace.
 type RemoteFetchStats struct {
-	Total   RemoteFetchClassStats            `json:"total"`
-	Classes map[string]RemoteFetchClassStats `json:"classes"`
+	// A strict local manager has no object store, so no remote read can occur.
+	StorageDisabled bool                             `json:"storage_disabled,omitempty"`
+	Total           RemoteFetchClassStats            `json:"total"`
+	Classes         map[string]RemoteFetchClassStats `json:"classes"`
 }
 
 // RemoteFetchStatsStorage is implemented by object stores that expose exact
@@ -78,4 +80,10 @@ type ObjectStorage interface {
 // compressed payloads to overlap range GETs with decoding.
 type RangeObjectStorage interface {
 	OpenObjectRange(ctx context.Context, objectKey string, offset, length int64) (io.ReadCloser, error)
+}
+
+// ContextObjectStorage opens small metadata objects with the restore's deadline.
+// Large compressed payloads must use RangeObjectStorage instead.
+type ContextObjectStorage interface {
+	OpenObject(ctx context.Context, objectKey string) (io.ReadCloser, error)
 }

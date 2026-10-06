@@ -1,0 +1,817 @@
+{
+  "schema_version": 1,
+  "workloads": [
+    {
+      "profile": "image-rotate-go-11",
+      "family": "image-rotate-go",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-image-rotate-go-11-direct2048-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker-registry.registry.svc.cluster.local:5000/liquidzk/image-rotate-go:restore-reconnect-f268d11-r2-20260818",
+      "image_inventory": "image-rotate-go",
+      "vm_mib": 2048,
+      "function_port": 50051,
+      "function_env": "",
+      "function_args": "--addr=0.0.0.0:50051 --db_addr=mongodb://__BACKEND_PRIVATE_IP__:27017 --connection_mode=per-invocation --mongo_timeout=30s",
+      "request_path": "direct",
+      "relay_args": [],
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier2048-streams8-20260910-r1",
+          "port": 9571,
+          "container": "snapshare-streams8-20260910-r1-full-128k-2048"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier2048-streams8-20260910-r1",
+          "port": 9572,
+          "container": "snapshare-streams8-20260910-r1-full-4k-2048"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier2048-streams8-20260910-r1",
+          "port": 9572,
+          "container": "snapshare-streams8-20260910-r1-full-4k-2048"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier2048-streams8-20260910-r1",
+          "port": 9574,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-2048"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier2048-streams8-20260910-r1",
+          "port": 9575,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-2048"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier2048-streams8-20260910-r1",
+          "port": 9576,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-2048"
+        }
+      }
+    },
+    {
+      "profile": "image-rotate-python-11",
+      "family": "image-rotate-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-image-rotate-python-11-direct2048-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker-registry.registry.svc.cluster.local:5000/liquidzk/image-rotate-python:restore-reconnect-f268d11-r2-20260818",
+      "image_inventory": "image-rotate-python",
+      "vm_mib": 2048,
+      "function_port": 50051,
+      "function_env": "",
+      "function_args": "--addr=0.0.0.0 --port=50051 --db_addr=mongodb://__BACKEND_PRIVATE_IP__:27017 --connection_mode=per-invocation --mongo_timeout_ms=30000",
+      "request_path": "direct",
+      "relay_args": [],
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier2048-streams8-20260910-r1",
+          "port": 9571,
+          "container": "snapshare-streams8-20260910-r1-full-128k-2048"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier2048-streams8-20260910-r1",
+          "port": 9572,
+          "container": "snapshare-streams8-20260910-r1-full-4k-2048"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier2048-streams8-20260910-r1",
+          "port": 9572,
+          "container": "snapshare-streams8-20260910-r1-full-4k-2048"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier2048-streams8-20260910-r1",
+          "port": 9574,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-2048"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier2048-streams8-20260910-r1",
+          "port": 9575,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-2048"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier2048-streams8-20260910-r1",
+          "port": 9576,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-2048"
+        }
+      }
+    },
+    {
+      "profile": "video-processing-python-10",
+      "family": "video-processing-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-video-processing-python-10-direct2048-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker-registry.registry.svc.cluster.local:5000/liquidzk/video-processing-python:restore-reconnect-f268d11-r2-20260818",
+      "image_inventory": "video-processing-python",
+      "vm_mib": 2048,
+      "function_port": 50051,
+      "function_env": "",
+      "function_args": "--addr=0.0.0.0 --port=50051 --db_addr=mongodb://__BACKEND_PRIVATE_IP__:27017 --connection_mode=per-invocation --mongo_timeout_ms=30000 --default_video=default.mp4 --num_frames=10",
+      "request_path": "direct",
+      "relay_args": [],
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier2048-streams8-20260910-r1",
+          "port": 9571,
+          "container": "snapshare-streams8-20260910-r1-full-128k-2048"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier2048-streams8-20260910-r1",
+          "port": 9572,
+          "container": "snapshare-streams8-20260910-r1-full-4k-2048"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier2048-streams8-20260910-r1",
+          "port": 9572,
+          "container": "snapshare-streams8-20260910-r1-full-4k-2048"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier2048-streams8-20260910-r1",
+          "port": 9574,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-2048"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier2048-streams8-20260910-r1",
+          "port": 9575,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-2048"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier2048-streams8-20260910-r1",
+          "port": 9576,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-2048"
+        }
+      }
+    },
+    {
+      "profile": "video-analytics-standalone-python-1",
+      "family": "video-analytics-standalone-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-video-analytics-standalone-python-1-direct3072-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker-registry.registry.svc.cluster.local:5000/liquidzk/video-analytics-standalone-python:restore-reconnect-f268d11-r2-20260818",
+      "image_inventory": "video-analytics-standalone-python",
+      "vm_mib": 3072,
+      "function_port": 50051,
+      "function_env": "",
+      "function_args": "--addr=0.0.0.0 --port=50051 --db_addr=mongodb://__BACKEND_PRIVATE_IP__:27017 --connection_mode=per-invocation --mongo_timeout_ms=30000 --default_video=default.mp4 --num_frames=10",
+      "request_path": "direct",
+      "relay_args": [],
+      "fresh_source_delay_seconds": 30,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier3072-streams8-20260910-r1",
+          "port": 9581,
+          "container": "snapshare-streams8-20260910-r1-full-128k-3072"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier3072-streams8-20260910-r1",
+          "port": 9582,
+          "container": "snapshare-streams8-20260910-r1-full-4k-3072"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier3072-streams8-20260910-r1",
+          "port": 9582,
+          "container": "snapshare-streams8-20260910-r1-full-4k-3072"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier3072-streams8-20260910-r1",
+          "port": 9584,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-3072"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier3072-streams8-20260910-r1",
+          "port": 9585,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-3072"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier3072-streams8-20260910-r1",
+          "port": 9586,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-3072"
+        }
+      }
+    },
+    {
+      "profile": "aes-go-45000-45450",
+      "family": "aes-go",
+      "source": "regenerate-direct",
+      "snapshot": "cold-aes-go-45000-45450-direct512-currentbase-ws5-20260902-currentbase17-r1-0",
+      "image": "docker.io/vhiveease/aes-go:latest",
+      "image_inventory": "aes-go",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0:50051",
+      "request_path": "direct",
+      "request_proto": "aes.Aes/ShowEncryption",
+      "generator": "random",
+      "lower_bound": 45000,
+      "upper_bound": 45450,
+      "relay_args": [],
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "aes-python-45000-45450",
+      "family": "aes-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-aes-python-45000-45450-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/aes-python:latest",
+      "image_inventory": "aes-python",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "aes.Aes/ShowEncryption",
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0 --port=50051",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "aes-nodejs-45000-45450",
+      "family": "aes-nodejs",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-aes-nodejs-45000-45450-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/aes-nodejs:latest",
+      "image_inventory": "aes-nodejs",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "aes.Aes/ShowEncryption",
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0 --port=50051",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "auth-go",
+      "family": "auth-go",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-auth-go-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/auth-go:latest",
+      "image_inventory": "auth-go",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "auth.Greeter/SayHello",
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0:50051",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "auth-nodejs",
+      "family": "auth-nodejs",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-auth-nodejs-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/auth-nodejs:latest",
+      "image_inventory": "auth-nodejs",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "auth.Greeter/SayHello",
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0 --port=50051",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "auth-python",
+      "family": "auth-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-auth-python-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/auth-python:latest",
+      "image_inventory": "auth-python",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "auth.Greeter/SayHello",
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0 --port=50051",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "fibonacci-go-100000-101000",
+      "family": "fibonacci-go",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-fibonacci-go-100000-101000-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/fibonacci-go-mod:latest",
+      "image_inventory": "fibonacci-go-mod",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "fibonacci.Greeter/SayHello",
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0:50051",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "fibonacci-nodejs-100000-101000",
+      "family": "fibonacci-nodejs",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-fibonacci-nodejs-100000-101000-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/fibonacci-nodejs-mod:latest",
+      "image_inventory": "fibonacci-nodejs-mod",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "fibonacci.Greeter/SayHello",
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0 --port=50051",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "fibonacci-python-100000-101000",
+      "family": "fibonacci-python",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-fibonacci-python-100000-101000-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/fibonacci-python-mod:latest",
+      "image_inventory": "fibonacci-python-mod",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "fibonacci.Greeter/SayHello",
+      "function_env": "ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "--addr=0.0.0.0 --port=50051",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "currencyservice",
+      "family": "currencyservice",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-currencyservice-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/onlineshop-currencyservice:latest",
+      "image_inventory": "onlineshop-currencyservice",
+      "vm_mib": 512,
+      "function_port": 7000,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "hipstershop.CurrencyService/Convert",
+      "function_env": "DISABLE_TRACING=1|DISABLE_PROFILER=1|DISABLE_DEBUGGER=1|ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=7000",
+      "function_args": "",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "emailservice",
+      "family": "emailservice",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-emailservice-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/onlineshop-emailservice:latest",
+      "image_inventory": "onlineshop-emailservice",
+      "vm_mib": 512,
+      "function_port": 8080,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "hipstershop.EmailService/SendOrderConfirmation",
+      "function_env": "DISABLE_TRACING=1|DISABLE_PROFILER=1|DISABLE_DEBUGGER=1|ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=8080",
+      "function_args": "",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "productcatalogservice",
+      "family": "productcatalogservice",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-productcatalogservice-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/onlineshop-productcatalogservice:latest",
+      "image_inventory": "onlineshop-productcatalogservice",
+      "vm_mib": 512,
+      "function_port": 3550,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "hipstershop.ProductCatalogService/ListProducts",
+      "function_env": "DISABLE_TRACING=1|DISABLE_PROFILER=1|DISABLE_DEBUGGER=1|ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=3550",
+      "function_args": "",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    },
+    {
+      "profile": "shippingservice",
+      "family": "shippingservice",
+      "source": "regenerate-direct",
+      "snapshot": "snapshare-shippingservice-direct512-currentbase-ws5-20260902-currentbase17-r1",
+      "image": "docker.io/vhiveease/onlineshop-shippingservice:latest",
+      "image_inventory": "onlineshop-shippingservice",
+      "vm_mib": 512,
+      "function_port": 50051,
+      "relay_args": [],
+      "request_path": "direct",
+      "request_proto": "hipstershop.ShippingService/ShipOrder",
+      "function_env": "DISABLE_TRACING=1|DISABLE_PROFILER=1|DISABLE_DEBUGGER=1|ITERATIONS_MULTIPLIER=102|ENABLE_TRACING=false|PORT=50051",
+      "function_args": "",
+      "fresh_source_delay_seconds": 10,
+      "corpus_overrides": {
+        "chunks-128k-zstd3": {
+          "corpus_id": "full-128k-tier512-streams8-20260910-r1",
+          "port": 9561,
+          "container": "snapshare-streams8-20260910-r1-full-128k-512"
+        },
+        "pages-4k-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "ws-zstd3": {
+          "corpus_id": "full-4k-tier512-streams8-20260910-r1",
+          "port": 9562,
+          "container": "snapshare-streams8-20260910-r1-full-4k-512"
+        },
+        "no-image-zstd3": {
+          "corpus_id": "no-image-4k-tier512-streams8-20260910-r1",
+          "port": 9564,
+          "container": "snapshare-streams8-20260910-r1-no-image-4k-512"
+        },
+        "splitsnap-zstd3": {
+          "corpus_id": "partial-4k-tier512-streams8-20260910-r1",
+          "port": 9565,
+          "container": "snapshare-streams8-20260910-r1-partial-4k-512"
+        },
+        "full-dedup-zstd3": {
+          "corpus_id": "full-dedup-oracle-tier512-streams8-20260910-r1",
+          "port": 9566,
+          "container": "snapshare-streams8-20260910-r1-full-dedup-oracle-512"
+        }
+      }
+    }
+  ]
+}

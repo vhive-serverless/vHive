@@ -156,6 +156,17 @@ func WithClonePrefix(clonePrefix string) OrchestratorOption {
 	}
 }
 
+// WithNetworkNamePrefix isolates netns/veth names between coexisting relays.
+func WithNetworkNamePrefix(prefix string) OrchestratorOption {
+	return func(o *Orchestrator) { o.networkNamePrefix = prefix }
+}
+
+// WithWSCacheEndpoint isolates the worker-local cache inventory service.
+// An empty endpoint disables this auxiliary service, not the cache itself.
+func WithWSCacheEndpoint(endpoint string) OrchestratorOption {
+	return func(o *Orchestrator) { o.wsCacheEndpoint = endpoint }
+}
+
 // WithDNSNameservers overrides the Kubernetes/Google DNS discovery fallback
 // for microVMs. An empty slice preserves the existing automatic behavior.
 func WithDNSNameservers(nameservers []string) OrchestratorOption {

@@ -1,1 +1,4 @@
 function-images/tests/video-analytics/video_streaming/reference/*.mp4 filter=lfs diff=lfs merge=lfs -text
+
+# Preserve the frozen CSV bytes, including csv.writer CRLF records.
+experiments/currentbase17-streams8/config/**/*.csv -text whitespace=cr-at-eol

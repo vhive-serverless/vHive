@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "client_module": "github.com/vhive-serverless/vSwarm-proto@v0.5.7",
+  "success_predicate": "gRPC status 0 and reply contains neither Error: nor Failed",
+  "seed": 1,
+  "requests": [
+    {
+      "profile": "aes-go-45000-45450",
+      "function_name": "aes-go",
+      "rpc": "aes.Aes/ShowEncryption",
+      "generator": "random",
+      "lower_bound": 45000,
+      "upper_bound": 45450
+    },
+    {
+      "profile": "aes-python-45000-45450",
+      "function_name": "aes-python",
+      "rpc": "aes.Aes/ShowEncryption",
+      "generator": "random",
+      "lower_bound": 45000,
+      "upper_bound": 45450
+    },
+    {
+      "profile": "aes-nodejs-45000-45450",
+      "function_name": "aes-nodejs",
+      "rpc": "aes.Aes/ShowEncryption",
+      "generator": "random",
+      "lower_bound": 45000,
+      "upper_bound": 45450
+    },
+    {
+      "profile": "auth-go",
+      "function_name": "auth-go",
+      "rpc": "auth.Greeter/SayHello",
+      "generator": "fixed",
+      "value": "allow",
+      "reply_must_contain": "token: allow"
+    },
+    {
+      "profile": "auth-nodejs",
+      "function_name": "auth-nodejs",
+      "rpc": "auth.Greeter/SayHello",
+      "generator": "fixed",
+      "value": "allow",
+      "reply_must_contain": "token: allow"
+    },
+    {
+      "profile": "auth-python",
+      "function_name": "auth-python",
+      "rpc": "auth.Greeter/SayHello",
+      "generator": "fixed",
+      "value": "allow",
+      "reply_must_contain": "token: allow"
+    },
+    {
+      "profile": "fibonacci-go-100000-101000",
+      "function_name": "fibonacci-go",
+      "rpc": "fibonacci.Greeter/SayHello",
+      "generator": "random",
+      "value": "10",
+      "lower_bound": 100000,
+      "upper_bound": 101000
+    },
+    {
+      "profile": "fibonacci-nodejs-100000-101000",
+      "function_name": "fibonacci-nodejs",
+      "rpc": "fibonacci.Greeter/SayHello",
+      "generator": "random",
+      "value": "10",
+      "lower_bound": 100000,
+      "upper_bound": 101000
+    },
+    {
+      "profile": "fibonacci-python-100000-101000",
+      "function_name": "fibonacci-python",
+      "rpc": "fibonacci.Greeter/SayHello",
+      "generator": "random",
+      "value": "10",
+      "lower_bound": 100000,
+      "upper_bound": 101000
+    },
+    {
+      "profile": "currencyservice",
+      "function_name": "currencyservice",
+      "rpc": "hipstershop.CurrencyService/Convert",
+      "generator": "unique",
+      "value": "100",
+      "function_method": "Convert"
+    },
+    {
+      "profile": "emailservice",
+      "function_name": "emailservice",
+      "rpc": "hipstershop.EmailService/SendOrderConfirmation",
+      "generator": "unique"
+    },
+    {
+      "profile": "productcatalogservice",
+      "function_name": "productcatalogservice",
+      "rpc": "hipstershop.ProductCatalogService/ListProducts",
+      "generator": "unique",
+      "value": "loremipsum",
+      "function_method": "ListProducts"
+    },
+    {
+      "profile": "shippingservice",
+      "function_name": "shippingservice",
+      "rpc": "hipstershop.ShippingService/ShipOrder",
+      "generator": "unique",
+      "function_method": "ShipOrder"
+    },
+    {
+      "profile": "image-rotate-go-11",
+      "function_name": "image-rotate-go",
+      "rpc": "image_rotate.ImageRotate/RotateImage",
+      "generator": "fixed",
+      "value": "img11.jpg"
+    },
+    {
+      "profile": "image-rotate-python-11",
+      "function_name": "image-rotate-python",
+      "rpc": "image_rotate.ImageRotate/RotateImage",
+      "generator": "fixed",
+      "value": "img11.jpg"
+    },
+    {
+      "profile": "video-processing-python-10",
+      "function_name": "video-processing-python",
+      "rpc": "video_processing.VideoProcessing/ConvertToGrayscale",
+      "generator": "fixed",
+      "value": "video2.mp4"
+    },
+    {
+      "profile": "video-analytics-standalone-python-1",
+      "function_name": "video-analytics-standalone-python",
+      "rpc": "video_analytics_standalone.VideoAnalytics/ObjectDetection",
+      "generator": "fixed",
+      "value": "video2.mp4"
+    }
+  ]
+}

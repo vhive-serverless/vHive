@@ -48,15 +48,19 @@ func TestMinioStorageFetchStatsClassifySnapshotAndReset(t *testing.T) {
 
 func TestRemoteFetchClass(t *testing.T) {
 	cases := map[string]string{
-		"_chunks_zstd_v1_l3/aa/hash":                             "chunks",
-		"revision/working_set_pages_content_private.zstd.frames": "working_set_payload",
-		"revision/working_set_pages_content_private.zstd.json":   "working_set_metadata",
-		"revision/working_set_pages_index_private":               "working_set_metadata",
-		"revision/working_set_pages":                             "working_set_metadata",
-		"revision/recipe_file":                                   "recipe",
-		"revision/info_file":                                     "snapshot_metadata",
-		"ws_shared/base/content":                                 "shared_working_set",
-		"revision/unknown":                                       "other",
+		"revision/working_set_pages_content.zstd.streams":              "working_set_payload",
+		"revision/working_set_pages_content_private.zstd.streams":      "working_set_payload",
+		"revision/working_set_pages_content.zstd.streams.json":         "working_set_metadata",
+		"revision/working_set_pages_content_private.zstd.streams.json": "working_set_metadata",
+		"_chunks_zstd_v1_l3/aa/hash":                                   "chunks",
+		"revision/working_set_pages_content_private.zstd.frames":       "working_set_payload",
+		"revision/working_set_pages_content_private.zstd.json":         "working_set_metadata",
+		"revision/working_set_pages_index_private":                     "working_set_metadata",
+		"revision/working_set_pages":                                   "working_set_metadata",
+		"revision/recipe_file":                                         "recipe",
+		"revision/info_file":                                           "snapshot_metadata",
+		"ws_shared/base/content":                                       "shared_working_set",
+		"revision/unknown":                                             "other",
 	}
 	for objectKey, expected := range cases {
 		t.Run(objectKey, func(t *testing.T) {

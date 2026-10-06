@@ -576,18 +576,22 @@ func deleteRoute(destIp, gatewayIp string) error {
 }
 
 // getNetworkStartID fetches the
-func getNetworkStartID() (int, error) {
+func getNetworkStartID(namePrefix ...string) (int, error) {
 	entries, err := os.ReadDir("/run/netns")
 	if err != nil {
 		return 0, errors.Wrapf(err, "Couldn't read network namespace dir")
 	}
 
 	maxId := 0
+	prefix := ""
+	if len(namePrefix) > 0 {
+		prefix = namePrefix[0]
+	}
+	re := regexp.MustCompile(`^` + regexp.QuoteMeta(prefix) + `uvmns([0-9]+)$`)
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			netnsName := entry.Name()
 
-			re := regexp.MustCompile(`^uvmns([0-9]+)$`)
 			regres := re.FindStringSubmatch(netnsName)
 
 			if len(regres) > 1 {
