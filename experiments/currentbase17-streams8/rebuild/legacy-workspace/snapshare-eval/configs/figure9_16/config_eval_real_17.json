@@ -1,0 +1,984 @@
+{
+  "Studies": [
+    {
+      "Name": "container",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "kubectl patch deployment activator -n knative-serving -p '{\"spec\": {\"template\": {\"spec\": {\"containers\": [{\"name\": \"activator\", \"image\": \"lkondras/activator-ecd51ca5034883acbe737fde417a3d86:synchronous\"}]}}}}'; sleep 60"
+    },
+    {
+      "Name": "prepare_snapshots",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 4,
+        "RpsTarget": 0.2,
+        "RpsCooldownSeconds": 30
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "mc rm --force -r minio/snapshots; kubectl patch deployment activator -n knative-serving -p '{\"spec\": {\"template\": {\"spec\": {\"containers\": [{\"name\": \"activator\", \"image\": \"lkondras/activator-ecd51ca5034883acbe737fde417a3d86:pulsenet-random\"}]}}}}'; sleep 60",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -upf -ws -wsRecording -j 16 -baseSnap 2>&1 > ~/relay.log' Enter\"; done; sleep 30",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log",
+      "PostStudyScript": "rm -rf ~/snapshots_original; mc cp -r minio/snapshots/ ~/snapshots_original"
+    },
+    {
+      "Name": "base",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -cacheSize 1000000 -j 16 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "ws",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -cacheSize 1000000 -upf -ws -j 16 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 524288 -mode full",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 524288 -cacheSize 1000000 -lazy -upf -ws -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 524288 -cacheSize 1000000 -lazy -upf -ws -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_256k_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 262144 -mode full",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 262144 -cacheSize 1000000 -lazy -upf -ws -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_256k",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 262144 -cacheSize 1000000 -lazy -upf -ws -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_128k_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 131072 -mode full",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 131072 -cacheSize 1000000 -lazy -upf -ws -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_128k",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 131072 -cacheSize 1000000 -lazy -upf -ws -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_64k_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 65536 -mode full",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 65536 -cacheSize 1000000 -lazy -upf -ws -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_64k",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 65536 -cacheSize 1000000 -lazy -upf -ws -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_32k_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 32768 -mode full",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 32768 -cacheSize 1000000 -lazy -upf -ws -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_32k",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 32768 -cacheSize 1000000 -lazy -upf -ws -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_16k_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 16384 -mode full",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 16384 -cacheSize 1000000 -lazy -upf -ws -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_16k",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 16384 -cacheSize 1000000 -lazy -upf -ws -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_8k_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 8192 -mode full",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 8192 -cacheSize 1000000 -lazy -upf -ws -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_8k",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 8192 -cacheSize 1000000 -lazy -upf -ws -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_4k_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 4096 -mode full",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 4096 -cacheSize 1000000 -lazy -upf -ws -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "aws_4k",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench_chunk",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 4096 -cacheSize 1000000 -lazy -upf -ws -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "reap_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 4096 -mode full -wsCoalescing",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 4096 -cacheSize 1000000 -lazy -upf -ws -wsCoalescing -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "reap",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 4096 -cacheSize 1000000 -lazy -upf -ws -wsCoalescing -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "sabre_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 4096 -mode full -wsCoalescing -wsCompression",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 4096 -cacheSize 1000000 -lazy -upf -ws -wsCoalescing -wsCompression -clean -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "sabre",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 4096 -cacheSize 1000000 -lazy -upf -ws -wsCoalescing -wsCompression -j 16 -security full 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "snapshare_remote",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench",
+      "PreStudyScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; mc rm --force -r minio/snapshots; mc cp -r ~/snapshots_original/ minio/snapshots; ~/vhive/cmd/snapshot_converter/snapshot_converter -chunkSize 4096 -mode partial -wsCoalescing",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 4096 -cacheSize 1000000 -lazy -upf -ws -wsCoalescing -clean -j 16 -baseSnap -security partial 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    },
+    {
+      "Name": "snapshare",
+      "Verbosity": "debug",
+      "Config": {
+        "TracePath": "RPS",
+        "ExperimentDuration": 1,
+        "RpsTarget": 1,
+        "RpsCooldownSeconds": 6
+      },
+      "Sweep": [
+        {
+          "Field": "RpsFunction",
+          "Values": [
+            "aes-go-45000-45450",
+            "aes-python-45000-45450",
+            "aes-nodejs-45000-45450",
+            "auth-go",
+            "auth-nodejs",
+            "auth-python",
+            "fibonacci-go-100000-101000",
+            "fibonacci-nodejs-100000-101000",
+            "fibonacci-python-100000-101000",
+            "currencyservice",
+            "emailservice",
+            "productcatalogservice",
+            "shippingservice",
+            "image-rotate-go-11",
+            "image-rotate-python-11",
+            "video-processing-python-10",
+            "video-analytics-standalone-python-1"
+          ]
+        }
+      ],
+      "OutputDir": "data/out/bench",
+      "PreScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 10; for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay 'sudo ./relay -ss proxy -snapshots remote -dbg -netPoolSize 1 -endpoint 10.0.1.$n:8080 -chunking -chunkSize 4096 -cacheSize 1000000 -lazy -upf -ws -wsCoalescing -j 16 -baseSnap -security partial 2>&1 > ~/relay.log' Enter\"; done; sleep 5",
+      "PostScript": "for n in 3; do ssh 10.0.1.$n \"tmux send-keys -t relay C-c\"; done; sleep 30; for n in 3; do scp 10.0.1.$n:relay.log $OUT_DIR/relay_$n.log; scp 10.0.1.$n:snapshots/hit_rates.csv $OUT_DIR/hit_rates_$n.csv; done; ssh 10.0.1.1 df /dev/nvme1n1p1 >> $OUT_DIR/storage.log"
+    }
+  ],
+  "IatGeneration": false,
+  "Generated": false,
+  "PreScript": "",
+  "PostScript": "",
+  "BaseConfigPath": "cmd/config_vswarm_rps.json",
+  "Metrics": []
+}

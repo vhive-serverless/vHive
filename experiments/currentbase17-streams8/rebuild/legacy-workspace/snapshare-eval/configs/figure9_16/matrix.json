@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "default_bandwidth_gbit": 10,
+  "bandwidth_sweep_gbit": [1, 5, 10, 25],
+  "warmup_calls": 30,
+  "measured_calls": 30,
+  "full_dedup_paper_protocol": "SplitSnap restore/WS path with global raw-content persistent dedup and an explicitly zero-cost transient SplitSnap-format transfer view; the full-dedup-* rows below are non-coalesced implementation-audit points and are not paper Full Dedup bars",
+  "systems": [
+    {"id":"chunks-128k-raw","corpus_id":"full-128k","paper_name":"Chunks","security":"full","chunk_size":131072,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":false,"base_snap":false,"ws_compression":false,"chunk_compression":false},
+    {"id":"chunks-128k-zstd3","corpus_id":"full-128k","paper_name":"Chunks + Zstd-3","security":"full","chunk_size":131072,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":false,"base_snap":false,"ws_compression":false,"chunk_compression":true},
+    {"id":"pages-4k-raw","corpus_id":"full-4k","paper_name":"Pages","security":"full","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":false,"base_snap":false,"ws_compression":false,"chunk_compression":false},
+    {"id":"pages-4k-zstd3","corpus_id":"full-4k","paper_name":"Pages + Zstd-3","security":"full","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":false,"base_snap":false,"ws_compression":false,"chunk_compression":true},
+    {"id":"ws-raw","corpus_id":"full-4k","paper_name":"WS","security":"full","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":true,"base_snap":false,"ws_compression":false,"chunk_compression":false},
+    {"id":"ws-zstd3","corpus_id":"full-4k","paper_name":"WS + Zstd-3","security":"full","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":true,"base_snap":false,"ws_compression":true,"chunk_compression":true},
+    {"id":"splitsnap-raw","corpus_id":"partial-4k","paper_name":"SplitSnap","security":"partial","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":true,"base_snap":true,"ws_compression":false,"chunk_compression":false},
+    {"id":"splitsnap-zstd3","corpus_id":"partial-4k","paper_name":"SplitSnap + Zstd-3","security":"partial","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":true,"base_snap":true,"ws_compression":true,"chunk_compression":true},
+    {"id":"no-image-raw","corpus_id":"no-image-4k","paper_name":"No image sharing","security":"no-image-sharing","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":true,"base_snap":true,"ws_compression":false,"chunk_compression":false},
+    {"id":"no-image-zstd3","corpus_id":"no-image-4k","paper_name":"No image sharing + Zstd-3","security":"no-image-sharing","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":true,"base_snap":true,"ws_compression":true,"chunk_compression":true},
+    {"id":"full-dedup-raw","corpus_id":"full-dedup-4k","paper_name":"Full Dedup 4-KiB implementation audit","paper_eligible":false,"security":"full-dedup","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":false,"base_snap":true,"ws_compression":false,"chunk_compression":false},
+    {"id":"full-dedup-zstd3","corpus_id":"full-dedup-4k","paper_name":"Full Dedup 4-KiB implementation audit + Zstd-3","paper_eligible":false,"security":"full-dedup","chunk_size":4096,"chunking":true,"lazy":true,"ws":true,"ws_coalescing":false,"base_snap":true,"ws_compression":false,"chunk_compression":true}
+  ]
+}

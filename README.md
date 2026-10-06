@@ -1,3 +1,9 @@
+## SplitSnap eight-long-stream branch
+
+For `likun/splitsnap-sort`, start with the [remote-source rebuild and fresh-node guide](docs/SPLITSNAP_REMOTE_REPRODUCTION.md).
+This branch publishes the gate12 source, experiment tooling and setup references, not old logs or new binaries.
+The guide explicitly lists the remaining fresh-cluster configuration/validation work; the archived runner is not a turnkey installer.
+
 [![build](https://github.com/vhive-serverless/vhive/workflows/vHive%20build%20tests/badge.svg)](https://github.com/vhive-serverless/vhive/actions)
 [![Firecracker MicroVM E2E tests](https://github.com/vhive-serverless/vHive/actions/workflows/firecracker_cri_tests.yml/badge.svg)](https://github.com/vhive-serverless/vHive/actions/workflows/firecracker_cri_tests.yml)
 [![gVisor MicroVM E2E tests](https://github.com/vhive-serverless/vHive/actions/workflows/gvisor_cri_tests.yml/badge.svg)](https://github.com/vhive-serverless/vHive/actions/workflows/gvisor_cri_tests.yml)
