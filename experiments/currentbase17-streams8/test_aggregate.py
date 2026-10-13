@@ -54,6 +54,8 @@ class AggregateTest(unittest.TestCase):
                 aggregate.main()
             findings.assert_not_called()
             self.assertFalse((out/"FINDINGS.md").exists())
+            self.assertFalse((out/"METHODS.md").exists())
+            self.assertNotIn("METHODS.md", (out/"README.md").read_text())
 
     def test_formal_export_links_findings_after_acceptance(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -70,6 +72,8 @@ class AggregateTest(unittest.TestCase):
             self.assertIs(findings.call_args.args[2], reports)
             self.assertEqual((out/"FINDINGS.md").read_text(), "accepted comparison\n")
             self.assertIn("[FINDINGS.md](FINDINGS.md)", (out/"README.md").read_text())
+            self.assertFalse((out/"METHODS.md").exists())
+            self.assertNotIn("METHODS.md", (out/"README.md").read_text())
 
 
 if __name__ == "__main__":

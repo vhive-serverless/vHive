@@ -24,7 +24,9 @@ class FindingsTest(unittest.TestCase):
         self.assertIn("| Remote storage | 40.000 |", text)
         self.assertIn("| Local cache | 30.000 |", text)
         self.assertIn("| Mean fetch payload | 50.000 |", text)
-        self.assertIn("不是旧小帧与新八流的matched布局A/B", text)
+        self.assertIn("not a matched A/B of old small frames versus eight streams", text)
+        self.assertNotRegex(text, r"[\u4e00-\u9fff]")
+        self.assertNotIn("METHODS.md", text)
 
 
 if __name__ == "__main__":

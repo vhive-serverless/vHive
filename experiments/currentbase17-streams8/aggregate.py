@@ -7,7 +7,6 @@ import argparse
 import csv
 import json
 import pathlib
-import shutil
 import statistics
 
 import matplotlib
@@ -226,10 +225,8 @@ def main():
         "Full Dedup: canonical storage/cache oracle; prebuilt partial-format transfer view for runtime.\n"
         "Figure15 CSV updates extra UFFD-event statistics, preserving tails and validating WS/private counts against immutable inputs; these are events, not unique remote pages. The whole-WS ratio excludes recipe; legacy_private_plus_recipe_pct is an explicitly named historical normalization only, unrelated to Figure13 payload accounting.\n"
         "Old results and BW/C3/r12 trace are not relabelled as this implementation.\n")
-    shutil.copyfile(HERE/"METHODS.md", a.output/"METHODS.md")
-    with (a.output/"README.md").open("a") as readme:
-        readme.write("\nSee [METHODS.md](METHODS.md) for exact component formulas, actual-size versus modeled capacity, timer boundaries, and provenance requirements.\n")
-        if not a.static_only:
+    if not a.static_only:
+        with (a.output/"README.md").open("a") as readme:
             readme.write("\nSee [FINDINGS.md](FINDINGS.md) for same-run comparisons, per-workload regressions, and limits on attribution.\n")
     print("STATIC_FIGURES_COMPLETE" if a.static_only else "FIGURES9_13_COMPLETE", a.output)
 
