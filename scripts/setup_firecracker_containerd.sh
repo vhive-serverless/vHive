@@ -22,51 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-set -e
+set -euo pipefail
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-ROOT="$( cd $DIR && cd .. && pwd)"
-BINS=$ROOT/bin
-CONFIGS=$ROOT/configs/firecracker-containerd
-
-sudo mkdir -p /etc/firecracker-containerd
-sudo mkdir -p /var/lib/firecracker-containerd/runtime
-sudo mkdir -p /etc/containerd/
-
-cd $ROOT
-git lfs pull
-
-DST=/usr/local/bin
-
-for BINARY in firecracker jailer containerd-shim-aws-firecracker firecracker-containerd firecracker-ctr
-do
-  sudo cp $BINS/$BINARY $DST
-done
-
-# rootfs image
-sudo cp $BINS/default-rootfs.img /var/lib/firecracker-containerd/runtime/
-
-# kernel image
-sudo cp $BINS/vmlinux-5.10.186 /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin
-
-sudo cp $CONFIGS/config.toml /etc/firecracker-containerd/
-
-# When executed inside a docker container, this command returns the container ID of the container.
-# on a non container environment, this returns "/".
-if [ -r /proc/1/cpuset ]; then
-  CPUSET=$(cat /proc/1/cpuset)
-  if [ -n "$CPUSET" ]; then
-    CONTAINERID=$(basename "$CPUSET")
-  else
-    CONTAINERID="/"
-  fi
-else
-  CONTAINERID="/"
-fi
-
-# Docker container ID is 64 characters long.
-if [ 64 -eq ${#CONTAINERID} ]; then
-  sudo sed -i "s/fc-dev-thinpool/${CONTAINERID}_thinpool/" /etc/firecracker-containerd/config.toml
-fi
-
-sudo cp $CONFIGS/firecracker-runtime.json /etc/containerd/
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$DIR/firecracker_stack.py" install --prepare --activate "$@"

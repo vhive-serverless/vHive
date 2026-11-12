@@ -162,8 +162,8 @@ func (fs *FirecrackerService) createQueueProxy(ctx context.Context, r *criapi.Cr
 
 	fs.removeVMConfig(r.GetPodSandboxId())
 
-	guestIPKeyVal := &criapi.KeyValue{Key: guestIPEnv, Value: vmConfig.guestIP}
-	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: vmConfig.guestPort}
+	guestIPKeyVal := &criapi.KeyValue{Key: guestIPEnv, Value: []byte(vmConfig.guestIP)}
+	guestPortKeyVal := &criapi.KeyValue{Key: guestPortEnv, Value: []byte(vmConfig.guestPort)}
 	r.Config.Envs = append(r.Config.Envs, guestIPKeyVal, guestPortKeyVal)
 
 	resp, err := fs.stockRuntimeClient.CreateContainer(ctx, r)
@@ -219,7 +219,7 @@ func getEnvVal(key string, config *criapi.ContainerConfig) (string, error) {
 	envs := config.GetEnvs()
 	for _, kv := range envs {
 		if kv.GetKey() == key {
-			return kv.GetValue(), nil
+			return string(kv.GetValue()), nil
 		}
 
 	}

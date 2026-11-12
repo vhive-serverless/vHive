@@ -46,7 +46,7 @@ jobs:
           **/go.mod
 
     - name: Build
-      run: go build
+      run: go build -mod=readonly
 
     - name: modify $PATH
       run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH

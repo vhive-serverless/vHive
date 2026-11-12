@@ -34,8 +34,13 @@ jobs:
               **/go.sum
               **/go.mod
 
+        - name: Validate stack installer
+          run: |
+            python3 scripts/firecracker_stack.py validate
+            python3 -m unittest discover -s scripts/tests -v
+
         - name: Build scripts
-          run: pushd scripts && go build -o setup_tool && popd
+          run: pushd scripts && go build -mod=readonly -o setup_tool && popd
         
         - name: Show scripts help info
           run: ./scripts/setup_tool -h

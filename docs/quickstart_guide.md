@@ -1,4 +1,44 @@
 # vHive Quickstart
+
+## Firecracker 1.18 integration setup
+
+The integration branch installs the stack selected in
+[`configs/setup/firecracker-stack.json`](../configs/setup/firecracker-stack.json).
+The runtime revision remains marked pending until its Step 2 acceptance is
+complete. Setup refuses this pending default; the old `bin/` artifacts are
+historical inputs.
+
+After the manifest is finalized, `setup_tool setup_firecracker_containerd` and
+`scripts/setup_firecracker_containerd.sh` build that exact runtime checkout using
+its `tools/modernize/prepare-worker.sh`, `build-stack.sh`, and `install-stack.sh`.
+This provisions the build tools and requires Linux x86_64, passwordless sudo,
+Docker, KVM, and sufficient disk space for the kernel and guest images.
+The installation checks the runtime input lock against vHive's manifest,
+compares installed artifacts to their build outputs, and records hashes for
+runtime, shim, upstream Firecracker/jailer, runc, kernel, rootfs, guest agent,
+demux, and resolver. It generates the containerd v4 configuration and the runtime
+configuration from the verified installation prefix.
+
+`STACK_DIR` selects the toolchain/build/install root (default
+`~/.local/share/vhive/firecracker-stack`); `INSTALL_DIR` selects its private
+installation prefix. `VHIVE_RUNTIME_CHECKOUT` can select an existing clean
+checkout. For development, `VHIVE_RUNTIME_REVISION` supplies an exact commit
+whose input lock must still match the manifest. `FICD_DM_POOL` selects an
+existing devmapper pool. Setup does not create or remove that pool.
+
+```sh
+python3 scripts/firecracker_stack.py validate
+python3 scripts/firecracker_stack.py verify
+```
+
+Verification checks the receipt and every installed artifact without activating
+services. Setup links the Firecracker commands and snapshotter helpers into
+`/usr/local/bin`; runc remains private to this runtime. Existing containerd state
+requires a separate migration assessment before using containerd v2.
+
+The following cluster instructions describe the existing Kubernetes workflow;
+Pod checkpoint endpoints remain deferred to Kubernetes 1.38 integration.
+
 This guide describes how to set up an _N_-node vHive serverless cluster with Firecracker MicroVMs.
 See [here][github-toc] to learn where to find table of contents.
 
@@ -45,7 +85,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
 
 ### 4. Go Installation
 
-If you intend to build the setup scripts from source, you need to install go by running: (This will install version `1.26.2`. You can configure the version to install in `configs/setup/system.json` as `GoVersion`)
+If you intend to build the setup scripts from source, you need to install go by running: (This will install version `1.26.11`. You can configure the version to install in `configs/setup/system.json` as `GoVersion`)
 ```bash
 ./scripts/install_go.sh; source /etc/profile
 ```

@@ -451,7 +451,7 @@ func (f *Function) CreateInstanceSnapshot() {
 
 	logger.Debug("Creating instance snapshot")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	err := orch.PauseVM(ctx, f.vmID)

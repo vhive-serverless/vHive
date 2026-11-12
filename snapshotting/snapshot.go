@@ -78,6 +78,26 @@ func (snp *Snapshot) GetSnapshotFilePath() string {
 	return filepath.Join(snp.snapDir, "snap_file")
 }
 
+// GetDriveManifestFilePath is the runtime's companion to the VMM snapshot.
+// Keep it beside the state file when copying or retaining a snapshot directory.
+func (snp *Snapshot) GetDriveManifestFilePath() string {
+	return snp.GetSnapshotFilePath() + ".drives.json"
+}
+
+// ValidateDriveManifest rejects incomplete legacy snapshots before publication
+// or restore. The runtime validates the manifest's schema and drive identities.
+func (snp *Snapshot) ValidateDriveManifest() error {
+	path := snp.GetDriveManifestFilePath()
+	info, err := os.Stat(path)
+	if err != nil {
+		return errors.Wrap(err, "missing snapshot drive manifest")
+	}
+	if !info.Mode().IsRegular() || info.Size() == 0 {
+		return fmt.Errorf("snapshot drive manifest %s must be a nonempty regular file", path)
+	}
+	return nil
+}
+
 func (snp *Snapshot) GetMemFilePath() string {
 	return filepath.Join(snp.snapDir, "mem_file")
 }
@@ -90,8 +110,8 @@ func (snp *Snapshot) GetWorkingSetTraceFilePath() string {
 	return filepath.Join(snp.snapDir, "working_set_trace")
 }
 
-func (snp *Snapshot) GetPatchFilePath() string {
-	return filepath.Join(snp.snapDir, "patch_file")
+func (snp *Snapshot) GetDiskFilePath() string {
+	return filepath.Join(snp.snapDir, "disk_file")
 }
 
 func (snp *Snapshot) GetInfoFilePath() string {

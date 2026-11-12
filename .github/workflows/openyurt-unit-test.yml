@@ -35,7 +35,7 @@ jobs:
 
     - name: Build scripts
       run: 
-        pushd scripts/openyurt-deployer && go build -o oy_deploy && popd
+        pushd scripts/openyurt-deployer && go build -mod=readonly -o oy_deploy && popd
 
     - name: Run Unit Test on OpenYurt helper function 
       run: | 

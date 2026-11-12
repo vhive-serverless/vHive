@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-SUBDIRS:=ctriface taps misc profile
+SUBDIRS:=ctriface snapshotting misc profile
 EXTRAGOARGS:=-v -race -cover
 EXTRAGOARGS_NORACE:=-v
 EXTRATESTFILES:=vhive_test.go stats.go vhive.go functions.go
@@ -29,8 +29,8 @@ WITHLAZY:=-lazyTest
 WITHSNAPSHOTS:=-snapshotsTest
 CTRDLOGDIR:=/tmp/ctrd-logs
 
-vhive: proto
-	go install github.com/vhive-serverless/vhive
+vhive:
+	go install -mod=readonly github.com/vhive-serverless/vhive
 
 protobuf:
 	protoc -I proto/ proto/orchestrator.proto --go_out=plugins=grpc:proto
@@ -147,4 +147,4 @@ test-cri-gvisor:
 test-cri-travis: # Testing in travis is deprecated
 	$(MAKE) -C cri test-travis
 
-.PHONY: test-orch $(SUBDIRS) test-subdirs
+.PHONY: vhive protobuf test-orch $(SUBDIRS) test-subdirs

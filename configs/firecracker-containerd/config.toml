@@ -1,21 +1,22 @@
-disabled_plugins = ["cri"]
+version = 4
+disabled_plugins = ["io.containerd.cri.v1.images", "io.containerd.cri.v1.runtime"]
 root = "/var/lib/firecracker-containerd/containerd"
 state = "/run/firecracker-containerd"
 
-[grpc]
+[plugins."io.containerd.server.v1.grpc"]
   address = "/run/firecracker-containerd/containerd.sock"
 
-# Proxy to remote snapshotters (e.g. stargz)
-[proxy_plugins]
-  [proxy_plugins.proxy]
-    type = "snapshot"
-    address = "/var/lib/demux-snapshotter/snapshotter.sock"
+[plugins."io.containerd.server.v1.ttrpc"]
+  address = "/run/firecracker-containerd/containerd.sock.ttrpc"
 
-[plugins]
-  [plugins.devmapper]
-    pool_name = "fc-dev-thinpool"
-    base_image_size = "10GB"
-    root_path = "/var/lib/firecracker-containerd/snapshotter/devmapper"
+[proxy_plugins.proxy]
+  type = "snapshot"
+  address = "/var/lib/demux-snapshotter/snapshotter.sock"
+
+[plugins."io.containerd.snapshotter.v1.devmapper"]
+  pool_name = "fc-dev-thinpool"
+  base_image_size = "10GB"
+  root_path = "/var/lib/firecracker-containerd/snapshotter/devmapper"
 
 [debug]
   level = "debug"

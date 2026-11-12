@@ -21,7 +21,9 @@
 # SOFTWARE.
 
 EXTRAGOARGS:=-v -race -cover
-EXTRATESTFILES:=iface_test.go iface.go orch_options.go orch.go
+# Test packages so protocol regression tests are included alongside VM tests.
+EXTRATESTFILES:=.
+UNITTESTS:=-run '^(TestValidateUPFMode|TestNewOrchestratorRejectsInvalidUPFMode|TestStartSnapStopLoad|TestUPFWorkingSetRecordReplay|TestPauseSnapResume|TestSnapshotConcurrentClones|TestStartStopSerial|TestPauseResumeSerial|TestStartStopParallel|TestPauseResumeParallel|TestCreateVMRequest.*|TestConfigureSnapshotMemoryBackend.*)$$'
 BENCHFILES:=bench_test.go iface.go orch_options.go orch.go
 UPFARGS:=-upf -lazy
 UPF_WORKING_SET_ARGS:=-upf
@@ -33,50 +35,50 @@ CTRDLOGDIR:=/tmp/ctrd-logs
 test:
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS)
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRATESTFILES) $(EXTRAGOARGS) $(UNITTESTS)
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -args $(UPFARGS)
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRATESTFILES) $(EXTRAGOARGS) $(UNITTESTS) -args $(UPFARGS)
 	./../scripts/clean_fcctr.sh
 	sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_working_set.out 2>$(CTRDLOGDIR)/ctriface_log_upf_working_set.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRATESTFILES) $(EXTRAGOARGS) -run '^TestUPFWorkingSetRecordReplay$$' -args $(UPF_WORKING_SET_ARGS)
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRATESTFILES) $(EXTRAGOARGS) $(UNITTESTS) -run '^TestUPFWorkingSetRecordReplay$$' -args $(UPF_WORKING_SET_ARGS)
 	./../scripts/clean_fcctr.sh
 
 test-man:
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_noupf_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_noupf_man_travis.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestSnapLoad
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_upf_man_travis.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(UPFARGS)
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestSnapLoad -args $(UPFARGS)
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_remote_snap_create_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_remote_snap_create_man_travis.err &
 	# Creates a remote snapshot.
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestRemoteSnapCreate
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestRemoteSnapCreate
 	# Cleans up the node.
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_remote_snap_load_man_travis.out 2>$(CTRDLOGDIR)/ctriface_log_remote_snap_load_man_travis.err &
 	# Loads the remote snapshot.
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestRemoteSnapLoad
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestRemoteSnapLoad
 	./../scripts/clean_fcctr.sh
 	sudo env "PATH=$(PATH)" /usr/local/bin/http-address-resolver &
 	sudo env "PATH=$(PATH)" /bin/bash -c 'while true; do /usr/local/bin/demux-snapshotter; done' &
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log.out 2>$(CTRDLOGDIR)/ctriface_log.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestSnapLoad -args $(STARGZ) $(DOCKER_CREDENTIALS)
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestSnapLoad -args $(STARGZ) $(DOCKER_CREDENTIALS)
 	./../scripts/clean_fcctr.sh
 
 test-skip:
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_noupf_man_skip.out 2>$(CTRDLOGDIR)/ctriface_log_noupf_man_skip.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelSnapLoad
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestParallelSnapLoad
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad
 	./../scripts/clean_fcctr.sh
 	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/ctriface_log_upf_man_skip.out 2>$(CTRDLOGDIR)/ctriface_log_upf_man_skip.err &
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelSnapLoad -args $(UPFARGS)
-	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad -args $(UPFARGS)
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestParallelSnapLoad -args $(UPFARGS)
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(EXTRAGOARGS) -run TestParallelPhasedSnapLoad -args $(UPFARGS)
 	./../scripts/clean_fcctr.sh
 
 
 bench:
-	sudo env "PATH=$(PATH)" go test $(BENCHFILES) $(GOBENCH)
+	sudo env "PATH=$(PATH)" go test -mod=readonly $(BENCHFILES) $(GOBENCH)
 	./../scripts/clean_fcctr.sh
 .PHONY: test test-man test-man-upf bench

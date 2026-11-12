@@ -26,8 +26,9 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"sync"
+	"sync/atomic"
 
-	"github.com/containerd/containerd"
+	containerd "github.com/containerd/containerd/v2/client"
 
 	"github.com/vhive-serverless/vhive/networking"
 )
@@ -37,6 +38,7 @@ type VM struct {
 	ID               string
 	ContainerSnapKey string
 	SnapBooted       bool
+	Paused           atomic.Bool
 	Image            *containerd.Image
 	Container        *containerd.Container
 	Task             *containerd.Task

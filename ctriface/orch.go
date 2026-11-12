@@ -37,7 +37,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/containerd/containerd"
+	containerd "github.com/containerd/containerd/v2/client"
 
 	fcclient "github.com/firecracker-microvm/firecracker-containerd/firecracker-control/client"
 	// note: from the original repo

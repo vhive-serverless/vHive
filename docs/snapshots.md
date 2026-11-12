@@ -1,5 +1,23 @@
 # Firecracker snapshots
 
+## Firecracker 1.18 integration branch
+
+The `firecracker-v1.18-containerdv2-integration` branch keeps the Step 2
+`PauseVM` / `CreateSnapshot` / `ResumeVM` API and uses containerd's v2 Go client.
+Capture preserves the complete workload block image in `disk_file`. Copy the
+entire revision directory when retaining a snapshot, including `snap_file`,
+`mem_file`, `snap_file.drives.json`, `disk_file`, and `info_file`. The drive
+manifest is required by the runtime to map captured paths onto private restored
+disks. Older snapshots require a fresh capture.
+
+`TestPauseSnapResume` checks source task status, metrics, exec, and stdout after
+capture. `TestSnapshotConcurrentClones` keeps the source and two clones alive,
+checks distinct endpoints and disks, and exercises independent shutdown.
+Run these on the isolated runtime test stack; local compilation alone does not
+establish VM compatibility. Kubernetes Pod checkpoint endpoints remain deferred.
+
+The following sections document the historical snapshot implementation.
+
 ## Overview
 
 We

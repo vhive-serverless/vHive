@@ -45,7 +45,7 @@ jobs:
         python-version: '3.x'
 
     - name: Build setup scripts
-      run: pushd scripts && go build -o setup_tool && popd
+      run: pushd scripts && go build -mod=readonly -o setup_tool && popd
       
     - name: Add rsync
       run: |
@@ -56,7 +56,7 @@ jobs:
       run: ./scripts/setup_tool setup_system
 
     - name: Build
-      run: go build -race -v -a ./...
+      run: go build -mod=readonly -race -v -a ./...
 
     - name: Run tests in submodules
       env:
@@ -93,7 +93,7 @@ jobs:
         python-version: '3.x'
 
     - name: Build setup scripts
-      run: pushd scripts && go build -o setup_tool && popd
+      run: pushd scripts && go build -mod=readonly -o setup_tool && popd
 
     - name: Add rsync
       run: |
@@ -107,7 +107,7 @@ jobs:
       run: ./scripts/setup_tool install_pmutools
 
     - name: Build
-      run: go build -race -v -a ./...
+      run: go build -mod=readonly -race -v -a ./...
 
     - name: Run tests in submodules
       env:
@@ -149,7 +149,7 @@ jobs:
       run: ./scripts/github_runner/gh-actions-disk-cleanup.sh
 
     - name: Build setup scripts
-      run: pushd scripts && go build -o setup_tool && popd
+      run: pushd scripts && go build -mod=readonly -o setup_tool && popd
 
     - name: Pull binaries
       run: ./scripts/setup_tool setup_firecracker_containerd
@@ -158,7 +158,7 @@ jobs:
       run: ./scripts/setup_tool setup_stargz firecracker
 
     - name: Build
-      run: go build -race -v -a ./...
+      run: go build -mod=readonly -race -v -a ./...
 
     - name: Run tests in submodules
       env:

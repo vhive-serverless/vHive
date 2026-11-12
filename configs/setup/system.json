@@ -1,5 +1,5 @@
 {
-	"GoVersion": "1.26.2",
+	"GoVersion": "1.26.11",
 	"GoDownloadUrlTemplate": "https://go.dev/dl/go%s.linux-%s.tar.gz",
 	"ContainerdVersion": "2.2.3",
 	"ContainerdDownloadUrlTemplate": "https://github.com/containerd/containerd/releases/download/v%s/containerd-%s-linux-%s.tar.gz",

@@ -122,7 +122,7 @@ func DeployKubernetes() error {
 		shellCmd = fmt.Sprintf(shellCmd+"--apiserver-advertise-address=%s ", configs.Kube.ApiserverAdvertiseAddress)
 	}
 	shellCmd = fmt.Sprintf(shellCmd+"| tee %s/masterNodeInfo", configs.System.TmpDir)
-	_, err := utils.ExecShellCmd(shellCmd)
+	_, err := utils.ExecShellCmd("%s", shellCmd)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to deploy Kubernetes(version %s)!\n", configs.Kube.K8sVersion) {
 		return err
 	}

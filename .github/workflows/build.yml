@@ -22,7 +22,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go: ['1.26']
+        go: ['1.26.11']
       # Build all variants regardless of failures
       fail-fast: false
 
@@ -46,13 +46,8 @@ jobs:
       with:
         args: --timeout 5m
 
-    - name: Get dependencies
-      run: |
-        go get -v -t -d ./...
-        if [ -f Gopkg.toml ]; then
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-            dep ensure
-        fi
+    - name: Verify dependencies
+      run: go mod verify
 
     - name: Build
-      run: go build -race -v -a ./...
+      run: go build -mod=readonly -race -v -a ./...
