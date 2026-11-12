@@ -7,8 +7,17 @@ The `firecracker-v1.18-containerdv2-integration` branch keeps the Step 2
 Capture preserves the complete workload block image in `disk_file`. Copy the
 entire revision directory when retaining a snapshot, including `snap_file`,
 `mem_file`, `snap_file.drives.json`, `disk_file`, and `info_file`. The drive
-manifest is required by the runtime to map captured paths onto private restored
-disks. Older snapshots require a fresh capture.
+manifest uses version 2 and includes a version 1 sealed transport cut with
+process stream cursors, the acknowledged event cursor, and the task resume set.
+The runtime uses it to map captured paths onto private restored disks and
+reconnect the captured transports. Drive-only snapshots require a fresh capture.
+
+Legacy restore returns `RestoredIO` for the runtime-owned guest processes.
+vHive retains those descriptions in its VM metadata and attaches stdout/stderr
+to the per-VM workload logger. These readers stay alive until the stopped
+runtime closes its writers and all remaining output reaches the logger. A
+reader-drain timeout reports an error and retains the readers. External unread
+stdin stays with the source and is not automatically duplicated into clones.
 
 `TestPauseSnapResume` checks source task status, metrics, exec, and stdout after
 capture. `TestSnapshotConcurrentClones` keeps the source and two clones alive,

@@ -24,6 +24,7 @@ package snapshotting
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -85,7 +86,7 @@ func (snp *Snapshot) GetDriveManifestFilePath() string {
 }
 
 // ValidateDriveManifest rejects incomplete legacy snapshots before publication
-// or restore. The runtime validates the manifest's schema and drive identities.
+// or restore. The runtime validates drive identities and the complete transport cut.
 func (snp *Snapshot) ValidateDriveManifest() error {
 	path := snp.GetDriveManifestFilePath()
 	info, err := os.Stat(path)
@@ -94,6 +95,22 @@ func (snp *Snapshot) ValidateDriveManifest() error {
 	}
 	if !info.Mode().IsRegular() || info.Size() == 0 {
 		return fmt.Errorf("snapshot drive manifest %s must be a nonempty regular file", path)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return errors.Wrap(err, "read snapshot drive manifest")
+	}
+	var manifest struct {
+		Version   int `json:"version"`
+		Transport *struct {
+			Version int
+		} `json:"transport"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return errors.Wrap(err, "decode snapshot drive manifest")
+	}
+	if manifest.Version != 2 || manifest.Transport == nil || manifest.Transport.Version != 1 {
+		return fmt.Errorf("snapshot drive manifest %s requires version 2 with a version 1 sealed transport cut; capture a fresh snapshot", path)
 	}
 	return nil
 }

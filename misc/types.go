@@ -29,6 +29,8 @@ import (
 	"sync/atomic"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/cio"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 
 	"github.com/vhive-serverless/vhive/networking"
 )
@@ -44,6 +46,10 @@ type VM struct {
 	Task             *containerd.Task
 	TaskCh           <-chan containerd.ExitStatus
 	NetConfig        *networking.NetworkConfig
+	// Restored guest processes are runtime-owned, without host containerd tasks.
+	RestoredIO            []*proto.RestoredProcessIO
+	RestoredIOAttachments []cio.IO
+	RestoredIODone        <-chan struct{}
 }
 
 // VMPool Pool of active VMs (can be in several states though)

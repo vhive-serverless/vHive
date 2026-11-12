@@ -23,7 +23,7 @@
 EXTRAGOARGS:=-v -race -cover
 # Test packages so protocol regression tests are included alongside VM tests.
 EXTRATESTFILES:=.
-UNITTESTS:=-run '^(TestValidateUPFMode|TestNewOrchestratorRejectsInvalidUPFMode|TestStartSnapStopLoad|TestUPFWorkingSetRecordReplay|TestPauseSnapResume|TestSnapshotConcurrentClones|TestStartStopSerial|TestPauseResumeSerial|TestStartStopParallel|TestPauseResumeParallel|TestCreateVMRequest.*|TestConfigureSnapshotMemoryBackend.*)$$'
+UNITTESTS:=-run '^(TestValidateUPFMode|TestNewOrchestratorRejectsInvalidUPFMode|TestStartSnapStopLoad|TestUPFWorkingSetRecordReplay|TestPauseSnapResume|TestSnapshotConcurrentClones|TestRestoredOutput.*|TestStartStopSerial|TestPauseResumeSerial|TestStartStopParallel|TestPauseResumeParallel|TestCreateVMRequest.*|TestConfigureSnapshotMemoryBackend.*)$$'
 BENCHFILES:=bench_test.go iface.go orch_options.go orch.go
 UPFARGS:=-upf -lazy
 UPF_WORKING_SET_ARGS:=-upf

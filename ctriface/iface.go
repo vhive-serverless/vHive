@@ -291,6 +291,9 @@ func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID, TimeoutSeconds: 20}); err != nil {
 		return errors.Wrap(err, "stop function VM")
 	}
+	if err := closeRestoredOutput(ctx, vm); err != nil {
+		return err
+	}
 	if vm.Container != nil {
 		if err := (*vm.Container).Delete(ctx, containerd.WithSnapshotCleanup); err != nil && !errdefs.IsNotFound(err) {
 			return errors.Wrap(err, "delete function container and writable snapshot")
@@ -485,6 +488,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		activateErr        error
 		deactivateErr      error
 		activateErrChan    chan error
+		createVMResponse   *proto.CreateVMResponse
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -496,6 +500,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		return nil, nil, err
 	}
 
+	canReleaseVM := true
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
@@ -503,7 +508,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	}
 
 	defer func() {
-		if retErr != nil {
+		if retErr != nil && canReleaseVM {
 			if err := o.vmPool.Free(vmID); err != nil {
 				logger.WithError(err).Errorf("failed to free VM from pool after failure")
 			}
@@ -526,10 +531,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		}
 
 		defer func() {
-			if retErr != nil {
+			if retErr != nil && canReleaseVM {
 				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 				defer cancel()
 				if err := o.devMapper.RemoveDeviceSnapshot(cleanupCtx, vm.ContainerSnapKey); err != nil {
+					canReleaseVM = false
 					logger.WithError(err).Error("failed to remove restore disk")
 				}
 			}
@@ -623,8 +629,29 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		}
 	}
 
-	if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
+	if createVMResponse, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
 		logSnapshotLoadFailure(logger, snap, conf, loadErr)
+	} else {
+		vm.SnapBooted = true
+		defer func() {
+			if retErr == nil {
+				return
+			}
+			// Stop a created guest before removing its disk or log readers.
+			canReleaseVM = false
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 25*time.Second)
+			defer cancel()
+			if _, err := o.fcClient.StopVM(cleanupCtx, &proto.StopVMRequest{VMID: vmID, TimeoutSeconds: 20}); err != nil {
+				logger.WithError(err).Error("failed to stop restored VM after load failure")
+				return
+			}
+			if err := closeRestoredOutput(cleanupCtx, vm); err != nil {
+				logger.WithError(err).Error("failed to drain restored output after load failure")
+				return
+			}
+			canReleaseVM = true
+			o.workloadIo.Delete(vmID)
+		}()
 	}
 
 	if activateErrChan != nil {
@@ -645,7 +672,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		return nil, nil, multierr
 	}
 
-	vm.SnapBooted = true
+	iologger := NewWorkloadIoWriter(vmID)
+	o.workloadIo.Store(vmID, &iologger)
+	if err := attachRestoredOutput(vm, createVMResponse.GetRestoredIO(), iologger, iologger); err != nil {
+		return nil, nil, errors.Wrap(err, "attach restored function output")
+	}
 
 	return &StartVMResponse{GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
 }
