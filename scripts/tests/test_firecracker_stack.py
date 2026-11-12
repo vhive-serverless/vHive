@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 
 SPEC = importlib.util.spec_from_file_location("firecracker_stack", Path(__file__).parents[1] / "firecracker_stack.py")
@@ -105,6 +105,75 @@ class FirecrackerStackTests(unittest.TestCase):
         path.write_text(json.dumps(receipt))
         with self.assertRaisesRegex(ValueError, "exactly the manifest artifacts"):
             STACK.verify_install(prefix, revision, self.manifest)
+
+    def test_networking_preparation_is_idle_when_route_is_present(self):
+        with patch.object(STACK.shutil, "which", return_value="/usr/sbin/route"), patch.object(STACK, "run") as run:
+            STACK.prepare_host_networking()
+            STACK.prepare_host_networking()
+            run.assert_not_called()
+
+    def test_networking_preparation_requires_route_after_install(self):
+        with patch.object(STACK.shutil, "which", return_value=None), patch.object(STACK, "run") as run:
+            with self.assertRaisesRegex(ValueError, "requires route in PATH"):
+                STACK.prepare_host_networking()
+            self.assertEqual(run.call_args_list, [
+                call("sudo", "-n", "apt-get", "update"),
+                call("sudo", "-n", "env", "DEBIAN_FRONTEND=noninteractive", "apt-get",
+                     "install", "--yes", "--no-install-recommends", "net-tools"),
+            ])
+
+    def test_networking_provision_failure_stops_preparation(self):
+        error = subprocess.CalledProcessError(1, ["apt-get", "update"])
+        with patch.object(STACK.shutil, "which", return_value=None), patch.object(STACK, "run", side_effect=error) as run:
+            with self.assertRaises(subprocess.CalledProcessError):
+                STACK.prepare_host_networking()
+            run.assert_called_once_with("sudo", "-n", "apt-get", "update")
+
+    def test_cached_install_prepare_repairs_route_without_rebuilding(self):
+        self.manifest["runtime"].update(ready=True, revision="1" * 40)
+        source, prefix, revision = self.install_fixture()
+        receipt = prefix / "vhive-stack-receipt.json"
+        original = receipt.read_bytes()
+        environment = {"STACK_DIR": str(self.root / "stack"), "INSTALL_DIR": str(prefix)}
+        with patch.dict(os.environ, environment, clear=True), patch("sys.argv", ["stack", "install", "--prepare"]), \
+                patch.object(STACK, "load_manifest", return_value=self.manifest), \
+                patch.object(STACK, "get_checkout", return_value=source), patch.object(STACK, "check_checkout"), \
+                patch.object(STACK.shutil, "which", side_effect=[None, "/usr/sbin/route"]), patch.object(STACK, "run") as run:
+            STACK.main()
+            self.assertEqual(run.call_args_list, [
+                call("sudo", "-n", "apt-get", "update"),
+                call("sudo", "-n", "env", "DEBIAN_FRONTEND=noninteractive", "apt-get",
+                     "install", "--yes", "--no-install-recommends", "net-tools"),
+            ])
+        self.assertEqual(receipt.read_bytes(), original)
+        STACK.verify_install(prefix, revision, self.manifest)
+
+    def test_missing_route_prevents_activation_before_side_effects(self):
+        _, prefix, revision = self.install_fixture()
+        with patch.object(STACK.shutil, "which", return_value=None), \
+                patch.object(STACK, "write_privileged") as write, patch.object(STACK, "run") as run:
+            with self.assertRaisesRegex(ValueError, "requires route in PATH"):
+                STACK.activate(prefix, revision, self.manifest, "pool")
+            write.assert_not_called()
+            run.assert_not_called()
+
+    def test_missing_route_stops_legacy_acceptance_before_daemon_or_vm(self):
+        spec = importlib.util.spec_from_file_location("accept_legacy_snapshot", Path(__file__).parents[1] / "accept_legacy_snapshot.py")
+        acceptance = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(acceptance)
+        output = self.root / "acceptance"
+        arguments = ["accept", "--prefix", str(self.root / "prefix"),
+                     "--runtime-revision", "1" * 40, "--output", str(output), "--go", "/fixture/go"]
+        with patch("sys.argv", arguments), patch.object(acceptance.os, "geteuid", return_value=0), \
+                patch.object(acceptance.os, "access", return_value=True), \
+                patch.object(acceptance.shutil, "which", return_value=None), \
+                patch.object(acceptance, "run", return_value="") as run, \
+                patch.object(acceptance.subprocess, "Popen") as daemon:
+            with self.assertRaisesRegex(ValueError, "requires route in PATH"):
+                acceptance.main()
+            run.assert_called_once_with("git", "status", "--porcelain", capture=True)
+            daemon.assert_not_called()
+        self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

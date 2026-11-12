@@ -88,6 +88,7 @@ def main():
     spec = importlib.util.spec_from_file_location("firecracker_stack", ROOT / "scripts/firecracker_stack.py")
     stack = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(stack)
+    stack.require_host_networking()
     manifest = stack.load_manifest(stack.DEFAULT_MANIFEST)
     if not args.candidate and (not manifest["runtime"]["ready"] or manifest["runtime"]["revision"] != revision):
         raise ValueError("final acceptance requires a finalized manifest matching --runtime-revision")

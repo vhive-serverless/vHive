@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 
@@ -14,6 +15,20 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "configs/setup/firecracker-stack.json"
 COMMANDS = ("validate", "prepare", "build", "install", "verify", "activate")
+
+
+def require_host_networking():
+    if not shutil.which("route"):
+        raise ValueError("vHive networking requires route in PATH; run prepare or install --prepare to install net-tools")
+
+
+def prepare_host_networking():
+    # These vHive prerequisites are additional to the runtime build toolchain.
+    if not shutil.which("route"):
+        run("sudo", "-n", "apt-get", "update")
+        run("sudo", "-n", "env", "DEBIAN_FRONTEND=noninteractive", "apt-get",
+            "install", "--yes", "--no-install-recommends", "net-tools")
+    require_host_networking()
 
 
 def run(*args, cwd=None, env=None, capture=False):
@@ -138,6 +153,7 @@ def write_privileged(source, destination, mode="644"):
 def activate(prefix, revision, manifest, pool):
     # Verify all artifacts before making the installation visible to vHive.
     verify_install(prefix, revision, manifest)
+    require_host_networking()
     if not re.fullmatch(r"[A-Za-z0-9_.+-]+", pool):
         raise ValueError("invalid devmapper pool name")
     with tempfile.TemporaryDirectory(prefix="vhive-stack-config-") as directory:
@@ -173,7 +189,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=COMMANDS)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
-    parser.add_argument("--prepare", action="store_true", help="provision the selected checkout's build prerequisites")
+    parser.add_argument("--prepare", action="store_true", help="provision runtime build and vHive host networking prerequisites")
     parser.add_argument("--activate", action="store_true", help="configure vHive and link its commands after a verified install")
     parser.add_argument("--pool", default=os.environ.get("FICD_DM_POOL", "fc-dev-thinpool"))
     args = parser.parse_args()
@@ -190,6 +206,11 @@ def main():
             activate(prefix, revision, manifest, args.pool)
         print(f"Verified stack installation {prefix}")
         return
+    if args.command == "prepare" or args.prepare:
+        # Repair host prerequisites even when an existing receipt avoids rebuilds.
+        prepare_host_networking()
+    elif args.activate:
+        require_host_networking()
     source = get_checkout(stack, revision)
     check_checkout(source, revision, manifest)
     environment = dict(os.environ, STACK_DIR=str(stack), INSTALL_DIR=str(prefix), GOWORK="off")
