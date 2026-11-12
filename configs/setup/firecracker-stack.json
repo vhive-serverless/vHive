@@ -15,7 +15,6 @@
       "base_commit": "eaf83bb718a559d324613d566eaf776b31a62340",
       "branch": "v1.18.0",
       "commit": "eaf83bb718a559d324613d566eaf776b31a62340",
-      "rust": "1.97.0",
       "target": "x86_64-unknown-linux-musl",
       "binary_source": "official GitHub release",
       "release_archive_sha256": {
