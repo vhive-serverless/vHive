@@ -90,4 +90,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/vhive-serverless/firecracker-go-sdk v0.0.0-20261112170243-76af8abe7709
+replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/vhive-serverless/firecracker-go-sdk v0.0.0-20261112180021-dd9db3224329
