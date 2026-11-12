@@ -95,11 +95,16 @@ done`
 		cio.NewCreator(cio.WithStreams(nil, io.Discard, io.Discard)))
 	require.NoError(t, err)
 	require.NoError(t, process.Start(ctx))
+	guestHostPID := process.Pid()
+	require.Positive(t, guestHostPID)
 	initial := legacyContinuityProbe(ctx, t, backend, task.ID())
 	parts := strings.Split(initial, ":")
 	require.Len(t, parts, 3)
 	require.Len(t, parts[0], 32)
-	require.Equal(t, strconv.FormatUint(uint64(process.Pid()), 10), parts[1])
+	// The shell reports its container PID; the task API reports its guest host PID.
+	containerPID, err := strconv.ParseUint(parts[1], 10, 32)
+	require.NoError(t, err)
+	require.Positive(t, containerPID)
 	require.Equal(t, "41", parts[2])
 	next := parts[0] + ":" + parts[1] + ":"
 
@@ -130,7 +135,7 @@ done`
 	require.NotEqual(t, identity.PID, legacyContinuityIdentity(t, cloneDir).PID)
 	state, err := cloneBackend.State(ctx, &taskAPI.StateRequest{ID: task.ID(), ExecID: counterID})
 	require.NoError(t, err)
-	require.Equal(t, process.Pid(), state.Pid, "restore must retain the captured exec")
+	require.Equal(t, guestHostPID, state.Pid, "restore must retain the captured exec")
 	require.Equal(t, next+"42", legacyContinuityProbe(ctx, t, cloneBackend, task.ID()), "clone must resume the captured token and counter, not the advanced source")
 	require.Equal(t, "captured", legacyContinuityExec(ctx, t, cloneBackend, task.ID(), "cat /vhive-continuity/disk"))
 	legacyContinuityExec(ctx, t, cloneBackend, task.ID(), "echo clone >/vhive-continuity/disk; sync")
@@ -150,7 +155,7 @@ done`
 	require.Equal(t, "clone", legacyContinuityExec(ctx, t, cloneBackend, task.ID(), "cat /vhive-continuity/disk"))
 	legacyContinuityInvoke(ctx, t, clone.GuestIP, "clone-after-source-delete")
 	require.NoError(t, orch.StopSingleVM(ctx, cloneID))
-	t.Logf("legacy_snapshot_continuity source_vmm=%d guest_exec=%d initial=%s source_and_clone_disk_isolation=passed source_deleted=true", identity.PID, process.Pid(), initial)
+	t.Logf("legacy_snapshot_continuity source_vmm=%d guest_exec_host_pid=%d container_exec_pid=%d initial=%s source_and_clone_disk_isolation=passed source_deleted=true", identity.PID, guestHostPID, containerPID, initial)
 }
 
 func legacyContinuityInvoke(ctx context.Context, t *testing.T, ip, payload string) {
