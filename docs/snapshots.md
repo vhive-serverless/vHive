@@ -2,7 +2,9 @@
 
 ## Firecracker 1.18 integration branch
 
-The `firecracker-v1.18-containerdv2-integration` branch keeps the Step 2
+The vHive `firecracker-v1.18-containerdv2-integration` branch integrates the
+firecracker-containerd `firecracker-v1.18-containerdv2-vhive-integration`
+branch. It keeps the Step 2
 `PauseVM` / `CreateSnapshot` / `ResumeVM` API and uses containerd's v2 Go client.
 Capture preserves the complete workload block image in `disk_file`. Copy the
 entire revision directory when retaining a snapshot, including `snap_file`,

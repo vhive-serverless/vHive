@@ -216,12 +216,14 @@ Here are some useful commands (there are plenty of Zipkin tutorials online):
 
 ## Dependencies and binaries
 
-* vHive uses firecracker binaries that are built using the `firecracker-v1.4.1-vhive-integration` branch
-  of our [fork](https://github.com/vhive-serverless/firecracker-containerd) of the upstream repository (see
-  the official
-  firecracker-containerd [getting started guide](https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/getting-started.md#clone-this-repository-and-build-the-components)
-  for details on the building process). Currently, we are in the process of upstreaming VM snapshots support to the
-  upstream repository.
+* This vHive integration branch targets the `firecracker-v1.18-containerdv2-vhive-integration`
+  branch of [vhive-serverless/firecracker-containerd](https://github.com/vhive-serverless/firecracker-containerd).
+  It uses official, unmodified Firecracker and jailer v1.18.0 release binaries.
+  The runtime, guest agent, and supporting components are built from the exact
+  revisions selected by [the stack manifest](../configs/setup/firecracker-stack.json).
+  Follow the [integration setup instructions](./quickstart_guide.md#firecracker-118-integration-setup)
+  for installation and verification. The manifest remains marked unready until
+  the final runtime revision and end-to-end acceptance are recorded.
 
 * Firecracker uses vHive's firecracker-containerd integration. gVisor uses the upstream `runsc` runtime configured in stock containerd.
   We plan to keep our code loosely up to date with the upstream Firecracker and gVisor projects.
@@ -229,7 +231,9 @@ Here are some useful commands (there are plenty of Zipkin tutorials online):
 * vHive uses a [fork](https://github.com/ease-lab/kind) of [kind](https://github.com/kubernetes-sigs/kind)
   to speed up testing environment setup requiring Kubernetes.
 
-* Current [eStargz](https://github.com/containerd/stargz-snapshotter) version is 0.13.0.
+* The Firecracker stack selects [stargz-snapshotter](https://github.com/containerd/stargz-snapshotter)
+  v0.18.2, containerd v2.3.7, and runc v1.4.2. Exact revisions and binary
+  provenance are recorded in the stack manifest and installation receipts.
 
 
 ## Deploying Knative functions that require GPU Support
