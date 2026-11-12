@@ -2,13 +2,13 @@ name: vHive unit tests
 
 on:
   push:
-    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support, firecracker-v1.18-containerdv2-integration ]
     paths-ignore:
     - 'docs/**'
     - '**.md'
     - 'function-images/**'
   pull_request:
-    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support ]
+    branches: [ main, legacy-firecracker-v0.24.0-with-upf-support, firecracker-v1.18-containerdv2-integration ]
     paths-ignore:
     - 'docs/**'
     - '**.md'
@@ -119,6 +119,9 @@ jobs:
         make -C $MODULE test-man
 
   firecracker-containerd-interface-test:
+    # The migrated branch uses the File-only legacy acceptance workflow.
+    # This older matrix also forces UPF/lazy and stargz combinations.
+    if: github.ref_name != 'firecracker-v1.18-containerdv2-integration' && github.base_ref != 'firecracker-v1.18-containerdv2-integration'
     name: "Unit tests: Firecracker-containerd interface"
     runs-on: ubuntu-24.04
     strategy:

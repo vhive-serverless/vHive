@@ -1,4 +1,22 @@
-This is the deployment scripts of github self-hosted runners, used to execute some of the unit tests.
+Current build and unit workflows use GitHub-hosted Ubuntu 24.04 runners.
+The `firecracker-v1.18-containerdv2-integration` branch also has a dedicated
+[File-memory legacy snapshot workflow](../../.github/workflows/legacy_snapshot_tests.yml).
+It requires the finalized published runtime/module pin, verifies the installation,
+and records its three standalone VM tests; it does not establish Kubernetes or
+CRI restore acceptance.
+
+The maintained `Dockerfile.github_runner` source uses Ubuntu 24.04/Python 3.12
+and contains no guest kernel or rendered runtime configuration. Jobs install
+the manifest-pinned stack and render configuration only after verification.
+The historical `setup_integ_runners.sh` deploy helper still pulls the separately
+published `vhiveease/integ_test_runner:ubuntu20base` image; editing this Dockerfile
+does not rebuild or replace that external image. The hosted workflow does not
+use that helper or image.
+
+## Historical self-hosted deployment
+
+The following deployment scripts and runner descriptions are retained for
+existing self-hosted installations. The profile workflow is currently disabled.
 
 There are four self-hosted runners in total:
 * cri-firecracker: Used for [firecracker cri tests](../../.github/workflows/integration_tests.yml)
