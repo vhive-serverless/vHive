@@ -74,7 +74,7 @@ func (dmpr *DeviceMapper) SaveBlockImage(ctx context.Context, key, path string) 
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	if err := tmp.Close(); err != nil {
 		return err
 	}

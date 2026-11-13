@@ -32,7 +32,7 @@ func TestSnapshotConcurrentClones(t *testing.T) {
 		t.Helper()
 		connection, err := grpc.NewClient(net.JoinHostPort(ip, "50051"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		require.NoError(t, err)
-		defer connection.Close()
+		defer func() { _ = connection.Close() }()
 		requestCtx, stop := context.WithTimeout(ctx, 20*time.Second)
 		defer stop()
 		reply, err := hello.NewGreeterClient(connection).SayHello(requestCtx, &hello.HelloRequest{Name: payload}, grpc.WaitForReady(true))

@@ -31,7 +31,7 @@ func (b *restoredOutputBuffer) Write(data []byte) (int, error) {
 func (b *restoredOutputBuffer) contents() string {
 	b.Lock()
 	defer b.Unlock()
-	return b.Buffer.String()
+	return b.String()
 }
 
 func TestRestoredOutputDrainsTailBeforeClose(t *testing.T) {
@@ -59,10 +59,10 @@ func TestRestoredOutputDrainsTailBeforeClose(t *testing.T) {
 
 	outWriter, err := fifo.OpenFifo(ctx, stdout, syscall.O_WRONLY|syscall.O_NONBLOCK, 0600)
 	require.NoError(t, err)
-	defer outWriter.Close()
+	defer func() { _ = outWriter.Close() }()
 	errWriter, err := fifo.OpenFifo(ctx, stderr, syscall.O_WRONLY|syscall.O_NONBLOCK, 0600)
 	require.NoError(t, err)
-	defer errWriter.Close()
+	defer func() { _ = errWriter.Close() }()
 	_, err = io.WriteString(outWriter, "stdout-prefix")
 	require.NoError(t, err)
 	_, err = io.WriteString(errWriter, "stderr-prefix")
