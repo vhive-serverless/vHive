@@ -45,7 +45,7 @@ func AppendDirToPath(pathTemplate string, pars ...any) error {
 	appendedPath := fmt.Sprintf(pathTemplate, pars...)
 
 	// Update PATH
-	err := AppendDirToPathVariable(appendedPath)
+	err := AppendDirToPathVariable("%s", appendedPath)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func DownloadAndExecScript(scriptUrl string, scriptPars ...string) error {
 		combinedScriptPars = combinedScriptPars + " " + scriptPar
 	}
 	// Download bash script
-	scriptPath, err := DownloadToTmpDir(scriptUrl)
+	scriptPath, err := DownloadToTmpDir("%s", scriptUrl)
 	if err == nil {
 		// Execute the script
 		_, err = ExecShellCmd("bash %s %s", scriptPath, combinedScriptPars)

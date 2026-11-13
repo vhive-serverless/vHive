@@ -240,7 +240,7 @@ func GetEnvironmentVariable(variableNameTemplate string, pars ...any) string {
 
 // Update the value of specific environment variable
 func UpdateEnvironmentVariable(variableName string, newValueTemplate string, pars ...any) (string, error) {
-	oldValue := GetEnvironmentVariable(variableName)
+	oldValue := GetEnvironmentVariable("%s", variableName)
 	newValue := fmt.Sprintf(newValueTemplate, pars...)
 	err := os.Setenv(variableName, newValue)
 	return oldValue, err

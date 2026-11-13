@@ -213,7 +213,7 @@ func InstallIstio() error {
 	// Install istio
 	// Download istio
 	utils.WaitPrintf("Downloading istio")
-	istioFilePath, err := utils.DownloadToTmpDir(configs.Knative.GetIstioDownloadUrl())
+	istioFilePath, err := utils.DownloadToTmpDir("%s", configs.Knative.GetIstioDownloadUrl())
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to download istio!\n") {
 		return err
 	}

@@ -27,3 +27,6 @@
 vhive
 setup_tool
 go.work.sum
+
+# Python installer validation
+__pycache__/

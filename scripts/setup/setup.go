@@ -23,6 +23,8 @@
 package setup
 
 import (
+	"os"
+	"os/exec"
 	"path"
 	"time"
 
@@ -30,112 +32,16 @@ import (
 	utils "github.com/vhive-serverless/vHive/scripts/utils"
 )
 
-// Set up firecracker containerd
+// SetupFirecrackerContainerd installs only the manifest-pinned source build.
 func SetupFirecrackerContainerd() error {
-	_, err := utils.ExecShellCmd(
-		"sudo mkdir -p /etc/firecracker-containerd" +
-			" && sudo mkdir -p /var/lib/firecracker-containerd/runtime" +
-			" && sudo mkdir -p /etc/containerd/")
+	script, err := utils.GetVHiveFilePath("scripts/firecracker_stack.py")
 	if err != nil {
 		return err
 	}
-
-	// Create snapshot base directory
-	_, err = utils.ExecShellCmd("sudo mkdir -p /fccd && sudo chmod 777 /fccd")
-	if err != nil {
-		return err
-	}
-
-	// Pull LFS in vHive
-	utils.WaitPrintf("Pulling LFS in vHive")
-	if err := utils.CheckVHiveRepo(); !utils.CheckErrorWithMsg(err, "Failed to pull LFS in vHive!\n") {
-		return err
-	}
-	_, err = utils.ExecShellCmd("cd %s && git lfs pull", configs.VHive.VHiveRepoPath)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to pull LFS in vHive!\n") {
-		return err
-	}
-
-	utils.WaitPrintf("Copying required files")
-	dstDir := "/usr/local/bin"
-	binsDir := "bin"
-	configsDir := "configs/firecracker-containerd"
-
-	binLists := []string{
-		"firecracker",
-		"jailer",
-		"containerd-shim-aws-firecracker",
-		"firecracker-containerd",
-		"firecracker-ctr",
-	}
-	for _, bin := range binLists {
-		src, err := utils.GetVHiveFilePath(path.Join(binsDir, bin))
-		if !utils.CheckErrorWithMsg(err, "Failed to find required file: <%s>!\n", bin) {
-			return err
-		}
-		err = utils.CopyToDir(src, dstDir, true)
-		if !utils.CheckErrorWithMsg(err, "Failed to copy required file: <%s>!\n", bin) {
-			return err
-		}
-	}
-
-	// rootfs image
-	// https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter-getting-started.md#build-a-firecracker-rootfs-with-a-remote-snapshotter
-	rootfsImgPath, err := utils.GetVHiveFilePath(path.Join(binsDir, "default-rootfs.img"))
-	if !utils.CheckErrorWithMsg(err, "Failed to find rootfs image!\n") {
-		return err
-	}
-	err = utils.CopyToDir(rootfsImgPath, "/var/lib/firecracker-containerd/runtime/default-rootfs.img", true)
-	if !utils.CheckErrorWithMsg(err, "Failed to copy rootfs image!\n") {
-		return err
-	}
-
-	// kernel image
-	// https://github.com/firecracker-microvm/firecracker-containerd/blob/main/docs/remote-snapshotter-getting-started.md#build-a-linux-kernel-with-fuse-support
-	kernelImgPath, err := utils.GetVHiveFilePath(path.Join(binsDir, "vmlinux-5.10.186"))
-	if !utils.CheckErrorWithMsg(err, "Failed to find kernel image!\n") {
-		return err
-	}
-	err = utils.CopyToDir(kernelImgPath, "/var/lib/firecracker-containerd/runtime/hello-vmlinux.bin", true)
-	if !utils.CheckErrorWithMsg(err, "Failed to copy kernel image!\n") {
-		return err
-	}
-
-	// Copy config.toml
-	configFilePath, err := utils.GetVHiveFilePath(path.Join(configsDir, "config.toml"))
-	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-		return err
-	}
-	err = utils.CopyToDir(configFilePath, "/etc/firecracker-containerd/", true)
-	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-		return err
-	}
-
-	// When executed inside a docker container, this command returns the container ID of the container.
-	// on a non container environment, this returns "/".
-	containerId, err := utils.GetContainerIDFromCpuset()
-	if err != nil {
-		return err
-	}
-	if len(containerId) == 64 {
-		// Inside a container
-		_, err = utils.ExecShellCmd(`sudo sed -i "s/fc-dev-thinpool/%s_thinpool/" /etc/firecracker-containerd/config.toml`, containerId)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Copy `firecracker-runtime.json`
-	configFilePath, err = utils.GetVHiveFilePath(path.Join(configsDir, "firecracker-runtime.json"))
-	if !utils.CheckErrorWithMsg(err, "Failed to copy required files!\n") {
-		return err
-	}
-	err = utils.CopyToDir(configFilePath, "/etc/containerd/", true)
-	if !utils.CheckErrorWithTagAndMsg(err, "Failed to copy required files!\n") {
-		return err
-	}
-
-	return nil
+	command := exec.Command("python3", script, "install", "--prepare", "--activate")
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	return command.Run()
 }
 
 // Set up gVisor runsc runtime for stock containerd.
@@ -209,7 +115,7 @@ func SetupSystem() error {
 			`sudo sh -c "echo \"* hard stack 65536\" >> /etc/security/limits.conf" && ` +
 			`sudo sh -c "echo \"root soft stack 65536\" >> /etc/security/limits.conf" && ` +
 			`sudo sh -c "echo \"root hard stack 65536\" >> /etc/security/limits.conf"`
-	_, err = utils.ExecShellCmd(bashCmd)
+	_, err = utils.ExecShellCmd("%s", bashCmd)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to configure resource limitation!\n") {
 		return err
 	}
@@ -226,7 +132,7 @@ func SetupSystem() error {
 			`sudo sysctl --quiet -w kernel.threads-max=999999999 && ` +
 			`sudo sysctl --quiet -w net.ipv4.ip_forward=1 && ` +
 			`sudo sysctl --quiet --system`
-	_, err = utils.ExecShellCmd(bashCmd)
+	_, err = utils.ExecShellCmd("%s", bashCmd)
 	if !utils.CheckErrorWithTagAndMsg(err, `Failed to avoid "neighbour: arp_cache: neighbor table overflow!"`+"\n") {
 		return err
 	}

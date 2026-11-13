@@ -34,7 +34,7 @@ func CheckVHiveRepo() error {
 
 	if configs.VHive.ForceRemote {
 		WaitPrintf("Force to use the online repo! Automatically cloning the vHive repo")
-		vHiveRepoPath, err := CloneRepoToTmpDir(configs.VHive.VHiveRepoBranch, configs.VHive.VHiveRepoUrl)
+		vHiveRepoPath, err := CloneRepoToTmpDir(configs.VHive.VHiveRepoBranch, "%s", configs.VHive.VHiveRepoUrl)
 		if CheckErrorWithTagAndMsg(err, "Failed to clone the vHive repo!\n") {
 			configs.VHive.VHiveRepoPath = vHiveRepoPath
 		}
@@ -45,7 +45,7 @@ func CheckVHiveRepo() error {
 		// vHive Repo not specified or not exist
 		WaitPrintf("vHive repo not detected! Automatically cloning the vHive repo")
 		// Clone vHive repo automatically
-		vHiveRepoPath, err := CloneRepoToTmpDir(configs.VHive.VHiveRepoBranch, configs.VHive.VHiveRepoUrl)
+		vHiveRepoPath, err := CloneRepoToTmpDir(configs.VHive.VHiveRepoBranch, "%s", configs.VHive.VHiveRepoUrl)
 		if CheckErrorWithTagAndMsg(err, "Failed to clone the vHive repo!\n") {
 			configs.VHive.VHiveRepoPath = vHiveRepoPath
 		}

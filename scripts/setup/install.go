@@ -44,7 +44,7 @@ func InstallPmuTools() error {
 	}
 
 	// Clone the repo of pmu-tools to temporary directory
-	repoPath, err := utils.CloneRepoToTmpDir("master", configs.System.PmuToolsRepoUrl)
+	repoPath, err := utils.CloneRepoToTmpDir("master", "%s", configs.System.PmuToolsRepoUrl)
 	if !utils.CheckErrorWithMsg(err, "Failed to clone required repo!\n") {
 		return err
 	}
@@ -70,7 +70,7 @@ func InstallPmuTools() error {
 // Install protoc
 func InstallProtoc() error {
 	// Download protoc
-	protocFilePath, err := utils.DownloadToTmpDir(configs.System.GetProtocDownloadUrl())
+	protocFilePath, err := utils.DownloadToTmpDir("%s", configs.System.GetProtocDownloadUrl())
 	if !utils.CheckErrorWithMsg(err, "Failed to download protoc!\n") {
 		return err
 	}
@@ -86,7 +86,7 @@ func InstallProtoc() error {
 // Install containerd
 func InstallContainerd() error {
 	// Download containerd
-	containerdFilePath, err := utils.DownloadToTmpDir(configs.System.GetContainerdDownloadUrl())
+	containerdFilePath, err := utils.DownloadToTmpDir("%s", configs.System.GetContainerdDownloadUrl())
 	if !utils.CheckErrorWithMsg(err, "Failed to Download containerd(ver %s)\n", configs.System.ContainerdVersion) {
 		return err
 	}
@@ -116,7 +116,7 @@ func InstallContainerd() error {
 // Download and install runc
 func InstallRunc() error {
 	// Download runc
-	runcFilePath, err := utils.DownloadToTmpDir(configs.System.GetRuncDownloadUrl())
+	runcFilePath, err := utils.DownloadToTmpDir("%s", configs.System.GetRuncDownloadUrl())
 	if !utils.CheckErrorWithMsg(err, "Failed to download runc(ver %s)!\n", configs.System.RuncVersion) {
 		return err
 	}
@@ -131,7 +131,7 @@ func InstallRunc() error {
 // Download and install runsc
 func InstallRunsc() error {
 	// Download runsc
-	runscFilePath, err := utils.DownloadToTmpDir(configs.System.GetRunscDownloadUrl())
+	runscFilePath, err := utils.DownloadToTmpDir("%s", configs.System.GetRunscDownloadUrl())
 	if !utils.CheckErrorWithMsg(err, "Failed to download runsc!\n") {
 		return err
 	}
@@ -145,7 +145,7 @@ func InstallRunsc() error {
 
 func InstallRunscContainerdShim() error {
 	// Download runsc containerd shim
-	shimFilePath, err := utils.DownloadToTmpDir(configs.System.GetRunscContainerdShimDownloadUrl())
+	shimFilePath, err := utils.DownloadToTmpDir("%s", configs.System.GetRunscContainerdShimDownloadUrl())
 	if !utils.CheckErrorWithMsg(err, "Failed to download runsc containerd shim!\n") {
 		return err
 	}
@@ -176,7 +176,7 @@ func InstallKubernetes() error {
 func InstallKnativeCLI() error {
 	// Clone Repo
 	utils.WaitPrintf("Cloning knative CLI repo")
-	knativeRepoPath, err := utils.CloneRepoToTmpDir(configs.Knative.KnativeCLIBranch, configs.Knative.KnativeCLIRepoUrl)
+	knativeRepoPath, err := utils.CloneRepoToTmpDir(configs.Knative.KnativeCLIBranch, "%s", configs.Knative.KnativeCLIRepoUrl)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to clone knative CLI repo!\n") {
 		return err
 	}
