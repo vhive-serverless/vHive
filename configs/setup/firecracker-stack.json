@@ -3,9 +3,9 @@
   "profile": "step-2-standalone-devmapper-file",
   "runtime": {
     "repository": "https://github.com/vhive-serverless/firecracker-containerd.git",
-    "revision": "bb007a1ef5692c0e30d8343b20d17b93ab7596f5",
-    "ready": false,
-    "note": "Development placeholder: replace with the accepted upstream-Firecracker Step 2 revision before publishing."
+    "revision": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+    "ready": true,
+    "note": "Published upstream-Firecracker Step 2 runtime; installed vHive consumer acceptance is recorded separately from runtime validation."
   },
   "inputs": {
     "firecracker": {

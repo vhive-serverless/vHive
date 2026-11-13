@@ -3,16 +3,19 @@ module github.com/vhive-serverless/vhive
 go 1.26.11
 
 replace (
-	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20260713114451-bb007a1ef569
+	github.com/firecracker-microvm/firecracker-containerd => github.com/vhive-serverless/firecracker-containerd v0.0.0-20261113011217-b4f8c6c2f1ec
 	github.com/vhive-serverless/vhive/examples/protobuf/helloworld => ./examples/protobuf/helloworld
 	github.com/vhive-serverless/vhive/networking => ./networking
 )
 
 require (
+	github.com/containerd/containerd/api v1.11.1
 	github.com/containerd/containerd/v2 v2.3.7
 	github.com/containerd/errdefs v1.0.0
+	github.com/containerd/fifo v1.1.0
 	github.com/containerd/log v0.1.0
 	github.com/containerd/stargz-snapshotter v0.18.2
+	github.com/containerd/typeurl/v2 v2.2.3
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/firecracker-microvm/firecracker-containerd v0.0.0-00010101000000-000000000000
 	github.com/go-multierror/multierror v1.0.2
@@ -20,6 +23,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/montanaflynn/stats v0.12.7
 	github.com/opencontainers/image-spec v1.1.1
+	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
@@ -46,14 +50,11 @@ require (
 	github.com/blend/go-sdk v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/cgroups/v3 v3.1.3 // indirect
-	github.com/containerd/containerd/api v1.11.1 // indirect
 	github.com/containerd/continuity v0.5.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.5 // indirect
 	github.com/containerd/plugin v1.1.0 // indirect
 	github.com/containerd/ttrpc v1.2.8 // indirect
-	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -73,7 +74,6 @@ require (
 	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/vishvananda/netlink v1.3.1 // indirect
 	github.com/vishvananda/netns v0.0.5 // indirect

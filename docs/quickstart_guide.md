@@ -4,11 +4,14 @@
 
 The integration branch installs the stack selected in
 [`configs/setup/firecracker-stack.json`](../configs/setup/firecracker-stack.json).
-The runtime revision remains marked pending until its Step 2 acceptance is
-complete. Setup refuses this pending default; the old `bin/` artifacts are
-historical inputs.
+The manifest pins the published Step 2 runtime
+`b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794` from
+`firecracker-v1.18-containerdv2-vhive-integration`, using official Firecracker
+v1.18.0 and the vHive-owned SDK. The old `bin/` artifacts are historical inputs.
+Runtime validation and the installed vHive consumer acceptance have separate
+receipts; the latter requires the three standalone File-memory snapshot cases.
 
-After the manifest is finalized, `setup_tool setup_firecracker_containerd` and
+`setup_tool setup_firecracker_containerd` and
 `scripts/setup_firecracker_containerd.sh` build that exact runtime checkout using
 its `tools/modernize/prepare-worker.sh`, `build-stack.sh`, and `install-stack.sh`.
 This provisions the build tools and requires Linux x86_64, passwordless sudo,
