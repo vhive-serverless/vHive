@@ -33,17 +33,22 @@ cleanup() {
     result=$?
     trap - EXIT
     if [[ "$pool_created" == true ]]; then
-        if ! bash "$runtime_source/tools/thinpool.sh" remove "$FICD_DM_POOL" \
-            > "$VHIVE_CI_EVIDENCE/pool-cleanup.log" 2>&1; then
+        if [[ -f "$VHIVE_CI_EVIDENCE/pool/ownership.json" ]] && \
+            ! python3 scripts/legacy_snapshot_pool.py remove \
+                --receipt "$VHIVE_CI_EVIDENCE/pool/ownership.json" \
+                > "$VHIVE_CI_EVIDENCE/pool-cleanup.log" 2>&1; then
             result=1
         fi
     fi
     exit "$result"
 }
 trap cleanup EXIT
-bash "$runtime_source/tools/thinpool.sh" create "$FICD_DM_POOL" \
-    2>&1 | tee "$VHIVE_CI_EVIDENCE/pool-create.log"
+# The runtime's generic helper defaults to 10G; this 10GB disk profile needs
+# room for the source and two full independent clone copies plus the base image.
 pool_created=true
+python3 scripts/legacy_snapshot_pool.py create --runtime-source "$runtime_source" \
+    --pool "$FICD_DM_POOL" --evidence "$VHIVE_CI_EVIDENCE/pool" \
+    2>&1 | tee "$VHIVE_CI_EVIDENCE/pool-create.log"
 
 # The existing runner verifies published module origins, the installed receipt,
 # actual rendered configuration, and all three required File-memory VM tests.

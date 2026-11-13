@@ -29,6 +29,15 @@ checkout. For development, `VHIVE_RUNTIME_REVISION` supplies an exact commit
 whose input lock must still match the manifest. `FICD_DM_POOL` selects an
 existing devmapper pool. Setup does not create or remove that pool.
 
+The shipped devmapper configuration keeps 10GB disks (10GiB under containerd's
+size parser). The existing `create_devmapper.sh` product setup provisions a 100GiB
+pool. The standalone legacy snapshot checks need space for the source, two full
+independent clone copies, and the base image. Hosted CI and the reviewed worker
+launcher use `scripts/legacy_snapshot_pool.py` to create a fresh private 40GiB
+data/1GiB metadata pool, requiring at least 43GiB free host storage. The helper
+refuses existing pools or backings and verifies actual capacity before VM tests;
+it never resizes a live pool or reduces the disk/test profile.
+
 ```sh
 python3 scripts/firecracker_stack.py validate
 python3 scripts/firecracker_stack.py verify
