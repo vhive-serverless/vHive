@@ -10,6 +10,13 @@ cd "$repo_dir"
 : "${FICD_DM_POOL:?Set the unique CI-owned thin-pool name}"
 export FICD_DM_VOLUME_GROUP=''
 export GOWORK=off
+export GOTOOLCHAIN=local
+# The hosted prerequisite step installs the manifest-pinned Go at the path
+# expected by the runtime builder; use the same executable for consumer tests.
+go_version=$(python3 -c 'import json; print(json.load(open("configs/setup/firecracker-stack.json"))["inputs"]["go"]["version"])')
+test -x "$STACK_DIR/toolchains/go$go_version/bin/go"
+export PATH="$STACK_DIR/toolchains/go$go_version/bin:$PATH"
+test "$(go version)" = "go version go$go_version linux/amd64"
 # Final CI must consume the committed pin, never a development override.
 unset VHIVE_RUNTIME_REVISION VHIVE_RUNTIME_CHECKOUT
 
@@ -23,7 +30,9 @@ if not manifest["runtime"]["ready"]:
 print(manifest["runtime"]["revision"])
 PY
 )
-python3 scripts/firecracker_stack.py install --prepare --activate --pool "$FICD_DM_POOL" \
+# CI provisions equivalent build dependencies separately to preserve the hosted
+# runner's Docker CE/containerd.io installation. All build/receipt checks remain.
+python3 scripts/firecracker_stack.py install --activate --pool "$FICD_DM_POOL" \
     2>&1 | tee "$VHIVE_CI_EVIDENCE/install.log"
 cp "$INSTALL_DIR/vhive-stack-receipt.json" "$VHIVE_CI_EVIDENCE/"
 

@@ -26,11 +26,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Go from go.mod
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-
       - name: Select private build and evidence paths
         run: |
           echo "STACK_DIR=$RUNNER_TEMP/vhive-firecracker-stack" >> "$GITHUB_ENV"
@@ -42,6 +37,12 @@ jobs:
 
       - name: Reclaim build space
         run: scripts/github_runner/gh-actions-disk-cleanup.sh
+
+      - name: Provision build prerequisites preserving hosted Docker
+        run: |
+          python3 -m unittest discover -s scripts/github_runner/tests -v
+          mkdir -p "$VHIVE_CI_EVIDENCE"
+          bash scripts/github_runner/prepare_legacy_snapshot.sh 2>&1 | tee "$VHIVE_CI_EVIDENCE/prerequisites.log"
 
       - name: Install verified stack and test legacy snapshot continuity
         run: bash scripts/github_runner/test_legacy_snapshot.sh
