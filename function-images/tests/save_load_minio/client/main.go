@@ -28,7 +28,6 @@ import (
 	"os"
 	"time"
 
-	ctrdlog "github.com/containerd/log"
 	log "github.com/sirupsen/logrus"
 
 	pb "github.com/vhive-serverless/vhive/function-images/tests/save_load_minio/proto"
@@ -44,7 +43,7 @@ func main() {
 	flag.Parse()
 
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: "2006-01-02T15:04:05.000000000Z07:00",
 		FullTimestamp:   true,
 	})
 

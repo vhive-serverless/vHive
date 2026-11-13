@@ -35,10 +35,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/oci"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/cio"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/containerd/v2/pkg/oci"
+	"github.com/containerd/errdefs"
 
 	"github.com/firecracker-microvm/firecracker-containerd/proto" // note: from the original repo
 	"github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
@@ -265,75 +266,54 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 	return &StartVMResponse{GuestIP: vm.GetIP()}, startVMMetric, nil
 }
 
-// StopSingleVM Shuts down a VM
-// Note: VMs are not quisced before being stopped
+// StopSingleVM stops a function instance before releasing its disk and network.
 func (o *Orchestrator) StopSingleVM(ctx context.Context, vmID string) error {
 	logger := log.WithFields(log.Fields{"vmID": vmID})
-	logger.Debug("Orchestrator received StopVM")
-
 	ctx = withNamespace(ctx, o.snapshotter, vmID)
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+
 	vm, err := o.vmPool.GetVM(vmID)
 	if err != nil {
-		if _, ok := err.(*misc.NonExistErr); ok {
-			logger.Panic("StopVM: VM does not exist")
+		return errors.Wrap(err, "get function VM")
+	}
+	if vm.Task != nil {
+		// A paused guest must run while its task is being deleted.
+		if vm.Paused.Load() {
+			if _, err := o.ResumeVM(ctx, vmID); err != nil {
+				return errors.Wrap(err, "resume function for task deletion")
+			}
 		}
-		logger.Panic("StopVM: GetVM() failed for an unknown reason")
-
-	}
-
-	logger = log.WithFields(log.Fields{"vmID": vmID})
-
-	// FIXME (gh-818)
-	//if !vm.SnapBooted {
-	//	time.Sleep(3 * time.Second)
-	//	task := *vm.Task
-	//	if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
-	//		logger.WithError(err).Error("Failed to kill the task")
-	//		return err
-	//	}
-	//
-	//	<-vm.TaskCh
-	//	//FIXME: Seems like some tasks need some extra time to die Issue#15, lr_training
-	//	time.Sleep(500 * time.Millisecond)
-	//
-	//	if _, err := task.Delete(ctx); err != nil {
-	//		logger.WithError(err).Error("failed to delete task")
-	//		return err
-	//	}
-	//
-	//	container := *vm.Container
-	//	if err := container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-	//		logger.WithError(err).Error("failed to delete container")
-	//		return err
-	//	}
-	//}
-
-	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
-		logger.WithError(err).Error("failed to stop firecracker-containerd VM")
-	}
-
-	if o.GetUPFEnabled() {
-		if err := o.memoryManager.Deactivate(vmID); err != nil {
-			logger.WithError(err).Warn("failed to deactivate VM in memory manager")
+		if _, err := (*vm.Task).Delete(ctx, containerd.WithProcessKill); err != nil && !errdefs.IsNotFound(err) {
+			return errors.Wrap(err, "delete function task")
 		}
 	}
-
-	if err := o.vmPool.Free(vmID); err != nil {
-		logger.Error("failed to free VM from VM pool")
+	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID, TimeoutSeconds: 20}); err != nil {
+		return errors.Wrap(err, "stop function VM")
+	}
+	if err := closeRestoredOutput(ctx, vm); err != nil {
 		return err
 	}
-
-	o.workloadIo.Delete(vmID)
-
-	if vm.SnapBooted && o.snapshotter == "devmapper" {
-		if err := o.devMapper.RemoveDeviceSnapshot(ctx, vm.ContainerSnapKey); err != nil {
-			logger.Error("failed to deactivate container snapshot")
-			return err
+	if vm.Container != nil {
+		if err := (*vm.Container).Delete(ctx, containerd.WithSnapshotCleanup); err != nil && !errdefs.IsNotFound(err) {
+			return errors.Wrap(err, "delete function container and writable snapshot")
 		}
 	}
-
+	if o.GetUPFEnabled() {
+		if err := o.memoryManager.Deactivate(vmID); err != nil {
+			return errors.Wrap(err, "deactivate function memory manager")
+		}
+	}
+	if vm.SnapBooted && o.snapshotter == "devmapper" {
+		if err := o.devMapper.RemoveDeviceSnapshot(ctx, vm.ContainerSnapKey); err != nil {
+			return errors.Wrap(err, "remove restored writable snapshot")
+		}
+	}
+	if err := o.vmPool.Free(vmID); err != nil {
+		return errors.Wrap(err, "free function network")
+	}
+	o.workloadIo.Delete(vmID)
 	logger.Debug("Stopped VM successfully")
-
 	return nil
 }
 
@@ -343,12 +323,10 @@ func (o *Orchestrator) getImage(ctx context.Context, imageName string) (*contain
 }
 
 func (o *Orchestrator) getVMConfig(vm *misc.VM) *proto.CreateVMRequest {
-	kernelArgs := "ro noapic reboot=k panic=1 acpi=off pci=off nomodules systemd.log_color=false systemd.journald.forward_to_console systemd.unit=firecracker.target init=/sbin/overlay-init tsc=reliable quiet ipv6.disable=1 console=ttyS0"
 
 	return &proto.CreateVMRequest{
 		VMID:           vm.ID,
 		TimeoutSeconds: 100,
-		KernelArgs:     kernelArgs,
 		MachineCfg: &proto.FirecrackerMachineConfiguration{
 			VcpuCount:  1,
 			MemSizeMib: 512,
@@ -409,6 +387,9 @@ func (o *Orchestrator) PauseVM(ctx context.Context, vmID string) error {
 		return err
 	}
 
+	if vm, err := o.vmPool.GetVM(vmID); err == nil {
+		vm.Paused.Store(true)
+	}
 	return nil
 }
 
@@ -428,6 +409,9 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metr
 	if _, err := o.fcClient.ResumeVM(ctx, &proto.ResumeVMRequest{VMID: vmID}); err != nil {
 		logger.WithError(err).Error("failed to resume the VM")
 		return nil, err
+	}
+	if vm, err := o.vmPool.GetVM(vmID); err == nil {
+		vm.Paused.Store(false)
 	}
 	resumeVMMetric.MetricMap[metrics.FcResume] = metrics.ToUS(time.Since(tStart))
 
@@ -452,18 +436,18 @@ func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string, snap *sn
 		return err
 	}
 
+	if err := snap.ValidateDriveManifest(); err != nil {
+		return err
+	}
+
 	vm, err := o.vmPool.GetVM(vmID)
 	if err != nil {
 		return err
 	}
 
 	if o.snapshotter == "devmapper" {
-		patchFilePath := snap.GetPatchFilePath()
-		logger = log.WithFields(log.Fields{"vmID": vmID, "patchFilePath": patchFilePath})
-		logger.Debug("Creating patch file with disk state difference")
-		if err := o.devMapper.CreatePatch(ctx, patchFilePath, vm.ContainerSnapKey, *vm.Image); err != nil {
-			logger.WithError(err).Error("failed to create container patch file")
-			return err
+		if err := o.devMapper.SaveBlockImage(ctx, vm.ContainerSnapKey, snap.GetDiskFilePath()); err != nil {
+			return errors.Wrap(err, "capture paused workload disk")
 		}
 	}
 
@@ -504,6 +488,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		activateErr        error
 		deactivateErr      error
 		activateErrChan    chan error
+		createVMResponse   *proto.CreateVMResponse
 	)
 
 	logger := log.WithFields(log.Fields{"vmID": vmID})
@@ -511,6 +496,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 
 	ctx = withNamespace(ctx, o.snapshotter, vmID)
 
+	if err := snap.ValidateDriveManifest(); err != nil {
+		return nil, nil, err
+	}
+
+	canReleaseVM := true
 	vm, err := o.vmPool.Allocate(vmID)
 	if err != nil {
 		logger.Error("failed to allocate VM in VM pool")
@@ -518,7 +508,7 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 	}
 
 	defer func() {
-		if retErr != nil {
+		if retErr != nil && canReleaseVM {
 			if err := o.vmPool.Free(vmID); err != nil {
 				logger.WithError(err).Errorf("failed to free VM from pool after failure")
 			}
@@ -540,13 +530,23 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 			return nil, nil, errors.Wrapf(err, "creating container snapshot")
 		}
 
+		defer func() {
+			if retErr != nil && canReleaseVM {
+				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+				defer cancel()
+				if err := o.devMapper.RemoveDeviceSnapshot(cleanupCtx, vm.ContainerSnapKey); err != nil {
+					canReleaseVM = false
+					logger.WithError(err).Error("failed to remove restore disk")
+				}
+			}
+		}()
 		containerSnap, err := o.devMapper.GetDeviceSnapshot(ctx, vm.ContainerSnapKey)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "previously created container device does not exist")
 		}
 
-		if err := o.devMapper.RestorePatch(ctx, vm.ContainerSnapKey, snap.GetPatchFilePath()); err != nil {
-			return nil, nil, errors.Wrapf(err, "unpacking patch into container snapshot")
+		if err := o.devMapper.RestoreBlockImage(ctx, vm.ContainerSnapKey, snap.GetDiskFilePath()); err != nil {
+			return nil, nil, errors.Wrapf(err, "restoring block image into container snapshot")
 		}
 
 		conf.ContainerSnapshotPath = containerSnap.GetDevicePath()
@@ -629,8 +629,29 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		}
 	}
 
-	if _, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
+	if createVMResponse, loadErr = o.fcClient.CreateVM(ctx, conf); loadErr != nil {
 		logSnapshotLoadFailure(logger, snap, conf, loadErr)
+	} else {
+		vm.SnapBooted = true
+		defer func() {
+			if retErr == nil {
+				return
+			}
+			// Stop a created guest before removing its disk or log readers.
+			canReleaseVM = false
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 25*time.Second)
+			defer cancel()
+			if _, err := o.fcClient.StopVM(cleanupCtx, &proto.StopVMRequest{VMID: vmID, TimeoutSeconds: 20}); err != nil {
+				logger.WithError(err).Error("failed to stop restored VM after load failure")
+				return
+			}
+			if err := closeRestoredOutput(cleanupCtx, vm); err != nil {
+				logger.WithError(err).Error("failed to drain restored output after load failure")
+				return
+			}
+			canReleaseVM = true
+			o.workloadIo.Delete(vmID)
+		}()
 	}
 
 	if activateErrChan != nil {
@@ -651,7 +672,11 @@ func (o *Orchestrator) LoadSnapshot(ctx context.Context, vmID string, snap *snap
 		return nil, nil, multierr
 	}
 
-	vm.SnapBooted = true
+	iologger := NewWorkloadIoWriter(vmID)
+	o.workloadIo.Store(vmID, &iologger)
+	if err := attachRestoredOutput(vm, createVMResponse.GetRestoredIO(), iologger, iologger); err != nil {
+		return nil, nil, errors.Wrap(err, "attach restored function output")
+	}
 
 	return &StartVMResponse{GuestIP: vm.GetIP()}, loadSnapshotMetric, nil
 }

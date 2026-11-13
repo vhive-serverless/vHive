@@ -26,8 +26,11 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"sync"
+	"sync/atomic"
 
-	"github.com/containerd/containerd"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/cio"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 
 	"github.com/vhive-serverless/vhive/networking"
 )
@@ -37,11 +40,16 @@ type VM struct {
 	ID               string
 	ContainerSnapKey string
 	SnapBooted       bool
+	Paused           atomic.Bool
 	Image            *containerd.Image
 	Container        *containerd.Container
 	Task             *containerd.Task
 	TaskCh           <-chan containerd.ExitStatus
 	NetConfig        *networking.NetworkConfig
+	// Restored guest processes are runtime-owned, without host containerd tasks.
+	RestoredIO            []*proto.RestoredProcessIO
+	RestoredIOAttachments []cio.IO
+	RestoredIODone        <-chan struct{}
 }
 
 // VMPool Pool of active VMs (can be in several states though)

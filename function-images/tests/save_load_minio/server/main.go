@@ -31,7 +31,6 @@ import (
 	"os"
 	"strings"
 
-	ctrdlog "github.com/containerd/log"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/minio/minio-go/v7"
@@ -154,7 +153,7 @@ func (s *server) Invoke(ctx context.Context, in *pb.InvokeRequest) (*pb.InvokeRe
 func main() {
 	debug := flag.Bool("d", false, "Debug level in logs")
 	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: ctrdlog.RFC3339NanoFixed,
+		TimestampFormat: "2006-01-02T15:04:05.000000000Z07:00",
 		FullTimestamp:   true,
 	})
 
