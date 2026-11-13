@@ -91,3 +91,7 @@ require (
 )
 
 replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/vhive-serverless/firecracker-go-sdk v0.0.0-20261112180021-dd9db3224329
+
+// Workspace loading exposes OpenCensus' pre-split genproto dependency.
+// Keep RPC packages exclusively in the pinned RPC submodule.
+replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20230526161137-0005af68ea54
