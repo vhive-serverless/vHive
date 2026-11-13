@@ -1,0 +1,10 @@
+test_corrupt_go_archive_cannot_be_installed (test_prepare_legacy_snapshot.SnapshotPrerequisiteTests.test_corrupt_go_archive_cannot_be_installed) ... ok
+test_missing_route_fails_before_toolchain_install (test_prepare_legacy_snapshot.SnapshotPrerequisiteTests.test_missing_route_fails_before_toolchain_install) ... ok
+test_preserves_effective_user_docker_and_installs_verified_go (test_prepare_legacy_snapshot.SnapshotPrerequisiteTests.test_preserves_effective_user_docker_and_installs_verified_go) ... ok
+test_unusable_docker_or_buildx_fails_before_apt_or_download (test_prepare_legacy_snapshot.SnapshotPrerequisiteTests.test_unusable_docker_or_buildx_fails_before_apt_or_download) ... ok
+test_wrong_cached_go_fails_without_fallback_download (test_prepare_legacy_snapshot.SnapshotPrerequisiteTests.test_wrong_cached_go_fails_without_fallback_download) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.789s
+
+OK

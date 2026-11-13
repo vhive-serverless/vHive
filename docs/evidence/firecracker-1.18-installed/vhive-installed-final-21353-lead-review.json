@@ -1,0 +1,19 @@
+{
+  "accepted_consumer": "da498d75b7b91f9dcfcf3e2f80107b48f0cbdee2",
+  "runtime": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "candidate": false,
+  "copied_receipts_verified": 43,
+  "all_15_recorded_phases_zero": true,
+  "exact_test_source_and_module_hashes": true,
+  "canonical_module_origins_verified": true,
+  "reused_install_receipt_sha256": "9cd10430db5acea75593df0193d5987698ee5990b7765a18bc7e0556ba05d1e4",
+  "official_binary_hashes": {
+    "bin/firecracker": "b33f46cd6d88834cf6a4f8d184f08f219809c636236bffd286d233a60602a2ba",
+    "bin/jailer": "ddadbaa15b5c942271a83b7040ca7259c8ccf92a9e08d44cce0b86fa407ba460"
+  },
+  "three_VM_cases_pass": true,
+  "completion_marker": "VHIVE_FINAL_INSTALLED_CONSUMER_OK",
+  "independent_postrun_audit": "PASS: only exact historical8 daemons; no ownedVM/maps/loops/mounts/FDs; activationfiles restored; K8s preserved; owned pool receipt removed=true",
+  "approved": true,
+  "postrun_sha256": "2659a053a98bf8dca8120d9e3d6eeb81acb424372f4ae35b6e8c718b8cf29e7a"
+}

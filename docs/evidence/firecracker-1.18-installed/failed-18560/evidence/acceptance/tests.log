@@ -1,0 +1,70 @@
+=== RUN   TestPauseSnapResume
+time="2026-11-12T18:57:07.338348301-07:00" level=warning msg="Failed to Fetch k8s dns clusterIP exec: \"kubectl\": executable file not found in $PATH\n\n"
+time="2026-11-12T18:57:07.338435616-07:00" level=warning msg="Using google dns 8.8.8.8\n"
+time="2026-11-12T18:57:07.642654614-07:00" level=info msg="Creating containerd client"
+time="2026-11-12T18:57:07.642837027-07:00" level=info msg="Created containerd client"
+time="2026-11-12T18:57:07.642847066-07:00" level=info msg="Creating firecracker client"
+time="2026-11-12T18:57:07.642955610-07:00" level=info msg="Created firecracker client"
+time="2026-11-12T18:57:07.642973404-07:00" level=info msg="Creating image manager"
+time="2026-11-12T18:57:32.453091948-07:00" level=info msg="Cleaning up network manager"
+--- PASS: TestPauseSnapResume (25.34s)
+=== RUN   TestSnapshotConcurrentClones
+time="2026-11-12T18:57:32.682117342-07:00" level=warning msg="Failed to Fetch k8s dns clusterIP exec: \"kubectl\": executable file not found in $PATH\n\n"
+time="2026-11-12T18:57:32.682141097-07:00" level=warning msg="Using google dns 8.8.8.8\n"
+time="2026-11-12T18:57:32.902654290-07:00" level=info msg="Creating containerd client"
+time="2026-11-12T18:57:32.902748046-07:00" level=info msg="Created containerd client"
+time="2026-11-12T18:57:32.902755470-07:00" level=info msg="Creating firecracker client"
+time="2026-11-12T18:57:32.902831323-07:00" level=info msg="Created firecracker client"
+time="2026-11-12T18:57:32.902842865-07:00" level=info msg="Creating image manager"
+    snapshot_clones_test.go:65: 
+        	Error Trace:	/users/nehalem/fc-ctrd-mod/vhive-final-consumer-7efebc4b/ctriface/snapshot_clones_test.go:65
+        	Error:      	Received unexpected error:
+        	            	copy /fccd/snapshots/concurrent-clones/disk_file to /dev/mapper/vhive-final-7efebc4bd006-3215611-snap-11: exit status 1: dd: fsync failed for '/dev/mapper/vhive-final-7efebc4bd006-3215611-snap-11': Input/output error
+        	            	
+        	            	restoring block image into container snapshot
+        	            	github.com/vhive-serverless/vhive/ctriface.(*Orchestrator).LoadSnapshot
+        	            		/users/nehalem/fc-ctrd-mod/vhive-final-consumer-7efebc4b/ctriface/iface.go:549
+        	            	github.com/vhive-serverless/vhive/ctriface.TestSnapshotConcurrentClones
+        	            		/users/nehalem/fc-ctrd-mod/vhive-final-consumer-7efebc4b/ctriface/snapshot_clones_test.go:64
+        	            	testing.tRunner
+        	            		/users/nehalem/fc-ctrd-mod/toolchains/go1.26.11/src/testing/testing.go:2036
+        	            	runtime.goexit
+        	            		/users/nehalem/fc-ctrd-mod/toolchains/go1.26.11/src/runtime/asm_amd64.s:1771
+        	Test:       	TestSnapshotConcurrentClones
+time="2026-11-12T18:59:40.862759818-07:00" level=info msg="waiting for goroutines"
+time="2026-11-12T18:59:44.182527830-07:00" level=info msg="waiting done"
+time="2026-11-12T18:59:44.182560502-07:00" level=info msg="Closing fcClient"
+time="2026-11-12T18:59:44.182567265-07:00" level=info msg="Closing containerd client"
+time="2026-11-12T18:59:44.182738196-07:00" level=info msg="Cleaning up network manager"
+--- FAIL: TestSnapshotConcurrentClones (133.47s)
+=== RUN   TestSnapshotSourceMemoryAndDiskIsolation
+time="2026-11-12T18:59:46.156137180-07:00" level=warning msg="Failed to Fetch k8s dns clusterIP exec: \"kubectl\": executable file not found in $PATH\n\n"
+time="2026-11-12T18:59:46.156158821-07:00" level=warning msg="Using google dns 8.8.8.8\n"
+time="2026-11-12T18:59:46.371672949-07:00" level=info msg="Creating containerd client"
+time="2026-11-12T18:59:46.371779841-07:00" level=info msg="Created containerd client"
+time="2026-11-12T18:59:46.371788206-07:00" level=info msg="Creating firecracker client"
+time="2026-11-12T18:59:46.371872856-07:00" level=info msg="Created firecracker client"
+time="2026-11-12T18:59:46.371883025-07:00" level=info msg="Creating image manager"
+    snapshot_continuity_test.go:77: function_image=ghcr.io/ease-lab/helloworld@sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25 digest=sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25
+    snapshot_continuity_test.go:125: 
+        	Error Trace:	/users/nehalem/fc-ctrd-mod/vhive-final-consumer-7efebc4b/ctriface/snapshot_continuity_test.go:125
+        	Error:      	Received unexpected error:
+        	            	copy /fccd/continuity-dmtpmrknv0ms/continuity/disk_file to /dev/mapper/vhive-final-7efebc4bd006-3215611-snap-13: exit status 1: dd: fsync failed for '/dev/mapper/vhive-final-7efebc4bd006-3215611-snap-13': Input/output error
+        	            	
+        	            	restoring block image into container snapshot
+        	            	github.com/vhive-serverless/vhive/ctriface.(*Orchestrator).LoadSnapshot
+        	            		/users/nehalem/fc-ctrd-mod/vhive-final-consumer-7efebc4b/ctriface/iface.go:549
+        	            	github.com/vhive-serverless/vhive/ctriface.TestSnapshotSourceMemoryAndDiskIsolation
+        	            		/users/nehalem/fc-ctrd-mod/vhive-final-consumer-7efebc4b/ctriface/snapshot_continuity_test.go:124
+        	            	testing.tRunner
+        	            		/users/nehalem/fc-ctrd-mod/toolchains/go1.26.11/src/testing/testing.go:2036
+        	            	runtime.goexit
+        	            		/users/nehalem/fc-ctrd-mod/toolchains/go1.26.11/src/runtime/asm_amd64.s:1771
+        	Test:       	TestSnapshotSourceMemoryAndDiskIsolation
+time="2026-11-12T19:01:51.913131202-07:00" level=info msg="waiting for goroutines"
+time="2026-11-12T19:01:55.621514610-07:00" level=info msg="waiting done"
+time="2026-11-12T19:01:55.621551049-07:00" level=info msg="Closing fcClient"
+time="2026-11-12T19:01:55.621557682-07:00" level=info msg="Closing containerd client"
+time="2026-11-12T19:01:55.621742399-07:00" level=info msg="Cleaning up network manager"
+--- FAIL: TestSnapshotSourceMemoryAndDiskIsolation (131.44s)
+FAIL

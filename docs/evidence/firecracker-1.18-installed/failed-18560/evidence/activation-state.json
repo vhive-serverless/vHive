@@ -1,0 +1,108 @@
+{
+  "before": {
+    "/etc/firecracker-containerd/config.toml": {
+      "kind": "absent"
+    },
+    "/etc/containerd/firecracker-runtime.json": {
+      "kind": "absent"
+    },
+    "/etc/demux-snapshotter/config.toml": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/firecracker": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/jailer": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/firecracker-containerd": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/firecracker-ctr": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/containerd-shim-aws-firecracker": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/demux-snapshotter": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/http-address-resolver": {
+      "kind": "absent"
+    }
+  },
+  "expected": {
+    "/etc/firecracker-containerd/config.toml": {
+      "kind": "file",
+      "sha256": "5918b371d83f154f574c90818e8cac6da341ab128ef2ff27af11d7c6cd5de443",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0
+    },
+    "/etc/containerd/firecracker-runtime.json": {
+      "kind": "file",
+      "sha256": "71dc4c9bc0384b0b6f0f251508ad3d7104dcc21b6dd8f60b46db5a4fbf39aaa2",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0
+    },
+    "/etc/demux-snapshotter/config.toml": {
+      "kind": "file",
+      "sha256": "707657864c52ce79fc2b4324293233e330b87482d91fff9e47e8172741f906d8",
+      "mode": 420,
+      "uid": 0,
+      "gid": 0
+    },
+    "/usr/local/bin/firecracker": {
+      "kind": "symlink",
+      "target": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/firecracker",
+      "mode": 511,
+      "uid": 0,
+      "gid": 0
+    },
+    "/usr/local/bin/jailer": {
+      "kind": "symlink",
+      "target": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/jailer",
+      "mode": 511,
+      "uid": 0,
+      "gid": 0
+    },
+    "/usr/local/bin/firecracker-containerd": {
+      "kind": "symlink",
+      "target": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/firecracker-containerd",
+      "mode": 511,
+      "uid": 0,
+      "gid": 0
+    },
+    "/usr/local/bin/firecracker-ctr": {
+      "kind": "symlink",
+      "target": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/firecracker-ctr",
+      "mode": 511,
+      "uid": 0,
+      "gid": 0
+    },
+    "/usr/local/bin/containerd-shim-aws-firecracker": {
+      "kind": "symlink",
+      "target": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/containerd-shim-aws-firecracker",
+      "mode": 511,
+      "uid": 0,
+      "gid": 0
+    },
+    "/usr/local/bin/demux-snapshotter": {
+      "kind": "symlink",
+      "target": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/demux-snapshotter",
+      "mode": 511,
+      "uid": 0,
+      "gid": 0
+    },
+    "/usr/local/bin/http-address-resolver": {
+      "kind": "symlink",
+      "target": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/http-address-resolver",
+      "mode": 511,
+      "uid": 0,
+      "gid": 0
+    }
+  },
+  "networks": [],
+  "fccd_mode": null
+}

@@ -1,0 +1,47 @@
+{
+  "exit": 0,
+  "deleted": [
+    {
+      "branch": "refs/heads/work/ci-task-wait-sync",
+      "expected_head": "426c7f5340e4f14b5abcce78be6fa7edede0c0c2",
+      "archive_tag": "refs/tags/archive/pre-upstream-20261113/work/ci-task-wait-sync",
+      "remote_archive_oid": "426c7f5340e4f14b5abcce78be6fa7edede0c0c2",
+      "branch_only_patches_equivalent_in_original_Step4": 1,
+      "fresh_named_remote_fetch_exact": true
+    },
+    {
+      "branch": "refs/heads/work/step4-eval-analysis",
+      "expected_head": "0e6f9e737b22a5b4d42055155e7f94e9baa08e8d",
+      "archive_tag": "refs/tags/archive/pre-upstream-20261113/work/step4-eval-analysis",
+      "remote_archive_oid": "0e6f9e737b22a5b4d42055155e7f94e9baa08e8d",
+      "branch_only_patches_equivalent_in_original_Step4": 5,
+      "fresh_named_remote_fetch_exact": true
+    },
+    {
+      "branch": "refs/heads/work/step4-host-memory-sampler",
+      "expected_head": "38298f01bb4ca133674cb7bfd2f7cc9e4b447465",
+      "archive_tag": "refs/tags/archive/pre-upstream-20261113/work/step4-host-memory-sampler",
+      "remote_archive_oid": "38298f01bb4ca133674cb7bfd2f7cc9e4b447465",
+      "branch_only_patches_equivalent_in_original_Step4": 2,
+      "fresh_named_remote_fetch_exact": true
+    },
+    {
+      "branch": "refs/heads/work/step4-memory-probe",
+      "expected_head": "51e2755371271b442d742029119da416a95a261c",
+      "archive_tag": "refs/tags/archive/pre-upstream-20261113/work/step4-memory-probe",
+      "remote_archive_oid": "51e2755371271b442d742029119da416a95a261c",
+      "branch_only_patches_equivalent_in_original_Step4": 3,
+      "fresh_named_remote_fetch_exact": true
+    },
+    {
+      "branch": "refs/heads/work/step4-pmem-images",
+      "expected_head": "ea4227d8b09d9ed474f5d94677ab2c2a48306dcc",
+      "archive_tag": "refs/tags/archive/pre-upstream-20261113/work/step4-pmem-images",
+      "remote_archive_oid": "ea4227d8b09d9ed474f5d94677ab2c2a48306dcc",
+      "branch_only_patches_equivalent_in_original_Step4": 3,
+      "fresh_named_remote_fetch_exact": true
+    }
+  ],
+  "all_other_remote_refs_unchanged": true,
+  "archives_retained": true
+}

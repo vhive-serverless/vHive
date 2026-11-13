@@ -1,0 +1,237 @@
+{
+  "source_consumer": "2120fc8a9855b25a19cde15013f2bb581924bc3f",
+  "scope": "Frozen hosted run metadata/logs, downloaded snapshot artifact text, prior CI failure logs and local fix reports; original bytes unchanged",
+  "copied": [
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/43354889075.json",
+      "archived": "runs/43354889075.json",
+      "bytes": 1255,
+      "sha256": "a9e33f87b8500db6965906d8e341e3392286a1e0bc4f59b8a0ecfe68ee4905e2"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/43354889075.log",
+      "archived": "runs/43354889075.log",
+      "bytes": 46404,
+      "sha256": "80fb4a5105057a99eb730456cb0c836754e12ed3c04194ac3f4195ef3206e880"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/43354889183.json",
+      "archived": "runs/43354889183.json",
+      "bytes": 1457,
+      "sha256": "c9b36d7fe3c45bc2e02259b45f27f6f95f806938bc2886e7708419e66c55053b"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/43354889183.log",
+      "archived": "runs/43354889183.log",
+      "bytes": 1387314,
+      "sha256": "ecf5604f3dd9690ccf9f5feaaa0c72871b19461c5545341686ca841721e98aa4"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/43354889200.json",
+      "archived": "runs/43354889200.json",
+      "bytes": 1352,
+      "sha256": "21add4828895f53b1ee39e016d48f4384d0dfb3923805ac9a5a622ce3ae631ea"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/43354889200.log",
+      "archived": "runs/43354889200.log",
+      "bytes": 117693,
+      "sha256": "e5e877bd92b7aa8394a2c9873d15735f4f04fe1d02a2ba552929cba85a880650"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/43354889247.json",
+      "archived": "runs/43354889247.json",
+      "bytes": 6537,
+      "sha256": "0de0d53cc340f619590214990348aa08366190d361b8c0a962f29388fb52f564"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/43354889247.log",
+      "archived": "runs/43354889247.log",
+      "bytes": 370595,
+      "sha256": "70ee5ccc556deac6416331577d18deac98f6c18dc8ee2009a90d734974e184ea"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-ci-2120fc8a/completed-checks.json",
+      "archived": "runs/completed-checks.json",
+      "bytes": 698,
+      "sha256": "977871e8a6f36c6d14937dfd34ff4ec51bfec1a2279717278b6dc2ac59a286ff"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/acceptance/acceptance.json",
+      "archived": "snapshot/acceptance/acceptance.json",
+      "bytes": 10863,
+      "sha256": "ce37ef46d4ec1730b84ecbe9965adbdda53759a24538e2242667a264c4b5a4f2"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/acceptance/compile.log",
+      "archived": "snapshot/acceptance/compile.log",
+      "bytes": 2975,
+      "sha256": "3d8d66a65f442891765b13ea75e42bffef11b724cc57cc2fc99174fa6d0dedd6"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/acceptance/daemon.log",
+      "archived": "snapshot/acceptance/daemon.log",
+      "bytes": 105688,
+      "sha256": "0b9bf7f4d4dae274bc0ffa4ea9e5472d364c80c1975dce5ef29377f9b6b5790a"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/acceptance/images.txt",
+      "archived": "snapshot/acceptance/images.txt",
+      "bytes": 508,
+      "sha256": "b655bbacb03733901b0ce2a50f3a25044c7a4bc346131d10a75e50160e51ccda"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/acceptance/test-binary-buildinfo.txt",
+      "archived": "snapshot/acceptance/test-binary-buildinfo.txt",
+      "bytes": 384,
+      "sha256": "fe224a0c9eaee2c673cc13effc5fb0c593d5dacaf67b766f04459829192c452d"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/acceptance/tests.log",
+      "archived": "snapshot/acceptance/tests.log",
+      "bytes": 6730,
+      "sha256": "62810745d3409ab05e8c548c3c6a9eecfe67118b29dd71c8dcd6444b51213897"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/acceptance-runner.log",
+      "archived": "snapshot/acceptance-runner.log",
+      "bytes": 117,
+      "sha256": "56d11c0812f86d403a65f222b1d749018aabed58de7758b36f6535598a08b895"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/install.log",
+      "archived": "snapshot/install.log",
+      "bytes": 270226,
+      "sha256": "dffc3c78d85fa4a2bd2908399b55323aa4a06229ed07b5eab8a958e51b6328b7"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/pool/capacity-plan.json",
+      "archived": "snapshot/pool/capacity-plan.json",
+      "bytes": 260,
+      "sha256": "2e1c45586653499717281fe5fa1b532d8855bcc04546a6041bdc286cdc7783e0"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/pool/capacity-verified.json",
+      "archived": "snapshot/pool/capacity-verified.json",
+      "bytes": 187,
+      "sha256": "19f93134572ec81d71c7e838b6833b62bedd3f98321ae78bda471e40c21105e9"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/pool/create.log",
+      "archived": "snapshot/pool/create.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/pool/ownership.json",
+      "archived": "snapshot/pool/ownership.json",
+      "bytes": 1041,
+      "sha256": "ce9fddc68428942afb97be7cbfd061a129364c3555623cea49dccce8e218b59b"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/pool/status.txt",
+      "archived": "snapshot/pool/status.txt",
+      "bytes": 92,
+      "sha256": "d0c5e3aa25a3f0f2d45b62f7aa12619bc530b0d8fe9877813db3a6b2fd12a0c3"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/pool/table.txt",
+      "archived": "snapshot/pool/table.txt",
+      "bytes": 61,
+      "sha256": "db3cc3c434912900c603faa981e4e129983dad0257c0d5ea7e36107d49eac62c"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/pool-cleanup.log",
+      "archived": "snapshot/pool-cleanup.log",
+      "bytes": 1041,
+      "sha256": "ce9fddc68428942afb97be7cbfd061a129364c3555623cea49dccce8e218b59b"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/pool-create.log",
+      "archived": "snapshot/pool-create.log",
+      "bytes": 1042,
+      "sha256": "d6359fe35fd8728fb8658cb69ef497142c3a129be8215145dbd379e65cda4869"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/prerequisites.log",
+      "archived": "snapshot/prerequisites.log",
+      "bytes": 13410,
+      "sha256": "8fa8cfdd64869c321e636c8154c5d337431a16650e24bb6878a7721f86216173"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/vhive-stack-receipt.json",
+      "archived": "snapshot/vhive-stack-receipt.json",
+      "bytes": 5505,
+      "sha256": "bcdbbb90f72b638de997fcbf67f61174f8099ad13296dcc967442f6332a049b5"
+    },
+    {
+      "source": "migration-upstream/vhive-ci-43352640912-failure.log",
+      "archived": "failures/vhive-ci-43352640912-failure.log",
+      "bytes": 6037,
+      "sha256": "dfee350c20916d3bbfffa5b54c898d70c48cce0c989ad387eae8192cc0811827"
+    },
+    {
+      "source": "migration-upstream/vhive-ci-43352640942-failure.log",
+      "archived": "failures/vhive-ci-43352640942-failure.log",
+      "bytes": 28172,
+      "sha256": "b3c43b1d171eb1b7e1c7201f98642837897e815f790aeceba4418ec32ffacab9"
+    },
+    {
+      "source": "migration-upstream/vhive-ci-43352640967-failure.log",
+      "archived": "failures/vhive-ci-43352640967-failure.log",
+      "bytes": 14809,
+      "sha256": "33c8fa5cc5620cb94e66693bdf5029091ef88a8a87fc0384b1b40e986141c833"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-prerequisites-report.json",
+      "archived": "fixes/vhive-hosted-snapshot-prerequisites-report.json",
+      "bytes": 4769,
+      "sha256": "774128b418cc1ff8c5ef710191e7967f1e717512807034807fe0594b8cea77e2"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-prerequisites-tests.log",
+      "archived": "fixes/vhive-hosted-snapshot-prerequisites-tests.log",
+      "bytes": 956,
+      "sha256": "8b65830473d85a5c81487d359a1057c9e4118bf5472572d751745f5c67b69204"
+    },
+    {
+      "source": "migration-upstream/vhive-genproto-fix-report.md",
+      "archived": "fixes/vhive-genproto-fix-report.md",
+      "bytes": 3147,
+      "sha256": "55c4ec190698393cc099fcebb04d7bf222a4e8949a00f581903035363dbc5fb4"
+    },
+    {
+      "source": "migration-upstream/vhive-genproto-fix-evidence/final-result.json",
+      "archived": "fixes/final-result.json",
+      "bytes": 2121,
+      "sha256": "e2622d771b157a6b28c493fd3606d60a660ab2eea4869b71ea8a86b406b97f44"
+    },
+    {
+      "source": "migration-upstream/vhive-genproto-fix-evidence/standalone-closure-comparison.json",
+      "archived": "fixes/standalone-closure-comparison.json",
+      "bytes": 56,
+      "sha256": "3f047e735a33a80f01365f93383879921b0e23cbb86de57f8122dfa15185c651"
+    },
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-lead-review.json",
+      "archived": "fixes/vhive-hosted-snapshot-lead-review.json",
+      "bytes": 826,
+      "sha256": "01b1e42bc9716a9d48333c59f39929c0326f6b8382b0808492ada1483d3b89df"
+    },
+    {
+      "source": "migration-upstream/vhive-ci-fixes-runs.json",
+      "archived": "fixes/vhive-ci-fixes-runs.json",
+      "bytes": 1098,
+      "sha256": "170738b862407a732bf1b647f090044b23a1912902b92d89619edda98e50db4f"
+    }
+  ],
+  "excluded": [
+    {
+      "source": "migration-upstream/vhive-hosted-snapshot-43354889183/legacy-snapshot-43354889183-1/acceptance/ctriface.test",
+      "artifact_path": "acceptance/ctriface.test",
+      "bytes": 32385472,
+      "sha256": "6317986c84c8659cf419531f6111ace03fe98385365d5c41984c54ddcb21508c",
+      "reason": "Compiled ELF test executable; hash/size retained, no binary copied"
+    }
+  ]
+}

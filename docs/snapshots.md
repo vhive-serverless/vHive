@@ -1,5 +1,42 @@
 # Firecracker snapshots
 
+## Firecracker 1.18 integration branch
+
+The vHive `firecracker-v1.18-containerdv2-integration` branch integrates the
+firecracker-containerd `firecracker-v1.18-containerdv2-vhive-integration`
+branch. It keeps the Step 2
+`PauseVM` / `CreateSnapshot` / `ResumeVM` API and uses containerd's v2 Go client.
+Capture preserves the complete workload block image in `disk_file`. Copy the
+entire revision directory when retaining a snapshot, including `snap_file`,
+`mem_file`, `snap_file.drives.json`, `disk_file`, and `info_file`. The drive
+manifest uses version 2 and includes a version 1 sealed transport cut with
+process stream cursors, the acknowledged event cursor, and the task resume set.
+The runtime uses it to map captured paths onto private restored disks and
+reconnect the captured transports. Drive-only snapshots require a fresh capture.
+
+Legacy restore returns `RestoredIO` for the runtime-owned guest processes.
+vHive retains those descriptions in its VM metadata and attaches stdout/stderr
+to the per-VM workload logger. These readers stay alive until the stopped
+runtime closes its writers and all remaining output reaches the logger. A
+reader-drain timeout reports an error and retains the readers. External unread
+stdin stays with the source and is not automatically duplicated into clones.
+
+`TestPauseSnapResume` checks source task status, metrics, exec, and stdout after
+capture. `TestSnapshotConcurrentClones` keeps the source and two clones alive,
+checks distinct endpoints and disks, and exercises independent shutdown.
+Run these on the isolated runtime test stack; local compilation alone does not
+establish VM compatibility. Kubernetes Pod checkpoint endpoints remain deferred.
+
+The [installed-consumer acceptance receipt](evidence/firecracker-1.18-installed/README.md)
+records the three required File-memory cases passing at consumer `da498d75b7b9`
+with published runtime `b4f8c6c2f1ec`, including continued source execution, two
+independent clones, memory/disk isolation and shutdown. It preserves the earlier
+capacity failure and exact installation/module provenance. This acceptance covers
+the standalone Step 2 profile; full CRI remains WIP and Kubernetes Pod
+checkpoint/restore endpoints remain deferred to 1.38.
+
+The following sections document the historical snapshot implementation.
+
 ## Overview
 
 We

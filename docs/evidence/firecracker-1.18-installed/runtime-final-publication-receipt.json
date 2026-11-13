@@ -1,0 +1,11 @@
+{
+  "published": {
+    "firecracker-v1.18-containerdv2": "71925ad2d0dcb0b717fa0b07479543bd5ecb267a",
+    "firecracker-v1.18-containerdv2-vhive-integration": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+    "cri-native-snapshot-restore": "64452aaa028d8b4d291f5ecf9077f3ecd649237e",
+    "damon-virtio-pmem": "7332985cee734763ed1d820685e85390db3c8f6c"
+  },
+  "master_unchanged": true,
+  "renamed_branches_retired": true,
+  "push_exit": 0
+}

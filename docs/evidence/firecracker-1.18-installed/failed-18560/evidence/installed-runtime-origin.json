@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/vhive-serverless/firecracker-containerd.git",
+  "revision": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "tree": "6f10c19f7428e902204306485e637412047a45fb",
+  "runtime_lock_sha256": "220b0a75a2f9740cfa5ea2fc24b59846b7077bf93afa6a7b617ff3343d7576c4",
+  "module_version": "v0.0.0-20261113011217-b4f8c6c2f1ec"
+}

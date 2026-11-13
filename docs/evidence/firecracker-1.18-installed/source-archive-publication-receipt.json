@@ -1,0 +1,12 @@
+{
+  "repository": "git@github.com:vhive-serverless/firecracker-containerd.git",
+  "push_exit_code": 0,
+  "created_tags": 46,
+  "existing_exact_tags": 10,
+  "verified_tags": 56,
+  "verification": "Exact remote refs and explicit fetch into fresh bare repository; each commit and tree matches manifest",
+  "mapping_sha256": "3fc22c94e8ce8e1b602748bf12d626c3dae5df8c4977714d09652493c36af6d0",
+  "push_log_sha256": "5273a1e8079d6bae43df2ca1abdd39c8badcc42938516dac4173bae800bfb778",
+  "verification_log_sha256": "12bbf6910efa9bdf6ca112203f2db2320f566f80c9f593cf3051f39925e7cb48",
+  "scope": "Source recovery tags only; no branch rewrites or acceptance promotion"
+}

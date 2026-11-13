@@ -1,0 +1,219 @@
+{
+  "vhive_revision": "2120fc8a9855b25a19cde15013f2bb581924bc3f",
+  "runtime_revision": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "candidate": false,
+  "image": "ghcr.io/ease-lab/helloworld@sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25",
+  "go_version": "go version go1.26.11 linux/amd64",
+  "firecracker_version": "Firecracker v1.18.0\n\n2026-11-13T03:10:02.559923523 [anonymous-instance:main] Firecracker exiting successfully. exit_code=0",
+  "pool": "vhive-ci-43354889183-1",
+  "runtime_module": {
+    "selected": {
+      "Path": "github.com/firecracker-microvm/firecracker-containerd",
+      "Version": "v0.0.0-00010101000000-000000000000",
+      "Replace": {
+        "Path": "github.com/vhive-serverless/firecracker-containerd",
+        "Version": "v0.0.0-20261113011217-b4f8c6c2f1ec",
+        "Time": "2026-11-13T01:12:17Z",
+        "GoMod": "/root/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.mod",
+        "GoVersion": "1.26.8",
+        "Sum": "h1:puiLAxBEEKypQ5+iQQxnb8F7DnnU1+CdDJxkt60KVNs=",
+        "GoModSum": "h1:l1s0LZubl+jaiaDGxEROUDwynM+tO498a8/PxL0855M="
+      },
+      "GoMod": "/root/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.mod",
+      "GoVersion": "1.26.8"
+    },
+    "downloaded": {
+      "Path": "github.com/vhive-serverless/firecracker-containerd",
+      "Version": "v0.0.0-20261113011217-b4f8c6c2f1ec",
+      "Info": "/root/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.info",
+      "GoMod": "/root/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.mod",
+      "Zip": "/root/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.zip",
+      "Dir": "/root/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec",
+      "Sum": "h1:puiLAxBEEKypQ5+iQQxnb8F7DnnU1+CdDJxkt60KVNs=",
+      "GoModSum": "h1:l1s0LZubl+jaiaDGxEROUDwynM+tO498a8/PxL0855M=",
+      "Origin": {
+        "VCS": "git",
+        "URL": "https://github.com/vhive-serverless/firecracker-containerd",
+        "Hash": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794"
+      }
+    }
+  },
+  "sdk_module": {
+    "selected": {
+      "Path": "github.com/firecracker-microvm/firecracker-go-sdk",
+      "Version": "v1.0.1-0.20250818195323-ed6ff32aa924",
+      "Replace": {
+        "Path": "github.com/vhive-serverless/firecracker-go-sdk",
+        "Version": "v0.0.0-20261112180021-dd9db3224329",
+        "Time": "2026-11-12T18:00:21Z"
+      },
+      "Indirect": true
+    },
+    "downloaded": {
+      "Path": "github.com/vhive-serverless/firecracker-go-sdk",
+      "Version": "v0.0.0-20261112180021-dd9db3224329",
+      "Info": "/root/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-go-sdk/@v/v0.0.0-20261112180021-dd9db3224329.info",
+      "GoMod": "/root/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-go-sdk/@v/v0.0.0-20261112180021-dd9db3224329.mod",
+      "Zip": "/root/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-go-sdk/@v/v0.0.0-20261112180021-dd9db3224329.zip",
+      "Dir": "/root/go/pkg/mod/github.com/vhive-serverless/firecracker-go-sdk@v0.0.0-20261112180021-dd9db3224329",
+      "Sum": "h1:jaQhW3qXDgG8gqKeP0qlqAJF+GbTlAzboOO7EzaIKWE=",
+      "GoModSum": "h1:IKSxd5Gsx+H4cFowjf6q4kuzbcCWkYsYGKxf/WKKNL4=",
+      "Origin": {
+        "VCS": "git",
+        "URL": "https://github.com/vhive-serverless/firecracker-go-sdk",
+        "Hash": "dd9db322432989b96cff7a38a64703d60b6cabf9"
+      }
+    }
+  },
+  "installation": {
+    "schema_version": 1,
+    "runtime_revision": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+    "manifest": {
+      "schema_version": 1,
+      "profile": "step-2-standalone-devmapper-file",
+      "runtime": {
+        "repository": "https://github.com/vhive-serverless/firecracker-containerd.git",
+        "revision": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+        "ready": true,
+        "note": "Published upstream-Firecracker Step 2 runtime; installed vHive consumer acceptance is recorded separately from runtime validation."
+      },
+      "inputs": {
+        "firecracker": {
+          "upstream": "https://github.com/firecracker-microvm/firecracker.git",
+          "base_tag": "v1.18.0",
+          "base_tag_object": "07a7c2e20a8f4f661702551d02fc3eca679842a5",
+          "base_commit": "eaf83bb718a559d324613d566eaf776b31a62340",
+          "branch": "v1.18.0",
+          "commit": "eaf83bb718a559d324613d566eaf776b31a62340",
+          "target": "x86_64-unknown-linux-musl",
+          "binary_source": "official GitHub release",
+          "release_archive_sha256": {
+            "x86_64": "1ac8eec866dd5eea14efecf6323e22b23eea24054545338a5b34bc5bca6623cd",
+            "aarch64": "2a6130ff0338901ff9d7fbd73ce046c6b1c6123889dc84a34d678aa53bd0c0c2"
+          }
+        },
+        "sdk": {
+          "remote": "https://github.com/vhive-serverless/firecracker-go-sdk.git",
+          "branch": "firecracker-v1.18.0",
+          "commit": "dd9db322432989b96cff7a38a64703d60b6cabf9",
+          "module_replacement": "github.com/vhive-serverless/firecracker-go-sdk v0.0.0-20261112180021-dd9db3224329"
+        },
+        "containerd": {
+          "version": "v2.3.7",
+          "commit": "6f589cf13dc01a5b493911355427e05b2ff005d7",
+          "api": "v1.11.1"
+        },
+        "runc": {
+          "version": "v1.4.2",
+          "commit": "c241c0bb5e60a8e8c1b2e53d4eca8d0068d8d57e"
+        },
+        "stargz_snapshotter": {
+          "version": "v0.18.2",
+          "commit": "3070538befb5a6c09f93e99164762b3a76310357"
+        },
+        "guest_kernel": {
+          "source": "https://github.com/amazonlinux/linux.git",
+          "tag": "kernel6.18-6.18.56-126.188.amzn2023",
+          "commit": "7483450dec64b4f923037de31d8c28298a7c3359",
+          "config_source_firecracker_commit": "eaf83bb718a559d324613d566eaf776b31a62340",
+          "local_version": "-fcmod"
+        },
+        "guest_distribution": {
+          "name": "Debian trixie",
+          "mirror": "https://snapshot.debian.org/archive/debian/20261110T000000Z/"
+        },
+        "go": {
+          "version": "1.26.11",
+          "archive": "go1.26.11.linux-amd64.tar.gz",
+          "sha256": "9849f4e04ee35303714e34fbc3ac8ab44ea3e448a95aa182f91e3b9b79c710ec"
+        },
+        "go_builder": "public.ecr.aws/docker/library/golang:1.26.11-bookworm@sha256:dc40a13b61304647ed7e5d581d246b86413dfc29d63c6d018310feb93cd98fc0",
+        "rootfs_builder": "public.ecr.aws/docker/library/debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2"
+      },
+      "artifacts": {
+        "firecracker": {
+          "source": "bin/firecracker",
+          "installed": "bin/firecracker"
+        },
+        "jailer": {
+          "source": "bin/jailer",
+          "installed": "bin/jailer"
+        },
+        "runtime": {
+          "source": "firecracker-control/cmd/containerd/firecracker-containerd",
+          "installed": "bin/firecracker-containerd"
+        },
+        "ctr": {
+          "source": "firecracker-control/cmd/containerd/firecracker-ctr",
+          "installed": "bin/firecracker-ctr"
+        },
+        "shim": {
+          "source": "runtime/containerd-shim-aws-firecracker",
+          "installed": "bin/containerd-shim-aws-firecracker"
+        },
+        "runc": {
+          "source": "_submodules/runc/runc",
+          "installed": "bin/runc"
+        },
+        "kernel": {
+          "source": "bin/vmlinux-6.18.56-fcmod",
+          "installed": "share/runtime/default-vmlinux.bin"
+        },
+        "rootfs": {
+          "source": "tools/image-builder/rootfs.img",
+          "installed": "share/runtime/default-rootfs.img"
+        },
+        "demux": {
+          "source": "snapshotter/demux-snapshotter",
+          "installed": "bin/demux-snapshotter"
+        },
+        "resolver": {
+          "source": "snapshotter/http-address-resolver",
+          "installed": "bin/http-address-resolver"
+        }
+      }
+    },
+    "runtime_lock_sha256": "220b0a75a2f9740cfa5ea2fc24b59846b7077bf93afa6a7b617ff3343d7576c4",
+    "build_receipt_sha256": "f195fd3f5fffeeb9cc8714ff6364a44b9b30cbb52daf1ed41202ad65dacfc928",
+    "guest_agent_sha256": "018f3beb994be329d6d02072dc0f1608b00e2fa58fa8f2d76303e121f313434f",
+    "installed_sha256": {
+      "bin/firecracker": "b33f46cd6d88834cf6a4f8d184f08f219809c636236bffd286d233a60602a2ba",
+      "bin/jailer": "ddadbaa15b5c942271a83b7040ca7259c8ccf92a9e08d44cce0b86fa407ba460",
+      "bin/firecracker-containerd": "ff1f2ed7a8162d740aacc934359ecd0adf50cc66b8ffd9081a5907f59437bab8",
+      "bin/firecracker-ctr": "d177526cbc599416990ad06356f1a6ab5b3fd34acb79ac69aedaf32acee9e5e6",
+      "bin/containerd-shim-aws-firecracker": "1c441ba380bb38dd8f16f45a06d1946b6f1aaa8c0a14e0b92c7b05111c3f77cf",
+      "bin/runc": "9cd4a021610365032b0e13fa37e67b751ccc8205c5b14d313af28cbe6e219220",
+      "share/runtime/default-vmlinux.bin": "ba27d05bd463258b38c19646275ac68de667dc10d6533c200af2163fd1d63665",
+      "share/runtime/default-rootfs.img": "6079730b3bdcfe39fcd7a4dd4fc718fecff91a8a6a6c68d950ae6a769e4a2faf",
+      "bin/demux-snapshotter": "255eba6740cf8da2ea5e60b12673d855f7ea6e5cc45872b08e4b40dd8263160d",
+      "bin/http-address-resolver": "137f1f6586d6b50ffb7043fab7ad901c3e638fd76003a8cd79bcf2fcd157db30"
+    }
+  },
+  "source_sha256": {
+    "go.mod": "54b4ced724d78660609fc8c1a016d5ffb9781abeacde223fd1fecb4162cff9a1",
+    "go.sum": "c941cefdd1304e3143ae1b20fead2fce51c9c3634b74f482922bc8af9f22eaa5",
+    "scripts/accept_legacy_snapshot.py": "1a9234b74c58048bc68e5b3fe37a9a39f405bfcf67613bb654a240be6af3ea7f",
+    "ctriface/snapshot_continuity_test.go": "a67e11e7382713d79b578604dc4fdba771a1180179ab0b735c486af756b4ae2f",
+    "ctriface/snapshot_clones_test.go": "aa3c8c0c4eb8312971a4755f53b32fccc85912284ceeb53d00bfe81574a33c89"
+  },
+  "config_sha256": {
+    "/etc/firecracker-containerd/config.toml": "012f2abd8ad1914f17786edbeee4627611b1db7d95baa1aa55fabdec23caf477",
+    "/etc/containerd/firecracker-runtime.json": "fe62d73cd5c9ff5928ffa7f63b3867dcaf92cce1b382f771e7307a75fe42c968"
+  },
+  "tests": [
+    "TestPauseSnapResume",
+    "TestSnapshotConcurrentClones",
+    "TestSnapshotSourceMemoryAndDiskIsolation"
+  ],
+  "result": "pass",
+  "command": [
+    "/home/runner/work/_temp/vhive-legacy-snapshot/acceptance/ctriface.test",
+    "-test.v",
+    "-test.count=1",
+    "-test.timeout=15m",
+    "-test.run=^(TestPauseSnapResume|TestSnapshotConcurrentClones|TestSnapshotSourceMemoryAndDiskIsolation)$",
+    "-ss=devmapper",
+    "-upf=false",
+    "-img=ghcr.io/ease-lab/helloworld@sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25"
+  ]
+}

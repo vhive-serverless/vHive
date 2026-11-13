@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/users/nehalem/fc-ctrd-mod/vhive-final-consumer-7efebc4b/scripts/accept_legacy_snapshot.py", line 198, in <module>
+    main()
+  File "/users/nehalem/fc-ctrd-mod/vhive-final-consumer-7efebc4b/scripts/accept_legacy_snapshot.py", line 169, in main
+    subprocess.run(command, cwd=ROOT, env=environment, stdout=tests,
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/evidence/acceptance/ctriface.test', '-test.v', '-test.count=1', '-test.timeout=15m', '-test.run=^(TestPauseSnapResume|TestSnapshotConcurrentClones|TestSnapshotSourceMemoryAndDiskIsolation)$', '-ss=devmapper', '-upf=false', '-img=ghcr.io/ease-lab/helloworld@sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25']' returned non-zero exit status 1.

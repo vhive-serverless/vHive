@@ -1,0 +1,10 @@
+{
+  "archive": "vhive-installed-final-18560-complete-evidence.tar",
+  "bytes": 573440,
+  "sha256": "5734d6713aa19a0e11d752f071a4dd72ca9a429bc031f4190b8cb8295cb9218c",
+  "file_count": 47,
+  "raw_remote_text_files": 33,
+  "binary_large_hash_only": 17,
+  "no_test_binary_copy": true,
+  "scope": "Original remote receipts plus independent local audit/diagnosis and root quarantine proof; no rerun"
+}

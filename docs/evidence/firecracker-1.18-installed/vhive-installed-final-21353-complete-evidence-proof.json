@@ -1,0 +1,11 @@
+{
+  "archive": "vhive-installed-final-21353-complete-evidence.tar",
+  "bytes": 378880,
+  "sha256": "ec3ce74ee82742c666bc528a691af0fda92b12a925e2000cc6034554af20b24d",
+  "file_count": 53,
+  "original_text_files": 43,
+  "binary_large_hash_only": 17,
+  "no_test_binary_copy": true,
+  "terminal_report": "vhive-installed-final-21353-terminal-report.json",
+  "scope": "Original final pass receipts, exact prior installation reuse hashes and independent read-only cleanup audit"
+}

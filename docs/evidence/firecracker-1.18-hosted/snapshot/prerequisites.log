@@ -1,0 +1,250 @@
+Client: Docker Engine - Community
+ Version:           28.0.4
+ API version:       1.48
+ Go version:        go1.23.7
+ Git commit:        b8034c0
+ Built:             Tue Mar 25 15:07:16 2025
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          28.0.4
+  API version:      1.48 (minimum version 1.24)
+  Go version:       go1.23.7
+  Git commit:       6430e49
+  Built:            Tue Mar 25 15:07:16 2025
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.4.2
+  GitCommit:        b7a25261e029d68978bbf290df0a62fc819b3c51
+ runc:
+  Version:          1.5.2
+  GitCommit:        v1.5.2-0-g29dd3dc2
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+github.com/docker/buildx v0.38.1 0dbe87f36ed472fe36b6796c3f70b4210a731fc5
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [697 kB]
+Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [767 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1450 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [315 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1711 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [344 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1883 kB]
+Get:17 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [12.6 kB]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [430 kB]
+Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [50.7 kB]
+Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.3 kB]
+Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1195 kB]
+Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [238 kB]
+Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1788 kB]
+Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [411 kB]
+Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [45.4 kB]
+Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [12.4 kB]
+Fetched 13.2 MB in 1s (11.0 MB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+curl is already the newest version (8.5.0-2ubuntu10.16).
+git is already the newest version (1:2.56.0-0ppa1~ubuntu24.04.2).
+git set to manually installed.
+rsync is already the newest version (3.2.7-1ubuntu1.5).
+jq is already the newest version (1.7.1-3ubuntu0.24.04.2).
+python3 is already the newest version (3.12.3-0ubuntu2.1).
+pkg-config is already the newest version (1.8.1-2build1).
+e2fsprogs is already the newest version (1.47.0-2.4~exp1ubuntu4.1).
+e2fsprogs set to manually installed.
+squashfs-tools is already the newest version (1:4.6.1-1build1).
+squashfs-tools set to manually installed.
+dmsetup is already the newest version (2:1.02.185-3ubuntu3.2).
+dmsetup set to manually installed.
+thin-provisioning-tools is already the newest version (0.9.0-2ubuntu5.1).
+thin-provisioning-tools set to manually installed.
+iproute2 is already the newest version (6.1.0-1ubuntu6.4).
+iptables is already the newest version (1.8.10-3ubuntu2).
+iptables set to manually installed.
+bc is already the newest version (1.07.1-3ubuntu4).
+bc set to manually installed.
+flex is already the newest version (2.6.4-8.2build1).
+bison is already the newest version (2:3.8.2+dfsg-1ubuntu0.24.04.1).
+libssl-dev is already the newest version (3.0.13-0ubuntu3.16).
+net-tools is already the newest version (2.10-0.1ubuntu4.4).
+The following additional packages will be installed:
+  libprotobuf32t64 libprotoc32t64 musl musl-dev pahole
+Suggested packages:
+  squid-deb-proxy-client debian-archive-keyring arch-test seccomp
+  protobuf-mode-el
+Recommended packages:
+  libprotobuf-dev
+The following NEW packages will be installed:
+  build-essential debootstrap dwarves libelf-dev libprotobuf32t64
+  libprotoc32t64 libseccomp-dev musl musl-dev musl-tools pahole
+  protobuf-compiler socat
+The following packages will be upgraded:
+  ca-certificates
+1 upgraded, 13 newly installed, 0 to remove and 48 not upgraded.
+Need to get 3679 kB of archives.
+After this operation, 14.1 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 ca-certificates all 20260816ubuntu0.24.04.2 [140 kB]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 build-essential amd64 12.10ubuntu1 [4928 B]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libelf-dev amd64 0.190-1.1ubuntu0.1 [68.5 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libprotobuf32t64 amd64 3.21.12-8.2ubuntu0.4 [923 kB]
+Get:6 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libprotoc32t64 amd64 3.21.12-8.2ubuntu0.4 [683 kB]
+Get:7 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libseccomp-dev amd64 2.5.5-1ubuntu3.1 [92.3 kB]
+Get:8 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pahole amd64 1.25-0ubuntu3 [277 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 debootstrap all 1.0.134ubuntu2 [48.2 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 dwarves all 1.25-0ubuntu3 [2186 B]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 musl amd64 1.2.4-2 [416 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 musl-dev amd64 1.2.4-2 [616 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 musl-tools amd64 1.2.4-2 [5540 B]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 protobuf-compiler amd64 3.21.12-8.2ubuntu0.4 [29.0 kB]
+Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 socat amd64 1.8.0.0-4ubuntu0.1 [374 kB]
+Preconfiguring packages ...
+Fetched 3679 kB in 0s (8106 kB/s)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 202429 files and directories currently installed.)
+Preparing to unpack .../00-ca-certificates_20260816ubuntu0.24.04.2_all.deb ...
+Unpacking ca-certificates (20260816ubuntu0.24.04.2) over (20260816ubuntu0.24.04.1) ...
+Selecting previously unselected package build-essential.
+Preparing to unpack .../01-build-essential_12.10ubuntu1_amd64.deb ...
+Unpacking build-essential (12.10ubuntu1) ...
+Selecting previously unselected package libelf-dev:amd64.
+Preparing to unpack .../02-libelf-dev_0.190-1.1ubuntu0.1_amd64.deb ...
+Unpacking libelf-dev:amd64 (0.190-1.1ubuntu0.1) ...
+Selecting previously unselected package libprotobuf32t64:amd64.
+Preparing to unpack .../03-libprotobuf32t64_3.21.12-8.2ubuntu0.4_amd64.deb ...
+Unpacking libprotobuf32t64:amd64 (3.21.12-8.2ubuntu0.4) ...
+Selecting previously unselected package libprotoc32t64:amd64.
+Preparing to unpack .../04-libprotoc32t64_3.21.12-8.2ubuntu0.4_amd64.deb ...
+Unpacking libprotoc32t64:amd64 (3.21.12-8.2ubuntu0.4) ...
+Selecting previously unselected package libseccomp-dev:amd64.
+Preparing to unpack .../05-libseccomp-dev_2.5.5-1ubuntu3.1_amd64.deb ...
+Unpacking libseccomp-dev:amd64 (2.5.5-1ubuntu3.1) ...
+Selecting previously unselected package pahole.
+Preparing to unpack .../06-pahole_1.25-0ubuntu3_amd64.deb ...
+Unpacking pahole (1.25-0ubuntu3) ...
+Selecting previously unselected package debootstrap.
+Preparing to unpack .../07-debootstrap_1.0.134ubuntu2_all.deb ...
+Unpacking debootstrap (1.0.134ubuntu2) ...
+Selecting previously unselected package dwarves.
+Preparing to unpack .../08-dwarves_1.25-0ubuntu3_all.deb ...
+Unpacking dwarves (1.25-0ubuntu3) ...
+Selecting previously unselected package musl:amd64.
+Preparing to unpack .../09-musl_1.2.4-2_amd64.deb ...
+Unpacking musl:amd64 (1.2.4-2) ...
+Selecting previously unselected package musl-dev:amd64.
+Preparing to unpack .../10-musl-dev_1.2.4-2_amd64.deb ...
+Unpacking musl-dev:amd64 (1.2.4-2) ...
+Selecting previously unselected package musl-tools.
+Preparing to unpack .../11-musl-tools_1.2.4-2_amd64.deb ...
+Unpacking musl-tools (1.2.4-2) ...
+Selecting previously unselected package protobuf-compiler.
+Preparing to unpack .../12-protobuf-compiler_3.21.12-8.2ubuntu0.4_amd64.deb ...
+Unpacking protobuf-compiler (3.21.12-8.2ubuntu0.4) ...
+Selecting previously unselected package socat.
+Preparing to unpack .../13-socat_1.8.0.0-4ubuntu0.1_amd64.deb ...
+Unpacking socat (1.8.0.0-4ubuntu0.1) ...
+Setting up libprotobuf32t64:amd64 (3.21.12-8.2ubuntu0.4) ...
+Setting up libseccomp-dev:amd64 (2.5.5-1ubuntu3.1) ...
+Setting up debootstrap (1.0.134ubuntu2) ...
+Setting up ca-certificates (20260816ubuntu0.24.04.2) ...
+Updating certificates in /etc/ssl/certs...
+0 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+/etc/ssl/certs/adoptium/cacerts successfully populated.
+done.
+Setting up socat (1.8.0.0-4ubuntu0.1) ...
+Setting up libelf-dev:amd64 (0.190-1.1ubuntu0.1) ...
+Setting up pahole (1.25-0ubuntu3) ...
+Setting up musl:amd64 (1.2.4-2) ...
+Setting up build-essential (12.10ubuntu1) ...
+Setting up libprotoc32t64:amd64 (3.21.12-8.2ubuntu0.4) ...
+Setting up protobuf-compiler (3.21.12-8.2ubuntu0.4) ...
+Setting up musl-dev:amd64 (1.2.4-2) ...
+Setting up dwarves (1.25-0ubuntu3) ...
+Setting up musl-tools (1.2.4-2) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+/usr/sbin/route
+Client: Docker Engine - Community
+ Version:           28.0.4
+ API version:       1.48
+ Go version:        go1.23.7
+ Git commit:        b8034c0
+ Built:             Tue Mar 25 15:07:16 2025
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          28.0.4
+  API version:      1.48 (minimum version 1.24)
+  Go version:       go1.23.7
+  Git commit:       6430e49
+  Built:            Tue Mar 25 15:07:16 2025
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.4.2
+  GitCommit:        b7a25261e029d68978bbf290df0a62fc819b3c51
+ runc:
+  Version:          1.5.2
+  GitCommit:        v1.5.2-0-g29dd3dc2
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+github.com/docker/buildx v0.38.1 0dbe87f36ed472fe36b6796c3f70b4210a731fc5
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100    76  100    76    0     0    411      0 --:--:-- --:--:-- --:--:--   410
+ 96 63.8M   96 61.6M    0     0  60.5M      0  0:00:01  0:00:01 --:--:-- 60.5M100 63.8M  100 63.8M    0     0  61.8M      0  0:00:01  0:00:01 --:--:--  159M
+/home/runner/work/_temp/vhive-firecracker-stack/downloads/go1.26.11.linux-amd64.tar.gz: OK
+go version go1.26.11 linux/amd64
+bc	1.07.1-3ubuntu4
+bison	2:3.8.2+dfsg-1ubuntu0.24.04.1
+build-essential	12.10ubuntu1
+ca-certificates	20260816ubuntu0.24.04.2
+curl	8.5.0-2ubuntu10.16
+debootstrap	1.0.134ubuntu2
+dmsetup	2:1.02.185-3ubuntu3.2
+dwarves	1.25-0ubuntu3
+e2fsprogs	1.47.0-2.4~exp1ubuntu4.1
+flex	2.6.4-8.2build1
+git	1:2.56.0-0ppa1~ubuntu24.04.2
+iproute2	6.1.0-1ubuntu6.4
+iptables	1.8.10-3ubuntu2
+jq	1.7.1-3ubuntu0.24.04.2
+libelf-dev	0.190-1.1ubuntu0.1
+libseccomp-dev	2.5.5-1ubuntu3.1
+libssl-dev	3.0.13-0ubuntu3.16
+musl-tools	1.2.4-2
+net-tools	2.10-0.1ubuntu4.4
+pkg-config	1.8.1-2build1
+protobuf-compiler	3.21.12-8.2ubuntu0.4
+python3	3.12.3-0ubuntu2.1
+rsync	3.2.7-1ubuntu1.5
+socat	1.8.0.0-4ubuntu0.1
+squashfs-tools	1:4.6.1-1build1
+thin-provisioning-tools	0.9.0-2ubuntu5.1

@@ -1,0 +1,10 @@
+{
+  "base_image_size": "10GB",
+  "base_image_bytes": 10737418240,
+  "image_budget": 4,
+  "simultaneous_vms": 3,
+  "data_bytes": 42949672960,
+  "metadata_bytes": 1073741824,
+  "minimum_available_bytes": 46170898432,
+  "observed_available_bytes": 69637468160
+}

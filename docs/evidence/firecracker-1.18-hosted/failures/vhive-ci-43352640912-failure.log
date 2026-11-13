@@ -1,0 +1,45 @@
+Build and check code quality (1.26.11)	Check code	﻿2026-11-13T02:30:43.2698032Z ##[group]Run golangci/golangci-lint-action@v9.3.0
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2698295Z with:
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2698475Z   args: --timeout 5m
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2698654Z   install-mode: binary
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2699232Z   install-only: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2701130Z   github-token: ***
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2701301Z   verify: true
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2701470Z   only-new-issues: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2701653Z   skip-cache: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2701827Z   skip-save-cache: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2702020Z   cache-invalidation-interval: 7
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2702236Z   problem-matchers: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2702415Z env:
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2702563Z   GOOS: linux
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2702724Z   GO111MODULE: on
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2702903Z   GOTOOLCHAIN: local
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.2703075Z ##[endgroup]
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.3842141Z ##[group]Restore cache
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.3847254Z Checking for go.mod: go.mod
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.5968521Z Cache not found for input keys: golangci-lint.cache-Linux-2967-80d84a076c4e39f9c012e8ac92e3592c17206b27, golangci-lint.cache-Linux-2967-
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.5969782Z ##[endgroup]
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.5970216Z ##[group]Install
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.5970518Z Finding needed golangci-lint version...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.6371979Z Requested golangci-lint 'latest', using 'v2.15.0', calculation took 40ms
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.6372581Z Installation mode: binary
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.6372933Z Installing golangci-lint binary v2.15.0...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.6373791Z Downloading binary https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz ...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:43.9518238Z [command]/usr/bin/tar xz --overwrite --warning=no-unknown-keyword --overwrite -C /home/runner -f /home/runner/work/_temp/86dd238a-5bd7-4ef8-aa9b-78b6d98e2bf2
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:44.1858389Z Installed golangci-lint into /home/runner/golangci-lint-2.15.0-linux-amd64/golangci-lint in 548ms
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:44.1861927Z ##[endgroup]
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:44.1864668Z ##[group]run golangci-lint
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:44.1869087Z Running [/home/runner/golangci-lint-2.15.0-linux-amd64/golangci-lint config path] in [/home/runner/work/vHive/vHive] ...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:44.2519405Z Running [/home/runner/golangci-lint-2.15.0-linux-amd64/golangci-lint config verify] in [/home/runner/work/vHive/vHive] ...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:30:44.3501720Z Running [/home/runner/golangci-lint-2.15.0-linux-amd64/golangci-lint run  --timeout 5m] in [/home/runner/work/vHive/vHive] ...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1430791Z ##[error]proto/orchestrator.pb.go:36:9: could not import google.golang.org/grpc/status (/home/runner/go/pkg/mod/google.golang.org/grpc@v1.84.0/status/status.go:35:6: could not import google.golang.org/genproto/googleapis/rpc/status (../../../go/pkg/mod/google.golang.org/grpc@v1.84.0/status/status.go:35:2: ambiguous import: found package google.golang.org/genproto/googleapis/rpc/status in multiple modules:
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1441417Z 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 (/home/runner/go/pkg/mod/google.golang.org/genproto@v0.0.0-20200526211855-cb27e3aa2013/googleapis/rpc/status)
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1443249Z 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 (/home/runner/go/pkg/mod/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260706201446-f0a921348800/status))) (typecheck)
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1444349Z 	status "google.golang.org/grpc/status"
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1444713Z 	       ^
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1444949Z 1 issues:
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1445203Z * typecheck: 1
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1445368Z 
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1455530Z ##[error]issues found
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1456544Z Ran golangci-lint in 42790ms
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:31:27.1457125Z ##[endgroup]

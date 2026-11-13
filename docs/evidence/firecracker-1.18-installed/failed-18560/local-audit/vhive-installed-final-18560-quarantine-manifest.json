@@ -1,0 +1,526 @@
+{
+  "run": 18560,
+  "collected_utc": "2026-11-13T02:07:38Z",
+  "boot_id": "6428a00e-e606-492a-8fee-a94717abaf7e",
+  "pool": "vhive-final-7efebc4bd006-3215611",
+  "roots": [
+    {
+      "source": "/var/lib/firecracker-containerd/containerd",
+      "quarantine": "/var/lib/firecracker-containerd/containerd.vhive-retained-18560",
+      "target_absent": true,
+      "entries": {
+        ".": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410771,
+          "size": 4096,
+          "mtime_ns": 1794535027239919117,
+          "ctime_ns": 1794535027239919117,
+          "nlink": 13
+        },
+        "io.containerd.content.v1.content": {
+          "mode": 16877,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410773,
+          "size": 4096,
+          "mtime_ns": 1794535028685928956,
+          "ctime_ns": 1794535028685928956,
+          "nlink": 4
+        },
+        "io.containerd.content.v1.content/blobs": {
+          "mode": 16877,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410796,
+          "size": 4096,
+          "mtime_ns": 1794535028685928956,
+          "ctime_ns": 1794535028685928956,
+          "nlink": 3
+        },
+        "io.containerd.content.v1.content/blobs/sha256": {
+          "mode": 16877,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410797,
+          "size": 4096,
+          "mtime_ns": 1794535031275946578,
+          "ctime_ns": 1794535031275946578,
+          "nlink": 2
+        },
+        "io.containerd.content.v1.content/blobs/sha256/0522d30cde10ac29ae2c555b9bde76c2b50aafc7ef7435bbc7e19de706bcadcd": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3418970,
+          "size": 230,
+          "mtime_ns": 1794535030442589751,
+          "ctime_ns": 1794535030441940904,
+          "nlink": 1,
+          "sha256": "0522d30cde10ac29ae2c555b9bde76c2b50aafc7ef7435bbc7e19de706bcadcd"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/0d776ee02572ee50935002da7bd7fcda4a60be4a48c4ace5dd3216c327e6767a": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3418988,
+          "size": 20365161,
+          "mtime_ns": 1794535030894242508,
+          "ctime_ns": 1794535030892943972,
+          "nlink": 1,
+          "sha256": "0d776ee02572ee50935002da7bd7fcda4a60be4a48c4ace5dd3216c327e6767a"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410795,
+          "size": 1998,
+          "mtime_ns": 1794535028687664803,
+          "ctime_ns": 1794535028686928962,
+          "nlink": 1,
+          "sha256": "12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/2cc5ad85d9abaadf23d5ae53c3f32e7ccb2df1956869980bfd2491ff396d348a": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3418994,
+          "size": 301261,
+          "mtime_ns": 1794535030641147532,
+          "ctime_ns": 1794535030639942251,
+          "nlink": 1,
+          "sha256": "2cc5ad85d9abaadf23d5ae53c3f32e7ccb2df1956869980bfd2491ff396d348a"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/407da27a03363f6b9d368ec6e131f7f2db7c8cb2a149160d913d6f3698905a5d": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3435375,
+          "size": 1887472,
+          "mtime_ns": 1794535030627135249,
+          "ctime_ns": 1794535030625942156,
+          "nlink": 1,
+          "sha256": "407da27a03363f6b9d368ec6e131f7f2db7c8cb2a149160d913d6f3698905a5d"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/61614c1a5710c76af6b2a9c7170a81eb0dd76ccf90e921abc0c9dcc1d5ed490e": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3435369,
+          "size": 31506523,
+          "mtime_ns": 1794535031277667511,
+          "ctime_ns": 1794535031276946585,
+          "nlink": 1,
+          "sha256": "61614c1a5710c76af6b2a9c7170a81eb0dd76ccf90e921abc0c9dcc1d5ed490e"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/92b614cff45fafd028cec952e0cb2584e8d931bf0321e7d14bfafdf7a50ac3fa": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3418982,
+          "size": 2233,
+          "mtime_ns": 1794535030426042597,
+          "ctime_ns": 1794535030424940788,
+          "nlink": 1,
+          "sha256": "92b614cff45fafd028cec952e0cb2584e8d931bf0321e7d14bfafdf7a50ac3fa"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/a87533385b75fd1d476d8a1112a0c5db953e3d5b44d4f9db814b1e2e6abb8734": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410798,
+          "size": 8312,
+          "mtime_ns": 1794535029183960934,
+          "ctime_ns": 1794535029182932337,
+          "nlink": 1,
+          "sha256": "a87533385b75fd1d476d8a1112a0c5db953e3d5b44d4f9db814b1e2e6abb8734"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/c09d5cdb7367fff0d581bb8003e3520dc3e8bd78811dfb51c92df81e58c3a50d": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410800,
+          "size": 637463,
+          "mtime_ns": 1794535030656270054,
+          "ctime_ns": 1794535030654942353,
+          "nlink": 1,
+          "sha256": "c09d5cdb7367fff0d581bb8003e3520dc3e8bd78811dfb51c92df81e58c3a50d"
+        },
+        "io.containerd.content.v1.content/blobs/sha256/c9b1b535fdd91a9855fb7f82348177e5f019329a58c53c47272962dd60f71fc9": {
+          "mode": 33060,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3418976,
+          "size": 2802957,
+          "mtime_ns": 1794535030514488974,
+          "ctime_ns": 1794535030513941394,
+          "nlink": 1,
+          "sha256": "c9b1b535fdd91a9855fb7f82348177e5f019329a58c53c47272962dd60f71fc9"
+        },
+        "io.containerd.content.v1.content/ingest": {
+          "mode": 16877,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410774,
+          "size": 4096,
+          "mtime_ns": 1794535031276946585,
+          "ctime_ns": 1794535031276946585,
+          "nlink": 2
+        },
+        "io.containerd.metadata.v1.bolt": {
+          "mode": 16841,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410786,
+          "size": 4096,
+          "mtime_ns": 1794535027236919096,
+          "ctime_ns": 1794535027236919096,
+          "nlink": 2
+        },
+        "io.containerd.metadata.v1.bolt/meta.db": {
+          "mode": 33188,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410787,
+          "size": 262144,
+          "mtime_ns": 1794535315733937688,
+          "ctime_ns": 1794535315733937688,
+          "nlink": 1,
+          "sha256": "e964cd1aedbe6a84aa1562d5945e245898c05924848ab189cdbcd8ec59072b7d"
+        },
+        "io.containerd.runtime.v2.task": {
+          "mode": 16841,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410788,
+          "size": 4096,
+          "mtime_ns": 1794535036510982198,
+          "ctime_ns": 1794535036510982198,
+          "nlink": 3
+        },
+        "io.containerd.runtime.v2.task/firecracker-containerd": {
+          "mode": 16841,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3418965,
+          "size": 4096,
+          "mtime_ns": 1794535315302934580,
+          "ctime_ns": 1794535315302934580,
+          "nlink": 2
+        },
+        "io.containerd.sandbox.controller.v1.shim": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410790,
+          "size": 4096,
+          "mtime_ns": 1794535027239919117,
+          "ctime_ns": 1794535027239919117,
+          "nlink": 2
+        },
+        "io.containerd.service.v1.fc-control": {
+          "mode": 16872,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410789,
+          "size": 4096,
+          "mtime_ns": 1794535027238919110,
+          "ctime_ns": 1794535027238919110,
+          "nlink": 2
+        },
+        "io.containerd.snapshotter.v1.blockfile": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410776,
+          "size": 4096,
+          "mtime_ns": 1794535027148918497,
+          "ctime_ns": 1794535027148918497,
+          "nlink": 2
+        },
+        "io.containerd.snapshotter.v1.btrfs": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410777,
+          "size": 4096,
+          "mtime_ns": 1794535027148918497,
+          "ctime_ns": 1794535027148918497,
+          "nlink": 2
+        },
+        "io.containerd.snapshotter.v1.erofs": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410781,
+          "size": 4096,
+          "mtime_ns": 1794535027235919089,
+          "ctime_ns": 1794535027235919089,
+          "nlink": 2
+        },
+        "io.containerd.snapshotter.v1.native": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410782,
+          "size": 4096,
+          "mtime_ns": 1794535027236919096,
+          "ctime_ns": 1794535027236919096,
+          "nlink": 3
+        },
+        "io.containerd.snapshotter.v1.native/snapshots": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410783,
+          "size": 4096,
+          "mtime_ns": 1794535027236919096,
+          "ctime_ns": 1794535027236919096,
+          "nlink": 2
+        },
+        "io.containerd.snapshotter.v1.overlayfs": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410784,
+          "size": 4096,
+          "mtime_ns": 1794535027236919096,
+          "ctime_ns": 1794535027236919096,
+          "nlink": 3
+        },
+        "io.containerd.snapshotter.v1.overlayfs/snapshots": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410785,
+          "size": 4096,
+          "mtime_ns": 1794535027236919096,
+          "ctime_ns": 1794535027236919096,
+          "nlink": 2
+        },
+        "tmpmounts": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410772,
+          "size": 4096,
+          "mtime_ns": 1794535202154126479,
+          "ctime_ns": 1794535202154126479,
+          "nlink": 2
+        }
+      }
+    },
+    {
+      "source": "/var/lib/firecracker-containerd/runtime",
+      "quarantine": "/var/lib/firecracker-containerd/runtime.vhive-retained-18560",
+      "target_absent": true,
+      "entries": {
+        ".": {
+          "mode": 16877,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3386222,
+          "size": 4096,
+          "mtime_ns": 1794535020778875156,
+          "ctime_ns": 1794535020778875156,
+          "nlink": 2
+        }
+      }
+    },
+    {
+      "source": "/var/lib/firecracker-containerd/snapshotter/devmapper",
+      "quarantine": "/var/lib/firecracker-containerd/snapshotter/devmapper.vhive-retained-18560",
+      "target_absent": true,
+      "entries": {
+        ".": {
+          "mode": 16872,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410779,
+          "size": 4096,
+          "mtime_ns": 1794535029186932364,
+          "ctime_ns": 1794535029186932364,
+          "nlink": 2
+        },
+        "metadata.db": {
+          "mode": 33152,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410775,
+          "size": 131072,
+          "mtime_ns": 1794535315798938157,
+          "ctime_ns": 1794535315798938157,
+          "nlink": 1,
+          "sha256": "51cb77f0a22bd9169c00a1b39c76ebb2733b6bccc347a071c7c473133139910a"
+        },
+        "vhive-final-7efebc4bd006-3215611.db": {
+          "mode": 33152,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3410780,
+          "size": 65536,
+          "mtime_ns": 1794535315798938157,
+          "ctime_ns": 1794535315798938157,
+          "nlink": 1,
+          "sha256": "be7363e40e4e3294e8daab83289bc81bb67324d1099573ff0301e406bfa894c2"
+        }
+      }
+    },
+    {
+      "source": "/run/firecracker-containerd",
+      "quarantine": "/run/firecracker-containerd.vhive-retained-18560",
+      "target_absent": true,
+      "entries": {
+        ".": {
+          "mode": 16841,
+          "uid": 0,
+          "gid": 0,
+          "device": 25,
+          "inode": 584198,
+          "size": 100,
+          "mtime_ns": 1794535317635951404,
+          "ctime_ns": 1794535317635951404,
+          "nlink": 5
+        },
+        "io.containerd.mount-manager.v1.bolt": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 25,
+          "inode": 584199,
+          "size": 80,
+          "mtime_ns": 1794535027238919110,
+          "ctime_ns": 1794535027238919110,
+          "nlink": 3
+        },
+        "io.containerd.mount-manager.v1.bolt/mounts.db": {
+          "mode": 33152,
+          "uid": 0,
+          "gid": 0,
+          "device": 25,
+          "inode": 584201,
+          "size": 32768,
+          "mtime_ns": 1794535315733937688,
+          "ctime_ns": 1794535315733937688,
+          "nlink": 1,
+          "sha256": "e2dfd655f4f0fdf2dc3c3cb2e84b261fee05a7d03cdb25a8bde3def8bd4d8a9e"
+        },
+        "io.containerd.mount-manager.v1.bolt/t": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 25,
+          "inode": 584200,
+          "size": 40,
+          "mtime_ns": 1794535027238919110,
+          "ctime_ns": 1794535027238919110,
+          "nlink": 2
+        },
+        "io.containerd.runtime.v2.task": {
+          "mode": 16841,
+          "uid": 0,
+          "gid": 0,
+          "device": 25,
+          "inode": 584202,
+          "size": 60,
+          "mtime_ns": 1794535036510982198,
+          "ctime_ns": 1794535036510982198,
+          "nlink": 3
+        },
+        "io.containerd.runtime.v2.task/firecracker-containerd": {
+          "mode": 16841,
+          "uid": 0,
+          "gid": 0,
+          "device": 25,
+          "inode": 584701,
+          "size": 40,
+          "mtime_ns": 1794535315302934580,
+          "ctime_ns": 1794535315302934580,
+          "nlink": 2
+        },
+        "io.containerd.sandbox.controller.v1.shim": {
+          "mode": 16832,
+          "uid": 0,
+          "gid": 0,
+          "device": 25,
+          "inode": 584203,
+          "size": 40,
+          "mtime_ns": 1794535027239919117,
+          "ctime_ns": 1794535027239919117,
+          "nlink": 2
+        }
+      }
+    },
+    {
+      "source": "/var/lib/demux-snapshotter",
+      "quarantine": "/var/lib/demux-snapshotter.vhive-retained-18560",
+      "target_absent": true,
+      "entries": {
+        ".": {
+          "mode": 16877,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 3386220,
+          "size": 4096,
+          "mtime_ns": 1794535020778875156,
+          "ctime_ns": 1794535020778875156,
+          "nlink": 2
+        }
+      }
+    },
+    {
+      "source": "/fccd",
+      "quarantine": "/fccd.vhive-retained-18560",
+      "target_absent": true,
+      "entries": {
+        ".": {
+          "mode": 17407,
+          "uid": 0,
+          "gid": 0,
+          "device": 2051,
+          "inode": 7021106,
+          "size": 4096,
+          "mtime_ns": 1794535317594951109,
+          "ctime_ns": 1794535317594951109,
+          "nlink": 2
+        }
+      }
+    }
+  ]
+}

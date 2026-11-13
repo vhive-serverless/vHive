@@ -1,4 +1,59 @@
 # vHive Quickstart
+
+## Firecracker 1.18 integration setup
+
+The integration branch installs the stack selected in
+[`configs/setup/firecracker-stack.json`](../configs/setup/firecracker-stack.json).
+The manifest pins the published Step 2 runtime
+`b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794` from
+`firecracker-v1.18-containerdv2-vhive-integration`, using official Firecracker
+v1.18.0 and the vHive-owned SDK. The old `bin/` artifacts are historical inputs.
+Runtime validation and the installed vHive consumer acceptance have separate
+receipts. The [installed-consumer acceptance receipt](evidence/firecracker-1.18-installed/README.md)
+records all three standalone File-memory snapshot cases passing at exact consumer
+`da498d75b7b9` against that published runtime; later documentation tips retain
+that tested-source distinction.
+
+`setup_tool setup_firecracker_containerd` and
+`scripts/setup_firecracker_containerd.sh` build that exact runtime checkout using
+its `tools/modernize/prepare-worker.sh`, `build-stack.sh`, and `install-stack.sh`.
+This provisions the build tools and requires Linux x86_64, passwordless sudo,
+Docker, KVM, and sufficient disk space for the kernel and guest images.
+The installation checks the runtime input lock against vHive's manifest,
+compares installed artifacts to their build outputs, and records hashes for
+runtime, shim, upstream Firecracker/jailer, runc, kernel, rootfs, guest agent,
+demux, and resolver. It generates the containerd v4 configuration and the runtime
+configuration from the verified installation prefix.
+
+`STACK_DIR` selects the toolchain/build/install root (default
+`~/.local/share/vhive/firecracker-stack`); `INSTALL_DIR` selects its private
+installation prefix. `VHIVE_RUNTIME_CHECKOUT` can select an existing clean
+checkout. For development, `VHIVE_RUNTIME_REVISION` supplies an exact commit
+whose input lock must still match the manifest. `FICD_DM_POOL` selects an
+existing devmapper pool. Setup does not create or remove that pool.
+
+The shipped devmapper configuration keeps 10GB disks (10GiB under containerd's
+size parser). The existing `create_devmapper.sh` product setup provisions a 100GiB
+pool. The standalone legacy snapshot checks need space for the source, two full
+independent clone copies, and the base image. Hosted CI and the reviewed worker
+launcher use `scripts/legacy_snapshot_pool.py` to create a fresh private 40GiB
+data/1GiB metadata pool, requiring at least 43GiB free host storage. The helper
+refuses existing pools or backings and verifies actual capacity before VM tests;
+it never resizes a live pool or reduces the disk/test profile.
+
+```sh
+python3 scripts/firecracker_stack.py validate
+python3 scripts/firecracker_stack.py verify
+```
+
+Verification checks the receipt and every installed artifact without activating
+services. Setup links the Firecracker commands and snapshotter helpers into
+`/usr/local/bin`; runc remains private to this runtime. Existing containerd state
+requires a separate migration assessment before using containerd v2.
+
+The following cluster instructions describe the existing Kubernetes workflow;
+Pod checkpoint endpoints remain deferred to Kubernetes 1.38 integration.
+
 This guide describes how to set up an _N_-node vHive serverless cluster with Firecracker MicroVMs.
 See [here][github-toc] to learn where to find table of contents.
 
@@ -45,7 +100,7 @@ SSD-equipped nodes are highly recommended. Full list of CloudLab nodes can be fo
 
 ### 4. Go Installation
 
-If you intend to build the setup scripts from source, you need to install go by running: (This will install version `1.26.2`. You can configure the version to install in `configs/setup/system.json` as `GoVersion`)
+If you intend to build the setup scripts from source, you need to install go by running: (This will install version `1.26.11`. You can configure the version to install in `configs/setup/system.json` as `GoVersion`)
 ```bash
 ./scripts/install_go.sh; source /etc/profile
 ```

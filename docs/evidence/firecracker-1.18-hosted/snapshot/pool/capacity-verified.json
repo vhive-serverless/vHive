@@ -1,0 +1,9 @@
+{
+  "data_bytes": 42949672960,
+  "chunk_bytes": 65536,
+  "used_data_bytes": 0,
+  "available_data_bytes": 42949672960,
+  "metadata_device": "7:1",
+  "data_device": "7:0",
+  "mode": "rw"
+}

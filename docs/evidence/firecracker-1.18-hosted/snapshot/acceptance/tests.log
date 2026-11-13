@@ -1,0 +1,41 @@
+=== RUN   TestPauseSnapResume
+time="2026-11-13T03:10:43.133830443Z" level=warning msg="Failed to Fetch k8s dns clusterIP exit status 1\nE1113 03:10:43.124780  106670 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:10:43.125864  106670 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:10:43.126241  106670 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:10:43.127675  106670 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:10:43.128118  106670 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nThe connection to the server localhost:8080 was refused - did you specify the right host or port?\n\n"
+time="2026-11-13T03:10:43.133925083Z" level=warning msg="Using google dns 8.8.8.8\n"
+time="2026-11-13T03:10:43.293654324Z" level=info msg="Creating containerd client"
+time="2026-11-13T03:10:43.293759440Z" level=info msg="Created containerd client"
+time="2026-11-13T03:10:43.293769225Z" level=info msg="Creating firecracker client"
+time="2026-11-13T03:10:43.293832348Z" level=info msg="Created firecracker client"
+time="2026-11-13T03:10:43.293840861Z" level=info msg="Creating image manager"
+time="2026-11-13T03:11:02.394030326Z" level=info msg="Cleaning up network manager"
+--- PASS: TestPauseSnapResume (22.73s)
+=== RUN   TestSnapshotConcurrentClones
+time="2026-11-13T03:11:02.925621173Z" level=warning msg="Failed to Fetch k8s dns clusterIP exit status 1\nE1113 03:11:02.917665  107140 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:11:02.918136  107140 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:11:02.919679  107140 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:11:02.920070  107140 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:11:02.921522  107140 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nThe connection to the server localhost:8080 was refused - did you specify the right host or port?\n\n"
+time="2026-11-13T03:11:02.925671176Z" level=warning msg="Using google dns 8.8.8.8\n"
+time="2026-11-13T03:11:03.041652720Z" level=info msg="Creating containerd client"
+time="2026-11-13T03:11:03.041750825Z" level=info msg="Created containerd client"
+time="2026-11-13T03:11:03.041757384Z" level=info msg="Creating firecracker client"
+time="2026-11-13T03:11:03.041825154Z" level=info msg="Created firecracker client"
+time="2026-11-13T03:11:03.041832986Z" level=info msg="Creating image manager"
+time="2026-11-13T03:13:25.364912928Z" level=info msg="waiting for goroutines"
+time="2026-11-13T03:13:25.365068438Z" level=info msg="waiting done"
+time="2026-11-13T03:13:25.365073736Z" level=info msg="Closing fcClient"
+time="2026-11-13T03:13:25.365078163Z" level=info msg="Closing containerd client"
+time="2026-11-13T03:13:25.365266641Z" level=info msg="Cleaning up network manager"
+--- PASS: TestSnapshotConcurrentClones (143.02s)
+=== RUN   TestSnapshotSourceMemoryAndDiskIsolation
+time="2026-11-13T03:13:25.734647820Z" level=warning msg="Failed to Fetch k8s dns clusterIP exit status 1\nE1113 03:13:25.727074  107529 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:13:25.727431  107529 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:13:25.728936  107529 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:13:25.729356  107529 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nE1113 03:13:25.730826  107529 memcache.go:381] \"Couldn't get current server API group list\" err=\"Get \\\"http://localhost:8080/api?timeout=32s\\\": dial tcp [::1]:8080: connect: connection refused\"\nThe connection to the server localhost:8080 was refused - did you specify the right host or port?\n\n"
+time="2026-11-13T03:13:25.734691244Z" level=warning msg="Using google dns 8.8.8.8\n"
+time="2026-11-13T03:13:25.842940379Z" level=info msg="Creating containerd client"
+time="2026-11-13T03:13:25.843045745Z" level=info msg="Created containerd client"
+time="2026-11-13T03:13:25.843051935Z" level=info msg="Creating firecracker client"
+time="2026-11-13T03:13:25.843132153Z" level=info msg="Created firecracker client"
+time="2026-11-13T03:13:25.843140926Z" level=info msg="Creating image manager"
+    snapshot_continuity_test.go:77: function_image=ghcr.io/ease-lab/helloworld@sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25 digest=sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25
+    snapshot_continuity_test.go:158: legacy_snapshot_continuity source_vmm=107642 guest_exec_host_pid=1068 container_exec_pid=15 initial=2a5bd18ac2e3bd19322c71f9e503a03b:15:41 source_and_clone_disk_isolation=passed source_deleted=true
+time="2026-11-13T03:14:43.441616719Z" level=info msg="waiting for goroutines"
+time="2026-11-13T03:14:43.441633223Z" level=info msg="waiting done"
+time="2026-11-13T03:14:43.441637730Z" level=info msg="Closing fcClient"
+time="2026-11-13T03:14:43.441642787Z" level=info msg="Closing containerd client"
+time="2026-11-13T03:14:43.441796525Z" level=info msg="Cleaning up network manager"
+--- PASS: TestSnapshotSourceMemoryAndDiskIsolation (78.12s)
+PASS

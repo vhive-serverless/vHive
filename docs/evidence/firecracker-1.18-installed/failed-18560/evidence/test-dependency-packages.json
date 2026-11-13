@@ -1,0 +1,34 @@
+[
+  {
+    "package": "github.com/firecracker-microvm/firecracker-containerd/proto",
+    "module": "github.com/firecracker-microvm/firecracker-containerd",
+    "replacement": "github.com/vhive-serverless/firecracker-containerd",
+    "version": "v0.0.0-20261113011217-b4f8c6c2f1ec",
+    "replacement_directory": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec",
+    "package_directory": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec/proto"
+  },
+  {
+    "package": "github.com/firecracker-microvm/firecracker-containerd/proto/service/fccontrol/ttrpc",
+    "module": "github.com/firecracker-microvm/firecracker-containerd",
+    "replacement": "github.com/vhive-serverless/firecracker-containerd",
+    "version": "v0.0.0-20261113011217-b4f8c6c2f1ec",
+    "replacement_directory": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec",
+    "package_directory": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec/proto/service/fccontrol/ttrpc"
+  },
+  {
+    "package": "github.com/firecracker-microvm/firecracker-containerd/firecracker-control/client",
+    "module": "github.com/firecracker-microvm/firecracker-containerd",
+    "replacement": "github.com/vhive-serverless/firecracker-containerd",
+    "version": "v0.0.0-20261113011217-b4f8c6c2f1ec",
+    "replacement_directory": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec",
+    "package_directory": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec/firecracker-control/client"
+  },
+  {
+    "package": "github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci",
+    "module": "github.com/firecracker-microvm/firecracker-containerd",
+    "replacement": "github.com/vhive-serverless/firecracker-containerd",
+    "version": "v0.0.0-20261113011217-b4f8c6c2f1ec",
+    "replacement_directory": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec",
+    "package_directory": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec/runtime/firecrackeroci"
+  }
+]
