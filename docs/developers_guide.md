@@ -222,8 +222,10 @@ Here are some useful commands (there are plenty of Zipkin tutorials online):
   The runtime, guest agent, and supporting components are built from the exact
   revisions selected by [the stack manifest](../configs/setup/firecracker-stack.json).
   Follow the [integration setup instructions](./quickstart_guide.md#firecracker-118-integration-setup)
-  for installation and verification. The manifest remains marked unready until
-  the final runtime revision and end-to-end acceptance are recorded.
+  for installation and verification. The ready manifest selects the published
+  Step 2 runtime. The separate [installed-consumer acceptance receipt](evidence/firecracker-1.18-installed/README.md)
+  records the three File-memory VM cases passing at exact consumer `da498d75b7b9`;
+  it distinguishes that tested source from later documentation tips.
 
 * Firecracker uses vHive's firecracker-containerd integration. gVisor uses the upstream `runsc` runtime configured in stock containerd.
   We plan to keep our code loosely up to date with the upstream Firecracker and gVisor projects.

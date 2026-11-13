@@ -1,0 +1,377 @@
+[
+  {
+    "stage": 1,
+    "source": "4fcb57d79a697aa12f0f02f2a88feb17e5262b7d",
+    "candidate": "4fcb57d79a697aa12f0f02f2a88feb17e5262b7d",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "adc3c5b17044defb5a14a45a4574d32c3430b3fe",
+    "candidate": "adc3c5b17044defb5a14a45a4574d32c3430b3fe",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "e5d7a56c0d903842124d4cfe4bbf2a0dc974d227",
+    "candidate": "e5d7a56c0d903842124d4cfe4bbf2a0dc974d227",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "f88bae469a7762089206075f86b5ab7f22e27e9a",
+    "candidate": "f88bae469a7762089206075f86b5ab7f22e27e9a",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "8cc90fe1dd41423358ed38698fe908c48adee830",
+    "candidate": "8cc90fe1dd41423358ed38698fe908c48adee830",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "83b3be6bcbe92e77a1ae098c3e42ec6a204f365c",
+    "candidate": "83b3be6bcbe92e77a1ae098c3e42ec6a204f365c",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "96bbdce1552b720000f81e4049f178c59f0557d8",
+    "candidate": "96bbdce1552b720000f81e4049f178c59f0557d8",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "c58711fe48d31fe83ef1b110f6934067e080f96a",
+    "candidate": "c58711fe48d31fe83ef1b110f6934067e080f96a",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "1074bdc8f2b602c9f986d3975d5c94b40bd1cac7",
+    "candidate": "1074bdc8f2b602c9f986d3975d5c94b40bd1cac7",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "b18582f8567561e53e34e2599672d3e9e1151e01",
+    "candidate": "b18582f8567561e53e34e2599672d3e9e1151e01",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 1,
+    "source": "71925ad2d0dcb0b717fa0b07479543bd5ecb267a",
+    "candidate": "71925ad2d0dcb0b717fa0b07479543bd5ecb267a",
+    "role": "unchanged accepted Step1 ancestry"
+  },
+  {
+    "stage": 2,
+    "source": "45d7ce347b2f49eb7498ba8d2257affe2622c595",
+    "previous_candidate": "8d62e3e0e1d6f7ce3a53dba5c7564c65d5ca8dce",
+    "candidate": "8d62e3e0e1d6f7ce3a53dba5c7564c65d5ca8dce",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "3fb0b7b896d75f3042c5ae3b870a0c15a29520e8",
+    "previous_candidate": "ff44879659fddbbbf6218f2c3559d3fe263c82b8",
+    "candidate": "ff44879659fddbbbf6218f2c3559d3fe263c82b8",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "869912db8c70e547b263c2b74c4a8eb15c818361",
+    "previous_candidate": "7e0cc01050e3255bd7f3fcf927b4592731447c69",
+    "candidate": "7e0cc01050e3255bd7f3fcf927b4592731447c69",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "da780c9e2747d4a321a01c686e57c40538bcde50",
+    "previous_candidate": "7c8a53146ea73ac7024fc81180ceda9b48b24d2a",
+    "candidate": "7c8a53146ea73ac7024fc81180ceda9b48b24d2a",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "b0498f3a598e06fa54f7bf0089cb8c7e6b01a7c1",
+    "previous_candidate": "83bf34030330aec03a10a3bc9ceff2d6e6a8283c",
+    "candidate": "83bf34030330aec03a10a3bc9ceff2d6e6a8283c",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "718f305bcf2a481e98e854ca5960cda5880ce362",
+    "previous_candidate": "de20e8598a693250b92275daa2b25487eb63f632",
+    "candidate": "de20e8598a693250b92275daa2b25487eb63f632",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "1c009d16649aed2e864b6e0330b740ba2802cb5f",
+    "previous_candidate": "81d3e9c13340f4c8b067763ecc27be034ff3dcea",
+    "candidate": "81d3e9c13340f4c8b067763ecc27be034ff3dcea",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "9000f53fb03d23699b1a88fe167d6f4aa5a0a707",
+    "previous_candidate": "3b0778c5b687d0b9b93547de23a6602b8e19ec63",
+    "candidate": "3b0778c5b687d0b9b93547de23a6602b8e19ec63",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "7386ab5c5e8c3519ad1698c27f548803e714e304",
+    "previous_candidate": "bf4cf720b095a0e7a8c463ad6e81d9626d53e979",
+    "candidate": "bf4cf720b095a0e7a8c463ad6e81d9626d53e979",
+    "role": "unchanged Step2 logical/fix cohort above exact S1"
+  },
+  {
+    "stage": 2,
+    "source": "2e03843816cf95d184ad4ad429adf6ea2ccc1412",
+    "candidate": "56735da8ea051287755fa7898ca510ba21ee9d62",
+    "role": "common correction inherited once"
+  },
+  {
+    "stage": 2,
+    "source": "6d9284cc90b468d7c4e3977e47138e6de9f217d0",
+    "candidate": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+    "role": "Single consolidated reviewed Step2 release documentation and immutable receipts",
+    "previous_candidate": "cde06a4827b0532216462d9dcc568453837e1428"
+  },
+  {
+    "stage": 3,
+    "source": "50cf651673283184a41b81da02612b579c8f9946",
+    "logical_source": "37c62a274551248235d53d95b02afdf45bf6cbd2",
+    "candidate": "7bbe9e87bf85805da2a58708160b005df85a55b0",
+    "role": "logical cohort; inherits common correction once",
+    "previous_candidate": "b5b400c484a505e2acb08a14e5bfd1f5807f36a2",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "f8a1ccaba6c93e7937b0f8477f85f66601780bd4",
+    "logical_source": "7a1d15fd41325dd8a7d37fe811e0ef20cf56edb0",
+    "candidate": "45f70153220e58d84b57a75fe7010a89da1fcc87",
+    "role": "logical cohort; inherits common correction once",
+    "previous_candidate": "989c0915f9ec7df896b971040502c7b17ad9e2f6",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "9ee97d5743f7cb0ca8ec17d3ecae5a68bde5d5ab",
+    "logical_source": "73189de7b418ec724056087aa2d58f689b0fe697",
+    "candidate": "1c91f99da1169558181074c85c1e29dcc9a35815",
+    "role": "logical cohort; inherits common correction once",
+    "previous_candidate": "606105d04a2c734958433d3adf4bf9a83100640b",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "23090341431a8ab9366799e030a613c918140d7b",
+    "logical_source": "32811b229ea9ab160ef3fe3e7174c76753ceb3ac",
+    "candidate": "b58ca456ec401f1fb7c9c9c88a3710c92b417f26",
+    "role": "logical cohort; inherits common correction once",
+    "previous_candidate": "9dda572730c41618af9584f8a05c4a33fdcb396b",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "d7dbfddb18993808be527ee772bf93ee3991b6e0",
+    "logical_source": "2132cc8109a32ac085184a5eec3077352f21fdd1",
+    "candidate": "cebd55500b39bde6c7ca173c515ea118ff9fb8cb",
+    "role": "logical cohort; inherits common correction once",
+    "previous_candidate": "065311ed73db179bf4a04c061896c0049370fad9",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "7541b83d1b899bf51c70da18fd7acf3477a942b1",
+    "logical_source": "457aba43d71983fab1c02597b586544e0318ccdc",
+    "candidate": "cc62b8506661ddf8ed8fa5ce582365c817ca03a5",
+    "role": "logical cohort; inherits common correction once",
+    "previous_candidate": "da89c5f1a96638cbe5a1ffac412f8fa3b69a16b8",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "1c1a93a06f232f46ed156477a2caece1b6750350",
+    "logical_source": "588fabff9e5f805dea3349ee17a6b841fdd92206",
+    "candidate": "2d9bf6ae44622b0d9cd1aa9f0835e6e2bc8350d5",
+    "role": "logical cohort; inherits common correction once",
+    "previous_candidate": "99abc2b75ec6ba827cde99d8081f6a1267188854",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "c9b37c2b74889c8fb81cae0bea3d274d3e609b01",
+    "logical_source": "a9c75e19f003a19c11c7ed4d23684325e95582d4",
+    "candidate": "41fdee6ffc49c2208e05da8da3d9ff52fbd46df6",
+    "role": "logical docs cohort; explicitly provisional historical ledger",
+    "previous_candidate": "c072d803ad9bf1de6e086a8b5b375f0cf24e431c",
+    "resolution": "Step3 provisional scope added above unchanged reviewed Step2 coverage/CNI disclosure"
+  },
+  {
+    "stage": 3,
+    "source": "e4f6402a2009c0150f4ba31474de810a5d3559db",
+    "candidate": "ae4a6938a358d0a6452d170f102905d9a898a1ed",
+    "role": "logical historical evidence cohort",
+    "previous_candidate": "03810ef86465902a7bf5b7686bb13998dfb4da44",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "d982464b5bfda92a8db568f3e8724df4bd5bce2a",
+    "candidate": "574581cb00c6286a3682650ebc4741b2ffb52a78",
+    "role": "native recapture correction",
+    "previous_candidate": "8d4526f3e1579f78c1dd9a50c5cf0ca0c5e0ff39",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "751c03c6f9a98b8726bc4d9066efce78db96952d",
+    "candidate": "d686dda2c51d8d42f0001ea1feca2ab70e5a91f2",
+    "role": "jailed ownership correction",
+    "previous_candidate": "42734d73ad98937aa686d9fe6ec330aaa4413e0c",
+    "resolution": "Clean replay above final Step2; existing attribution retained"
+  },
+  {
+    "stage": 3,
+    "source": "b29ead028d2d6c1f1e243a9eb3a162e4f93d993d",
+    "candidate": "64452aaa028d8b4d291f5ecf9077f3ecd649237e",
+    "role": "Consolidated approved Step3 exact751receipt and historical source attribution",
+    "previous_candidate": "a002a3592a1e6ff7316a98d8989706b5eaf27744",
+    "resolution": "Approved66175b6docs tree exact; current751bounded acceptance and inherited Step2 segmented coverage/CNI disclosure retained; historical332receipts unchanged",
+    "previous_provisional_candidate": "96a2bd760f9c45d10d67b66940d60f2704afbf11",
+    "reviewed_patch_sha256": "66175b6abf58a8ec71f8b7697119ca6a67431046cd04bbcb5b547662fb50773e"
+  },
+  {
+    "stage": 4,
+    "source": "ca2fd8a70e22a512c0a4aea407de55a032300a3c",
+    "logical_source": "a5bdc50cffabd2c084fbf263334169b8d338bbfa",
+    "candidate": "4caf735250caba76fa4295aacecd5d51566be268",
+    "role": "storage-schema logical cohort; inherits common/native/jailed once",
+    "previous_candidate": "955bb69419c72c3e1247a188c76269aa917f50a0",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "d540d8ba4fda1112345ef6d283bd13878d115b24",
+    "candidate": "fbd51648f38fad760a83a380bc0a206e76f81a6d",
+    "role": "native-storage logical cohort; preserves inherited owned-stub fields",
+    "pre_order_candidate": "d383353350835e20ddd6b999fab012dfb8053784",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once",
+    "previous_candidate": "20caf961cc0ac5295f356cfd3f49f2b106348792"
+  },
+  {
+    "stage": 4,
+    "source": "69f50c33957b63040f2f7914616da0cf15b2f955",
+    "logical_source": "207fbf6e446a55155c9c147cb0d385727a3c0197",
+    "candidate": "418652a9c963f8e196d637a736f8cb59fef8d349",
+    "role": "storage-contracts logical cohort; inherits corrections once",
+    "pre_order_candidate": "29ddba7bbf9b7697e258e448003aa82cfa02b397",
+    "previous_candidate": "8350e873d86edb3f41ae6e29c4fad87bf6635e5d",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "94f4ea2ae6cb3bc4426d13d0e4bd995254ce1cae",
+    "logical_source": "e76f6b825a209741df5de5a372c208b3341b78c3",
+    "candidate": "7f0c75bcc59a2422d59849c7aa0ed1adfc125e72",
+    "role": "native-profiles logical cohort; inherits corrections once",
+    "pre_order_candidate": "5b4fad93ba4eec8d524910a431563989a201da04",
+    "previous_candidate": "558647384bf63394920c180822a739f8da516cba",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "483bb3ef7fb0c9bfe0bc9657988cfe0dde8432aa",
+    "logical_source": "1d17cadca60a72e7f671b701725a3f775f4914ed",
+    "candidate": "80de44aa4031f26d7e4c639ef964b6efa27645dd",
+    "role": "guest-images logical cohort; inherits corrections once",
+    "pre_order_candidate": "08fa976fc4040bae43e994f9d4896e218f4e4d1f",
+    "previous_candidate": "8837806b09b6c6aca965a51463a993ad54861e42",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "d9dc1e428dab9ee4b7abcf2e4ae5c9d192c13280",
+    "logical_source": "9cb2a9b412e99e4bddd8855f5147eaa613393465",
+    "candidate": "4e8b81dae66e72e5c52c825910fe9d533b0ebf17",
+    "role": "stargz logical cohort; inherits corrections once",
+    "pre_order_candidate": "6ec2c8026eddebac5d1ef05a79d72f352d261ad5",
+    "previous_candidate": "cb2ef69c4889197cfba0f2dbe3881e941f76a1e3",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "535e094d36ff2689d254bdefd2d0452ea37c9ef0",
+    "candidate": "ed3390dec76f20c9a2dc752207489a0cfed3b946",
+    "role": "fixture correction after owning stargz cohort; inherited production fixes once",
+    "pre_order_candidate": "62212ddc6d29cad72da3b3a4fdc41edb279dbea3",
+    "previous_candidate": "495189cdfac99daf6386ee1166766f11d318822a",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "dfabfaf6d64c178a908c0089de6e28e59d3494a5",
+    "logical_source": "99a7a787571dcdd64de6eeba7ea3aede32f29917",
+    "candidate": "643be04065413e576abbe74956212a5519391a47",
+    "role": "evaluation logical cohort; inherits corrections once",
+    "pre_order_candidate": "b31458a28da3f6a07240dd0f49dd593560b912e3",
+    "previous_candidate": "9d6672dce43acf088174aad240a9f64c4117b5ce",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "d79be2e5954d2cb65b0408c9fb4d5178fc07a914",
+    "logical_source": "f4bbd7f1895e90cc06ccbee53f3a55b4e716c09c",
+    "candidate": "1fa3beef1e5a0e5595ad31a87e25803105f825b4",
+    "role": "build-profile logical cohort; inherits corrections once",
+    "pre_order_candidate": "4a24bd59ee84d275e0bc46adaa7372031b7a5a17",
+    "previous_candidate": "fa4d08e33dc5cddc2a1894e3f44880a328a1d6e6",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "3de3375ae861e3e5a44efd2f2cec9b530f3c517f",
+    "logical_source": "2f7dcda92dd5893a2408c216f279112742ba442c",
+    "candidate": "4c661361df316ceee7b1fa585828f051a02d6dd9",
+    "role": "runtime-evidence logical cohort; inherits corrections once",
+    "pre_order_candidate": "b079763f91a400976e7cc26851fe23dae1a72a6c",
+    "previous_candidate": "541e47964b9e36a43d1647d71ee5d1b3199c9c35",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "c3bf18d21bc35a6ff9f41ffa12577a55081f1efb",
+    "logical_source": "082201bccf0fe4bdd6fd27fd73c0df1c9c30dbce",
+    "candidate": "ba831838b64aa6dca576457c08605b3c81ecad31",
+    "role": "evaluation-evidence logical cohort; inherits corrections once",
+    "pre_order_candidate": "30474b9358a490124809136c0b35d9903a6fa15f",
+    "previous_candidate": "a0bf656fb350fd54b9cf519ff3229fb0f0a7aa73",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "480b2b0052eda59510abc50f59ed43c0d945f4cc",
+    "logical_source": "387fce6bd8d79dfe2072bbb2055f67b1589282ec",
+    "candidate": "044ac0ffe70f0721d276074ad68634ad7c9dbf6c",
+    "role": "migration-evidence logical cohort; inherits corrections once",
+    "pre_order_candidate": "a1418e99eaa615219ee42d090bd00ce4f4e7294d",
+    "previous_candidate": "297067c21be1a7697ea1278a38d5731de633bebc",
+    "resolution": "Clean reviewed Step4 cohort replay; inherited shared fixes once"
+  },
+  {
+    "stage": 4,
+    "source": "d050b5fc9a3898a4ae04db722c81ad3e922e5dc2",
+    "candidate": "7332985cee734763ed1d820685e85390db3c8f6c",
+    "role": "Consolidated final Step4 approved receipt+current overlays and original attribution",
+    "pre_order_candidate": "9a5585aecf6d525495ae1d2eb105724251a67306",
+    "previous_candidate": "37988e448e82e5c22309114307aa24f7204e9054",
+    "resolution": "Approved9898bc2 evidence plus7approved6bc4151manifest overlays; currentBBCacceptance/751scope/Step2segmentedCNIlimits retained; allrawreceipts unchanged",
+    "previous_provisional_candidate": "5c31ffb72504446fcb95b48dffa7ad24fb22bd3c"
+  }
+]

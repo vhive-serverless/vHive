@@ -1,0 +1,32 @@
+[
+  {
+    "source": "migration-upstream/vhive-installed-final-21353-layout.json",
+    "archived": "local-audit/vhive-installed-final-21353-layout.json",
+    "sha256": "b248adcaf1cf48703c1e91cae39eb3d09d28f21f4fe4daa90d3093dfd3452d8f"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-final-21353-postrun.raw.json",
+    "archived": "local-audit/vhive-installed-final-21353-postrun.raw.json",
+    "sha256": "2659a053a98bf8dca8120d9e3d6eeb81acb424372f4ae35b6e8c718b8cf29e7a"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-final-21353-historical-guard.log",
+    "archived": "local-audit/vhive-installed-final-21353-historical-guard.log",
+    "sha256": "c2b11843460f8f1e3fc97015884532ea2b622925ccc4cad874ea20b5c4656503"
+  },
+  {
+    "source": "migration-upstream/worker-launchers/vhive-installed-consumer-capacity-reuse.prepared.sh",
+    "archived": "local-audit/vhive-installed-consumer-capacity-reuse.prepared.sh",
+    "sha256": "cf0f5cc65fb3769cef215779a991b9610606d3b0af10f0c2f9ab7c52388c7145"
+  },
+  {
+    "source": "migration-upstream/worker-launchers/worker-historical-daemons.exact-allowlist.json",
+    "archived": "local-audit/worker-historical-daemons.exact-allowlist.json",
+    "sha256": "710baa09cf50b9bb181e55b37f0f2b4b5d31c406379aacf14b860a4a362e575a"
+  },
+  {
+    "source": "migration-upstream/worker-launchers/worker-historical-daemon-guard.readonly.py",
+    "archived": "local-audit/worker-historical-daemon-guard.readonly.py",
+    "sha256": "1812e43b61049ea000626638c86469c8d4314febf48665157091cc111c423f3a"
+  }
+]

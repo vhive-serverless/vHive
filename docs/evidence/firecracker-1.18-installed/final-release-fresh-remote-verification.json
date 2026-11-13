@@ -1,0 +1,49 @@
+{
+  "scope": "Independent read-only remote verification; no source repository or remote mutation",
+  "remote": "git@github.com:vhive-serverless/firecracker-containerd.git",
+  "branches": {
+    "firecracker-v1.18-containerdv2": {
+      "commit": "71925ad2d0dcb0b717fa0b07479543bd5ecb267a",
+      "tree": "b20105ec78c5c9c70db147e5df73d2f2060ff085"
+    },
+    "firecracker-v1.18-containerdv2-vhive-integration": {
+      "commit": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+      "tree": "6f10c19f7428e902204306485e637412047a45fb"
+    },
+    "cri-native-snapshot-restore": {
+      "commit": "64452aaa028d8b4d291f5ecf9077f3ecd649237e",
+      "tree": "7daf8d1390e8dcd9226170d21f9676ee34e89f14"
+    },
+    "damon-virtio-pmem": {
+      "commit": "7332985cee734763ed1d820685e85390db3c8f6c",
+      "tree": "7240b0abe368a5ae1e0da75b6d5ae65ac6769fa3"
+    }
+  },
+  "first_parent_cumulative_ancestry": "PASS",
+  "old_two_names_absent": true,
+  "master_unchanged": true,
+  "submodule_pins_freshly_fetchable": {
+    "_submodules/firecracker": {
+      "url": "https://github.com/firecracker-microvm/firecracker.git",
+      "commit": "eaf83bb718a559d324613d566eaf776b31a62340",
+      "tree": "59cc569bf71a6d5853e4eb8c5b5350a1b1501d51",
+      "fresh_exact_commit_fetch": "PASS"
+    },
+    "_submodules/runc": {
+      "url": "https://github.com/opencontainers/runc",
+      "commit": "c241c0bb5e60a8e8c1b2e53d4eca8d0068d8d57e",
+      "tree": "f8d0fdc8153b1dbfffaebac59ba25c7c73fabac7",
+      "fresh_exact_commit_fetch": "PASS"
+    },
+    "_submodules/stargz-snapshotter": {
+      "url": "https://github.com/containerd/stargz-snapshotter",
+      "commit": "3070538befb5a6c09f93e99164762b3a76310357",
+      "tree": "445180634edb0b46423c8222d03160f8a1d54b92",
+      "fresh_exact_commit_fetch": "PASS"
+    }
+  },
+  "worker_jobs": false,
+  "pushes": false,
+  "source_archive_receipt": "source-archive-publication-receipt.json",
+  "explicit_first_parent_paths_checked": true
+}

@@ -1,0 +1,539 @@
+{
+  "collected_utc": "2026-11-13T02:22:42Z",
+  "read_only": true,
+  "processes": [
+    {
+      "pid": 82759,
+      "exe": "/users/nehalem/fc-ctrd-mod/baseline/firecracker-control/cmd/containerd/firecracker-containerd",
+      "start_ticks": 886374,
+      "args": [
+        "/users/nehalem/fc-ctrd-mod/baseline/firecracker-control/cmd/containerd/firecracker-containerd",
+        "--config",
+        "/users/nehalem/fc-ctrd-mod/baseline-run/config.toml"
+      ],
+      "cgroup": "0::/system.slice/fcmod-baseline.service"
+    },
+    {
+      "pid": 285443,
+      "exe": "/users/nehalem/fc-ctrd-mod/runtime/firecracker-control/cmd/containerd/firecracker-containerd (deleted)",
+      "start_ticks": 1224610,
+      "args": [
+        "/users/nehalem/fc-ctrd-mod/runtime/firecracker-control/cmd/containerd/firecracker-containerd",
+        "--config",
+        "/users/nehalem/fc-ctrd-mod/modernize-run/config.toml"
+      ],
+      "cgroup": "0::/system.slice/fcmod-modernize.service"
+    },
+    {
+      "pid": 1197068,
+      "exe": "/users/nehalem/fc-ctrd-mod/install/c21a0e82913f/bin/firecracker-containerd",
+      "start_ticks": 1434350,
+      "args": [
+        "/users/nehalem/fc-ctrd-mod/install/c21a0e82913f/bin/firecracker-containerd",
+        "--config",
+        "/users/nehalem/fc-ctrd-mod/validate-run/config.toml"
+      ],
+      "cgroup": "0::/system.slice/fcmod-validation.service"
+    },
+    {
+      "pid": 1431390,
+      "exe": "/users/nehalem/fc-ctrd-mod/install/4cdd17575099/bin/firecracker-containerd",
+      "start_ticks": 1759993,
+      "args": [
+        "/users/nehalem/fc-ctrd-mod/install/4cdd17575099/bin/firecracker-containerd",
+        "--config",
+        "/users/nehalem/fc-ctrd-mod/acceptance-run/config.toml"
+      ],
+      "cgroup": "0::/system.slice/fcmod-acceptance.service"
+    },
+    {
+      "pid": 1537483,
+      "exe": "/users/nehalem/fc-ctrd-mod/install/7961db121569/bin/firecracker-containerd",
+      "start_ticks": 1800719,
+      "args": [
+        "/users/nehalem/fc-ctrd-mod/install/7961db121569/bin/firecracker-containerd",
+        "--config",
+        "/users/nehalem/fc-ctrd-mod/7961db121569-run/config.toml"
+      ],
+      "cgroup": "0::/system.slice/fcmod-7961db121569.service"
+    },
+    {
+      "pid": 1755725,
+      "exe": "/users/nehalem/fc-ctrd-mod/install/e666612819bc/bin/firecracker-containerd",
+      "start_ticks": 1937846,
+      "args": [
+        "/users/nehalem/fc-ctrd-mod/install/e666612819bc/bin/firecracker-containerd",
+        "--config",
+        "/users/nehalem/fc-ctrd-mod/e666612819bc-run/config.toml"
+      ],
+      "cgroup": "0::/system.slice/fcmod-e666612819bc.service"
+    },
+    {
+      "pid": 1929096,
+      "exe": "/users/nehalem/fc-ctrd-mod/install/61cf6e590d48/bin/firecracker-containerd",
+      "start_ticks": 2089345,
+      "args": [
+        "/users/nehalem/fc-ctrd-mod/install/61cf6e590d48/bin/firecracker-containerd",
+        "--config",
+        "/users/nehalem/fc-ctrd-mod/fcmod-repro-61cf6e590d48-1794352356/config.toml"
+      ],
+      "cgroup": "0::/system.slice/fcmod-repro-61cf6e590d48-1794352356.service"
+    },
+    {
+      "pid": 2064773,
+      "exe": "/users/nehalem/fc-ctrd-mod/install/0d8e700f6888/bin/firecracker-containerd",
+      "start_ticks": 2224606,
+      "args": [
+        "/users/nehalem/fc-ctrd-mod/install/0d8e700f6888/bin/firecracker-containerd",
+        "--config",
+        "/users/nehalem/fc-ctrd-mod/0d8e700f6888-run/config.toml"
+      ],
+      "cgroup": "0::/system.slice/fcmod-0d8e700f6888.service"
+    }
+  ],
+  "global_roots": {
+    "/var/lib/firecracker-containerd/containerd": {
+      "mode": "0o700",
+      "uid": 0,
+      "gid": 0,
+      "device": 2051,
+      "inode": 3418966,
+      "kind": "directory",
+      "children": [
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content",
+          "mode": "0o755",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs",
+          "mode": "0o755",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256",
+          "mode": "0o755",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/0522d30cde10ac29ae2c555b9bde76c2b50aafc7ef7435bbc7e19de706bcadcd",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 230,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/0d776ee02572ee50935002da7bd7fcda4a60be4a48c4ace5dd3216c327e6767a",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 20365161,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 1998,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/2cc5ad85d9abaadf23d5ae53c3f32e7ccb2df1956869980bfd2491ff396d348a",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 301261,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/407da27a03363f6b9d368ec6e131f7f2db7c8cb2a149160d913d6f3698905a5d",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 1887472,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/61614c1a5710c76af6b2a9c7170a81eb0dd76ccf90e921abc0c9dcc1d5ed490e",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 31506523,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/92b614cff45fafd028cec952e0cb2584e8d931bf0321e7d14bfafdf7a50ac3fa",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 2233,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/a87533385b75fd1d476d8a1112a0c5db953e3d5b44d4f9db814b1e2e6abb8734",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 8312,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/c09d5cdb7367fff0d581bb8003e3520dc3e8bd78811dfb51c92df81e58c3a50d",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 637463,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/blobs/sha256/c9b1b535fdd91a9855fb7f82348177e5f019329a58c53c47272962dd60f71fc9",
+          "mode": "0o444",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 2802957,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.content.v1.content/ingest",
+          "mode": "0o755",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.grpc.v1.introspection",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.grpc.v1.introspection/uuid",
+          "mode": "0o644",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 36,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.metadata.v1.bolt",
+          "mode": "0o711",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.metadata.v1.bolt/meta.db",
+          "mode": "0o644",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 262144,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.runtime.v2.task",
+          "mode": "0o711",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.runtime.v2.task/firecracker-containerd",
+          "mode": "0o711",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.sandbox.controller.v1.shim",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.service.v1.fc-control",
+          "mode": "0o750",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.snapshotter.v1.blockfile",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.snapshotter.v1.btrfs",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.snapshotter.v1.erofs",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.snapshotter.v1.native",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.snapshotter.v1.native/snapshots",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.snapshotter.v1.overlayfs",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/containerd/tmpmounts",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 4096,
+          "kind": "directory"
+        }
+      ]
+    },
+    "/var/lib/firecracker-containerd/runtime": {
+      "mode": "0o755",
+      "uid": 0,
+      "gid": 0,
+      "device": 2051,
+      "inode": 3410793,
+      "kind": "directory",
+      "children": []
+    },
+    "/var/lib/firecracker-containerd/snapshotter/devmapper": {
+      "mode": "0o750",
+      "uid": 0,
+      "gid": 0,
+      "device": 2051,
+      "inode": 3418974,
+      "kind": "directory",
+      "children": [
+        {
+          "path": "/var/lib/firecracker-containerd/snapshotter/devmapper/metadata.db",
+          "mode": "0o600",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 131072,
+          "kind": "regular"
+        },
+        {
+          "path": "/var/lib/firecracker-containerd/snapshotter/devmapper/vhive-final-da498d75b7b9-3312842.db",
+          "mode": "0o600",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 65536,
+          "kind": "regular"
+        }
+      ]
+    },
+    "/run/firecracker-containerd": {
+      "mode": "0o711",
+      "uid": 0,
+      "gid": 0,
+      "device": 25,
+      "inode": 586671,
+      "kind": "directory",
+      "children": [
+        {
+          "path": "/run/firecracker-containerd/io.containerd.mount-manager.v1.bolt",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 80,
+          "kind": "directory"
+        },
+        {
+          "path": "/run/firecracker-containerd/io.containerd.mount-manager.v1.bolt/mounts.db",
+          "mode": "0o600",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 32768,
+          "kind": "regular"
+        },
+        {
+          "path": "/run/firecracker-containerd/io.containerd.mount-manager.v1.bolt/t",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 40,
+          "kind": "directory"
+        },
+        {
+          "path": "/run/firecracker-containerd/io.containerd.runtime.v2.task",
+          "mode": "0o711",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 60,
+          "kind": "directory"
+        },
+        {
+          "path": "/run/firecracker-containerd/io.containerd.runtime.v2.task/firecracker-containerd",
+          "mode": "0o711",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 40,
+          "kind": "directory"
+        },
+        {
+          "path": "/run/firecracker-containerd/io.containerd.sandbox.controller.v1.shim",
+          "mode": "0o700",
+          "uid": 0,
+          "gid": 0,
+          "bytes": 40,
+          "kind": "directory"
+        }
+      ]
+    },
+    "/var/lib/demux-snapshotter": {
+      "mode": "0o755",
+      "uid": 0,
+      "gid": 0,
+      "device": 2051,
+      "inode": 3410792,
+      "kind": "directory",
+      "children": []
+    },
+    "/fccd": {
+      "mode": "0o1777",
+      "uid": 0,
+      "gid": 0,
+      "device": 2051,
+      "inode": 7069697,
+      "kind": "directory",
+      "children": []
+    }
+  },
+  "open_fds_under_global_roots": [],
+  "global_activation": {
+    "/etc/firecracker-containerd/config.toml": {
+      "kind": "absent"
+    },
+    "/etc/containerd/firecracker-runtime.json": {
+      "kind": "absent"
+    },
+    "/etc/demux-snapshotter/config.toml": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/firecracker": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/jailer": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/firecracker-containerd": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/firecracker-ctr": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/containerd-shim-aws-firecracker": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/demux-snapshotter": {
+      "kind": "absent"
+    },
+    "/usr/local/bin/http-address-resolver": {
+      "kind": "absent"
+    }
+  },
+  "dmsetup_info": {
+    "status": 0,
+    "stdout": "fcmod-0d8e700f6888::252:5:0:L--w\nfcmod-7961db121569::252:4:0:L--w\nfcmod-acceptance::252:11:0:L--w\nfcmod-baseline::252:0:0:L--w\nfcmod-e666612819bc::252:2:0:L--w\nfcmod-modernize::252:1:0:L--w\nfcmod-repro-61cf6e590d48-1794352356::252:3:0:L--w\nfcmod-validation::252:10:0:L--w",
+    "stderr": ""
+  },
+  "dmsetup_status": {
+    "status": 0,
+    "stdout": "fcmod-0d8e700f6888: 0 20971520 thin-pool 0 4137/262144 924/163840 - rw discard_passdown queue_if_no_space - 1024 \nfcmod-7961db121569: 0 20971520 thin-pool 0 4137/262144 925/163840 - rw discard_passdown queue_if_no_space - 1024 \nfcmod-acceptance: 0 20971520 thin-pool 0 4137/262144 924/163840 - rw discard_passdown queue_if_no_space - 1024 \nfcmod-baseline: 0 20971520 thin-pool 0 4137/262144 924/163840 - rw discard_passdown queue_if_no_space - 1024 \nfcmod-e666612819bc: 0 20971520 thin-pool 0 4137/262144 924/163840 - rw discard_passdown queue_if_no_space - 1024 \nfcmod-modernize: 0 20971520 thin-pool 0 4137/262144 924/163840 - rw discard_passdown queue_if_no_space - 1024 \nfcmod-repro-61cf6e590d48-1794352356: 0 20971520 thin-pool 0 4137/262144 925/163840 - rw discard_passdown queue_if_no_space - 1024 \nfcmod-validation: 0 20971520 thin-pool 0 4137/262144 924/163840 - rw discard_passdown queue_if_no_space - 1024",
+    "stderr": ""
+  },
+  "loop_devices": {
+    "status": 0,
+    "stdout": "{\n   \"loopdevices\": [\n      {\n         \"name\": \"/dev/loop1\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/baseline/tmp/devmapper/metadata\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop8\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/step1-repro.SwuCJ3fv/tmp/devmapper/fcmod-repro-61cf6e590d48-1794352356/data\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop15\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/validated-runtime/tmp/devmapper/fcmod-acceptance/metadata\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop6\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/validated-runtime/tmp/devmapper/fcmod-7961db121569/data\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop13\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/validated-runtime/tmp/devmapper/fcmod-validation/metadata\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop4\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/validated-runtime/tmp/devmapper/fcmod-e666612819bc/data\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop11\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/step1-repro.SwuCJ3fv/tmp/devmapper/fcmod-0d8e700f6888/metadata\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop2\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/runtime/tmp/devmapper/data\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop0\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/baseline/tmp/devmapper/data\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop9\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/step1-repro.SwuCJ3fv/tmp/devmapper/fcmod-repro-61cf6e590d48-1794352356/metadata\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop7\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/validated-runtime/tmp/devmapper/fcmod-7961db121569/metadata\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop14\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/validated-runtime/tmp/devmapper/fcmod-acceptance/data\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop5\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/validated-runtime/tmp/devmapper/fcmod-e666612819bc/metadata\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop12\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/validated-runtime/tmp/devmapper/fcmod-validation/data\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop3\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/runtime/tmp/devmapper/metadata\",\n         \"dio\": false,\n         \"log-sec\": 512\n      },{\n         \"name\": \"/dev/loop10\",\n         \"sizelimit\": 0,\n         \"offset\": 0,\n         \"autoclear\": false,\n         \"ro\": false,\n         \"back-file\": \"/users/nehalem/fc-ctrd-mod/step1-repro.SwuCJ3fv/tmp/devmapper/fcmod-0d8e700f6888/data\",\n         \"dio\": false,\n         \"log-sec\": 512\n      }\n   ]\n}",
+    "stderr": ""
+  },
+  "netns": {
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "links": {
+    "status": 0,
+    "stdout": "[{\"ifindex\":1,\"ifname\":\"lo\",\"flags\":[\"LOOPBACK\",\"UP\",\"LOWER_UP\"],\"mtu\":65536,\"qdisc\":\"noqueue\",\"operstate\":\"UNKNOWN\",\"linkmode\":\"DEFAULT\",\"group\":\"default\",\"txqlen\":1000,\"link_type\":\"loopback\",\"address\":\"00:00:00:00:00:00\",\"broadcast\":\"00:00:00:00:00:00\"},{\"ifindex\":2,\"ifname\":\"eno33np0\",\"flags\":[\"BROADCAST\",\"MULTICAST\",\"UP\",\"LOWER_UP\"],\"mtu\":1500,\"qdisc\":\"mq\",\"operstate\":\"UP\",\"linkmode\":\"DEFAULT\",\"group\":\"default\",\"txqlen\":1000,\"link_type\":\"ether\",\"address\":\"1c:34:da:72:37:9e\",\"broadcast\":\"ff:ff:ff:ff:ff:ff\",\"vfinfo_list\":[],\"altnames\":[\"enp1s0f0np0\"]},{\"ifindex\":3,\"ifname\":\"eno34np1\",\"flags\":[\"BROADCAST\",\"MULTICAST\"],\"mtu\":1500,\"qdisc\":\"noop\",\"operstate\":\"DOWN\",\"linkmode\":\"DEFAULT\",\"group\":\"default\",\"txqlen\":1000,\"link_type\":\"ether\",\"address\":\"1c:34:da:72:37:9f\",\"broadcast\":\"ff:ff:ff:ff:ff:ff\",\"vfinfo_list\":[],\"altnames\":[\"enp1s0f1np1\"]},{\"ifindex\":4,\"ifname\":\"enp65s0f0np0\",\"flags\":[\"BROADCAST\",\"MULTICAST\",\"UP\",\"LOWER_UP\"],\"mtu\":1500,\"qdisc\":\"mq\",\"operstate\":\"UP\",\"linkmode\":\"DEFAULT\",\"group\":\"default\",\"txqlen\":1000,\"link_type\":\"ether\",\"address\":\"0c:42:a1:d6:fd:48\",\"broadcast\":\"ff:ff:ff:ff:ff:ff\",\"vfinfo_list\":[]},{\"ifindex\":5,\"ifname\":\"enp65s0f1np1\",\"flags\":[\"BROADCAST\",\"MULTICAST\"],\"mtu\":1500,\"qdisc\":\"noop\",\"operstate\":\"DOWN\",\"linkmode\":\"DEFAULT\",\"group\":\"default\",\"txqlen\":1000,\"link_type\":\"ether\",\"address\":\"0c:42:a1:d6:fd:49\",\"broadcast\":\"ff:ff:ff:ff:ff:ff\",\"vfinfo_list\":[]},{\"ifindex\":6,\"ifname\":\"docker0\",\"flags\":[\"NO-CARRIER\",\"BROADCAST\",\"MULTICAST\",\"UP\"],\"mtu\":1500,\"qdisc\":\"noqueue\",\"operstate\":\"DOWN\",\"linkmode\":\"DEFAULT\",\"group\":\"default\",\"link_type\":\"ether\",\"address\":\"de:f3:4f:40:34:02\",\"broadcast\":\"ff:ff:ff:ff:ff:ff\"},{\"ifindex\":985,\"ifname\":\"br-58d0a5c87980\",\"flags\":[\"BROADCAST\",\"MULTICAST\",\"UP\",\"LOWER_UP\"],\"mtu\":1500,\"qdisc\":\"noqueue\",\"operstate\":\"UP\",\"linkmode\":\"DEFAULT\",\"group\":\"default\",\"link_type\":\"ether\",\"address\":\"0a:89:4d:32:29:e9\",\"broadcast\":\"ff:ff:ff:ff:ff:ff\"},{\"ifindex\":990,\"link_index\":2,\"ifname\":\"veth36efc0d\",\"flags\":[\"BROADCAST\",\"MULTICAST\",\"UP\",\"LOWER_UP\"],\"mtu\":1500,\"qdisc\":\"noqueue\",\"master\":\"br-58d0a5c87980\",\"operstate\":\"UP\",\"linkmode\":\"DEFAULT\",\"group\":\"default\",\"link_type\":\"ether\",\"address\":\"76:63:e6:b0:da:8c\",\"broadcast\":\"ff:ff:ff:ff:ff:ff\",\"link_netnsid\":0}]",
+    "stderr": ""
+  },
+  "unix_listeners": {
+    "status": 0,
+    "stdout": "u_str LISTEN 0      4096                       /run/fcmod-repro-61cf6e590d48-1794352356/containerd.sock.ttrpc 1670296  * 0 users:((\"firecracker-con\",pid=1929096,fd=4))                     \nu_dgr UNCONN 0      0                                                          /run/user/20005/systemd/notify 16121065 * 0 users:((\"systemd\",pid=3316212,fd=18))                            \nu_str LISTEN 0      4096                             /run/fcmod-repro-61cf6e590d48-1794352356/containerd.sock 1670297  * 0 users:((\"firecracker-con\",pid=1929096,fd=15))                    \nu_str LISTEN 0      4096                                                      /run/user/20005/systemd/private 16121068 * 0 users:((\"systemd\",pid=3316212,fd=21))                            \nu_str LISTEN 0      4096                                              /run/systemd/resolve/io.systemd.Resolve 29935    * 0 users:((\"systemd-resolve\",pid=1501,fd=18))                       \nu_str LISTEN 0      4096                                                                  /run/user/20005/bus 16121076 * 0 users:((\"systemd\",pid=3316212,fd=10))                            \nu_str LISTEN 0      4096                                      /run/systemd/resolve/io.systemd.Resolve.Monitor 29936    * 0 users:((\"systemd-resolve\",pid=1501,fd=19))                       \nu_str LISTEN 0      4096                                                      /run/user/20005/gnupg/S.dirmngr 16121077 * 0 users:((\"systemd\",pid=3316212,fd=30))                            \nu_str LISTEN 0      4096                                            /run/user/20005/gnupg/S.gpg-agent.browser 16121079 * 0 users:((\"systemd\",pid=3316212,fd=31))                            \nu_str LISTEN 0      4096                                              /run/user/20005/gnupg/S.gpg-agent.extra 16121081 * 0 users:((\"systemd\",pid=3316212,fd=32))                            \nu_str LISTEN 0      4096                                                    /run/user/20005/gnupg/S.gpg-agent 16121083 * 0 users:((\"systemd\",pid=3316212,fd=35))                            \nu_str LISTEN 0      4096                                                      /run/user/20005/gnupg/S.keyboxd 16121085 * 0 users:((\"systemd\",pid=3316212,fd=36))                            \nu_str LISTEN 0      4096                                                    /run/user/20005/pk-debconf-socket 16121087 * 0 users:((\"systemd\",pid=3316212,fd=37))                            \nu_str LISTEN 0      4096                                           /run/user/20005/snapd-session-agent.socket 16121089 * 0 users:((\"systemd\",pid=3316212,fd=38))                            \nu_str LISTEN 0      4096                                                /run/user/20005/gnupg/S.gpg-agent.ssh 16123146 * 0 users:((\"systemd\",pid=3316212,fd=12))                            \nu_str LISTEN 0      4096                                          /run/fcmod-validation/containerd.sock.ttrpc 873460   * 0 users:((\"firecracker-con\",pid=1197068,fd=4))                     \nu_str LISTEN 0      4096                                                /run/fcmod-validation/containerd.sock 873461   * 0 users:((\"firecracker-con\",pid=1197068,fd=15))                    \nu_str LISTEN 0      4096                                                          /run/dbus/system_bus_socket 31915    * 0 users:((\"dbus-daemon\",pid=1524,fd=3),(\"systemd\",pid=1,fd=174))   \nu_str LISTEN 0      4096                                                            /run/lxd-installer.socket 31918    * 0 users:((\"systemd\",pid=1,fd=208))                                 \nu_str LISTEN 0      4096                                                                    /run/snapd.socket 31919    * 0 users:((\"systemd\",pid=1,fd=172))                                 \nu_str LISTEN 0      4096                                                               /run/snapd-snap.socket 31920    * 0 users:((\"systemd\",pid=1,fd=173))                                 \nu_str LISTEN 0      4096                                                                   /run/uuidd/request 19658    * 0 users:((\"systemd\",pid=1,fd=226))                                 \nu_dgr UNCONN 0      0                                                                                       * 37630    * 0 users:((\"udisksd\",pid=1543,fd=3))                                \nu_str LISTEN 0      4096                                                                     /run/docker.sock 44539    * 0 users:((\"dockerd\",pid=9953,fd=4),(\"systemd\",pid=1,fd=75))        \nu_str LISTEN 0      4096                                                         /var/run/docker/metrics.sock 54449    * 0 users:((\"dockerd\",pid=9953,fd=7))                                \nu_str LISTEN 0      4096   /run/containerd/s/aeabe08144c07368cf69912fba9b3756f52f9e500f6cac4185caa38b88fa139e 3174182  * 0 users:((\"containerd-shim\",pid=3091648,fd=9))                     \nu_str LISTEN 0      4096                                         /var/run/docker/libnetwork/eff453b9704a.sock 54673    * 0 users:((\"dockerd\",pid=9953,fd=16))                               \nu_str LISTEN 0      4096                                        /run/fcmod-0d8e700f6888/containerd.sock.ttrpc 1830390  * 0 users:((\"firecracker-con\",pid=2064773,fd=4))                     \nu_str LISTEN 0      4096                                              /run/fcmod-0d8e700f6888/containerd.sock 1830391  * 0 users:((\"firecracker-con\",pid=2064773,fd=15))                    \nu_str LISTEN 0      4096                                                                 /run/systemd/private 33705    * 0 users:((\"systemd\",pid=1,fd=21))                                  \nu_str LISTEN 0      4096                                            /run/fcmod-baseline/containerd.sock.ttrpc 105823   * 0 users:((\"firecracker-con\",pid=82759,fd=8))                       \nu_str LISTEN 0      4096                                           /run/systemd/userdb/io.systemd.DynamicUser 33707    * 0 users:((\"systemd\",pid=1,fd=22))                                  \nu_str LISTEN 0      4096                                                  /run/fcmod-baseline/containerd.sock 105824   * 0 users:((\"firecracker-con\",pid=82759,fd=9))                       \nu_str LISTEN 0      4096                                                   /run/systemd/io.systemd.ManagedOOM 33708    * 0 users:((\"systemd\",pid=1,fd=23))                                  \nu_str LISTEN 0      4096                                                             /run/lvm/lvmpolld.socket 37899    * 0 users:((\"systemd\",pid=1,fd=197))                                 \nu_str LISTEN 0      4096                                                                    /run/rpcbind.sock 37902    * 0 users:((\"rpcbind\",pid=1482,fd=3),(\"systemd\",pid=1,fd=180))       \nu_dgr UNCONN 0      0                                                             /run/systemd/journal/syslog 13516    * 0 users:((\"rsyslogd\",pid=1563,fd=3),(\"systemd\",pid=1,fd=216))      \nu_str LISTEN 0      4096                                                           /run/systemd/fsck.progress 13518    * 0 users:((\"systemd\",pid=1,fd=175))                                 \nu_str LISTEN 0      4096                                                          /run/systemd/journal/stdout 13524    * 0 users:((\"systemd-journal\",pid=878,fd=5),(\"systemd\",pid=1,fd=199))\nu_seq LISTEN 0      4096                                                                    /run/udev/control 13526    * 0 users:((\"systemd-udevd\",pid=958,fd=4),(\"systemd\",pid=1,fd=188))  \nu_str LISTEN 0      4096                                        /run/fcmod-7961db121569/containerd.sock.ttrpc 1193198  * 0 users:((\"firecracker-con\",pid=1537483,fd=4))                     \nu_str LISTEN 0      4096                                              /run/fcmod-7961db121569/containerd.sock 1193199  * 0 users:((\"firecracker-con\",pid=1537483,fd=15))                    \nu_str LISTEN 0      4096                                              /run/systemd/journal/io.systemd.journal 24632    * 0 users:((\"systemd-journal\",pid=878,fd=9))                         \nu_str LISTEN 0      4096                                           /run/fcmod-modernize/containerd.sock.ttrpc 288446   * 0 users:((\"firecracker-con\",pid=285443,fd=4))                      \nu_str LISTEN 0      4096                                                /run/containerd/containerd.sock.ttrpc 189571   * 0 users:((\"containerd\",pid=175296,fd=11))                          \nu_str LISTEN 0      4096                                                 /run/fcmod-modernize/containerd.sock 288447   * 0 users:((\"firecracker-con\",pid=285443,fd=12))                     \nu_str LISTEN 0      4096                                                      /run/containerd/containerd.sock 189572   * 0 users:((\"containerd\",pid=175296,fd=12))                          \nu_str LISTEN 0      4096                                                                /var/run/nri/nri.sock 189573   * 0 users:((\"containerd\",pid=175296,fd=13))                          \nu_str LISTEN 0      4096                                        /run/fcmod-e666612819bc/containerd.sock.ttrpc 1452641  * 0 users:((\"firecracker-con\",pid=1755725,fd=4))                     \nu_str LISTEN 0      4096                                              /run/fcmod-e666612819bc/containerd.sock 1452642  * 0 users:((\"firecracker-con\",pid=1755725,fd=15))                    \nu_str LISTEN 0      4096                                                       /run/systemd/io.systemd.sysext 12360    * 0 users:((\"systemd\",pid=1,fd=176))                                 \nu_str LISTEN 0      4096                                          /run/fcmod-acceptance/containerd.sock.ttrpc 1112351  * 0 users:((\"firecracker-con\",pid=1431390,fd=4))                     \nu_str LISTEN 0      4096                                                /run/fcmod-acceptance/containerd.sock 1112352  * 0 users:((\"firecracker-con\",pid=1431390,fd=15))                    \nu_str LISTEN 0      4096                                                @/org/kernel/linux/storage/multipathd 37901    * 0 users:((\"multipathd\",pid=937,fd=3),(\"systemd\",pid=1,fd=229))     \nu_str LISTEN 0      4096                                                         @ISCSIADM_ABSTRACT_NAMESPACE 31917    * 0 users:((\"systemd\",pid=1,fd=179))",
+    "stderr": ""
+  },
+  "mounts_under_global_roots": [],
+  "preserved_containers": [
+    {
+      "requested": "1715f4a4061173a6eb936d419fbac8e1055a0a8042a6a9543670ee21f7f710d5",
+      "status": 0,
+      "id": "1715f4a4061173a6eb936d419fbac8e1055a0a8042a6a9543670ee21f7f710d5",
+      "name": "/fcmod-upstream-137-control-plane",
+      "image": "sha256:474367be785d37cee54bb13cb1382e112e01aa9e215969e91095a0dd5a1565d8",
+      "running": true,
+      "pid": 3091671,
+      "started_at": "2026-11-11T02:51:24.76066718Z"
+    }
+  ],
+  "commands.tsv": "step\texit_code\nhost-before\t0\nvhive-source\t0\nexisting-containers\t0\npublished-modules\t0\nmanifest\t0\ninstaller-unit\t0\nroute\t0\ninstall\t0\nverify\t0\ninstalled-runtime-origin\t0\npool-create\t0\nactivate\t0\ninstalled-acceptance\t0\ncleanup\t0\nlauncher\t0\n",
+  "retained-state.json": "{\n  \"/var/lib/firecracker-containerd/containerd\": [\n    \"io.containerd.content.v1.content\",\n    \"io.containerd.grpc.v1.introspection\",\n    \"io.containerd.metadata.v1.bolt\",\n    \"io.containerd.runtime.v2.task\",\n    \"io.containerd.sandbox.controller.v1.shim\",\n    \"io.containerd.service.v1.fc-control\",\n    \"io.containerd.snapshotter.v1.blockfile\",\n    \"io.containerd.snapshotter.v1.btrfs\",\n    \"io.containerd.snapshotter.v1.erofs\",\n    \"io.containerd.snapshotter.v1.native\",\n    \"io.containerd.snapshotter.v1.overlayfs\",\n    \"tmpmounts\"\n  ],\n  \"/var/lib/firecracker-containerd/runtime\": [],\n  \"/var/lib/firecracker-containerd/snapshotter/devmapper\": [\n    \"metadata.db\",\n    \"vhive-final-da498d75b7b9-3312842.db\"\n  ],\n  \"/run/firecracker-containerd\": [\n    \"io.containerd.mount-manager.v1.bolt\",\n    \"io.containerd.runtime.v2.task\",\n    \"io.containerd.sandbox.controller.v1.shim\"\n  ],\n  \"/var/lib/demux-snapshotter\": [],\n  \"/fccd\": []\n}\n",
+  "activation-restored.json": "{\n  \"/etc/firecracker-containerd/config.toml\": {\n    \"kind\": \"absent\"\n  },\n  \"/etc/containerd/firecracker-runtime.json\": {\n    \"kind\": \"absent\"\n  },\n  \"/etc/demux-snapshotter/config.toml\": {\n    \"kind\": \"absent\"\n  },\n  \"/usr/local/bin/firecracker\": {\n    \"kind\": \"absent\"\n  },\n  \"/usr/local/bin/jailer\": {\n    \"kind\": \"absent\"\n  },\n  \"/usr/local/bin/firecracker-containerd\": {\n    \"kind\": \"absent\"\n  },\n  \"/usr/local/bin/firecracker-ctr\": {\n    \"kind\": \"absent\"\n  },\n  \"/usr/local/bin/containerd-shim-aws-firecracker\": {\n    \"kind\": \"absent\"\n  },\n  \"/usr/local/bin/demux-snapshotter\": {\n    \"kind\": \"absent\"\n  },\n  \"/usr/local/bin/http-address-resolver\": {\n    \"kind\": \"absent\"\n  }\n}\n",
+  "activation-state.json": "{\n  \"before\": {\n    \"/etc/firecracker-containerd/config.toml\": {\n      \"kind\": \"absent\"\n    },\n    \"/etc/containerd/firecracker-runtime.json\": {\n      \"kind\": \"absent\"\n    },\n    \"/etc/demux-snapshotter/config.toml\": {\n      \"kind\": \"absent\"\n    },\n    \"/usr/local/bin/firecracker\": {\n      \"kind\": \"absent\"\n    },\n    \"/usr/local/bin/jailer\": {\n      \"kind\": \"absent\"\n    },\n    \"/usr/local/bin/firecracker-containerd\": {\n      \"kind\": \"absent\"\n    },\n    \"/usr/local/bin/firecracker-ctr\": {\n      \"kind\": \"absent\"\n    },\n    \"/usr/local/bin/containerd-shim-aws-firecracker\": {\n      \"kind\": \"absent\"\n    },\n    \"/usr/local/bin/demux-snapshotter\": {\n      \"kind\": \"absent\"\n    },\n    \"/usr/local/bin/http-address-resolver\": {\n      \"kind\": \"absent\"\n    }\n  },\n  \"expected\": {\n    \"/etc/firecracker-containerd/config.toml\": {\n      \"kind\": \"file\",\n      \"sha256\": \"98ebabdcb7a82b263e0e47775b5add4c63a19262699bff4b6b7b826629efedf8\",\n      \"mode\": 420,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/etc/containerd/firecracker-runtime.json\": {\n      \"kind\": \"file\",\n      \"sha256\": \"71dc4c9bc0384b0b6f0f251508ad3d7104dcc21b6dd8f60b46db5a4fbf39aaa2\",\n      \"mode\": 420,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/etc/demux-snapshotter/config.toml\": {\n      \"kind\": \"file\",\n      \"sha256\": \"707657864c52ce79fc2b4324293233e330b87482d91fff9e47e8172741f906d8\",\n      \"mode\": 420,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/usr/local/bin/firecracker\": {\n      \"kind\": \"symlink\",\n      \"target\": \"/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/firecracker\",\n      \"mode\": 511,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/usr/local/bin/jailer\": {\n      \"kind\": \"symlink\",\n      \"target\": \"/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/jailer\",\n      \"mode\": 511,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/usr/local/bin/firecracker-containerd\": {\n      \"kind\": \"symlink\",\n      \"target\": \"/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/firecracker-containerd\",\n      \"mode\": 511,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/usr/local/bin/firecracker-ctr\": {\n      \"kind\": \"symlink\",\n      \"target\": \"/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/firecracker-ctr\",\n      \"mode\": 511,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/usr/local/bin/containerd-shim-aws-firecracker\": {\n      \"kind\": \"symlink\",\n      \"target\": \"/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/containerd-shim-aws-firecracker\",\n      \"mode\": 511,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/usr/local/bin/demux-snapshotter\": {\n      \"kind\": \"symlink\",\n      \"target\": \"/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/demux-snapshotter\",\n      \"mode\": 511,\n      \"uid\": 0,\n      \"gid\": 0\n    },\n    \"/usr/local/bin/http-address-resolver\": {\n      \"kind\": \"symlink\",\n      \"target\": \"/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install/bin/http-address-resolver\",\n      \"mode\": 511,\n      \"uid\": 0,\n      \"gid\": 0\n    }\n  },\n  \"networks\": [],\n  \"fccd_mode\": null\n}\n",
+  "installed-acceptance.log": "VHIVE_LEGACY_SNAPSHOT_ACCEPTANCE_OK receipt=/users/nehalem/fc-ctrd-mod/vhive-installed-final-da498d75-20261113/evidence/acceptance/acceptance.json\n",
+  "completion-marker": "VHIVE_FINAL_INSTALLED_CONSUMER_OK\n"
+}

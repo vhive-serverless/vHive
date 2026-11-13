@@ -1,0 +1,28 @@
+{
+  "/var/lib/firecracker-containerd/containerd": [
+    "io.containerd.content.v1.content",
+    "io.containerd.grpc.v1.introspection",
+    "io.containerd.metadata.v1.bolt",
+    "io.containerd.runtime.v2.task",
+    "io.containerd.sandbox.controller.v1.shim",
+    "io.containerd.service.v1.fc-control",
+    "io.containerd.snapshotter.v1.blockfile",
+    "io.containerd.snapshotter.v1.btrfs",
+    "io.containerd.snapshotter.v1.erofs",
+    "io.containerd.snapshotter.v1.native",
+    "io.containerd.snapshotter.v1.overlayfs",
+    "tmpmounts"
+  ],
+  "/var/lib/firecracker-containerd/runtime": [],
+  "/var/lib/firecracker-containerd/snapshotter/devmapper": [
+    "metadata.db",
+    "vhive-final-da498d75b7b9-3312842.db"
+  ],
+  "/run/firecracker-containerd": [
+    "io.containerd.mount-manager.v1.bolt",
+    "io.containerd.runtime.v2.task",
+    "io.containerd.sandbox.controller.v1.shim"
+  ],
+  "/var/lib/demux-snapshotter": [],
+  "/fccd": []
+}

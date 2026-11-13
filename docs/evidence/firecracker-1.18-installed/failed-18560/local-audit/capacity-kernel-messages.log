@@ -1,0 +1,40 @@
+[203080.382859] EXT4-fs (dm-7): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203082.463414] EXT4-fs (dm-7): mounted filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29 r/w with ordered data mode. Quota mode: none.
+[203082.463962] EXT4-fs (dm-7): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203082.471389] EXT4-fs (dm-7): mounted filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29 ro with ordered data mode. Quota mode: none.
+[203082.471972] EXT4-fs (dm-7): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203098.347008] buffer_io_error: 23 callbacks suppressed
+[203098.347013] Buffer I/O error on dev dm-7, logical block 0, async page read
+[203098.355836] Buffer I/O error on dev dm-7, logical block 0, async page read
+[203098.362822] Buffer I/O error on dev dm-7, logical block 1, async page read
+[203101.431805] EXT4-fs (dm-7): mounted filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29 r/w with ordered data mode. Quota mode: none.
+[203101.432329] EXT4-fs (dm-7): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203101.438898] EXT4-fs (dm-7): mounted filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29 ro with ordered data mode. Quota mode: none.
+[203101.439592] EXT4-fs (dm-7): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203113.806092] EXT4-fs (dm-8): mounted filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29 r/w with ordered data mode. Quota mode: none.
+[203113.806784] EXT4-fs (dm-8): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203150.842346] device-mapper: thin: 252:6: reached low water mark for data device: sending event.
+[203161.630119] device-mapper: thin: 252:6: switching pool to out-of-data-space (queue IO) mode
+[203223.991404] device-mapper: thin: 252:6: switching pool to out-of-data-space (error IO) mode
+[203223.991421] Buffer I/O error on dev dm-8, logical block 2512672, lost async page write
+[203223.999452] Buffer I/O error on dev dm-8, logical block 2512673, lost async page write
+[203224.007468] Buffer I/O error on dev dm-8, logical block 2512674, lost async page write
+[203224.015477] Buffer I/O error on dev dm-8, logical block 2512675, lost async page write
+[203224.023486] Buffer I/O error on dev dm-8, logical block 2512676, lost async page write
+[203224.031494] Buffer I/O error on dev dm-8, logical block 2512677, lost async page write
+[203224.039503] Buffer I/O error on dev dm-8, logical block 2512678, lost async page write
+[203224.047510] Buffer I/O error on dev dm-8, logical block 2512679, lost async page write
+[203224.055519] Buffer I/O error on dev dm-8, logical block 2512680, lost async page write
+[203224.063527] Buffer I/O error on dev dm-8, logical block 2512681, lost async page write
+[203227.080986] device-mapper: thin: 252:6: switching pool to write mode
+[203230.285719] buffer_io_error: 108761 callbacks suppressed
+[203230.285724] Buffer I/O error on dev dm-7, logical block 0, async page read
+[203230.294512] Buffer I/O error on dev dm-7, logical block 0, async page read
+[203230.301495] Buffer I/O error on dev dm-7, logical block 1, async page read
+[203235.074303] EXT4-fs (dm-7): mounted filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29 r/w with ordered data mode. Quota mode: none.
+[203235.074927] EXT4-fs (dm-7): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203235.081932] EXT4-fs (dm-7): mounted filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29 ro with ordered data mode. Quota mode: none.
+[203235.082774] EXT4-fs (dm-7): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203248.102371] EXT4-fs (dm-8): mounted filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29 r/w with ordered data mode. Quota mode: none.
+[203248.120153] EXT4-fs (dm-8): unmounting filesystem 8dd5c08b-b442-414b-93bb-2353e0efda29.
+[203291.594369] device-mapper: thin: 252:6: switching pool to out-of-data-space (queue IO) mode

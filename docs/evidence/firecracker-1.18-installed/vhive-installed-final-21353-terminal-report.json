@@ -1,0 +1,110 @@
+{
+  "session": 21353,
+  "status": "TERMINAL_PASS_INSTALLED_PUBLISHED_RUNTIME_CONSUMER",
+  "remote_run": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-da498d75-20261113",
+  "vhive_revision": "da498d75b7b91f9dcfcf3e2f80107b48f0cbdee2",
+  "runtime_revision": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "candidate": false,
+  "launcher_sha256": "cf0f5cc65fb3769cef215779a991b9610606d3b0af10f0c2f9ab7c52388c7145",
+  "VM_tests": [
+    {
+      "outcome": "PASS",
+      "name": "TestPauseSnapResume",
+      "seconds": 24.71
+    },
+    {
+      "outcome": "PASS",
+      "name": "TestSnapshotConcurrentClones",
+      "seconds": 117.21
+    },
+    {
+      "outcome": "PASS",
+      "name": "TestSnapshotSourceMemoryAndDiskIsolation",
+      "seconds": 78.32
+    }
+  ],
+  "command_status": {
+    "host-before": 0,
+    "vhive-source": 0,
+    "existing-containers": 0,
+    "published-modules": 0,
+    "manifest": 0,
+    "installer-unit": 0,
+    "route": 0,
+    "install": 0,
+    "verify": 0,
+    "installed-runtime-origin": 0,
+    "pool-create": 0,
+    "activate": 0,
+    "installed-acceptance": 0,
+    "cleanup": 0,
+    "launcher": 0
+  },
+  "completion_marker": "VHIVE_FINAL_INSTALLED_CONSUMER_OK",
+  "runtime_module_origin": {
+    "VCS": "git",
+    "URL": "https://github.com/vhive-serverless/firecracker-containerd",
+    "Hash": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794"
+  },
+  "sdk_module_origin": {
+    "VCS": "git",
+    "URL": "https://github.com/vhive-serverless/firecracker-go-sdk",
+    "Hash": "dd9db322432989b96cff7a38a64703d60b6cabf9"
+  },
+  "installation_reuse": {
+    "installation_source_consumer": "7efebc4bd0061065f73ffb1527bfdf4c084f2628",
+    "original_runtime_build": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+    "prefix": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install",
+    "receipt_sha256": "9cd10430db5acea75593df0193d5987698ee5990b7765a18bc7e0556ba05d1e4",
+    "all_original_installed_entries_equal": 18,
+    "installed_binary_large_artifact_hashes_equal": 16,
+    "new_consumer_test_binary": "Fresh da498 test binary, independently hashed; not claimed as reused7efbinary"
+  },
+  "pool_capacity": {
+    "pool": "vhive-final-da498d75b7b9-3312842",
+    "base_image_bytes": 10737418240,
+    "data_bytes": 42949672960,
+    "metadata_bytes": 1073741824,
+    "image_budget": 4,
+    "simultaneous_vms": 3,
+    "removed_receipt": true,
+    "runtime_helper_sha256": "745506ea52e8b82277d2176b2c7fc78132dbc97958f1ca1583255d5e594666ba"
+  },
+  "independent_cleanup": {
+    "all_ten_activation_paths_restored_absent": true,
+    "owned_VM_shim_runtime_test_processes": 0,
+    "owned_device_mappings": 0,
+    "owned_loop_backing": 0,
+    "mounts_under_global_roots": 0,
+    "open_FDs_under_global_roots": 0,
+    "vHive_namespaces_and_pattern_interfaces": 0,
+    "historical_eight_exact_identity_guard": "PASS",
+    "preexisting_K8s_exact_ID_PID_started_image_running_unchanged": [
+      {
+        "requested": "1715f4a4061173a6eb936d419fbac8e1055a0a8042a6a9543670ee21f7f710d5",
+        "status": 0,
+        "id": "1715f4a4061173a6eb936d419fbac8e1055a0a8042a6a9543670ee21f7f710d5",
+        "name": "/fcmod-upstream-137-control-plane",
+        "image": "sha256:474367be785d37cee54bb13cb1382e112e01aa9e215969e91095a0dd5a1565d8",
+        "running": true,
+        "pid": 3091671,
+        "started_at": "2026-11-11T02:51:24.76066718Z"
+      }
+    ],
+    "global_state_directories": "Retained and inventoried by launcher; no live users or mounts. No quarantine/delete needed or performed by collector."
+  },
+  "collection": {
+    "copied_original_text_json_logs": 43,
+    "binary_large_artifacts_hash_only": 17,
+    "test_binary_copied": false,
+    "remote_only_archive": "vhive-installed-final-21353-evidence.tar",
+    "remote_only_archive_sha256": "d858d55a69b23d53e482b54c610bcbddb1038121d17f4806e059315f5efaa183"
+  },
+  "prior_failed_attempt": {
+    "session": 18560,
+    "complete_archive_sha256_unchanged": "5734d6713aa19a0e11d752f071a4dd72ca9a429bc031f4190b8cb8295cb9218c",
+    "outcome_preserved": "Acceptance1/cleanup0/launcher1; onePASS,twoEIOFAIL; no reinterpretation as success"
+  },
+  "collector_actions": "Read-only remote collection/audit only; no rerun, host files, services, quarantine or deletion changed",
+  "limits": "Acceptance belongs to exact da498 with installed runtimeB4 and explicit original installation reuse; later docs tips are not independently VM-tested. Full CRI WIP/Kubernetes1.38 and runtime CNI disclosure remain separate."
+}

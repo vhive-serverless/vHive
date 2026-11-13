@@ -1,0 +1,61 @@
+{
+  "github.com/firecracker-microvm/firecracker-containerd": {
+    "selected": {
+      "Path": "github.com/firecracker-microvm/firecracker-containerd",
+      "Version": "v0.0.0-00010101000000-000000000000",
+      "Replace": {
+        "Path": "github.com/vhive-serverless/firecracker-containerd",
+        "Version": "v0.0.0-20261113011217-b4f8c6c2f1ec",
+        "Time": "2026-11-13T01:12:17Z",
+        "GoMod": "/users/nehalem/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.mod",
+        "GoVersion": "1.26.8",
+        "Sum": "h1:puiLAxBEEKypQ5+iQQxnb8F7DnnU1+CdDJxkt60KVNs=",
+        "GoModSum": "h1:l1s0LZubl+jaiaDGxEROUDwynM+tO498a8/PxL0855M="
+      },
+      "GoMod": "/users/nehalem/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.mod",
+      "GoVersion": "1.26.8"
+    },
+    "downloaded": {
+      "Path": "github.com/vhive-serverless/firecracker-containerd",
+      "Version": "v0.0.0-20261113011217-b4f8c6c2f1ec",
+      "Info": "/users/nehalem/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.info",
+      "GoMod": "/users/nehalem/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.mod",
+      "Zip": "/users/nehalem/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-containerd/@v/v0.0.0-20261113011217-b4f8c6c2f1ec.zip",
+      "Dir": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-containerd@v0.0.0-20261113011217-b4f8c6c2f1ec",
+      "Sum": "h1:puiLAxBEEKypQ5+iQQxnb8F7DnnU1+CdDJxkt60KVNs=",
+      "GoModSum": "h1:l1s0LZubl+jaiaDGxEROUDwynM+tO498a8/PxL0855M=",
+      "Origin": {
+        "VCS": "git",
+        "URL": "https://github.com/vhive-serverless/firecracker-containerd",
+        "Hash": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794"
+      }
+    }
+  },
+  "github.com/firecracker-microvm/firecracker-go-sdk": {
+    "selected": {
+      "Path": "github.com/firecracker-microvm/firecracker-go-sdk",
+      "Version": "v1.0.1-0.20250818195323-ed6ff32aa924",
+      "Replace": {
+        "Path": "github.com/vhive-serverless/firecracker-go-sdk",
+        "Version": "v0.0.0-20261112180021-dd9db3224329",
+        "Time": "2026-11-12T18:00:21Z"
+      },
+      "Indirect": true
+    },
+    "downloaded": {
+      "Path": "github.com/vhive-serverless/firecracker-go-sdk",
+      "Version": "v0.0.0-20261112180021-dd9db3224329",
+      "Info": "/users/nehalem/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-go-sdk/@v/v0.0.0-20261112180021-dd9db3224329.info",
+      "GoMod": "/users/nehalem/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-go-sdk/@v/v0.0.0-20261112180021-dd9db3224329.mod",
+      "Zip": "/users/nehalem/go/pkg/mod/cache/download/github.com/vhive-serverless/firecracker-go-sdk/@v/v0.0.0-20261112180021-dd9db3224329.zip",
+      "Dir": "/users/nehalem/go/pkg/mod/github.com/vhive-serverless/firecracker-go-sdk@v0.0.0-20261112180021-dd9db3224329",
+      "Sum": "h1:jaQhW3qXDgG8gqKeP0qlqAJF+GbTlAzboOO7EzaIKWE=",
+      "GoModSum": "h1:IKSxd5Gsx+H4cFowjf6q4kuzbcCWkYsYGKxf/WKKNL4=",
+      "Origin": {
+        "VCS": "git",
+        "URL": "https://github.com/vhive-serverless/firecracker-go-sdk",
+        "Hash": "dd9db322432989b96cff7a38a64703d60b6cabf9"
+      }
+    }
+  }
+}

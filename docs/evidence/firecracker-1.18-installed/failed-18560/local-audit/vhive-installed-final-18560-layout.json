@@ -1,0 +1,253 @@
+{
+  "root": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113",
+  "entries": [
+    {
+      "directory": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113",
+      "children": [
+        {
+          "name": "evidence",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "install",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "stack",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        }
+      ]
+    },
+    {
+      "directory": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/evidence",
+      "children": [
+        {
+          "name": "acceptance",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "activate.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 273
+        },
+        {
+          "name": "activation-backup",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "activation-restore.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 0
+        },
+        {
+          "name": "activation-restored.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 684
+        },
+        {
+          "name": "activation-state.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 3204
+        },
+        {
+          "name": "commands.tsv",
+          "directory": false,
+          "symlink": null,
+          "bytes": 237
+        },
+        {
+          "name": "existing-containers.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 65
+        },
+        {
+          "name": "existing-containers.txt",
+          "directory": false,
+          "symlink": null,
+          "bytes": 65
+        },
+        {
+          "name": "host-before.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 0
+        },
+        {
+          "name": "install.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 244023
+        },
+        {
+          "name": "installed-acceptance.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 953
+        },
+        {
+          "name": "installed-runtime-origin.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 348
+        },
+        {
+          "name": "installed-runtime-origin.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 348
+        },
+        {
+          "name": "installer-unit.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 2263
+        },
+        {
+          "name": "manifest.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 49
+        },
+        {
+          "name": "pool-cleanup.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 0
+        },
+        {
+          "name": "pool-create.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 0
+        },
+        {
+          "name": "published-modules.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 3412
+        },
+        {
+          "name": "published-modules.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 21
+        },
+        {
+          "name": "published-runtime-ref.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 338
+        },
+        {
+          "name": "retained-state.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 893
+        },
+        {
+          "name": "route.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 16
+        },
+        {
+          "name": "test-dependency-package-counts.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 123
+        },
+        {
+          "name": "test-dependency-packages.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 2419
+        },
+        {
+          "name": "verify.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 112
+        },
+        {
+          "name": "vhive-source.log",
+          "directory": false,
+          "symlink": null,
+          "bytes": 82
+        },
+        {
+          "name": "vhive-stack-receipt.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 5505
+        }
+      ]
+    },
+    {
+      "directory": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/stack",
+      "children": [
+        {
+          "name": "sources",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "toolchains",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        }
+      ]
+    },
+    {
+      "directory": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/install",
+      "children": [
+        {
+          "name": "bin",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "etc",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "lib",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "share",
+          "directory": true,
+          "symlink": null,
+          "bytes": 4096
+        },
+        {
+          "name": "vhive-stack-receipt.json",
+          "directory": false,
+          "symlink": null,
+          "bytes": 5505
+        }
+      ]
+    }
+  ]
+}

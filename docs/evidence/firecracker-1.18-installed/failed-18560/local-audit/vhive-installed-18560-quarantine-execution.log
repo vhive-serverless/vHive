@@ -1,0 +1,99 @@
+EXACT_HISTORICAL_DAEMON_GUARD_OK
+{
+  "run": 18560,
+  "manifest_sha256": "81ea8cea077debda3a33512681e86aed99892456c660057c805126aa27dca453",
+  "renamed": [
+    {
+      "source": "/var/lib/firecracker-containerd/containerd",
+      "quarantine": "/var/lib/firecracker-containerd/containerd.vhive-retained-18560",
+      "root": {
+        "mode": 16832,
+        "uid": 0,
+        "gid": 0,
+        "device": 2051,
+        "inode": 3410771,
+        "size": 4096,
+        "mtime_ns": 1794535027239919117,
+        "ctime_ns": 1794535851706021730,
+        "nlink": 13
+      }
+    },
+    {
+      "source": "/var/lib/firecracker-containerd/runtime",
+      "quarantine": "/var/lib/firecracker-containerd/runtime.vhive-retained-18560",
+      "root": {
+        "mode": 16877,
+        "uid": 0,
+        "gid": 0,
+        "device": 2051,
+        "inode": 3386222,
+        "size": 4096,
+        "mtime_ns": 1794535020778875156,
+        "ctime_ns": 1794535851754022093,
+        "nlink": 2
+      }
+    },
+    {
+      "source": "/var/lib/firecracker-containerd/snapshotter/devmapper",
+      "quarantine": "/var/lib/firecracker-containerd/snapshotter/devmapper.vhive-retained-18560",
+      "root": {
+        "mode": 16872,
+        "uid": 0,
+        "gid": 0,
+        "device": 2051,
+        "inode": 3410779,
+        "size": 4096,
+        "mtime_ns": 1794535029186932364,
+        "ctime_ns": 1794535851754022093,
+        "nlink": 2
+      }
+    },
+    {
+      "source": "/run/firecracker-containerd",
+      "quarantine": "/run/firecracker-containerd.vhive-retained-18560",
+      "root": {
+        "mode": 16841,
+        "uid": 0,
+        "gid": 0,
+        "device": 25,
+        "inode": 584198,
+        "size": 100,
+        "mtime_ns": 1794535317635951404,
+        "ctime_ns": 1794535851755022101,
+        "nlink": 5
+      }
+    },
+    {
+      "source": "/var/lib/demux-snapshotter",
+      "quarantine": "/var/lib/demux-snapshotter.vhive-retained-18560",
+      "root": {
+        "mode": 16877,
+        "uid": 0,
+        "gid": 0,
+        "device": 2051,
+        "inode": 3386220,
+        "size": 4096,
+        "mtime_ns": 1794535020778875156,
+        "ctime_ns": 1794535851755022101,
+        "nlink": 2
+      }
+    },
+    {
+      "source": "/fccd",
+      "quarantine": "/fccd.vhive-retained-18560",
+      "root": {
+        "mode": 17407,
+        "uid": 0,
+        "gid": 0,
+        "device": 2051,
+        "inode": 7021106,
+        "size": 4096,
+        "mtime_ns": 1794535317594951109,
+        "ctime_ns": 1794535851755022101,
+        "nlink": 2
+      }
+    }
+  ],
+  "entries_preserved": 42,
+  "deleted": false
+}

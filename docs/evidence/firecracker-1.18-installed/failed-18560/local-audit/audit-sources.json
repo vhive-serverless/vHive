@@ -1,0 +1,47 @@
+[
+  {
+    "source": "migration-upstream/vhive-installed-final-18560-layout.json",
+    "archived": "local-audit/vhive-installed-final-18560-layout.json",
+    "sha256": "b6554c0d173c0f45b216ef4c4d21e081f821d84988fbeb9bf81bb1448dfe9e55"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-final-18560-postrun.raw.json",
+    "archived": "local-audit/vhive-installed-final-18560-postrun.raw.json",
+    "sha256": "430ab52bf72d7398807bc336181912c2745683fb0ae2aa249b0a39320d4a3174"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-final-18560-quarantine-manifest.json",
+    "archived": "local-audit/vhive-installed-final-18560-quarantine-manifest.json",
+    "sha256": "81ea8cea077debda3a33512681e86aed99892456c660057c805126aa27dca453"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-final-18560-historical-guard.log",
+    "archived": "local-audit/vhive-installed-final-18560-historical-guard.log",
+    "sha256": "c2b11843460f8f1e3fc97015884532ea2b622925ccc4cad874ea20b5c4656503"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-18560-quarantine-execution.log",
+    "archived": "local-audit/vhive-installed-18560-quarantine-execution.log",
+    "sha256": "fafd63aeef60fd1ddd941ad44bedb804b835a855c5d125fc08b448fa89dc6c98"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-final-18560-quarantine-preflight.log",
+    "archived": "local-audit/vhive-installed-final-18560-quarantine-preflight.log",
+    "sha256": "c2b11843460f8f1e3fc97015884532ea2b622925ccc4cad874ea20b5c4656503"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-capacity-diagnosis/disk-space.log",
+    "archived": "local-audit/capacity-disk-space.log",
+    "sha256": "63e4a82f016c91d371d66e93bde789746ca3c6c2f196dd5feb4de43dee496fca"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-capacity-diagnosis/kernel-messages.log",
+    "archived": "local-audit/capacity-kernel-messages.log",
+    "sha256": "cb6414eeba3c30c58e0c28c49f713d707a05717ce6eee64c1766397fb0ed2820"
+  },
+  {
+    "source": "migration-upstream/vhive-installed-capacity-diagnosis/pool-status.log",
+    "archived": "local-audit/capacity-pool-status.log",
+    "sha256": "77e1a95be6c981582b1101b9ceab873e6b8cd973fa6d68d3f18a81974391a24e"
+  }
+]

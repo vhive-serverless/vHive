@@ -1,0 +1,19 @@
+test_cached_install_prepare_repairs_route_without_rebuilding (test_firecracker_stack.FirecrackerStackTests.test_cached_install_prepare_repairs_route_without_rebuilding) ... ok
+test_incomplete_receipt_cannot_omit_artifacts (test_firecracker_stack.FirecrackerStackTests.test_incomplete_receipt_cannot_omit_artifacts) ... ok
+test_missing_route_prevents_activation_before_side_effects (test_firecracker_stack.FirecrackerStackTests.test_missing_route_prevents_activation_before_side_effects) ... ok
+test_missing_route_stops_legacy_acceptance_before_daemon_or_vm (test_firecracker_stack.FirecrackerStackTests.test_missing_route_stops_legacy_acceptance_before_daemon_or_vm) ... ok
+test_networking_preparation_is_idle_when_route_is_present (test_firecracker_stack.FirecrackerStackTests.test_networking_preparation_is_idle_when_route_is_present) ... ok
+test_networking_preparation_requires_route_after_install (test_firecracker_stack.FirecrackerStackTests.test_networking_preparation_requires_route_after_install) ... ok
+test_networking_provision_failure_stops_preparation (test_firecracker_stack.FirecrackerStackTests.test_networking_provision_failure_stops_preparation) ... ok
+test_pending_pin_cannot_start_installation (test_firecracker_stack.FirecrackerStackTests.test_pending_pin_cannot_start_installation) ... ok
+test_receipt_covers_runtime_guest_and_snapshotter (test_firecracker_stack.FirecrackerStackTests.test_receipt_covers_runtime_guest_and_snapshotter) ... ok
+test_release_and_artifact_paths_are_validated (test_firecracker_stack.FirecrackerStackTests.test_release_and_artifact_paths_are_validated) ... ok
+test_source_lock_must_match_all_selected_inputs (test_firecracker_stack.FirecrackerStackTests.test_source_lock_must_match_all_selected_inputs) ... ok
+test_stale_build_cannot_produce_install_receipt (test_firecracker_stack.FirecrackerStackTests.test_stale_build_cannot_produce_install_receipt) ... ok
+test_tampered_artifact_is_rejected_before_activation (test_firecracker_stack.FirecrackerStackTests.test_tampered_artifact_is_rejected_before_activation) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.071s
+
+OK
+Installed verified stack 1111111111111111111111111111111111111111 at /tmp/tmpxh7kjg4u/install

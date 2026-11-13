@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/vhive-serverless/firecracker-containerd.git",
+  "ref": "refs/heads/firecracker-v1.18-containerdv2-vhive-integration",
+  "revision": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "advertised": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794\trefs/heads/firecracker-v1.18-containerdv2-vhive-integration\n"
+}

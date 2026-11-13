@@ -1,0 +1,13 @@
+/users/nehalem/fc-ctrd-mod/vhive-installed-final-da498d75-20261113/evidence/acceptance/ctriface.test: go1.26.11
+	path	github.com/vhive-serverless/vhive/ctriface.test
+	mod	github.com/vhive-serverless/vhive	(devel)	
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=amd64
+	build	GOOS=linux
+	build	GOAMD64=v1

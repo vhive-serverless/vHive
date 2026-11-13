@@ -27,6 +27,14 @@ checks distinct endpoints and disks, and exercises independent shutdown.
 Run these on the isolated runtime test stack; local compilation alone does not
 establish VM compatibility. Kubernetes Pod checkpoint endpoints remain deferred.
 
+The [installed-consumer acceptance receipt](evidence/firecracker-1.18-installed/README.md)
+records the three required File-memory cases passing at consumer `da498d75b7b9`
+with published runtime `b4f8c6c2f1ec`, including continued source execution, two
+independent clones, memory/disk isolation and shutdown. It preserves the earlier
+capacity failure and exact installation/module provenance. This acceptance covers
+the standalone Step 2 profile; full CRI remains WIP and Kubernetes Pod
+checkpoint/restore endpoints remain deferred to 1.38.
+
 The following sections document the historical snapshot implementation.
 
 ## Overview

@@ -1,0 +1,99 @@
+{
+  "session": 18560,
+  "status": "TERMINAL_FAILED_INSTALLED_CONSUMER_ACCEPTANCE; immutablefailedattemptpreserved",
+  "vhive_revision": "7efebc4bd0061065f73ffb1527bfdf4c084f2628",
+  "runtime_revision": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "candidate": false,
+  "runtime_published_module": {
+    "VCS": "git",
+    "URL": "https://github.com/vhive-serverless/firecracker-containerd",
+    "Hash": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794"
+  },
+  "sdk_module": {
+    "VCS": "git",
+    "URL": "https://github.com/vhive-serverless/firecracker-go-sdk",
+    "Hash": "dd9db322432989b96cff7a38a64703d60b6cabf9"
+  },
+  "pool": "vhive-final-7efebc4bd006-3215611",
+  "command_status": {
+    "host-before": 0,
+    "vhive-source": 0,
+    "existing-containers": 0,
+    "published-modules": 0,
+    "manifest": 0,
+    "installer-unit": 0,
+    "route": 0,
+    "install": 0,
+    "verify": 0,
+    "installed-runtime-origin": 0,
+    "pool-create": 0,
+    "activate": 0,
+    "installed-acceptance": 1,
+    "cleanup": 0,
+    "launcher": 1
+  },
+  "VM_tests": [
+    {
+      "outcome": "PASS",
+      "name": "TestPauseSnapResume",
+      "seconds": 25.34
+    },
+    {
+      "outcome": "FAIL",
+      "name": "TestSnapshotConcurrentClones",
+      "seconds": 133.47
+    },
+    {
+      "outcome": "FAIL",
+      "name": "TestSnapshotSourceMemoryAndDiskIsolation",
+      "seconds": 131.44
+    }
+  ],
+  "failure": "Both clone-related tests fail dd fsync EIO; diagnostic poolstatus records163840/163840data blocks and out_of_data_space. Capacity sizing fix audited separately; no rerun by this task.",
+  "collection": {
+    "copied_text_json_logs": 33,
+    "binary_large_artifacts_hash_only": 17,
+    "test_binary_copied": false,
+    "remote_evidence_tar": "vhive-installed-final-18560-evidence.tar",
+    "remote_evidence_tar_sha256": "f40ca02e83ccfafe2106b04ecdd1187686465252539c4ab163a05396acae4125"
+  },
+  "cleanup": {
+    "launcher_cleanup_exit": 0,
+    "global_activation_restored_to_original_absent_state": 10,
+    "owned_VM_shim_runtime_test_processes": 0,
+    "owned_device_maps": 0,
+    "owned_loop_backing": 0,
+    "mounts_under_six_roots": 0,
+    "open_FDs_under_six_roots": 0,
+    "historical_eight_exact_guard": "PASS",
+    "preserved_K8s": [
+      {
+        "requested": "1715f4a4061173a6eb936d419fbac8e1055a0a8042a6a9543670ee21f7f710d5",
+        "status": 0,
+        "id": "1715f4a4061173a6eb936d419fbac8e1055a0a8042a6a9543670ee21f7f710d5",
+        "name": "/fcmod-upstream-137-control-plane",
+        "image": "sha256:474367be785d37cee54bb13cb1382e112e01aa9e215969e91095a0dd5a1565d8",
+        "running": true,
+        "pid": 3091671,
+        "started_at": "2026-11-11T02:51:24.76066718Z"
+      }
+    ],
+    "retained_global_state_before_quarantine": "Six roots with42recursive identities; manifestSHA81ea8cea077debda3a33512681e86aed99892456c660057c805126aa27dca453",
+    "root_quarantine": {
+      "source": "vhive-installed-18560-quarantine-execution.log",
+      "six_sibling_renames": true,
+      "entries_preserved": 42,
+      "deleted": false
+    }
+  },
+  "readonly_followup_preflight": {
+    "scope": "Additional read-only guard, started before root quarantine but observed post-rename state",
+    "exit_code": 1,
+    "historical_identity_guard": "PASS",
+    "result": "Expected refusal: Unexpected or occupied quarantine destination",
+    "mutations": false,
+    "root_actual_quarantine": "Previously approved script executed by root succeeded with all42entriespreserved,zero deletion"
+  },
+  "host_mutation_by_history_agent": false,
+  "remaining": "Installedconsumeracceptance remainsfailed/pending; root capacity fix/rerun required. Noclaimof threeVMpass."
+}

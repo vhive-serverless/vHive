@@ -1,0 +1,32 @@
+{
+  "/etc/firecracker-containerd/config.toml": {
+    "kind": "absent"
+  },
+  "/etc/containerd/firecracker-runtime.json": {
+    "kind": "absent"
+  },
+  "/etc/demux-snapshotter/config.toml": {
+    "kind": "absent"
+  },
+  "/usr/local/bin/firecracker": {
+    "kind": "absent"
+  },
+  "/usr/local/bin/jailer": {
+    "kind": "absent"
+  },
+  "/usr/local/bin/firecracker-containerd": {
+    "kind": "absent"
+  },
+  "/usr/local/bin/firecracker-ctr": {
+    "kind": "absent"
+  },
+  "/usr/local/bin/containerd-shim-aws-firecracker": {
+    "kind": "absent"
+  },
+  "/usr/local/bin/demux-snapshotter": {
+    "kind": "absent"
+  },
+  "/usr/local/bin/http-address-resolver": {
+    "kind": "absent"
+  }
+}

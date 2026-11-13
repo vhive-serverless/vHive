@@ -9,7 +9,10 @@ The manifest pins the published Step 2 runtime
 `firecracker-v1.18-containerdv2-vhive-integration`, using official Firecracker
 v1.18.0 and the vHive-owned SDK. The old `bin/` artifacts are historical inputs.
 Runtime validation and the installed vHive consumer acceptance have separate
-receipts; the latter requires the three standalone File-memory snapshot cases.
+receipts. The [installed-consumer acceptance receipt](evidence/firecracker-1.18-installed/README.md)
+records all three standalone File-memory snapshot cases passing at exact consumer
+`da498d75b7b9` against that published runtime; later documentation tips retain
+that tested-source distinction.
 
 `setup_tool setup_firecracker_containerd` and
 `scripts/setup_firecracker_containerd.sh` build that exact runtime checkout using

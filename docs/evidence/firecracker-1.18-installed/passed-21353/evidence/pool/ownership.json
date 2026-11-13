@@ -1,0 +1,35 @@
+{
+  "runtime_source": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/stack/sources/b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "pool": "vhive-final-da498d75b7b9-3312842",
+  "directory": "/users/nehalem/fc-ctrd-mod/vhive-installed-final-7efebc4b-isolated-20261113/stack/sources/b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794/tmp/devmapper/vhive-final-da498d75b7b9-3312842",
+  "plan": {
+    "base_image_size": "10GB",
+    "base_image_bytes": 10737418240,
+    "image_budget": 4,
+    "simultaneous_vms": 3,
+    "data_bytes": 42949672960,
+    "metadata_bytes": 1073741824,
+    "minimum_available_bytes": 46170898432,
+    "observed_available_bytes": 69637468160
+  },
+  "backings": {
+    "data": {
+      "device": 2051,
+      "inode": 6906586,
+      "size": 42949672960,
+      "uid": 20005,
+      "gid": 3763,
+      "mode": 384
+    },
+    "metadata": {
+      "device": 2051,
+      "inode": 6906587,
+      "size": 1073741824,
+      "uid": 20005,
+      "gid": 3763,
+      "mode": 384
+    }
+  },
+  "removed": true,
+  "runtime_helper_sha256": "745506ea52e8b82277d2176b2c7fc78132dbc97958f1ca1583255d5e594666ba"
+}

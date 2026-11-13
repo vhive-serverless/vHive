@@ -1,0 +1,8 @@
+{
+  "scope": "Additional read-only guard, started before root quarantine but observed post-rename state",
+  "exit_code": 1,
+  "historical_identity_guard": "PASS",
+  "result": "Expected refusal: Unexpected or occupied quarantine destination",
+  "mutations": false,
+  "root_actual_quarantine": "Previously approved script executed by root succeeded with all42entriespreserved,zero deletion"
+}
