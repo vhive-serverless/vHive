@@ -1,0 +1,111 @@
+{
+  "status": "PREPARED_UNCOMMITTED_CI_FIX; hosted rerun required",
+  "base_consumer": "b2e0c61dac5cc36a2d827d65a64fdb5c9c11a9ad",
+  "failure": {
+    "run": {
+      "conclusion": "failure",
+      "headSha": "b2e0c61dac5cc36a2d827d65a64fdb5c9c11a9ad",
+      "status": "completed",
+      "url": "https://github.com/vhive-serverless/vHive/actions/runs/43352640967"
+    },
+    "phase": "runtime prepare-worker apt dependency install before compilation",
+    "exact_error": "containerd.io : Conflicts: containerd",
+    "cause": "Published runtime generic prepare-worker installs Ubuntu docker.io/docker-buildx, conflicting with preinstalled hosted Docker CE containerd.io"
+  },
+  "owned_paths": [
+    ".github/workflows/legacy_snapshot_tests.yml",
+    "scripts/github_runner/test_legacy_snapshot.sh",
+    "scripts/github_runner/prepare_legacy_snapshot.sh",
+    "scripts/github_runner/tests/test_prepare_legacy_snapshot.py"
+  ],
+  "fix": {
+    "docker": "Require docker version/buildx callable as effective installer user before/after apt; no sudo Docker fallback/package replacement/service restart",
+    "dependencies": "All published runtime build packages except docker.io/docker-buildx, plus vHive net-tools; apt --no-remove",
+    "package_set": [
+      "bc",
+      "bison",
+      "build-essential",
+      "ca-certificates",
+      "curl",
+      "debootstrap",
+      "dmsetup",
+      "dwarves",
+      "e2fsprogs",
+      "flex",
+      "git",
+      "iproute2",
+      "iptables",
+      "jq",
+      "libelf-dev",
+      "libseccomp-dev",
+      "libssl-dev",
+      "musl-tools",
+      "net-tools",
+      "pkg-config",
+      "protobuf-compiler",
+      "python3",
+      "rsync",
+      "socat",
+      "squashfs-tools",
+      "thin-provisioning-tools"
+    ],
+    "toolchain": {
+      "version": "1.26.11",
+      "archive": "go1.26.11.linux-amd64.tar.gz",
+      "sha256": "9849f4e04ee35303714e34fbc3ac8ab44ea3e448a95aa182f91e3b9b79c710ec"
+    },
+    "toolchain_path": "$STACK_DIR/toolchains/go1.26.11/bin/go; official archive checksum checked; exact version asserted; GOTOOLCHAIN=local",
+    "workflow": "Replace setup-go step with tested prerequisite helper after disk cleanup, retain KVM check and upload prerequisite log even on failure",
+    "installer": "Remove only --prepare; keep receipt-backed build/install/activation and final acceptance unchanged",
+    "acceptance": "Preserve shared40GiB pool, unchanged3VMcases, assertions/timeouts/concurrency and module/runtime/SDK pins"
+  },
+  "validation": {
+    "python_unit_tests": "PASS 5 tests; fake sudo/Docker/network commands, real fixture tar extraction and SHA verification; no host mutation",
+    "bash_syntax": "PASS both modified shell scripts",
+    "actionlint": "PASS cached /tmp/vhive-ci-tools/actionlint -shellcheck= (shellcheck not installed)",
+    "diff_whitespace": "PASS owned tracked paths",
+    "exact_runtime_package_equivalence": "PASS b4f8 prepare-worker minus2Docker packages plus net-tools",
+    "manifest_go_equals_runtime_go": "PASS version/archiveSHA",
+    "runtime_build_or_VM_or_apt_or_Docker_operations": "NOT RUN locally",
+    "commit_or_push": "NONE"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/legacy_snapshot_tests.yml",
+      "sha256": "9b9ee1cb67498456a4b60bc67a0efb37f37bf273820a23a834617e82820c13be"
+    },
+    {
+      "path": "scripts/github_runner/test_legacy_snapshot.sh",
+      "sha256": "88f28c8c36b6d52ec1e6b0dffde8cedfd360e82516ddb9c4044ff852f608fb3d"
+    },
+    {
+      "path": "scripts/github_runner/prepare_legacy_snapshot.sh",
+      "sha256": "e02a82a3e0a5dfed5a0b8bb4b54d395604e93780bd2a38d1a72a1bd91622627b"
+    },
+    {
+      "path": "scripts/github_runner/tests/test_prepare_legacy_snapshot.py",
+      "sha256": "5897a2c54ac2e6605581ace89179e9ab2b6465be3c6c85b40ce991b74af7a27b"
+    }
+  ],
+  "patch": {
+    "path": "migration-upstream/vhive-hosted-snapshot-prerequisites.patch",
+    "sha256": "deeff9b147688b29217697817efa94f04c520ca9f40ed19b9ce13cb23823f466",
+    "bytes": 12282
+  },
+  "evidence_files": [
+    {
+      "path": "migration-upstream/vhive-hosted-snapshot-43352640967-failure.log",
+      "sha256": "33c8fa5cc5620cb94e66693bdf5029091ef88a8a87fc0384b1b40e986141c833"
+    },
+    {
+      "path": "migration-upstream/vhive-hosted-snapshot-43352640967-run.json",
+      "sha256": "7d53bebb18111c5306a457740c576d78747c912e1ab1566eb7a8289fafe72c12"
+    },
+    {
+      "path": "migration-upstream/vhive-hosted-snapshot-prerequisites-tests.log",
+      "sha256": "8b65830473d85a5c81487d359a1057c9e4118bf5472572d751745f5c67b69204"
+    }
+  ],
+  "unrelated_worktree": "go.work.sum belongs to other worker and was not touched or included",
+  "remaining": "Root review/commit/push and actual hosted CI rerun; static/local tests do not assert hosted VM acceptance"
+}

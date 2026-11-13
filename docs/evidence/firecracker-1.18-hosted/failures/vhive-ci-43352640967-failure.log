@@ -1,0 +1,77 @@
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	﻿2026-11-13T02:32:29.3873488Z ##[group]Run bash scripts/github_runner/test_legacy_snapshot.sh
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3873997Z [36;1mbash scripts/github_runner/test_legacy_snapshot.sh[0m
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3894738Z shell: /usr/bin/bash -e {0}
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3894994Z env:
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3895199Z   FICD_DM_POOL: vhive-ci-43352640967-1
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3895473Z   GOTOOLCHAIN: local
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3895761Z   STACK_DIR: /home/runner/work/_temp/vhive-firecracker-stack
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3896173Z   INSTALL_DIR: /home/runner/work/_temp/vhive-firecracker-install
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3896611Z   VHIVE_CI_EVIDENCE: /home/runner/work/_temp/vhive-legacy-snapshot
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:29.3896952Z ##[endgroup]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.1405472Z From https://github.com/vhive-serverless/firecracker-containerd
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.1406503Z  * branch            b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794 -> FETCH_HEAD
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.2197364Z HEAD is now at b4f8c6c Record Step 2 coverage and retained worker failures
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.3514128Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.3760546Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.3877860Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.3901420Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.3952256Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.4011566Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.4732683Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [767 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.4952770Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [12.6 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.4985820Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [697 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.6085040Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1450 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.6172360Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [315 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.6215417Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1711 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.6279876Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [344 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.6311947Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1883 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.6401615Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [430 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.6442090Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [50.7 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.6456369Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.3 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.7162822Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1195 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.7198396Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [238 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.7696602Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.7754515Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.7781844Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1788 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.7861927Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [411 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.7890365Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [45.4 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:30.7905759Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [12.4 kB]
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:31.8228206Z Fetched 13.2 MB in 1s (9802 kB/s)
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.0996930Z Reading package lists...
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.1397199Z Reading package lists...
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.4124414Z Building dependency tree...
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.4131412Z Reading state information...
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5203804Z curl is already the newest version (8.5.0-2ubuntu10.16).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5204382Z git is already the newest version (1:2.56.0-0ppa1~ubuntu24.04.2).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5204800Z git set to manually installed.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5205155Z rsync is already the newest version (3.2.7-1ubuntu1.5).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5205585Z jq is already the newest version (1.7.1-3ubuntu0.24.04.2).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5206023Z python3 is already the newest version (3.12.3-0ubuntu2.1).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5206465Z pkg-config is already the newest version (1.8.1-2build1).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5206940Z e2fsprogs is already the newest version (1.47.0-2.4~exp1ubuntu4.1).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5207383Z e2fsprogs set to manually installed.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5207784Z squashfs-tools is already the newest version (1:4.6.1-1build1).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5208208Z squashfs-tools set to manually installed.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5208646Z dmsetup is already the newest version (2:1.02.185-3ubuntu3.2).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5209038Z dmsetup set to manually installed.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5209472Z thin-provisioning-tools is already the newest version (0.9.0-2ubuntu5.1).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5209974Z thin-provisioning-tools set to manually installed.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5210963Z iproute2 is already the newest version (6.1.0-1ubuntu6.4).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5211440Z iptables is already the newest version (1.8.10-3ubuntu2).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5211831Z iptables set to manually installed.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5212182Z bc is already the newest version (1.07.1-3ubuntu4).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5212537Z bc set to manually installed.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5212872Z flex is already the newest version (2.6.4-8.2build1).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5213330Z bison is already the newest version (2:3.8.2+dfsg-1ubuntu0.24.04.1).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5213833Z libssl-dev is already the newest version (3.0.13-0ubuntu3.16).
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5214417Z Some packages could not be installed. This may mean that you have
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5215328Z requested an impossible situation or if you are using the unstable
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5216207Z distribution that some required packages have not yet been created
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5216735Z or been moved out of Incoming.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5217188Z The following information may help to resolve the situation:
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5217628Z 
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5217816Z The following packages have unmet dependencies:
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5912517Z  containerd.io : Conflicts: containerd
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5975867Z E: Error, pkgProblemResolver::Resolve generated breaks, this may be caused by held packages.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.5987638Z Firecracker stack setup failed: Command '('bash', 'tools/modernize/prepare-worker.sh')' returned non-zero exit status 100.
+Legacy snapshot continuity (File memory)	Install verified stack and test legacy snapshot continuity	2026-11-13T02:32:33.6084009Z ##[error]Process completed with exit code 1.

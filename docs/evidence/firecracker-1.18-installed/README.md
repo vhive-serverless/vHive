@@ -107,13 +107,21 @@ audit; they were not deleted to obtain acceptance.
 
 Use the exact tested consumer above, Python 3.11+, Go 1.26.11, Linux x86_64
 KVM, passwordless sudo, Docker, and `route` from `net-tools`. Reserve exclusive
-use of this profile's endpoints and global activation paths. The committed
+use of this profile's endpoints and global activation paths. Supply new private
+`STACK_DIR`, `INSTALL_DIR`, `VHIVE_CI_EVIDENCE` directories and a unique
+`FICD_DM_POOL`; a clean source checkout and published pins remain required.
+
+For the current hosted CI sequence (updated after the exact worker run above),
+first run [`scripts/github_runner/prepare_legacy_snapshot.sh`](../../../scripts/github_runner/prepare_legacy_snapshot.sh)
+on the disposable KVM host. It requires usable Docker and buildx, preserves the
+existing Docker installation, installs the remaining build dependencies, and
+verifies the manifest-pinned Go archive. Then run
 [`scripts/github_runner/test_legacy_snapshot.sh`](../../../scripts/github_runner/test_legacy_snapshot.sh)
-provides the fresh-install CI sequence on a disposable KVM host: receipt-backed
-install/activation, shared pool creation, final acceptance, and owned pool
-cleanup. Supply new private `STACK_DIR`, `INSTALL_DIR`, `VHIVE_CI_EVIDENCE`
-directories and a unique `FICD_DM_POOL`; a clean source checkout and published
-pins remain required.
+for receipt-backed installation/activation, shared pool creation, final
+acceptance, and owned pool cleanup. The
+[hosted workflow](../../../.github/workflows/legacy_snapshot_tests.yml) records
+this ordering. The historical worker launcher below remains the exact command
+record for the accepted `da498d75` source.
 
 The executed [worker launcher](passed-21353/local-audit/vhive-installed-consumer-capacity-reuse.prepared.sh)
 is preserved byte-for-byte despite its historical `prepared` filename/comment.
@@ -136,6 +144,14 @@ prefix and [allowlist](passed-21353/local-audit/worker-historical-daemons.exact-
 to that worker and boot, and intentionally fail on another host. For a new
 worker use a fresh installation and owned paths via the committed CI sequence;
 do not copy or relax a historical process allowlist.
+
+## Later hosted acceptance
+
+The [hosted acceptance receipt](../firecracker-1.18-hosted/README.md) records all
+four CI workflows passing at exact `2120fc8a`, including a fresh runtime/kernel/
+rootfs build and the same three VM cases. This earlier receipt retains its
+exact `da498d75` consumer, reused installation and independently inspected
+historical-worker cleanup scope.
 
 ## Published migration handoff
 

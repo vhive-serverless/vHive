@@ -1,0 +1,28 @@
+{
+  "approved": true,
+  "source": "2120fc8a9855b25a19cde15013f2bb581924bc3f",
+  "runtime": "b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "run": 43354889183,
+  "tests": [
+    [
+      "TestPauseSnapResume",
+      "22.73s"
+    ],
+    [
+      "TestSnapshotConcurrentClones",
+      "143.02s"
+    ],
+    [
+      "TestSnapshotSourceMemoryAndDiskIsolation",
+      "78.12s"
+    ]
+  ],
+  "source_hashes_verified": 5,
+  "official_firecracker_jailer_hashes_match": true,
+  "installation_receipts_equal": true,
+  "candidate": false,
+  "pool_removed": true,
+  "fresh_hosted_build": true,
+  "test_binary_sha256": "6317986c84c8659cf419531f6111ace03fe98385365d5c41984c54ddcb21508c",
+  "limits": "Hosted disposable runner cleanup; not independent historical-worker postrun inspection. Prior da498 reused-install acceptance remains separate."
+}

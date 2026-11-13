@@ -1,0 +1,376 @@
+Build setup scripts	Set up job	﻿2026-11-13T02:50:18.8819631Z Current runner version: '2.338.2'
+Build setup scripts	Set up job	2026-11-13T02:50:18.8858265Z ##[group]Runner Image Provisioner
+Build setup scripts	Set up job	2026-11-13T02:50:18.8860112Z Hosted Compute Agent
+Build setup scripts	Set up job	2026-11-13T02:50:18.8861228Z Version: 20261103.629
+Build setup scripts	Set up job	2026-11-13T02:50:18.8862587Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+Build setup scripts	Set up job	2026-11-13T02:50:18.8863947Z Build Date: 2026-11-03T17:26:59Z
+Build setup scripts	Set up job	2026-11-13T02:50:18.8865142Z Worker ID: {eeb73ca8-820e-4838-87a7-b39aa3ed7153}
+Build setup scripts	Set up job	2026-11-13T02:50:18.8866655Z Region: eastus2
+Build setup scripts	Set up job	2026-11-13T02:50:18.8867746Z Cloud: Azure
+Build setup scripts	Set up job	2026-11-13T02:50:18.8868959Z ##[endgroup]
+Build setup scripts	Set up job	2026-11-13T02:50:18.8872048Z ##[group]Operating System
+Build setup scripts	Set up job	2026-11-13T02:50:18.8873293Z Ubuntu
+Build setup scripts	Set up job	2026-11-13T02:50:18.8874337Z 24.04.5
+Build setup scripts	Set up job	2026-11-13T02:50:18.8875246Z LTS
+Build setup scripts	Set up job	2026-11-13T02:50:18.8876411Z ##[endgroup]
+Build setup scripts	Set up job	2026-11-13T02:50:18.8877448Z ##[group]Runner Image
+Build setup scripts	Set up job	2026-11-13T02:50:18.8878683Z Image: ubuntu-24.04
+Build setup scripts	Set up job	2026-11-13T02:50:18.8880220Z Version: 20261111.370.1
+Build setup scripts	Set up job	2026-11-13T02:50:18.8882361Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261111.370/images/ubuntu/Ubuntu2404-Readme.md
+Build setup scripts	Set up job	2026-11-13T02:50:18.8885530Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261111.370
+Build setup scripts	Set up job	2026-11-13T02:50:18.8887469Z ##[endgroup]
+Build setup scripts	Set up job	2026-11-13T02:50:18.8893565Z ##[group]GITHUB_TOKEN Permissions
+Build setup scripts	Set up job	2026-11-13T02:50:18.8897023Z Actions: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8898204Z ArtifactMetadata: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8899293Z Attestations: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8900548Z Checks: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8901624Z CodeQuality: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8902716Z Contents: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8903809Z CopilotRequests: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8904876Z Deployments: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8905792Z Discussions: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8906852Z Drives: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8907903Z Issues: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8909082Z Metadata: read
+Build setup scripts	Set up job	2026-11-13T02:50:18.8910387Z Models: read
+Build setup scripts	Set up job	2026-11-13T02:50:18.8911509Z Packages: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8912462Z Pages: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8913520Z PullRequests: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8914568Z RepositoryProjects: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8915772Z SecurityEvents: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8917041Z Statuses: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8918222Z VulnerabilityAlerts: read
+Build setup scripts	Set up job	2026-11-13T02:50:18.8919408Z ##[endgroup]
+Build setup scripts	Set up job	2026-11-13T02:50:18.8923803Z Secret source: Actions
+Build setup scripts	Set up job	2026-11-13T02:50:18.8925445Z Cache mode: write
+Build setup scripts	Set up job	2026-11-13T02:50:18.8926901Z Prepare workflow directory
+Build setup scripts	Set up job	2026-11-13T02:50:18.9535241Z Prepare all required actions
+Build setup scripts	Set up job	2026-11-13T02:50:18.9609473Z Getting action download info
+Build setup scripts	Set up job	2026-11-13T02:50:19.1304363Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+Build setup scripts	Set up job	2026-11-13T02:50:19.2669493Z Download action repository 'actions/setup-go@v7' (SHA:b7ad1dad31e06c5925ef5d2fc7ad053ef454303e)
+Build setup scripts	Set up job	2026-11-13T02:50:19.5693654Z Complete job name: Build setup scripts
+Build setup scripts	Check out the code	﻿2026-11-13T02:50:19.6609971Z ##[group]Run actions/checkout@v7
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6610934Z with:
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6611422Z   repository: vhive-serverless/vHive
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6615445Z   token: ***
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6615923Z   ssh-strict: true
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6616371Z   ssh-user: git
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6616818Z   persist-credentials: true
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6617313Z   clean: true
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6617758Z   sparse-checkout-cone-mode: true
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6618289Z   fetch-depth: 1
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6618730Z   fetch-tags: false
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6619185Z   show-progress: true
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6619818Z   lfs: false
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6620298Z   submodules: false
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6620773Z   set-safe-directory: true
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6621297Z   allow-unsafe-pr-checkout: false
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6622139Z env:
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6622570Z   GOOS: linux
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6623006Z   GO111MODULE: on
+Build setup scripts	Check out the code	2026-11-13T02:50:19.6623442Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0088274Z Syncing repository: vhive-serverless/vHive
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0091936Z ##[group]Getting Git version info
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0093377Z Working directory is '/home/runner/work/vHive/vHive'
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0095446Z [command]/usr/bin/git version
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0204051Z git version 2.56.1
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0227330Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0239947Z Temporarily overriding HOME='/home/runner/work/_temp/05142963-5791-4d4c-9365-366f22f68f99' before making global git config changes
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0241615Z Adding repository directory to the temporary git global config as a safe directory
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0246649Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/vHive/vHive
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0301055Z Deleting the contents of '/home/runner/work/vHive/vHive'
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0304913Z ##[group]Determining repository object format
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0306438Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0311388Z ##[group]Initializing the repository
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0312194Z [command]/usr/bin/git init /home/runner/work/vHive/vHive
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0443808Z hint: Using 'master' as the name for the initial branch. This default branch name
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0445806Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0447045Z hint: to use in all of your new repositories, which will suppress this warning,
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0447935Z hint: call:
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0448407Z hint:
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0449086Z hint: 	git config --global init.defaultBranch <name>
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0450163Z hint:
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0450896Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0452016Z hint: 'development'. The just-created branch can be renamed via this command:
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0453026Z hint:
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0453522Z hint: 	git branch -m <name>
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0454251Z hint:
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0455526Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0456846Z Initialized empty Git repository in /home/runner/work/vHive/vHive/.git/
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0467335Z [command]/usr/bin/git remote add origin https://github.com/vhive-serverless/vHive
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0529124Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0530774Z ##[group]Disabling automatic garbage collection
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0534181Z [command]/usr/bin/git config --local gc.auto 0
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0572319Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0573231Z ##[group]Setting up auth
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0573886Z Removing SSH command configuration
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0578816Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Build setup scripts	Check out the code	2026-11-13T02:50:20.0619145Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1052765Z Removing HTTP extra header
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1059450Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1094646Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1338650Z Removing includeIf entries pointing to credentials config files
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1340609Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1372828Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1613704Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1657849Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/vHive/vHive/.git.path /home/runner/work/_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1691660Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/vHive/vHive/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1726031Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1761109Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1792217Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1793124Z ##[group]Fetching the repository
+Build setup scripts	Check out the code	2026-11-13T02:50:20.1800316Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +2120fc8a9855b25a19cde15013f2bb581924bc3f:refs/remotes/origin/firecracker-v1.18-containerdv2-integration
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7545881Z From https://github.com/vhive-serverless/vHive
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7550176Z  * [new ref]         2120fc8a9855b25a19cde15013f2bb581924bc3f -> origin/firecracker-v1.18-containerdv2-integration
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7557501Z [command]/usr/bin/git branch --list --remote origin/firecracker-v1.18-containerdv2-integration
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7598578Z   origin/firecracker-v1.18-containerdv2-integration
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7607618Z [command]/usr/bin/git rev-parse refs/remotes/origin/firecracker-v1.18-containerdv2-integration
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7633771Z 2120fc8a9855b25a19cde15013f2bb581924bc3f
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7640002Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7640843Z ##[group]Determining the checkout info
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7641527Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7644667Z [command]/usr/bin/git sparse-checkout disable
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7706457Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7741347Z ##[group]Checking out the ref
+Build setup scripts	Check out the code	2026-11-13T02:50:21.7746286Z [command]/usr/bin/git checkout --progress --force -B firecracker-v1.18-containerdv2-integration refs/remotes/origin/firecracker-v1.18-containerdv2-integration
+Build setup scripts	Check out the code	2026-11-13T02:50:22.9831352Z Updating files:  63% (347/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:22.9832253Z Updating files:  64% (352/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:22.9844933Z Updating files:  65% (358/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:22.9851028Z Updating files:  66% (363/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:22.9853876Z Updating files:  67% (369/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:22.9861755Z Updating files:  68% (374/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:22.9865528Z Updating files:  69% (380/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0310835Z Updating files:  70% (385/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0314836Z Updating files:  71% (391/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0321692Z Updating files:  72% (396/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0324683Z Updating files:  73% (402/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0402227Z Updating files:  74% (407/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0410286Z Updating files:  75% (413/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0417242Z Updating files:  76% (418/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0423846Z Updating files:  77% (424/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0428783Z Updating files:  78% (429/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0433779Z Updating files:  79% (435/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0437774Z Updating files:  80% (440/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0441804Z Updating files:  81% (446/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0445735Z Updating files:  82% (451/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0450878Z Updating files:  83% (457/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0454990Z Updating files:  84% (462/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0458828Z Updating files:  85% (468/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0462688Z Updating files:  86% (473/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0465892Z Updating files:  87% (479/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0469590Z Updating files:  88% (484/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0473635Z Updating files:  89% (490/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0476623Z Updating files:  90% (495/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0480027Z Updating files:  91% (501/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0483176Z Updating files:  92% (506/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0486552Z Updating files:  93% (512/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0490528Z Updating files:  94% (517/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0493679Z Updating files:  95% (523/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0496788Z Updating files:  96% (528/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0501493Z Updating files:  97% (534/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0505421Z Updating files:  98% (539/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0508573Z Updating files:  99% (545/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0509069Z Updating files: 100% (550/550)
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0509527Z Updating files: 100% (550/550), done.
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0539211Z Switched to a new branch 'firecracker-v1.18-containerdv2-integration'
+Build setup scripts	Check out the code	2026-11-13T02:50:23.0547933Z branch 'firecracker-v1.18-containerdv2-integration' set up to track 'origin/firecracker-v1.18-containerdv2-integration'.
+Build setup scripts	Check out the code	2026-11-13T02:50:23.1018181Z ##[endgroup]
+Build setup scripts	Check out the code	2026-11-13T02:50:23.1070237Z [command]/usr/bin/git log -1 --format=%H
+Build setup scripts	Check out the code	2026-11-13T02:50:23.1099338Z 2120fc8a9855b25a19cde15013f2bb581924bc3f
+Build setup scripts	Set up Go version in go.mod file	﻿2026-11-13T02:50:23.1436180Z ##[group]Run actions/setup-go@v7
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1436508Z with:
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1436781Z   go-version-file: /home/runner/work/vHive/vHive/go.mod
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1437161Z   cache-dependency-path: **/go.sum
+Build setup scripts	Set up Go version in go.mod file	**/go.mod
+Build setup scripts	Set up Go version in go.mod file	
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1437474Z   check-latest: false
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1440437Z   token: ***
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1440674Z   cache: true
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1440869Z env:
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1441051Z   GOOS: linux
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1441241Z   GO111MODULE: on
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.1441456Z ##[endgroup]
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.2820708Z Setup go version spec 1.26.11
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.2987966Z Found in cache @ /opt/hostedtoolcache/go/1.26.11/x64
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.2989296Z Added go to the path
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:23.2996530Z Successfully set up Go version 1.26.11
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:24.0877863Z [command]/opt/hostedtoolcache/go/1.26.11/x64/bin/go env GOMODCACHE
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:24.0917276Z [command]/opt/hostedtoolcache/go/1.26.11/x64/bin/go env GOCACHE
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:24.0951583Z /home/runner/go/pkg/mod
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:24.0976989Z /home/runner/.cache/go-build
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:24.2950610Z Cache is not found
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:24.2974438Z go version go1.26.11 linux/amd64
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:24.2974694Z 
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:24.2975016Z ##[group]go env
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0148477Z AR='ar'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0148967Z CC='gcc'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0149391Z CGO_CFLAGS='-O2 -g'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0150053Z CGO_CPPFLAGS=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0150449Z CGO_CXXFLAGS='-O2 -g'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0150869Z CGO_ENABLED='1'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0151262Z CGO_FFLAGS='-O2 -g'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0151622Z CGO_LDFLAGS='-O2 -g'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0151962Z CXX='g++'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0152303Z GCCGO='gccgo'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0152678Z GO111MODULE='on'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0153026Z GOAMD64='v1'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0153368Z GOARCH='amd64'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0153708Z GOAUTH='netrc'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0154045Z GOBIN=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0154404Z GOCACHE='/home/runner/.cache/go-build'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0154935Z GOCACHEPROG=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0155400Z GODEBUG=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0155852Z GOENV='/home/runner/.config/go/env'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0156428Z GOEXE=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0156789Z GOEXPERIMENT=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0157318Z GOFIPS140='off'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0157679Z GOFLAGS=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0158991Z GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build2710766404=/tmp/go-build -gno-record-gcc-switches'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0160732Z GOHOSTARCH='amd64'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0161213Z GOHOSTOS='linux'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0161605Z GOINSECURE=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0162103Z GOMOD='/home/runner/work/vHive/vHive/go.mod'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0162728Z GOMODCACHE='/home/runner/go/pkg/mod'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0163310Z GONOPROXY=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0163755Z GONOSUMDB=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0164222Z GOOS='linux'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0164669Z GOPATH='/home/runner/go'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0165198Z GOPRIVATE=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0165763Z GOPROXY='https://proxy.golang.org,direct'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0166522Z GOROOT='/opt/hostedtoolcache/go/1.26.11/x64'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0167147Z GOSUMDB='sum.golang.org'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0167599Z GOTELEMETRY='local'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0168098Z GOTELEMETRYDIR='/home/runner/.config/go/telemetry'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0168646Z GOTMPDIR=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0169330Z GOTOOLCHAIN='local'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0170180Z GOTOOLDIR='/opt/hostedtoolcache/go/1.26.11/x64/pkg/tool/linux_amd64'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0170892Z GOVCS=''
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0171270Z GOVERSION='go1.26.11'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0171786Z GOWORK='/home/runner/work/vHive/vHive/go.work'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0172329Z PKG_CONFIG='pkg-config'
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0172581Z 
+Build setup scripts	Set up Go version in go.mod file	2026-11-13T02:50:25.0173833Z ##[endgroup]
+Build setup scripts	Validate stack installer	﻿2026-11-13T02:50:25.0313321Z ##[group]Run python3 scripts/firecracker_stack.py validate
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0313825Z [36;1mpython3 scripts/firecracker_stack.py validate[0m
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0314227Z [36;1mpython3 -m unittest discover -s scripts/tests -v[0m
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0340244Z shell: /usr/bin/bash -e {0}
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0340632Z env:
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0340928Z   GOOS: linux
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0341243Z   GO111MODULE: on
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0341580Z   GOTOOLCHAIN: local
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0341933Z ##[endgroup]
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.0804346Z Validated stack manifest; runtime pin ready=True
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2038608Z test_cached_install_prepare_repairs_route_without_rebuilding (test_firecracker_stack.FirecrackerStackTests.test_cached_install_prepare_repairs_route_without_rebuilding) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2092105Z test_incomplete_receipt_cannot_omit_artifacts (test_firecracker_stack.FirecrackerStackTests.test_incomplete_receipt_cannot_omit_artifacts) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2148882Z test_missing_route_prevents_activation_before_side_effects (test_firecracker_stack.FirecrackerStackTests.test_missing_route_prevents_activation_before_side_effects) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2191130Z test_missing_route_stops_legacy_acceptance_before_daemon_or_vm (test_firecracker_stack.FirecrackerStackTests.test_missing_route_stops_legacy_acceptance_before_daemon_or_vm) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2197209Z test_networking_preparation_is_idle_when_route_is_present (test_firecracker_stack.FirecrackerStackTests.test_networking_preparation_is_idle_when_route_is_present) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2205698Z test_networking_preparation_requires_route_after_install (test_firecracker_stack.FirecrackerStackTests.test_networking_preparation_requires_route_after_install) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2211916Z test_networking_provision_failure_stops_preparation (test_firecracker_stack.FirecrackerStackTests.test_networking_provision_failure_stops_preparation) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2230212Z test_pending_pin_cannot_start_installation (test_firecracker_stack.FirecrackerStackTests.test_pending_pin_cannot_start_installation) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2290398Z test_receipt_covers_runtime_guest_and_snapshotter (test_firecracker_stack.FirecrackerStackTests.test_receipt_covers_runtime_guest_and_snapshotter) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2303115Z test_release_and_artifact_paths_are_validated (test_firecracker_stack.FirecrackerStackTests.test_release_and_artifact_paths_are_validated) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2566080Z test_source_lock_must_match_all_selected_inputs (test_firecracker_stack.FirecrackerStackTests.test_source_lock_must_match_all_selected_inputs) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2620099Z test_stale_build_cannot_produce_install_receipt (test_firecracker_stack.FirecrackerStackTests.test_stale_build_cannot_produce_install_receipt) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2678733Z test_tampered_artifact_is_rejected_before_activation (test_firecracker_stack.FirecrackerStackTests.test_tampered_artifact_is_rejected_before_activation) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2790262Z test_actual_sparse_sizes_geometry_and_remove (test_legacy_snapshot_pool.LegacyPoolTests.test_actual_sparse_sizes_geometry_and_remove) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2799271Z test_capacity_plan_keeps_ten_gib_disks_and_three_vms (test_legacy_snapshot_pool.LegacyPoolTests.test_capacity_plan_keeps_ten_gib_disks_and_three_vms) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2809613Z test_existing_loop_refuses_new_claim (test_legacy_snapshot_pool.LegacyPoolTests.test_existing_loop_refuses_new_claim) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2818974Z test_existing_mapper_is_never_reused (test_legacy_snapshot_pool.LegacyPoolTests.test_existing_mapper_is_never_reused) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2832335Z test_existing_path_and_backing_are_never_resized (test_legacy_snapshot_pool.LegacyPoolTests.test_existing_path_and_backing_are_never_resized) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2890537Z test_failed_truncate_still_has_cleanup_ownership (test_legacy_snapshot_pool.LegacyPoolTests.test_failed_truncate_still_has_cleanup_ownership) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2961568Z test_foreign_mapping_reference_prevents_loop_detach (test_legacy_snapshot_pool.LegacyPoolTests.test_foreign_mapping_reference_prevents_loop_detach) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.2975981Z test_insufficient_host_space_refuses_before_backing_claim (test_legacy_snapshot_pool.LegacyPoolTests.test_insufficient_host_space_refuses_before_backing_claim) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3057282Z test_lookalike_snapshot_mapping_is_not_deleted (test_legacy_snapshot_pool.LegacyPoolTests.test_lookalike_snapshot_mapping_is_not_deleted) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3065672Z test_out_of_space_or_insufficient_free_blocks_rejected (test_legacy_snapshot_pool.LegacyPoolTests.test_out_of_space_or_insufficient_free_blocks_rejected) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3134179Z test_partial_create_detaches_only_its_owned_loop (test_legacy_snapshot_pool.LegacyPoolTests.test_partial_create_detaches_only_its_owned_loop) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3143451Z test_profile_change_cannot_silently_shrink_disk (test_legacy_snapshot_pool.LegacyPoolTests.test_profile_change_cannot_silently_shrink_disk) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3214063Z test_replaced_backing_refuses_cleanup (test_legacy_snapshot_pool.LegacyPoolTests.test_replaced_backing_refuses_cleanup) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3235289Z test_symlink_parent_cannot_redirect_creation (test_legacy_snapshot_pool.LegacyPoolTests.test_symlink_parent_cannot_redirect_creation) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3305671Z test_ten_gib_actual_pool_rejected_and_owned_resources_removed (test_legacy_snapshot_pool.LegacyPoolTests.test_ten_gib_actual_pool_rejected_and_owned_resources_removed) ... ok
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3306853Z 
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3307113Z ----------------------------------------------------------------------
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3307614Z Ran 28 tests in 0.136s
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3307809Z 
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3307922Z OK
+Build setup scripts	Validate stack installer	2026-11-13T02:50:25.3308496Z Installed verified stack 1111111111111111111111111111111111111111 at /tmp/tmp1vzyz9p3/install
+Build setup scripts	Build scripts	﻿2026-11-13T02:50:25.3487939Z ##[group]Run pushd scripts && go build -mod=readonly -o setup_tool && popd
+Build setup scripts	Build scripts	2026-11-13T02:50:25.3488510Z [36;1mpushd scripts && go build -mod=readonly -o setup_tool && popd[0m
+Build setup scripts	Build scripts	2026-11-13T02:50:25.3508754Z shell: /usr/bin/bash -e {0}
+Build setup scripts	Build scripts	2026-11-13T02:50:25.3509008Z env:
+Build setup scripts	Build scripts	2026-11-13T02:50:25.3509194Z   GOOS: linux
+Build setup scripts	Build scripts	2026-11-13T02:50:25.3509390Z   GO111MODULE: on
+Build setup scripts	Build scripts	2026-11-13T02:50:25.3509598Z   GOTOOLCHAIN: local
+Build setup scripts	Build scripts	2026-11-13T02:50:25.3509968Z ##[endgroup]
+Build setup scripts	Build scripts	2026-11-13T02:50:25.3553731Z ~/work/vHive/vHive/scripts ~/work/vHive/vHive
+Build setup scripts	Build scripts	2026-11-13T02:50:37.9968568Z ~/work/vHive/vHive
+Build setup scripts	Show scripts help info	﻿2026-11-13T02:50:38.0005104Z ##[group]Run ./scripts/setup_tool -h
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0005469Z [36;1m./scripts/setup_tool -h[0m
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0027867Z shell: /usr/bin/bash -e {0}
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0028288Z env:
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0028492Z   GOOS: linux
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0028694Z   GO111MODULE: on
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0028899Z   GOTOOLCHAIN: local
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0029111Z ##[endgroup]
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0087799Z [34m[02:50:38] [Info] [0m[34mDetected Arch: amd64
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0123297Z [0m[34m[02:50:38] [Info] [0m[34mDetected OS: ubuntu
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0124635Z [0m[34m[02:50:38] [Info] [0m[34mCreating temporary directory >>>>> [0m[32m[02:50:38] [Success] [0m[32m
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0125743Z [0m[34m[02:50:38] [Info] [0m[34mCleaning up temporary directory >>>>> [0m[32m[02:50:38] [Success] [0m[32m
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0126596Z Usage of ./scripts/setup_tool:
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0126902Z   -force-remote
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0127196Z     	Force scripts to use the online repo
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0127534Z   -h	Show help
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0127780Z   -help
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0128229Z     	Show help
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0128435Z   -nftables
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0128867Z     	Use nftables for networking (default: iptables, use --nftables for nftables)
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0129302Z   -setup-configs-dir string
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0130094Z     	Config directory for setting up vHive (left blank to use default configs in vHive repo)
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0130585Z   -vhive-repo-branch string
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0131070Z     	vHive repo branch (valid only when using online repo) (default "main")
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0131816Z   -vhive-repo-dir string
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0132641Z     	vHive repo path (left blank to use online repo automatically) (default ".")
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0133348Z   -vhive-repo-url string
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0133966Z     	vHive repo url (valid only when using online repo) (default "https://github.com/vhive-serverless/vHive.git")
+Build setup scripts	Show scripts help info	2026-11-13T02:50:38.0134527Z [0m
+Build setup scripts	Post Set up Go version in go.mod file	﻿2026-11-13T02:50:38.0230300Z Post job cleanup.
+Build setup scripts	Post Set up Go version in go.mod file	2026-11-13T02:50:38.1460573Z [command]/opt/hostedtoolcache/go/1.26.11/x64/bin/go env GOMODCACHE
+Build setup scripts	Post Set up Go version in go.mod file	2026-11-13T02:50:38.1508246Z [command]/opt/hostedtoolcache/go/1.26.11/x64/bin/go env GOCACHE
+Build setup scripts	Post Set up Go version in go.mod file	2026-11-13T02:50:38.1542975Z /home/runner/go/pkg/mod
+Build setup scripts	Post Set up Go version in go.mod file	2026-11-13T02:50:38.1571583Z /home/runner/.cache/go-build
+Build setup scripts	Post Set up Go version in go.mod file	2026-11-13T02:50:38.1819585Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/vHive/vHive --files-from manifest.txt --use-compress-program zstdmt
+Build setup scripts	Post Set up Go version in go.mod file	2026-11-13T02:50:38.7880577Z Sent 9486808 of 9486808 (100.0%), 28.6 MBs/sec
+Build setup scripts	Post Set up Go version in go.mod file	2026-11-13T02:50:38.9194738Z Cache saved with the key: setup-go-Linux-x64-ubuntu24-go-1.26.11-d6f946d8e6641458ecb26f7c16ec72372c6c4bf4d5f5fba9ccb640de652f0067
+Build setup scripts	Post Check out the code	﻿2026-11-13T02:50:38.9376914Z Post job cleanup.
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0283125Z [command]/usr/bin/git version
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0325038Z git version 2.56.1
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0363626Z Temporarily overriding HOME='/home/runner/work/_temp/d81d16a1-7c51-4fa3-92d6-a4f180d82aa1' before making global git config changes
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0365513Z Adding repository directory to the temporary git global config as a safe directory
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0370384Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/vHive/vHive
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0404646Z Removing SSH command configuration
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0411445Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0451597Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0694019Z Removing HTTP extra header
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0700511Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0741839Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0976563Z Removing includeIf entries pointing to credentials config files
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.0985033Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1013284Z includeif.gitdir:/home/runner/work/vHive/vHive/.git.path
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1014166Z includeif.gitdir:/home/runner/work/vHive/vHive/.git/worktrees/*.path
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1014993Z includeif.gitdir:/github/workspace/.git.path
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1015684Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1023617Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/vHive/vHive/.git.path
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1048594Z /home/runner/work/_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1059215Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/vHive/vHive/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-f4a73e52\-c228\-49b8\-bb7c\-980cbeff67cb\.config
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1100847Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/vHive/vHive/.git/worktrees/*.path
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1126638Z /home/runner/work/_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1136442Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/vHive/vHive/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-f4a73e52\-c228\-49b8\-bb7c\-980cbeff67cb\.config
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1170428Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1194153Z /github/runner_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1202615Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-f4a73e52\-c228\-49b8\-bb7c\-980cbeff67cb\.config
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1236229Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1259374Z /github/runner_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1267408Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-f4a73e52\-c228\-49b8\-bb7c\-980cbeff67cb\.config
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1316310Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Build setup scripts	Post Check out the code	2026-11-13T02:50:39.1566884Z Removing credentials config '/home/runner/work/_temp/git-credentials-f4a73e52-c228-49b8-bb7c-980cbeff67cb.config'
+Build setup scripts	Complete job	﻿2026-11-13T02:50:39.1774650Z Cleaning up orphan processes

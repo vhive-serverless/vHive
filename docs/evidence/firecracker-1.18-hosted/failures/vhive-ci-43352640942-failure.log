@@ -1,0 +1,246 @@
+Unit test (misc)	Build	﻿2026-11-13T02:31:17.6638400Z ##[group]Run go build -mod=readonly -race -v -a ./...
+Unit test (misc)	Build	2026-11-13T02:31:17.6638734Z [36;1mgo build -mod=readonly -race -v -a ./...[0m
+Unit test (misc)	Build	2026-11-13T02:31:17.6656714Z shell: /usr/bin/bash -e {0}
+Unit test (misc)	Build	2026-11-13T02:31:17.6656920Z env:
+Unit test (misc)	Build	2026-11-13T02:31:17.6657081Z   GOOS: linux
+Unit test (misc)	Build	2026-11-13T02:31:17.6657249Z   GO111MODULE: on
+Unit test (misc)	Build	2026-11-13T02:31:17.6657418Z   GOTOOLCHAIN: local
+Unit test (misc)	Build	2026-11-13T02:31:17.6657666Z   pythonLocation: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (misc)	Build	2026-11-13T02:31:17.6658011Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.15.2/x64/lib/pkgconfig
+Unit test (misc)	Build	2026-11-13T02:31:17.6658349Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (misc)	Build	2026-11-13T02:31:17.6658646Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (misc)	Build	2026-11-13T02:31:17.6658944Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (misc)	Build	2026-11-13T02:31:17.6659236Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.15.2/x64/lib
+Unit test (misc)	Build	2026-11-13T02:31:17.6659492Z ##[endgroup]
+Unit test (misc)	Build	2026-11-13T02:31:17.6949126Z go: downloading github.com/google/uuid v1.6.0
+Unit test (misc)	Build	2026-11-13T02:31:17.6951996Z go: downloading github.com/sirupsen/logrus v1.9.4
+Unit test (misc)	Build	2026-11-13T02:31:17.6955558Z go: downloading k8s.io/cri-api v0.36.3
+Unit test (misc)	Build	2026-11-13T02:31:17.6956003Z go: downloading google.golang.org/grpc v1.84.0
+Unit test (misc)	Build	2026-11-13T02:31:17.7437025Z go: downloading github.com/containerd/containerd/v2 v2.3.7
+Unit test (misc)	Build	2026-11-13T02:31:18.0791585Z go: downloading github.com/containerd/errdefs v1.0.0
+Unit test (misc)	Build	2026-11-13T02:31:18.0792406Z go: downloading github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+Unit test (misc)	Build	2026-11-13T02:31:18.0793151Z go: downloading github.com/vhive-serverless/firecracker-containerd v0.0.0-20261113011217-b4f8c6c2f1ec
+Unit test (misc)	Build	2026-11-13T02:31:18.0918012Z go: downloading github.com/go-multierror/multierror v1.0.2
+Unit test (misc)	Build	2026-11-13T02:31:18.1163808Z go: downloading github.com/pkg/errors v0.9.1
+Unit test (misc)	Build	2026-11-13T02:31:18.1266799Z go: downloading google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
+Unit test (misc)	Build	2026-11-13T02:31:18.3097559Z go: downloading github.com/opencontainers/image-spec v1.1.1
+Unit test (misc)	Build	2026-11-13T02:31:18.3098254Z go: downloading github.com/containerd/stargz-snapshotter v0.18.2
+Unit test (misc)	Build	2026-11-13T02:31:18.3328918Z go: downloading gonum.org/v1/gonum v0.17.0
+Unit test (misc)	Build	2026-11-13T02:31:18.3370908Z go: downloading golang.org/x/sys v0.48.0
+Unit test (misc)	Build	2026-11-13T02:31:18.3391061Z go: downloading github.com/golang/protobuf v1.5.4
+Unit test (misc)	Build	2026-11-13T02:31:18.3700727Z go: downloading github.com/montanaflynn/stats v0.12.7
+Unit test (misc)	Build	2026-11-13T02:31:18.4048423Z go: downloading github.com/wcharczuk/go-chart v2.0.1+incompatible
+Unit test (misc)	Build	2026-11-13T02:31:18.5091064Z go: downloading gonum.org/v1/plot v0.17.0
+Unit test (misc)	Build	2026-11-13T02:31:18.7439032Z go: downloading github.com/containerd/log v0.1.0
+Unit test (misc)	Build	2026-11-13T02:31:18.7439856Z go: downloading golang.org/x/sync v0.23.0
+Unit test (misc)	Build	2026-11-13T02:31:18.7470997Z go: downloading golang.org/x/net v0.58.0
+Unit test (misc)	Build	2026-11-13T02:31:18.7536092Z go: downloading github.com/containerd/containerd/api v1.11.1
+Unit test (misc)	Build	2026-11-13T02:31:18.8073178Z go: downloading github.com/containerd/platforms v1.0.0-rc.5
+Unit test (misc)	Build	2026-11-13T02:31:18.8074539Z go: downloading github.com/containerd/errdefs/pkg v0.3.0
+Unit test (misc)	Build	2026-11-13T02:31:18.8074974Z go: downloading github.com/containerd/fifo v1.1.0
+Unit test (misc)	Build	2026-11-13T02:31:18.8168311Z go: downloading github.com/containerd/plugin v1.1.0
+Unit test (misc)	Build	2026-11-13T02:31:18.8184748Z go: downloading github.com/containerd/typeurl/v2 v2.2.3
+Unit test (misc)	Build	2026-11-13T02:31:18.8206217Z go: downloading github.com/moby/sys/signal v0.7.1
+Unit test (misc)	Build	2026-11-13T02:31:18.8252418Z go: downloading github.com/opencontainers/go-digest v1.0.0
+Unit test (misc)	Build	2026-11-13T02:31:18.8325816Z go: downloading github.com/opencontainers/runtime-spec v1.3.0
+Unit test (misc)	Build	2026-11-13T02:31:18.8365384Z go: downloading github.com/containerd/ttrpc v1.2.8
+Unit test (misc)	Build	2026-11-13T02:31:18.8522923Z go: downloading github.com/moby/sys/user v0.4.0
+Unit test (misc)	Build	2026-11-13T02:31:18.8523670Z go: downloading github.com/moby/sys/userns v0.1.0
+Unit test (misc)	Build	2026-11-13T02:31:18.8542226Z go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800
+Unit test (misc)	Build	2026-11-13T02:31:18.8696593Z go: downloading github.com/klauspost/compress v1.18.5
+Unit test (misc)	Build	2026-11-13T02:31:18.8708643Z go: downloading github.com/moby/locker v1.0.1
+Unit test (misc)	Build	2026-11-13T02:31:18.8710024Z go: downloading google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
+Unit test (misc)	Build	2026-11-13T02:31:18.8845426Z go: downloading github.com/google/nftables v0.3.0
+Unit test (misc)	Build	2026-11-13T02:31:18.9084496Z go: downloading github.com/vishvananda/netlink v1.3.1
+Unit test (misc)	Build	2026-11-13T02:31:18.9094058Z go: downloading github.com/vishvananda/netns v0.0.5
+Unit test (misc)	Build	2026-11-13T02:31:18.9191292Z go: downloading github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
+Unit test (misc)	Build	2026-11-13T02:31:18.9399350Z go: downloading golang.org/x/image v0.41.0
+Unit test (misc)	Build	2026-11-13T02:31:19.1596647Z go: downloading github.com/distribution/reference v0.6.0
+Unit test (misc)	Build	2026-11-13T02:31:19.1603112Z go: downloading github.com/containerd/continuity v0.5.0
+Unit test (misc)	Build	2026-11-13T02:31:19.1701973Z go: downloading github.com/moby/sys/mountinfo v0.7.2
+Unit test (misc)	Build	2026-11-13T02:31:19.1845899Z go: downloading go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
+Unit test (misc)	Build	2026-11-13T02:31:19.1846887Z go: downloading go.opentelemetry.io/otel v1.44.0
+Unit test (misc)	Build	2026-11-13T02:31:19.4399510Z go: downloading go.opentelemetry.io/otel/trace v1.44.0
+Unit test (misc)	Build	2026-11-13T02:31:19.4406246Z go: downloading github.com/gogo/protobuf v1.3.2
+Unit test (misc)	Build	2026-11-13T02:31:19.6891970Z go: downloading github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42
+Unit test (misc)	Build	2026-11-13T02:31:19.7207995Z go: downloading codeberg.org/go-fonts/liberation v0.5.0
+Unit test (misc)	Build	2026-11-13T02:31:19.8481084Z go: downloading codeberg.org/go-latex/latex v0.2.0
+Unit test (misc)	Build	2026-11-13T02:31:19.8907290Z go: downloading git.sr.ht/~sbinet/gg v0.7.0
+Unit test (misc)	Build	2026-11-13T02:31:19.8920860Z go: downloading codeberg.org/go-pdf/fpdf v0.11.1
+Unit test (misc)	Build	2026-11-13T02:31:19.8921555Z go: downloading github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
+Unit test (misc)	Build	2026-11-13T02:31:19.9095703Z go: downloading github.com/felixge/httpsnoop v1.1.0
+Unit test (misc)	Build	2026-11-13T02:31:19.9236344Z go: downloading go.opentelemetry.io/otel/metric v1.44.0
+Unit test (misc)	Build	2026-11-13T02:31:19.9414357Z go: downloading github.com/go-logr/logr v1.4.3
+Unit test (misc)	Build	2026-11-13T02:31:19.9727541Z go: downloading github.com/mdlayher/socket v0.5.1
+Unit test (misc)	Build	2026-11-13T02:31:19.9741037Z go: downloading golang.org/x/text v0.41.0
+Unit test (misc)	Build	2026-11-13T02:31:20.3751557Z go: downloading github.com/go-logr/stdr v1.2.2
+Unit test (misc)	Build	2026-11-13T02:31:20.3752133Z go: downloading go.opentelemetry.io/auto/sdk v1.2.1
+Unit test (misc)	Build	2026-11-13T02:31:20.3752586Z go: downloading github.com/cespare/xxhash/v2 v2.3.0
+Unit test (misc)	Build	2026-11-13T02:31:20.5627343Z ##[error]../../../go/pkg/mod/google.golang.org/grpc@v1.84.0/status/status.go:35:2: ambiguous import: found package google.golang.org/genproto/googleapis/rpc/status in multiple modules:
+Unit test (misc)	Build	2026-11-13T02:31:20.5635400Z 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 (/home/runner/go/pkg/mod/google.golang.org/genproto@v0.0.0-20200526211855-cb27e3aa2013/googleapis/rpc/status)
+Unit test (misc)	Build	2026-11-13T02:31:20.5636820Z 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 (/home/runner/go/pkg/mod/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260706201446-f0a921348800/status)
+Unit test (misc)	Build	2026-11-13T02:31:20.5639324Z ##[error]Process completed with exit code 1.
+Unit test (snapshotting)	Build	﻿2026-11-13T02:30:58.1581188Z ##[group]Run go build -mod=readonly -race -v -a ./...
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1581441Z [36;1mgo build -mod=readonly -race -v -a ./...[0m
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1598618Z shell: /usr/bin/bash -e {0}
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1598766Z env:
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1598882Z   GOOS: linux
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1598999Z   GO111MODULE: on
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1599115Z   GOTOOLCHAIN: local
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1599283Z   pythonLocation: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1599525Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.15.2/x64/lib/pkgconfig
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1599760Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1599978Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1600321Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1600536Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.15.2/x64/lib
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1600720Z ##[endgroup]
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1872995Z go: downloading github.com/google/uuid v1.6.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1873933Z go: downloading github.com/sirupsen/logrus v1.9.4
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1876606Z go: downloading k8s.io/cri-api v0.36.3
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.1877209Z go: downloading google.golang.org/grpc v1.84.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.5218839Z go: downloading github.com/containerd/containerd/v2 v2.3.7
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.7706900Z go: downloading github.com/opencontainers/image-spec v1.1.1
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.7716568Z go: downloading github.com/pkg/errors v0.9.1
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.7716825Z go: downloading github.com/containerd/errdefs v1.0.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.7717084Z go: downloading github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.7940288Z go: downloading github.com/vhive-serverless/firecracker-containerd v0.0.0-20261113011217-b4f8c6c2f1ec
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.7940932Z go: downloading github.com/containerd/stargz-snapshotter v0.18.2
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.8805006Z go: downloading github.com/go-multierror/multierror v1.0.2
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.9289563Z go: downloading google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.9696528Z go: downloading golang.org/x/sys v0.48.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.9697307Z go: downloading gonum.org/v1/gonum v0.17.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:58.9773913Z go: downloading github.com/montanaflynn/stats v0.12.7
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.0224502Z go: downloading github.com/golang/protobuf v1.5.4
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.0788301Z go: downloading github.com/wcharczuk/go-chart v2.0.1+incompatible
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.1300781Z go: downloading gonum.org/v1/plot v0.17.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.2684524Z go: downloading github.com/containerd/log v0.1.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.2686088Z go: downloading golang.org/x/sync v0.23.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.2866382Z go: downloading golang.org/x/net v0.58.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.2906101Z go: downloading github.com/containerd/containerd/api v1.11.1
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.3748140Z go: downloading github.com/containerd/platforms v1.0.0-rc.5
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.3748792Z go: downloading github.com/containerd/errdefs/pkg v0.3.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.3749243Z go: downloading github.com/containerd/fifo v1.1.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4057840Z go: downloading github.com/containerd/plugin v1.1.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4095421Z go: downloading github.com/containerd/typeurl/v2 v2.2.3
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4118908Z go: downloading github.com/moby/sys/signal v0.7.1
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4285250Z go: downloading github.com/opencontainers/go-digest v1.0.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4312461Z go: downloading github.com/opencontainers/runtime-spec v1.3.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4527952Z go: downloading github.com/containerd/ttrpc v1.2.8
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4611170Z go: downloading github.com/moby/sys/user v0.4.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4611632Z go: downloading github.com/moby/sys/userns v0.1.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4817126Z go: downloading github.com/klauspost/compress v1.18.5
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4824364Z go: downloading github.com/moby/locker v1.0.1
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4977604Z go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.4997344Z go: downloading github.com/google/nftables v0.3.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.5209579Z go: downloading google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.5320469Z go: downloading github.com/vishvananda/netlink v1.3.1
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.5321044Z go: downloading github.com/vishvananda/netns v0.0.5
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.5563095Z go: downloading github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.5715981Z go: downloading golang.org/x/image v0.41.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.8267320Z go: downloading github.com/distribution/reference v0.6.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.8328209Z go: downloading github.com/containerd/continuity v0.5.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.8503432Z go: downloading github.com/moby/sys/mountinfo v0.7.2
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.8693042Z go: downloading go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
+Unit test (snapshotting)	Build	2026-11-13T02:30:59.8746100Z go: downloading go.opentelemetry.io/otel v1.44.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.1084306Z go: downloading go.opentelemetry.io/otel/trace v1.44.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.1084809Z go: downloading github.com/gogo/protobuf v1.3.2
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.2094534Z go: downloading github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.2403154Z go: downloading codeberg.org/go-fonts/liberation v0.5.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.3681668Z go: downloading codeberg.org/go-latex/latex v0.2.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.4753131Z go: downloading git.sr.ht/~sbinet/gg v0.7.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.4754172Z go: downloading codeberg.org/go-pdf/fpdf v0.11.1
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.4954391Z go: downloading github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.5204165Z go: downloading github.com/felixge/httpsnoop v1.1.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.5474452Z go: downloading go.opentelemetry.io/otel/metric v1.44.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.5575799Z go: downloading github.com/go-logr/logr v1.4.3
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.5953460Z go: downloading github.com/mdlayher/socket v0.5.1
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.6039827Z go: downloading golang.org/x/text v0.41.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.9005980Z go: downloading github.com/go-logr/stdr v1.2.2
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.9006800Z go: downloading go.opentelemetry.io/auto/sdk v1.2.1
+Unit test (snapshotting)	Build	2026-11-13T02:31:00.9007342Z go: downloading github.com/cespare/xxhash/v2 v2.3.0
+Unit test (snapshotting)	Build	2026-11-13T02:31:01.3590774Z ##[error]../../../go/pkg/mod/google.golang.org/grpc@v1.84.0/status/status.go:35:2: ambiguous import: found package google.golang.org/genproto/googleapis/rpc/status in multiple modules:
+Unit test (snapshotting)	Build	2026-11-13T02:31:01.3597701Z 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 (/home/runner/go/pkg/mod/google.golang.org/genproto@v0.0.0-20200526211855-cb27e3aa2013/googleapis/rpc/status)
+Unit test (snapshotting)	Build	2026-11-13T02:31:01.3598945Z 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 (/home/runner/go/pkg/mod/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260706201446-f0a921348800/status)
+Unit test (snapshotting)	Build	2026-11-13T02:31:01.3629801Z ##[error]Process completed with exit code 1.
+Unit test (networking)	Build	﻿2026-11-13T02:31:04.4436312Z ##[group]Run go build -mod=readonly -race -v -a ./...
+Unit test (networking)	Build	2026-11-13T02:31:04.4436737Z [36;1mgo build -mod=readonly -race -v -a ./...[0m
+Unit test (networking)	Build	2026-11-13T02:31:04.4457302Z shell: /usr/bin/bash -e {0}
+Unit test (networking)	Build	2026-11-13T02:31:04.4457557Z env:
+Unit test (networking)	Build	2026-11-13T02:31:04.4457744Z   GOOS: linux
+Unit test (networking)	Build	2026-11-13T02:31:04.4457942Z   GO111MODULE: on
+Unit test (networking)	Build	2026-11-13T02:31:04.4458146Z   GOTOOLCHAIN: local
+Unit test (networking)	Build	2026-11-13T02:31:04.4458441Z   pythonLocation: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (networking)	Build	2026-11-13T02:31:04.4458878Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.15.2/x64/lib/pkgconfig
+Unit test (networking)	Build	2026-11-13T02:31:04.4459314Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (networking)	Build	2026-11-13T02:31:04.4459695Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (networking)	Build	2026-11-13T02:31:04.4460251Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.15.2/x64
+Unit test (networking)	Build	2026-11-13T02:31:04.4460634Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.15.2/x64/lib
+Unit test (networking)	Build	2026-11-13T02:31:04.4460958Z ##[endgroup]
+Unit test (networking)	Build	2026-11-13T02:31:04.4906928Z go: downloading github.com/google/uuid v1.6.0
+Unit test (networking)	Build	2026-11-13T02:31:04.4911521Z go: downloading github.com/sirupsen/logrus v1.9.4
+Unit test (networking)	Build	2026-11-13T02:31:04.4917389Z go: downloading k8s.io/cri-api v0.36.3
+Unit test (networking)	Build	2026-11-13T02:31:04.4918012Z go: downloading google.golang.org/grpc v1.84.0
+Unit test (networking)	Build	2026-11-13T02:31:04.5475606Z go: downloading github.com/containerd/containerd/v2 v2.3.7
+Unit test (networking)	Build	2026-11-13T02:31:04.9284580Z go: downloading github.com/containerd/errdefs v1.0.0
+Unit test (networking)	Build	2026-11-13T02:31:04.9286538Z go: downloading github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+Unit test (networking)	Build	2026-11-13T02:31:04.9287803Z go: downloading github.com/vhive-serverless/firecracker-containerd v0.0.0-20261113011217-b4f8c6c2f1ec
+Unit test (networking)	Build	2026-11-13T02:31:04.9431555Z go: downloading github.com/containerd/stargz-snapshotter v0.18.2
+Unit test (networking)	Build	2026-11-13T02:31:05.0253054Z go: downloading github.com/go-multierror/multierror v1.0.2
+Unit test (networking)	Build	2026-11-13T02:31:05.2021155Z go: downloading github.com/opencontainers/image-spec v1.1.1
+Unit test (networking)	Build	2026-11-13T02:31:05.2239531Z go: downloading github.com/pkg/errors v0.9.1
+Unit test (networking)	Build	2026-11-13T02:31:05.5255132Z go: downloading google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
+Unit test (networking)	Build	2026-11-13T02:31:05.7043522Z go: downloading golang.org/x/sys v0.48.0
+Unit test (networking)	Build	2026-11-13T02:31:05.7047471Z go: downloading gonum.org/v1/gonum v0.17.0
+Unit test (networking)	Build	2026-11-13T02:31:05.7714614Z go: downloading github.com/golang/protobuf v1.5.4
+Unit test (networking)	Build	2026-11-13T02:31:05.8017340Z go: downloading github.com/montanaflynn/stats v0.12.7
+Unit test (networking)	Build	2026-11-13T02:31:05.8405262Z go: downloading github.com/wcharczuk/go-chart v2.0.1+incompatible
+Unit test (networking)	Build	2026-11-13T02:31:05.9181941Z go: downloading gonum.org/v1/plot v0.17.0
+Unit test (networking)	Build	2026-11-13T02:31:06.0507632Z go: downloading github.com/containerd/log v0.1.0
+Unit test (networking)	Build	2026-11-13T02:31:06.0508381Z go: downloading golang.org/x/sync v0.23.0
+Unit test (networking)	Build	2026-11-13T02:31:06.0726233Z go: downloading golang.org/x/net v0.58.0
+Unit test (networking)	Build	2026-11-13T02:31:06.1533016Z go: downloading github.com/containerd/containerd/api v1.11.1
+Unit test (networking)	Build	2026-11-13T02:31:06.2149421Z go: downloading github.com/containerd/errdefs/pkg v0.3.0
+Unit test (networking)	Build	2026-11-13T02:31:06.2150271Z go: downloading github.com/containerd/platforms v1.0.0-rc.5
+Unit test (networking)	Build	2026-11-13T02:31:06.2151071Z go: downloading github.com/containerd/fifo v1.1.0
+Unit test (networking)	Build	2026-11-13T02:31:06.2235134Z go: downloading github.com/containerd/plugin v1.1.0
+Unit test (networking)	Build	2026-11-13T02:31:06.2288010Z go: downloading github.com/containerd/typeurl/v2 v2.2.3
+Unit test (networking)	Build	2026-11-13T02:31:06.2322555Z go: downloading github.com/moby/sys/signal v0.7.1
+Unit test (networking)	Build	2026-11-13T02:31:06.2348820Z go: downloading github.com/opencontainers/go-digest v1.0.0
+Unit test (networking)	Build	2026-11-13T02:31:06.2350151Z go: downloading github.com/opencontainers/runtime-spec v1.3.0
+Unit test (networking)	Build	2026-11-13T02:31:06.2449483Z go: downloading github.com/containerd/ttrpc v1.2.8
+Unit test (networking)	Build	2026-11-13T02:31:06.2528384Z go: downloading github.com/moby/sys/user v0.4.0
+Unit test (networking)	Build	2026-11-13T02:31:06.2553472Z go: downloading github.com/moby/sys/userns v0.1.0
+Unit test (networking)	Build	2026-11-13T02:31:06.2624375Z go: downloading github.com/klauspost/compress v1.18.5
+Unit test (networking)	Build	2026-11-13T02:31:06.2842505Z go: downloading github.com/moby/locker v1.0.1
+Unit test (networking)	Build	2026-11-13T02:31:06.3099901Z go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800
+Unit test (networking)	Build	2026-11-13T02:31:06.3172536Z go: downloading google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
+Unit test (networking)	Build	2026-11-13T02:31:06.3821976Z go: downloading github.com/google/nftables v0.3.0
+Unit test (networking)	Build	2026-11-13T02:31:06.4045873Z go: downloading github.com/vishvananda/netlink v1.3.1
+Unit test (networking)	Build	2026-11-13T02:31:06.4415675Z go: downloading github.com/vishvananda/netns v0.0.5
+Unit test (networking)	Build	2026-11-13T02:31:06.4502017Z go: downloading github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
+Unit test (networking)	Build	2026-11-13T02:31:06.4651383Z go: downloading golang.org/x/image v0.41.0
+Unit test (networking)	Build	2026-11-13T02:31:06.9141644Z go: downloading github.com/distribution/reference v0.6.0
+Unit test (networking)	Build	2026-11-13T02:31:06.9227279Z go: downloading github.com/containerd/continuity v0.5.0
+Unit test (networking)	Build	2026-11-13T02:31:06.9399405Z go: downloading github.com/moby/sys/mountinfo v0.7.2
+Unit test (networking)	Build	2026-11-13T02:31:06.9513709Z go: downloading go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
+Unit test (networking)	Build	2026-11-13T02:31:06.9514305Z go: downloading go.opentelemetry.io/otel v1.44.0
+Unit test (networking)	Build	2026-11-13T02:31:07.2590943Z go: downloading go.opentelemetry.io/otel/trace v1.44.0
+Unit test (networking)	Build	2026-11-13T02:31:07.2591868Z go: downloading github.com/gogo/protobuf v1.3.2
+Unit test (networking)	Build	2026-11-13T02:31:07.4107951Z go: downloading github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42
+Unit test (networking)	Build	2026-11-13T02:31:07.5188442Z go: downloading codeberg.org/go-fonts/liberation v0.5.0
+Unit test (networking)	Build	2026-11-13T02:31:07.6361472Z go: downloading codeberg.org/go-latex/latex v0.2.0
+Unit test (networking)	Build	2026-11-13T02:31:07.6742427Z go: downloading git.sr.ht/~sbinet/gg v0.7.0
+Unit test (networking)	Build	2026-11-13T02:31:07.6744273Z go: downloading codeberg.org/go-pdf/fpdf v0.11.1
+Unit test (networking)	Build	2026-11-13T02:31:07.6851655Z go: downloading github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
+Unit test (networking)	Build	2026-11-13T02:31:07.7251178Z go: downloading github.com/felixge/httpsnoop v1.1.0
+Unit test (networking)	Build	2026-11-13T02:31:07.7329405Z go: downloading go.opentelemetry.io/otel/metric v1.44.0
+Unit test (networking)	Build	2026-11-13T02:31:07.7442658Z go: downloading github.com/go-logr/logr v1.4.3
+Unit test (networking)	Build	2026-11-13T02:31:07.7966927Z go: downloading github.com/mdlayher/socket v0.5.1
+Unit test (networking)	Build	2026-11-13T02:31:07.8000227Z go: downloading golang.org/x/text v0.41.0
+Unit test (networking)	Build	2026-11-13T02:31:08.1718675Z go: downloading github.com/go-logr/stdr v1.2.2
+Unit test (networking)	Build	2026-11-13T02:31:08.1719835Z go: downloading go.opentelemetry.io/auto/sdk v1.2.1
+Unit test (networking)	Build	2026-11-13T02:31:08.1720446Z go: downloading github.com/cespare/xxhash/v2 v2.3.0
+Unit test (networking)	Build	2026-11-13T02:31:08.4921365Z ##[error]../../../go/pkg/mod/google.golang.org/grpc@v1.84.0/status/status.go:35:2: ambiguous import: found package google.golang.org/genproto/googleapis/rpc/status in multiple modules:
+Unit test (networking)	Build	2026-11-13T02:31:08.4933323Z 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 (/home/runner/go/pkg/mod/google.golang.org/genproto@v0.0.0-20200526211855-cb27e3aa2013/googleapis/rpc/status)
+Unit test (networking)	Build	2026-11-13T02:31:08.4935818Z 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 (/home/runner/go/pkg/mod/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260706201446-f0a921348800/status)
+Unit test (networking)	Build	2026-11-13T02:31:08.4942072Z ##[error]Process completed with exit code 1.

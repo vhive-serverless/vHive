@@ -1,0 +1,70 @@
+{
+  "base": "88a779314f8e74e9e94d1cd59627f379ab0d0691",
+  "state": "uncommitted; parent approval required before commit/push",
+  "changed_files": {
+    "go.mod": "54b4ced724d78660609fc8c1a016d5ffb9781abeacde223fd1fecb4162cff9a1",
+    "go.sum": "c941cefdd1304e3143ae1b20fead2fce51c9c3634b74f482922bc8af9f22eaa5",
+    "go.work.sum": "31c36b19b17c25fa214985c1fef8c5bb37d682fbadcc099ff56a6586595fceda"
+  },
+  "sum_changes": {
+    "go.sum": {
+      "added": 856,
+      "removed": 7,
+      "added_module_metadata": 856,
+      "added_module_archives": 0
+    },
+    "go.work.sum": {
+      "added": 1,
+      "removed": 60,
+      "added_module_metadata": 0,
+      "added_module_archives": 1
+    }
+  },
+  "checks": {
+    "fresh_before_workspace_build": "FAIL ambiguous import; workspace-clean-before-result.json",
+    "same_isolated_cache_after_workspace_race_build": {
+      "exit": 0,
+      "session": 16129,
+      "reported_by": "parent /root",
+      "log": "root-clean-workspace-after.log"
+    },
+    "standalone_closure": {
+      "equal": true,
+      "packages": 663,
+      "changed": []
+    },
+    "root_tidy_diff": 0,
+    "workspace_sync": {
+      "exit": 0,
+      "root_files_changed": false,
+      "unrelated_child_delta_archived_and_restored": "work-sync-child-delta.patch"
+    },
+    "focused_workspace_race": {
+      "exit": 0,
+      "session": 41490
+    },
+    "workspace_lint": {
+      "exit": 0,
+      "session": 36866,
+      "issues": 0
+    },
+    "module_verify": 0
+  },
+  "genproto_replacement": {
+    "version": "v0.0.0-20230526161137-0005af68ea54",
+    "origin": {
+      "VCS": "git",
+      "URL": "https://github.com/googleapis/go-genproto",
+      "Hash": "0005af68ea5476a8b99ce94ab83ae4aaac864963"
+    },
+    "rpc_directory_exists": false
+  },
+  "rpc_provider": {
+    "path": "google.golang.org/genproto/googleapis/rpc",
+    "version": "v0.0.0-20260706201446-f0a921348800",
+    "dir": "/home/jyp/go/pkg/mod/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260706201446-f0a921348800/status"
+  },
+  "runtime_and_sdk_pins_unchanged": true,
+  "worker_or_vm_actions": false,
+  "commit_or_push_performed": false
+}

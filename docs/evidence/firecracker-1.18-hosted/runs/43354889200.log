@@ -1,0 +1,984 @@
+Build and check code quality (1.26.11)	Set up job	﻿2026-11-13T02:50:20.0302402Z Current runner version: '2.338.2'
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0320898Z ##[group]Runner Image Provisioner
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0322020Z Hosted Compute Agent
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0322486Z Version: 20261103.629
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0322933Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0323486Z Build Date: 2026-11-03T17:26:59Z
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0323979Z Worker ID: {f6c5d745-8fde-4c41-a809-a9add9d973a1}
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0324499Z Region: us-west-2
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0324942Z Cloud: AWS
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0325319Z ##[endgroup]
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0326518Z ##[group]Operating System
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0327030Z Ubuntu
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0327573Z 24.04.5
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0327947Z LTS
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0328312Z ##[endgroup]
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0328705Z ##[group]Runner Image
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0329128Z Image: ubuntu-24.04
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0329512Z Version: 20261111.127.1
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0330331Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261111.127/images/ubuntu/Ubuntu2404-Readme.md
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0331864Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261111.127
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0332555Z ##[endgroup]
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0334793Z ##[group]GITHUB_TOKEN Permissions
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0336748Z Actions: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0337179Z ArtifactMetadata: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0337617Z Attestations: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0338090Z Checks: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0338496Z CodeQuality: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0338891Z Contents: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0339274Z CopilotRequests: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0339709Z Deployments: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0340149Z Discussions: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0340551Z Drives: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0340930Z Issues: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0341605Z Metadata: read
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0342031Z Models: read
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0342435Z Packages: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0342884Z Pages: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0343277Z PullRequests: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0343689Z RepositoryProjects: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0344179Z SecurityEvents: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0344603Z Statuses: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0345003Z VulnerabilityAlerts: read
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0345435Z ##[endgroup]
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0347105Z Secret source: Actions
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0347785Z Cache mode: write
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0348458Z Prepare workflow directory
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0611987Z Prepare all required actions
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.0648404Z Getting action download info
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:20.4385214Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:22.5661560Z Download action repository 'actions/setup-go@v7' (SHA:b7ad1dad31e06c5925ef5d2fc7ad053ef454303e)
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:22.9406842Z Download action repository 'golangci/golangci-lint-action@v9.3.0' (SHA:ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a)
+Build and check code quality (1.26.11)	Set up job	2026-11-13T02:50:23.3831309Z Complete job name: Build and check code quality (1.26.11)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	﻿2026-11-13T02:50:23.4358165Z ##[group]Run actions/checkout@v7
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4358710Z with:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4359069Z   fetch-depth: 21
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4359360Z   repository: vhive-serverless/vHive
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4362097Z   token: ***
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4362383Z   ssh-strict: true
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4362694Z   ssh-user: git
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4362998Z   persist-credentials: true
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4363284Z   clean: true
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4363543Z   sparse-checkout-cone-mode: true
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4363865Z   fetch-tags: false
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4364134Z   show-progress: true
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4364468Z   lfs: false
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4364719Z   submodules: false
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4364975Z   set-safe-directory: true
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4365293Z   allow-unsafe-pr-checkout: false
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4365729Z env:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4365992Z   GOOS: linux
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4366255Z   GO111MODULE: on
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:23.4366508Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:26.9168113Z Syncing repository: vhive-serverless/vHive
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:26.9169547Z ##[group]Getting Git version info
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:26.9169827Z Working directory is '/home/runner/work/vHive/vHive'
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:26.9170234Z [command]/usr/bin/git version
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.1971937Z git version 2.56.1
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.1987066Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.1995682Z Temporarily overriding HOME='/home/runner/work/_temp/14e495fd-32c2-4c7c-9703-2ab3b973bc68' before making global git config changes
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.1996572Z Adding repository directory to the temporary git global config as a safe directory
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2000380Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/vHive/vHive
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2049797Z Deleting the contents of '/home/runner/work/vHive/vHive'
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2052065Z ##[group]Determining repository object format
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2053345Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2053779Z ##[group]Initializing the repository
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2056924Z [command]/usr/bin/git init /home/runner/work/vHive/vHive
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2868939Z hint: Using 'master' as the name for the initial branch. This default branch name
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2869449Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2869917Z hint: to use in all of your new repositories, which will suppress this warning,
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2870225Z hint: call:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2870508Z hint:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2870779Z hint: 	git config --global init.defaultBranch <name>
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2871011Z hint:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2871386Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2871762Z hint: 'development'. The just-created branch can be renamed via this command:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2872038Z hint:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2872201Z hint: 	git branch -m <name>
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2872386Z hint:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2872627Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2879030Z Initialized empty Git repository in /home/runner/work/vHive/vHive/.git/
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2892274Z [command]/usr/bin/git remote add origin https://github.com/vhive-serverless/vHive
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2941535Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2941992Z ##[group]Disabling automatic garbage collection
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2944041Z [command]/usr/bin/git config --local gc.auto 0
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2964711Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2965084Z ##[group]Setting up auth
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2965340Z Removing SSH command configuration
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2968771Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.2995377Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7382344Z Removing HTTP extra header
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7387888Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7416419Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7565800Z Removing includeIf entries pointing to credentials config files
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7572817Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7600953Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7747560Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7774558Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/vHive/vHive/.git.path /home/runner/work/_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7794756Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/vHive/vHive/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7815755Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7835275Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7853447Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7853767Z ##[group]Fetching the repository
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:27.7858232Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=21 origin +2120fc8a9855b25a19cde15013f2bb581924bc3f:refs/remotes/origin/firecracker-v1.18-containerdv2-integration
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2714359Z From https://github.com/vhive-serverless/vHive
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2715042Z  * [new ref]         2120fc8a9855b25a19cde15013f2bb581924bc3f -> origin/firecracker-v1.18-containerdv2-integration
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2723245Z [command]/usr/bin/git branch --list --remote origin/firecracker-v1.18-containerdv2-integration
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2759787Z   origin/firecracker-v1.18-containerdv2-integration
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2766185Z [command]/usr/bin/git rev-parse refs/remotes/origin/firecracker-v1.18-containerdv2-integration
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2784642Z 2120fc8a9855b25a19cde15013f2bb581924bc3f
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2786809Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2787220Z ##[group]Determining the checkout info
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2787845Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2811762Z [command]/usr/bin/git sparse-checkout disable
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2852429Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2873285Z ##[group]Checking out the ref
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:30.2877517Z [command]/usr/bin/git checkout --progress --force -B firecracker-v1.18-containerdv2-integration refs/remotes/origin/firecracker-v1.18-containerdv2-integration
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.3084119Z Updating files:  60% (330/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.3859660Z Updating files:  61% (336/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.6258025Z Updating files:  62% (341/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.6649204Z Updating files:  63% (347/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.6649745Z Updating files:  64% (352/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.6659170Z Updating files:  65% (358/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.6662418Z Updating files:  66% (363/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.6663772Z Updating files:  67% (369/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.6667283Z Updating files:  68% (374/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.6668648Z Updating files:  69% (380/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7145808Z Updating files:  70% (385/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7154859Z Updating files:  71% (391/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7155277Z Updating files:  72% (396/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7155563Z Updating files:  73% (402/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7216321Z Updating files:  74% (407/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7218913Z Updating files:  75% (413/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7221868Z Updating files:  76% (418/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7224062Z Updating files:  77% (424/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7225955Z Updating files:  78% (429/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7228682Z Updating files:  79% (435/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7230897Z Updating files:  80% (440/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7232178Z Updating files:  81% (446/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7234176Z Updating files:  82% (451/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7236127Z Updating files:  83% (457/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7238742Z Updating files:  84% (462/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7240657Z Updating files:  85% (468/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7242438Z Updating files:  86% (473/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7243681Z Updating files:  87% (479/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7247049Z Updating files:  88% (484/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7247374Z Updating files:  89% (490/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7248105Z Updating files:  90% (495/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7249664Z Updating files:  91% (501/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7250849Z Updating files:  92% (506/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7252391Z Updating files:  93% (512/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7254125Z Updating files:  94% (517/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7255707Z Updating files:  95% (523/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7256961Z Updating files:  96% (528/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7258786Z Updating files:  97% (534/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7260729Z Updating files:  98% (539/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7262597Z Updating files:  99% (545/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7262785Z Updating files: 100% (550/550)
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7262977Z Updating files: 100% (550/550), done.
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7331755Z Switched to a new branch 'firecracker-v1.18-containerdv2-integration'
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7344123Z branch 'firecracker-v1.18-containerdv2-integration' set up to track 'origin/firecracker-v1.18-containerdv2-integration'.
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7622264Z ##[endgroup]
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7624815Z [command]/usr/bin/git log -1 --format=%H
+Build and check code quality (1.26.11)	Check out code into the Go module directory	2026-11-13T02:50:31.7642513Z 2120fc8a9855b25a19cde15013f2bb581924bc3f
+Build and check code quality (1.26.11)	Set up Go 1.26.11	﻿2026-11-13T02:50:31.7875515Z ##[group]Run actions/setup-go@v7
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7875722Z with:
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7875882Z   go-version: 1.26.11
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7876050Z   check-latest: false
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7877954Z   token: ***
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7878107Z   cache: true
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7878262Z env:
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7878402Z   GOOS: linux
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7878546Z   GO111MODULE: on
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.7878701Z ##[endgroup]
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:31.8794398Z Setup go version spec 1.26.11
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:32.0357524Z Found in cache @ /opt/hostedtoolcache/go/1.26.11/x64
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:32.0358094Z Added go to the path
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:32.0361539Z Successfully set up Go version 1.26.11
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:32.9632337Z [command]/opt/hostedtoolcache/go/1.26.11/x64/bin/go env GOMODCACHE
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:32.9662964Z [command]/opt/hostedtoolcache/go/1.26.11/x64/bin/go env GOCACHE
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:32.9676865Z /home/runner/go/pkg/mod
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:32.9689791Z /home/runner/.cache/go-build
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:33.3390377Z Cache is not found
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:33.3409771Z go version go1.26.11 linux/amd64
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:33.3409974Z 
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:33.3410241Z ##[group]go env
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9412976Z AR='ar'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9413263Z CC='gcc'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9413500Z CGO_CFLAGS='-O2 -g'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9413738Z CGO_CPPFLAGS=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9413941Z CGO_CXXFLAGS='-O2 -g'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9414160Z CGO_ENABLED='1'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9414361Z CGO_FFLAGS='-O2 -g'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9414573Z CGO_LDFLAGS='-O2 -g'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9414781Z CXX='g++'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9414951Z GCCGO='gccgo'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9415110Z GO111MODULE='on'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9415303Z GOAMD64='v1'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9415496Z GOARCH='amd64'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9415690Z GOAUTH='netrc'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9415874Z GOBIN=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9416090Z GOCACHE='/home/runner/.cache/go-build'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9416342Z GOCACHEPROG=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9416532Z GODEBUG=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9416723Z GOENV='/home/runner/.config/go/env'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9417017Z GOEXE=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9417196Z GOEXPERIMENT=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9417390Z GOFIPS140='off'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9417585Z GOFLAGS=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9418211Z GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build3261489629=/tmp/go-build -gno-record-gcc-switches'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9418690Z GOHOSTARCH='amd64'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9418856Z GOHOSTOS='linux'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9419026Z GOINSECURE=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9419261Z GOMOD='/home/runner/work/vHive/vHive/go.mod'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9419500Z GOMODCACHE='/home/runner/go/pkg/mod'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9419701Z GONOPROXY=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9419852Z GONOSUMDB=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9420001Z GOOS='linux'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9420204Z GOPATH='/home/runner/go'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9420378Z GOPRIVATE=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9420637Z GOPROXY='https://proxy.golang.org,direct'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9420882Z GOROOT='/opt/hostedtoolcache/go/1.26.11/x64'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9421540Z GOSUMDB='sum.golang.org'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9421729Z GOTELEMETRY='local'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9421932Z GOTELEMETRYDIR='/home/runner/.config/go/telemetry'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9422155Z GOTMPDIR=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9422311Z GOTOOLCHAIN='local'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9422556Z GOTOOLDIR='/opt/hostedtoolcache/go/1.26.11/x64/pkg/tool/linux_amd64'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9422825Z GOVCS=''
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9422981Z GOVERSION='go1.26.11'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9423305Z GOWORK='/home/runner/work/vHive/vHive/go.work'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9423634Z PKG_CONFIG='pkg-config'
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9423768Z 
+Build and check code quality (1.26.11)	Set up Go 1.26.11	2026-11-13T02:50:34.9424258Z ##[endgroup]
+Build and check code quality (1.26.11)	Check code	﻿2026-11-13T02:50:34.9548768Z ##[group]Run golangci/golangci-lint-action@v9.3.0
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9549016Z with:
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9549330Z   args: --timeout 5m
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9549534Z   install-mode: binary
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9549710Z   install-only: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9551834Z   github-token: ***
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9552007Z   verify: true
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9552185Z   only-new-issues: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9552367Z   skip-cache: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9552533Z   skip-save-cache: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9552720Z   cache-invalidation-interval: 7
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9552920Z   problem-matchers: false
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9553092Z env:
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9553235Z   GOOS: linux
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9553385Z   GO111MODULE: on
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9553551Z   GOTOOLCHAIN: local
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:34.9553712Z ##[endgroup]
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:35.0640883Z ##[group]Restore cache
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:35.0650010Z Checking for go.mod: go.mod
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:35.3782900Z Cache hit for restore-key: golangci-lint.cache-Linux-2967-80d84a076c4e39f9c012e8ac92e3592c17206b27
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6054162Z Received 578107 of 578107 (100.0%), 0.7 MBs/sec
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6054624Z Cache Size: ~1 MB (578107 B)
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6074670Z [command]/usr/bin/tar -xf /home/runner/work/_temp/de32603d-84bf-4636-8f38-92a3b85f223f/cache.tzst -P -C /home/runner/work/vHive/vHive --use-compress-program unzstd
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6527410Z Cache restored successfully
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6530706Z Restored cache for golangci-lint from key 'golangci-lint.cache-Linux-2967-eb8e65029c0cd4fc1157042da6c7c0ce1a7db8d0' in 1589ms
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6531712Z ##[endgroup]
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6532007Z ##[group]Install
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6533316Z Finding needed golangci-lint version...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6866765Z Requested golangci-lint 'latest', using 'v2.15.0', calculation took 33ms
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6867210Z Installation mode: binary
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6867485Z Installing golangci-lint binary v2.15.0...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:36.6868006Z Downloading binary https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz ...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:37.3474807Z [command]/usr/bin/tar xz --overwrite --warning=no-unknown-keyword --overwrite -C /home/runner -f /home/runner/work/_temp/6ec29a6f-ded7-4b54-a80f-cffde665a571
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:37.5831867Z Installed golangci-lint into /home/runner/golangci-lint-2.15.0-linux-amd64/golangci-lint in 896ms
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:37.5834970Z ##[endgroup]
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:37.5837982Z ##[group]run golangci-lint
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:37.5842140Z Running [/home/runner/golangci-lint-2.15.0-linux-amd64/golangci-lint config path] in [/home/runner/work/vHive/vHive] ...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:37.6429688Z Running [/home/runner/golangci-lint-2.15.0-linux-amd64/golangci-lint config verify] in [/home/runner/work/vHive/vHive] ...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:50:37.7134364Z Running [/home/runner/golangci-lint-2.15.0-linux-amd64/golangci-lint run  --timeout 5m] in [/home/runner/work/vHive/vHive] ...
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:51:17.6292882Z 0 issues.
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:51:17.6293102Z 
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:51:17.6293213Z golangci-lint found no issues
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:51:17.6293457Z Ran golangci-lint in 39916ms
+Build and check code quality (1.26.11)	Check code	2026-11-13T02:51:17.6294183Z ##[endgroup]
+Build and check code quality (1.26.11)	Verify dependencies	﻿2026-11-13T02:51:17.6406060Z ##[group]Run go mod verify
+Build and check code quality (1.26.11)	Verify dependencies	2026-11-13T02:51:17.6406391Z [36;1mgo mod verify[0m
+Build and check code quality (1.26.11)	Verify dependencies	2026-11-13T02:51:17.9105349Z shell: /usr/bin/bash -e {0}
+Build and check code quality (1.26.11)	Verify dependencies	2026-11-13T02:51:17.9105755Z env:
+Build and check code quality (1.26.11)	Verify dependencies	2026-11-13T02:51:17.9105921Z   GOOS: linux
+Build and check code quality (1.26.11)	Verify dependencies	2026-11-13T02:51:17.9106082Z   GO111MODULE: on
+Build and check code quality (1.26.11)	Verify dependencies	2026-11-13T02:51:17.9106251Z   GOTOOLCHAIN: local
+Build and check code quality (1.26.11)	Verify dependencies	2026-11-13T02:51:17.9106426Z ##[endgroup]
+Build and check code quality (1.26.11)	Verify dependencies	2026-11-13T02:51:18.5541589Z all modules verified
+Build and check code quality (1.26.11)	Build	﻿2026-11-13T02:51:18.5577406Z ##[group]Run go build -mod=readonly -race -v -a ./...
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.5577749Z [36;1mgo build -mod=readonly -race -v -a ./...[0m
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.5603053Z shell: /usr/bin/bash -e {0}
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.5603291Z env:
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.5603450Z   GOOS: linux
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.5603661Z   GO111MODULE: on
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.5603839Z   GOTOOLCHAIN: local
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.5604006Z ##[endgroup]
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9524534Z internal/goarch
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9528922Z internal/unsafeheader
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9550609Z internal/byteorder
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9564232Z internal/cpu
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9575285Z internal/coverage/rtcov
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9597792Z internal/abi
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9716711Z internal/godebugs
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9744687Z internal/goexperiment
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9785301Z internal/goos
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9813917Z internal/profilerecord
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9872021Z internal/runtime/atomic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:18.9896084Z internal/runtime/syscall/linux
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0044667Z internal/bytealg
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0105584Z internal/chacha8rand
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0387306Z math/bits
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0453048Z internal/runtime/exithook
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0453779Z internal/runtime/gc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0558912Z internal/runtime/sys
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0708579Z internal/asan
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0722660Z internal/strconv
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0771877Z internal/runtime/gc/scan
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0782873Z internal/msan
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0862164Z internal/runtime/math
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.0970986Z internal/runtime/pprof/label
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1062084Z internal/stringslite
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1251308Z internal/trace/tracev2
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1390366Z sync/atomic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1453882Z cmp
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1526841Z encoding
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1691828Z math
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1875158Z internal/race
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1886021Z internal/synctest
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.1990480Z internal/runtime/maps
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.2043369Z internal/sync
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.2156942Z internal/runtime/cgroup
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.2331909Z unicode/utf8
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.2682727Z unicode
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.2864212Z unicode/utf16
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.3026438Z log/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.3098145Z internal/nettrace
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.3187730Z container/list
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.3637994Z crypto/internal/fips140/alias
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.3790910Z crypto/internal/fips140deps/byteorder
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.3923062Z crypto/internal/fips140deps/cpu
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4032630Z crypto/internal/constanttime
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4165516Z crypto/internal/fips140/subtle
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4216048Z crypto/internal/boring/sig
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4262304Z vendor/golang.org/x/crypto/cryptobyte/asn1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4369800Z runtime
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4371426Z vendor/golang.org/x/crypto/internal/alias
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4379757Z google.golang.org/protobuf/internal/flags
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4400033Z crypto/subtle
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4475974Z google.golang.org/grpc/serviceconfig
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4497985Z google.golang.org/protobuf/internal/set
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4556095Z google.golang.org/grpc/encoding/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4610009Z google.golang.org/grpc/internal/transport/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4635639Z github.com/containerd/containerd/v2/defaults
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4700982Z github.com/klauspost/compress
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4703037Z github.com/klauspost/compress/internal/cpuinfo
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4862998Z github.com/klauspost/compress/internal/le
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4892133Z log/slog/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4941736Z go.opentelemetry.io/otel/trace/embedded
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4961466Z go.opentelemetry.io/otel/metric/embedded
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.4976391Z github.com/containerd/containerd/v2/plugins/services
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.5056638Z github.com/opencontainers/runtime-spec/specs-go/features
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.5057493Z github.com/containerd/stargz-snapshotter/fs/config
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.5137760Z gonum.org/v1/gonum/internal/asm/f64
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.5139935Z gonum.org/v1/gonum/blas
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.5196611Z math/cmplx
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.5921629Z gonum.org/v1/gonum/internal/asm/c128
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.6405234Z gonum.org/v1/gonum/internal/math32
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.6731929Z gonum.org/v1/gonum/internal/cmplx64
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.6890343Z gonum.org/v1/gonum/internal/asm/c64
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.6973521Z gonum.org/v1/gonum/internal/asm/f32
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.7018185Z gonum.org/v1/gonum/lapack
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.7320653Z runtime/race/internal/amd64v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.7391918Z image/color
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.7491652Z golang.org/x/image/math/f64
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.7672711Z github.com/wcharczuk/go-chart/roboto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.7786586Z golang.org/x/text/encoding/internal/identifier
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.7858269Z codeberg.org/go-latex/latex/font
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.7905997Z golang.org/x/image/font/gofont/gobold
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:19.8011624Z golang.org/x/image/font/gofont/gobolditalic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:20.1172204Z golang.org/x/image/font/gofont/goitalic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:20.2020500Z golang.org/x/image/font/gofont/goregular
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:20.4462585Z image/color/palette
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.4037002Z iter
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.4037586Z weak
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.4038357Z sync
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.4048981Z internal/reflectlite
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.4131463Z github.com/containerd/containerd/v2/version
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.4186202Z slices
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.4244430Z maps
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.5061102Z errors
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.5061727Z sort
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.5156836Z internal/bisect
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.5167516Z internal/testlog
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.5360660Z unique
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.5377341Z internal/oserror
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.5501632Z syscall
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.5924031Z internal/godebug
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.6340939Z strconv
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.7048887Z io
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.7195700Z reflect
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.7205436Z path
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.7748777Z net/netip
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:22.8112201Z strings
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.0152231Z bytes
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.0526437Z time
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.1786712Z internal/syscall/unix
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.1993470Z internal/syscall/execenv
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.2131740Z bufio
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.2362122Z encoding/base64
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.3081858Z hash
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.3261749Z hash/crc32
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.3471857Z html
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.3800648Z regexp/syntax
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.4023374Z vendor/golang.org/x/net/dns/dnsmessage
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.5139334Z context
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.6033045Z io/fs
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.7439293Z internal/filepathlite
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.7612556Z internal/fmtsort
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.7690660Z internal/poll
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.7870501Z encoding/binary
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.7957250Z regexp
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:23.8312708Z internal/singleflight
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.0271938Z os
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.0548099Z golang.org/x/sys/unix
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.1721475Z crypto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.1951302Z crypto/internal/fips140deps/godebug
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.2143992Z crypto/internal/fips140
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.2270998Z runtime/cgo
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.2495075Z crypto/internal/impl
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.2665541Z crypto/internal/fips140/sha256
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.3326371Z crypto/internal/fips140/sha3
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.3671124Z crypto/internal/fips140/sha512
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.4216345Z crypto/internal/fips140deps/time
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.4416036Z crypto/internal/entropy/v1.0.0
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.4477088Z crypto/internal/fips140/hmac
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.4778746Z math/rand/v2
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.4805590Z crypto/internal/fips140/check
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.5035350Z crypto/internal/fips140/aes
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.5401924Z crypto/fips140
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.5601841Z crypto/internal/randutil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.5904854Z math/rand
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.6081808Z crypto/internal/fips140/nistec/fiat
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.6703958Z fmt
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:24.6861426Z path/filepath
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.0403455Z crypto/internal/sysrand
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.0442603Z crypto/internal/fips140/nistec
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.1350169Z flag
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.1360309Z encoding/json
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.1379445Z log
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.2372089Z github.com/pkg/errors
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.2995864Z compress/flate
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.3308990Z golang.org/x/net/internal/timeseries
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.4038922Z net/url
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.5186378Z text/template/parse
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.5521975Z compress/gzip
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.5827930Z net
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.6032389Z crypto/internal/fips140/drbg
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.6553618Z crypto/internal/fips140/aes/gcm
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.7499100Z crypto/internal/fips140only
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.7693269Z crypto/cipher
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.7872143Z github.com/sirupsen/logrus
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.8705150Z crypto/internal/boring
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.8912014Z text/template
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.8982770Z crypto/internal/rand
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:25.9199807Z math/big
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.0811944Z github.com/containerd/log
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.1096242Z crypto/aes
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.1216647Z crypto/des
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.1691691Z crypto/internal/fips140/ecdh
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.2085878Z crypto/internal/fips140/edwards25519/field
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.2833096Z crypto/ecdh
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.3542153Z html/template
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.3962142Z crypto/internal/fips140/bigmod
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.5342733Z crypto/internal/fips140/ecdsa
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.6452277Z crypto/internal/fips140cache
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.6659697Z crypto/sha3
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.6852013Z crypto/rand
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.7142235Z crypto/elliptic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.7171997Z crypto/internal/boring/bbig
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.7472617Z crypto/internal/fips140hash
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.7581800Z crypto/sha512
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.7767457Z internal/saferio
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.7985555Z encoding/asn1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.8179306Z crypto/internal/fips140/edwards25519
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.8726944Z crypto/internal/fips140/hkdf
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.8927121Z crypto/hkdf
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.9047284Z crypto/hmac
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.9359899Z crypto/internal/fips140/mlkem
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:26.9546133Z crypto/internal/fips140/ed25519
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.0021887Z crypto/ed25519
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.0586673Z crypto/sha256
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.0836856Z vendor/golang.org/x/crypto/chacha20
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.0900267Z crypto/mlkem
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.0905011Z vendor/golang.org/x/crypto/cryptobyte
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.1171067Z vendor/golang.org/x/crypto/internal/poly1305
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.1482405Z vendor/golang.org/x/sys/cpu
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.1528491Z crypto/internal/fips140/tls12
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.1741965Z crypto/internal/fips140/tls13
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.1803304Z crypto/md5
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.2134921Z vendor/golang.org/x/crypto/chacha20poly1305
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.2173213Z crypto/rc4
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.2332195Z crypto/internal/fips140/rsa
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.2416363Z crypto/sha1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.3008562Z crypto/ecdsa
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.3073847Z crypto/tls/internal/fips140tls
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.3096752Z crypto/hpke
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.3151023Z crypto/dsa
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.3546238Z encoding/hex
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.4123301Z crypto/x509/pkix
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.4564924Z crypto/rsa
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.4626424Z encoding/pem
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.5022052Z vendor/golang.org/x/text/transform
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.5500777Z vendor/golang.org/x/text/unicode/bidi
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.5703411Z vendor/golang.org/x/text/unicode/norm
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.6127691Z net/textproto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.7170731Z vendor/golang.org/x/net/http2/hpack
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.7640282Z vendor/golang.org/x/text/secure/bidirule
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.7921832Z mime
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.8089487Z crypto/x509
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.8480094Z mime/quotedprintable
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.8882399Z net/http/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.9352649Z net/http/internal/ascii
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.9369138Z vendor/golang.org/x/net/idna
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:27.9492136Z text/tabwriter
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.0051836Z google.golang.org/grpc/backoff
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.0283731Z google.golang.org/grpc/grpclog/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.0862105Z mime/multipart
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.0892257Z google.golang.org/grpc/grpclog
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.1183226Z vendor/golang.org/x/net/http/httpguts
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.1538851Z vendor/golang.org/x/net/http/httpproxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.1622628Z google.golang.org/grpc/connectivity
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.1794422Z google.golang.org/grpc/attributes
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.2074247Z google.golang.org/grpc/internal/envconfig
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.2227795Z hash/fnv
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.2287696Z google.golang.org/protobuf/internal/pragma
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.2347953Z go/token
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.2602027Z google.golang.org/grpc/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.2785215Z google.golang.org/protobuf/internal/detrand
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.3101938Z google.golang.org/grpc/metadata
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.3232484Z google.golang.org/protobuf/internal/errors
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.3448849Z google.golang.org/protobuf/encoding/protowire
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.3633497Z google.golang.org/grpc/stats
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.3699159Z google.golang.org/grpc/balancer/pickfirst/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.3781867Z google.golang.org/grpc/internal/grpclog
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.3818835Z google.golang.org/protobuf/reflect/protoreflect
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.3891828Z embed
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.4031947Z google.golang.org/grpc/experimental/stats
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.4340235Z google.golang.org/protobuf/internal/editiondefaults
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.4392385Z google.golang.org/protobuf/internal/version
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.4468314Z google.golang.org/grpc/codes
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.4508705Z google.golang.org/grpc/internal/grpcutil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.4653031Z google.golang.org/grpc/internal/mem
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.4698263Z google.golang.org/grpc/internal/backoff
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.4966208Z google.golang.org/grpc/internal/balancerload
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.5111861Z google.golang.org/grpc/internal/buffer
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.5201951Z google.golang.org/grpc/internal/grpcsync
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.5668392Z google.golang.org/grpc/internal/idle
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.5691914Z google.golang.org/grpc/mem
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.5977714Z golang.org/x/text/transform
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.6319360Z crypto/tls
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.6543107Z google.golang.org/grpc/encoding
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.6696481Z golang.org/x/text/unicode/bidi
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.6821531Z golang.org/x/text/unicode/norm
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.7699988Z google.golang.org/protobuf/internal/encoding/messageset
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.8092147Z google.golang.org/protobuf/internal/genid
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.8542581Z google.golang.org/protobuf/internal/order
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.8767654Z google.golang.org/protobuf/internal/strs
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.9002466Z google.golang.org/protobuf/reflect/protoregistry
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.9148521Z google.golang.org/protobuf/runtime/protoiface
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:28.9362004Z google.golang.org/protobuf/internal/encoding/json
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.0112371Z google.golang.org/protobuf/proto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.0886350Z google.golang.org/protobuf/internal/descfmt
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.1102396Z google.golang.org/protobuf/internal/descopts
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.1181858Z google.golang.org/protobuf/internal/encoding/text
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.2277566Z google.golang.org/protobuf/internal/protolazy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.2882910Z golang.org/x/text/secure/bidirule
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.2989669Z golang.org/x/net/http2/hpack
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.3202598Z golang.org/x/net/idna
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.3203347Z google.golang.org/protobuf/internal/encoding/defval
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.3617503Z google.golang.org/protobuf/internal/filedesc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.4166486Z google.golang.org/protobuf/encoding/prototext
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.5215691Z golang.org/x/net/http/httpguts
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.5494494Z golang.org/x/net/internal/httpsfv
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.6192991Z google.golang.org/grpc/internal/stats
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.6211958Z google.golang.org/grpc/internal/syscall
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.6643321Z google.golang.org/grpc/internal/transport/readyreader
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.6842098Z google.golang.org/grpc/keepalive
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.6981834Z google.golang.org/grpc/tap
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.7069340Z google.golang.org/grpc/internal/resolver/dns/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.7159284Z runtime/pprof
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.7192108Z database/sql/driver
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.8341675Z github.com/google/uuid
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:29.9776570Z google.golang.org/protobuf/encoding/protojson
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.1732792Z google.golang.org/protobuf/internal/encoding/tag
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.2299374Z google.golang.org/protobuf/internal/impl
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.2872333Z os/user
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.3408326Z github.com/opencontainers/go-digest
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.3983049Z github.com/opencontainers/image-spec/specs-go
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.4098144Z github.com/opencontainers/image-spec/specs-go/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.4217067Z archive/tar
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.4284097Z github.com/gogo/protobuf/proto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.5202659Z net/http/httptrace
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.5906256Z net/http/internal/httpcommon
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.6825289Z net/http
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.8642602Z google.golang.org/grpc/internal/credentials
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:30.9112220Z google.golang.org/grpc/credentials
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.0176792Z google.golang.org/grpc/internal/channelz
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.2069188Z google.golang.org/grpc/channelz
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.2165067Z google.golang.org/grpc/resolver
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.3035449Z google.golang.org/grpc/balancer
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.3542656Z google.golang.org/grpc/balancer/base
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.4809755Z google.golang.org/grpc/experimental/balancer/weight
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.4937003Z google.golang.org/grpc/balancer/endpointsharding
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.5792513Z google.golang.org/grpc/credentials/insecure
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.6012523Z google.golang.org/grpc/internal/balancer/gracefulswitch
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.6852492Z google.golang.org/grpc/internal/metadata
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.7213727Z google.golang.org/grpc/internal/serviceconfig
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.7643721Z google.golang.org/grpc/internal/resolver
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.8070114Z google.golang.org/grpc/internal/proxyattributes
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.8183496Z golang.org/x/net/internal/httpcommon
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.9008643Z google.golang.org/grpc/internal/transport/networktype
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.9164052Z google.golang.org/grpc/peer
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.9351477Z google.golang.org/grpc/internal/resolver/passthrough
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.9558035Z google.golang.org/grpc/internal/resolver/unix
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.9738568Z google.golang.org/grpc/balancer/grpclb/state
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:31.9874178Z google.golang.org/grpc/internal/resolver/dns
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.0654027Z google.golang.org/grpc/resolver/dns
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.0948205Z github.com/containerd/containerd/v2/internal/randutil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.1192334Z github.com/containerd/errdefs
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.2607602Z github.com/containerd/containerd/v2/pkg/filters
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.3623178Z github.com/containerd/containerd/v2/core/content
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.4742461Z github.com/containerd/errdefs/pkg/internal/cause
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.4888302Z github.com/containerd/errdefs/pkg/internal/types
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.5098985Z github.com/klauspost/compress/fse
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.5452734Z github.com/klauspost/compress/internal/snapref
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.5529042Z google.golang.org/protobuf/internal/filetype
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.6243465Z github.com/klauspost/compress/zstd/internal/xxhash
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.6472325Z google.golang.org/protobuf/runtime/protoimpl
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.6871423Z github.com/klauspost/compress/huff0
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.7012684Z google.golang.org/protobuf/protoadapt
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.7126535Z google.golang.org/protobuf/types/known/durationpb
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.7442127Z google.golang.org/grpc/internal/pretty
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.7792061Z google.golang.org/grpc/encoding/proto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.7892174Z google.golang.org/grpc/balancer/pickfirst
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.8171747Z google.golang.org/protobuf/types/known/timestamppb
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.9052460Z google.golang.org/grpc/binarylog/grpc_binarylog_v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:32.9551858Z google.golang.org/protobuf/types/known/anypb
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.0018148Z google.golang.org/grpc/balancer/roundrobin
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.0181919Z google.golang.org/genproto/googleapis/rpc/status
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.0249594Z google.golang.org/protobuf/types/known/emptypb
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.0276401Z google.golang.org/protobuf/types/known/fieldmaskpb
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.0867824Z google.golang.org/protobuf/types/descriptorpb
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.0891557Z google.golang.org/grpc/internal/status
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.1146566Z github.com/containerd/containerd/api/types/task
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.1545966Z google.golang.org/grpc/status
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.1908414Z github.com/containerd/containerd/api/types/runc/options
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.2152586Z google.golang.org/grpc/internal/binarylog
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.2567346Z github.com/containerd/ttrpc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.3675069Z github.com/containerd/typeurl/v2
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.4590752Z github.com/containerd/containerd/v2/core/containers
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.4723078Z github.com/containerd/containerd/v2/pkg/protobuf
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.5169756Z github.com/containerd/containerd/v2/pkg/protobuf/types
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.5178741Z github.com/containerd/containerd/api/types
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.5523629Z github.com/containerd/errdefs/pkg/errgrpc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.6562979Z runtime/debug
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.6677319Z os/exec
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.6943591Z golang.org/x/net/trace
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.7079022Z golang.org/x/net/http2
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.7829346Z net/http/httputil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.8233686Z github.com/klauspost/compress/zstd
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.9460807Z github.com/containerd/containerd/v2/pkg/labels
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:33.9610505Z github.com/containerd/platforms
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.0360805Z golang.org/x/sync/errgroup
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.0591632Z golang.org/x/sync/semaphore
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.0826427Z github.com/containerd/containerd/v2/pkg/kernelversion
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.1152570Z github.com/moby/sys/userns
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.1622221Z github.com/containerd/containerd/v2/pkg/sys
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.2165507Z github.com/containerd/continuity/devices
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.2732365Z github.com/containerd/continuity/sysx
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.2733216Z github.com/moby/sys/mountinfo
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.3145368Z github.com/containerd/continuity/fs
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.3662316Z github.com/containerd/containerd/v2/pkg/protobuf/proto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.3798758Z github.com/containerd/containerd/v2/pkg/epoch
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.4023415Z github.com/containerd/containerd/v2/pkg/cap
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.4457464Z github.com/containerd/containerd/v2/internal/lazyregexp
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.4724179Z github.com/containerd/containerd/v2/pkg/identifiers
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.4929970Z github.com/containerd/containerd/v2/pkg/namespaces
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.5361577Z github.com/containerd/containerd/v2/core/mount
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.5581893Z github.com/moby/sys/user
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.7342710Z github.com/opencontainers/runtime-spec/specs-go
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.7702949Z github.com/containerd/containerd/v2/core/events
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.7879363Z github.com/containerd/containerd/v2/pkg/reference
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.8210585Z github.com/containerd/containerd/v2/core/snapshots
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.8260327Z github.com/containerd/containerd/v2/internal/fsview
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.8664668Z github.com/distribution/reference
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:34.9956280Z github.com/containerd/containerd/v2/core/leases
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.0064039Z google.golang.org/grpc/internal/transport
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.0242419Z github.com/containerd/containerd/v2/pkg/archive/compression
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.0303972Z github.com/containerd/containerd/v2/core/remotes/errors
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.0341630Z github.com/felixge/httpsnoop
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.0632768Z go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/internal/request
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.1032085Z log/slog/internal/buffer
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.1090715Z github.com/containerd/containerd/v2/core/images
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.1273173Z log/slog
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.3022556Z github.com/containerd/containerd/v2/core/diff
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.4033747Z github.com/containerd/containerd/v2/pkg/oci
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.5413651Z github.com/containerd/containerd/v2/core/images/archive
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.7962877Z github.com/containerd/containerd/v2/core/images/usage
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.8487722Z github.com/containerd/containerd/v2/core/transfer
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.8891792Z github.com/containerd/containerd/v2/core/remotes
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.9292280Z google.golang.org/grpc/internal/resolver/delegatingresolver
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.9454045Z github.com/go-logr/logr
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:35.9943558Z go.opentelemetry.io/auto/sdk/internal/telemetry
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.0040195Z google.golang.org/grpc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.0513817Z github.com/go-logr/logr/funcr
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.2546027Z go.opentelemetry.io/otel/attribute/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.2559692Z github.com/go-logr/stdr
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.2773288Z github.com/cespare/xxhash/v2
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.3132022Z go.opentelemetry.io/otel/codes
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.3339851Z go.opentelemetry.io/otel/trace/internal/telemetry
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.3362035Z go.opentelemetry.io/otel/attribute/internal/xxhash
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.3622064Z go.opentelemetry.io/otel/attribute
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.5932751Z go.opentelemetry.io/otel/internal/errorhandler
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.6222405Z go.opentelemetry.io/otel/internal/baggage
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.6359522Z go.opentelemetry.io/otel/baggage
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.7792652Z github.com/moby/locker
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.7918917Z github.com/containerd/containerd/v2/core/streaming
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.7967655Z github.com/containerd/containerd/api/types/transfer
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.8044683Z go.opentelemetry.io/otel/semconv/v1.37.0
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.8069926Z go.opentelemetry.io/otel/semconv/v1.41.0
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:36.9526854Z go.opentelemetry.io/otel/metric
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.1272838Z k8s.io/cri-api/pkg/apis/runtime/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.1508341Z github.com/containerd/containerd/api/services/containers/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.2535377Z github.com/containerd/containerd/api/services/diff/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.3062619Z github.com/containerd/containerd/api/services/events/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.3818749Z github.com/containerd/containerd/api/services/images/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.4072512Z github.com/containerd/containerd/api/services/leases/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.5075782Z github.com/containerd/containerd/api/services/namespaces/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.6276244Z github.com/containerd/containerd/api/services/sandbox/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.6432988Z github.com/containerd/containerd/api/services/snapshots/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.7005644Z github.com/containerd/containerd/api/services/tasks/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.9506773Z github.com/containerd/containerd/api/services/transfer/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:37.9882385Z github.com/containerd/containerd/api/services/version/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.0872192Z github.com/containerd/containerd/api/services/content/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.0901824Z github.com/containerd/containerd/v2/core/diff/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.1062427Z github.com/containerd/containerd/v2/core/events/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.1972712Z github.com/containerd/containerd/api/services/introspection/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.2172320Z github.com/containerd/containerd/v2/core/leases/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.3312667Z github.com/containerd/containerd/api/services/mounts/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.3798614Z github.com/containerd/containerd/v2/core/introspection
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.4311562Z github.com/containerd/containerd/v2/core/introspection/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.4358012Z github.com/containerd/containerd/v2/core/content/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.5438975Z github.com/containerd/containerd/v2/core/mount/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.5550216Z go.opentelemetry.io/otel/trace
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.5820858Z github.com/vhive-serverless/vhive/common
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.6353495Z go.opentelemetry.io/otel/metric/noop
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.6574650Z github.com/containerd/containerd/api/runtime/sandbox/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.6912320Z github.com/vhive-serverless/vhive/cri
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.7234033Z go.opentelemetry.io/otel/semconv/v1.41.0/httpconv
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.8794496Z go.opentelemetry.io/otel/trace/noop
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.8795384Z go.opentelemetry.io/otel/propagation
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.9319728Z github.com/containerd/containerd/v2/core/sandbox
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.9416804Z go.opentelemetry.io/auto/sdk
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:38.9692839Z github.com/containerd/containerd/v2/core/snapshots/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.0539473Z github.com/containerd/containerd/v2/core/sandbox/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.0692499Z go.opentelemetry.io/otel/internal/global
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.0804043Z github.com/containerd/containerd/api/services/streaming/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.0894416Z github.com/containerd/containerd/v2/core/transfer/streaming
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.1792236Z github.com/containerd/containerd/v2/core/transfer/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.1915019Z github.com/containerd/containerd/v2/internal/cleanup
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.2034561Z github.com/containerd/containerd/v2/internal/kmutex
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.2303727Z github.com/containerd/containerd/v2/core/streaming/proxy
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.2458530Z github.com/opencontainers/image-spec/identity
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.2702167Z github.com/containerd/containerd/v2/internal/userns
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.2759408Z github.com/containerd/containerd/v2/pkg/archive/tarheader
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.3182440Z github.com/containerd/fifo
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.3235699Z github.com/containerd/containerd/v2/pkg/archive
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.3252312Z github.com/containerd/containerd/v2/pkg/dialer
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.3319262Z go.opentelemetry.io/otel
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.3555488Z github.com/containerd/containerd/v2/pkg/rootfs
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.3912098Z github.com/containerd/containerd/v2/pkg/cio
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.3919709Z go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/internal/semconv
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.4113805Z github.com/containerd/plugin
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.4695723Z github.com/containerd/containerd/v2/plugins
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.4749447Z os/signal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.4881403Z google.golang.org/grpc/health/grpc_health_v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.4917311Z github.com/davecgh/go-spew/spew
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.5613109Z github.com/moby/sys/signal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.5782496Z go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.6020973Z github.com/containerd/containerd/api/services/ttrpc/events/v1
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.6696572Z github.com/firecracker-microvm/firecracker-containerd/proto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.6760053Z github.com/containerd/containerd/v2/pkg/ttrpcutil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.7332509Z github.com/go-multierror/multierror
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.7412460Z encoding/csv
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.7439358Z github.com/containerd/containerd/v2/pkg/tracing
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.7461898Z gonum.org/v1/gonum/floats/scalar
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.7712035Z gonum.org/v1/gonum/floats
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.8153040Z gonum.org/v1/gonum/blas/gonum
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.8532438Z github.com/google/nftables/binaryutil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.8822443Z github.com/containerd/containerd/v2/core/remotes/docker/auth
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.8872448Z github.com/containerd/containerd/v2/core/unpack
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.8946862Z github.com/firecracker-microvm/firecracker-containerd/proto/service/fccontrol/ttrpc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:39.9922372Z github.com/containerd/containerd/v2/core/remotes/docker
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.0013737Z github.com/firecracker-microvm/firecracker-containerd/firecracker-control/client
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.0669143Z github.com/mdlayher/netlink/nlenc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.0814240Z golang.org/x/net/bpf
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.0890744Z github.com/google/nftables/alignedbuff
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.1370015Z github.com/google/nftables/xt
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.2081282Z github.com/mdlayher/socket
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.2625172Z github.com/google/nftables/userdata
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.2862391Z github.com/vishvananda/netns
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.3705655Z github.com/vishvananda/netlink/nl
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.4280886Z github.com/mdlayher/netlink
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.6092693Z github.com/containerd/containerd/v2/client
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.6572731Z github.com/containerd/stargz-snapshotter/fs/source
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.7192044Z github.com/google/nftables/internal/parseexprfunc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.7286199Z github.com/google/nftables/expr
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.7709152Z github.com/mdlayher/netlink/nltest
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.8194885Z io/ioutil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:40.8975405Z github.com/vishvananda/netlink
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:41.0782847Z github.com/google/nftables
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:41.3842691Z gonum.org/v1/gonum/blas/blas64
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:41.4752375Z gonum.org/v1/gonum/blas/cblas128
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:41.5092446Z gonum.org/v1/gonum/lapack/gonum
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:41.5742754Z encoding/gob
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:41.7185582Z github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:41.7799669Z github.com/vhive-serverless/vhive/ctriface/image
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:41.9276185Z github.com/vhive-serverless/vhive/devmapper
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:42.1111626Z google.golang.org/protobuf/internal/editionssupport
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:42.1221940Z google.golang.org/protobuf/types/gofeaturespb
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:42.1985797Z google.golang.org/protobuf/reflect/protodesc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:42.3853038Z github.com/vhive-serverless/vhive/snapshotting
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:42.5092752Z runtime/race
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:42.5782643Z github.com/montanaflynn/stats
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:42.5904563Z github.com/golang/protobuf/proto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.0032520Z golang.org/x/image/math/fixed
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.0692491Z image
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.0878564Z github.com/vhive-serverless/vhive/examples/protobuf/helloworld
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.2223957Z github.com/vhive-serverless/vhive/proto
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.2423412Z gonum.org/v1/gonum/lapack/lapack64
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.2992377Z gonum.org/v1/gonum/mat
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.3395510Z image/internal/imageutil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.3706620Z image/draw
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.3950243Z github.com/wcharczuk/go-chart/matrix
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.5012536Z github.com/wcharczuk/go-chart/util
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.5176119Z github.com/golang/freetype/raster
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.6120616Z golang.org/x/image/font
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.6452742Z golang.org/x/image/draw
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.6684723Z github.com/golang/freetype/truetype
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.8469541Z github.com/vhive-serverless/vhive/networking
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:43.9782462Z github.com/wcharczuk/go-chart/seq
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.0482682Z github.com/vhive-serverless/vhive/misc
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.0911782Z hash/adler32
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.1209965Z compress/zlib
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.1653366Z image/png
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.2541533Z golang.org/x/text/encoding
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.3124274Z golang.org/x/text/encoding/internal
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.3328335Z golang.org/x/text/encoding/charmap
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.3378287Z golang.org/x/image/vector
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.4350496Z codeberg.org/go-fonts/liberation/liberationmonobold
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.4432253Z codeberg.org/go-fonts/liberation/liberationmonobolditalic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.4512281Z codeberg.org/go-fonts/liberation/liberationmonoitalic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.4593037Z codeberg.org/go-fonts/liberation/liberationmonoregular
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.4690567Z codeberg.org/go-fonts/liberation/liberationsansbold
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.4804164Z codeberg.org/go-fonts/liberation/liberationsansbolditalic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.4922245Z codeberg.org/go-fonts/liberation/liberationsansitalic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5032236Z codeberg.org/go-fonts/liberation/liberationsansregular
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5168051Z codeberg.org/go-fonts/liberation/liberationserifbold
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5271957Z codeberg.org/go-fonts/liberation/liberationserifbolditalic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5419858Z codeberg.org/go-fonts/liberation/liberationserifitalic
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5513198Z codeberg.org/go-fonts/liberation/liberationserifregular
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5605791Z codeberg.org/go-latex/latex/internal/tex2unicode
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5846212Z codeberg.org/go-latex/latex/token
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5882519Z github.com/wcharczuk/go-chart/drawing
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5964562Z codeberg.org/go-latex/latex/ast
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.5986903Z golang.org/x/image/font/sfnt
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.6337617Z text/scanner
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.7003924Z codeberg.org/go-latex/latex
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.7070272Z gonum.org/v1/gonum/optimize/convex/lp
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.7892025Z gonum.org/v1/gonum/stat
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.8120805Z codeberg.org/go-latex/latex/mtex/symbols
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.8532677Z codeberg.org/go-latex/latex/tex
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.9102837Z github.com/wcharczuk/go-chart
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:44.9984599Z github.com/vhive-serverless/vhive/metrics
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.0090699Z golang.org/x/image/font/opentype
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.0449032Z codeberg.org/go-latex/latex/drawtex
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.0463358Z gonum.org/v1/plot/font
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.0626505Z codeberg.org/go-latex/latex/font/ttf
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.0958872Z gonum.org/v1/plot/font/liberation
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.1123841Z gonum.org/v1/plot/vg
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.1151327Z codeberg.org/go-latex/latex/mtex
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.1642439Z github.com/vhive-serverless/vhive/memory/manager
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.1821776Z golang.org/x/image/font/basicfont
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.2225369Z image/jpeg
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.2622537Z gonum.org/v1/plot/text
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.3322574Z gonum.org/v1/plot/vg/draw
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.4054051Z git.sr.ht/~sbinet/gg
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.4420554Z gonum.org/v1/plot/vg/vgeps
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.4721327Z github.com/vhive-serverless/vhive/ctriface
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.4989268Z golang.org/x/image/ccitt
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.5632269Z golang.org/x/image/tiff/lzw
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.5982482Z golang.org/x/image/tiff
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.6601612Z encoding/xml
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.7783212Z gonum.org/v1/plot/vg/vgimg
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.9044447Z github.com/vhive-serverless/vhive/cri/firecracker
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.9131843Z compress/lzw
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.9258613Z gonum.org/v1/plot/vg/vgtex
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.9712306Z image/gif
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:45.9980010Z gonum.org/v1/plot/palette
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:46.0409539Z gonum.org/v1/plot/tools/bezier
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:46.1515919Z github.com/vhive-serverless/vhive
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:46.1799779Z github.com/ajstarks/svgo
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:46.1803225Z codeberg.org/go-pdf/fpdf
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:46.3434291Z gonum.org/v1/plot/vg/vgsvg
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:47.2428669Z gonum.org/v1/plot/vg/vgpdf
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:47.3096715Z gonum.org/v1/plot
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:47.4533577Z gonum.org/v1/plot/plotter
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:47.8077479Z gonum.org/v1/plot/plotutil
+Build and check code quality (1.26.11)	Build	2026-11-13T02:51:47.8630467Z github.com/vhive-serverless/vhive/profile
+Build and check code quality (1.26.11)	Post Check code	﻿2026-11-13T02:51:48.1374046Z Post job cleanup.
+Build and check code quality (1.26.11)	Post Check code	2026-11-13T02:51:48.5471432Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/vHive/vHive --files-from manifest.txt --use-compress-program zstdmt
+Build and check code quality (1.26.11)	Post Check code	2026-11-13T02:51:49.7922356Z Sent 1219081 of 1219081 (100.0%), 1.4 MBs/sec
+Build and check code quality (1.26.11)	Post Check code	2026-11-13T02:51:50.0645029Z Saved cache for golangci-lint from paths '/home/runner/.cache/golangci-lint' in 1820ms
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	﻿2026-11-13T02:51:50.0771616Z Post job cleanup.
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:50.1676234Z [command]/opt/hostedtoolcache/go/1.26.11/x64/bin/go env GOCACHE
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:50.1710114Z [command]/opt/hostedtoolcache/go/1.26.11/x64/bin/go env GOMODCACHE
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:50.1729795Z /home/runner/.cache/go-build
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:50.1745381Z /home/runner/go/pkg/mod
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:50.3687184Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/vHive/vHive --files-from manifest.txt --use-compress-program zstdmt
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:53.5630007Z Sent 0 of 360201122 (0.0%), 0.0 MBs/sec
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:54.5622546Z Sent 24656802 of 360201122 (6.8%), 11.8 MBs/sec
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:55.2573436Z Sent 360201122 of 360201122 (100.0%), 127.3 MBs/sec
+Build and check code quality (1.26.11)	Post Set up Go 1.26.11	2026-11-13T02:51:55.5591380Z Cache saved with the key: setup-go-Linux-x64-ubuntu24-go-1.26.11-d375b8425ec3e274f7fd0e9e23569db59aed20d25276e794ab5ee72b6becec3b
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	﻿2026-11-13T02:51:55.5726672Z Post job cleanup.
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6362502Z [command]/usr/bin/git version
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6389753Z git version 2.56.1
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6414055Z Temporarily overriding HOME='/home/runner/work/_temp/10b04935-30f2-433a-be67-dde60751eabd' before making global git config changes
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6415469Z Adding repository directory to the temporary git global config as a safe directory
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6417888Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/vHive/vHive
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6440267Z Removing SSH command configuration
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6445350Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6496343Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6648114Z Removing HTTP extra header
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6651657Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6674974Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6818688Z Removing includeIf entries pointing to credentials config files
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6822743Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6838858Z includeif.gitdir:/home/runner/work/vHive/vHive/.git.path
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6839625Z includeif.gitdir:/home/runner/work/vHive/vHive/.git/worktrees/*.path
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6840144Z includeif.gitdir:/github/workspace/.git.path
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6840627Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6844963Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/vHive/vHive/.git.path
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6859961Z /home/runner/work/_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6866471Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/vHive/vHive/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-deee480e\-f264\-46f2\-b18b\-6be789d536fa\.config
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6890195Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/vHive/vHive/.git/worktrees/*.path
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6906680Z /home/runner/work/_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6912644Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/vHive/vHive/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-deee480e\-f264\-46f2\-b18b\-6be789d536fa\.config
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6933870Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6948342Z /github/runner_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6952721Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-deee480e\-f264\-46f2\-b18b\-6be789d536fa\.config
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6974357Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6988927Z /github/runner_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.6994337Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-deee480e\-f264\-46f2\-b18b\-6be789d536fa\.config
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.7015838Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Build and check code quality (1.26.11)	Post Check out code into the Go module directory	2026-11-13T02:51:55.7153668Z Removing credentials config '/home/runner/work/_temp/git-credentials-deee480e-f264-46f2-b18b-6be789d536fa.config'
+Build and check code quality (1.26.11)	Complete job	﻿2026-11-13T02:51:55.7251641Z Cleaning up orphan processes

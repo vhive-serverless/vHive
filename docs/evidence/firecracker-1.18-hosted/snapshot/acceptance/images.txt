@@ -1,0 +1,2 @@
+REF                                                                                                 TYPE                                                 DIGEST                                                                  SIZE     PLATFORMS   LABELS 
+ghcr.io/ease-lab/helloworld@sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25 application/vnd.docker.distribution.manifest.v2+json sha256:12dc6715ed1a8306f246ceaf7742c09e38a52a79d17421e4a50d7e0e09fdbc25 54.8 MiB linux/amd64 -      

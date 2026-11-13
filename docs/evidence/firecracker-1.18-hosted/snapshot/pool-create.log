@@ -1,0 +1,35 @@
+{
+  "runtime_source": "/home/runner/work/_temp/vhive-firecracker-stack/sources/b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794",
+  "pool": "vhive-ci-43354889183-1",
+  "directory": "/home/runner/work/_temp/vhive-firecracker-stack/sources/b4f8c6c2f1ec820ee4e8c2aa8daa3ade98d5f794/tmp/devmapper/vhive-ci-43354889183-1",
+  "plan": {
+    "base_image_size": "10GB",
+    "base_image_bytes": 10737418240,
+    "image_budget": 4,
+    "simultaneous_vms": 3,
+    "data_bytes": 42949672960,
+    "metadata_bytes": 1073741824,
+    "minimum_available_bytes": 46170898432,
+    "observed_available_bytes": 104238911488
+  },
+  "backings": {
+    "data": {
+      "device": 66305,
+      "inode": 10019802,
+      "size": 42949672960,
+      "uid": 1001,
+      "gid": 1001,
+      "mode": 384
+    },
+    "metadata": {
+      "device": 66305,
+      "inode": 10019809,
+      "size": 1073741824,
+      "uid": 1001,
+      "gid": 1001,
+      "mode": 384
+    }
+  },
+  "removed": false,
+  "runtime_helper_sha256": "745506ea52e8b82277d2176b2c7fc78132dbc97958f1ca1583255d5e594666ba"
+}
