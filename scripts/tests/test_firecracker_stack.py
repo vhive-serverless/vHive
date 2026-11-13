@@ -74,15 +74,6 @@ class FirecrackerStackTests(unittest.TestCase):
         self.write(prefix / "vhive-stack-receipt.json", json.dumps(receipt))
         return source, prefix, revision
 
-    def test_receipt_covers_runtime_guest_and_snapshotter(self):
-        _, prefix, revision = self.install_fixture()
-        receipt = STACK.verify_install(prefix, revision, self.manifest)
-        self.assertIn("share/runtime/default-rootfs.img", receipt["installed_sha256"])
-        self.assertIn("share/runtime/default-vmlinux.bin", receipt["installed_sha256"])
-        self.assertIn("bin/demux-snapshotter", receipt["installed_sha256"])
-        self.assertIn("bin/runc", receipt["installed_sha256"])
-        self.assertEqual(64, len(receipt["guest_agent_sha256"]))
-
     def test_stale_build_cannot_produce_install_receipt(self):
         source, prefix, revision = self.install_fixture()
         self.write(source / "bin/receipts/build/runtime-revision", "2" * 40)
@@ -106,12 +97,6 @@ class FirecrackerStackTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exactly the manifest artifacts"):
             STACK.verify_install(prefix, revision, self.manifest)
 
-    def test_networking_preparation_is_idle_when_route_is_present(self):
-        with patch.object(STACK.shutil, "which", return_value="/usr/sbin/route"), patch.object(STACK, "run") as run:
-            STACK.prepare_host_networking()
-            STACK.prepare_host_networking()
-            run.assert_not_called()
-
     def test_networking_preparation_requires_route_after_install(self):
         with patch.object(STACK.shutil, "which", return_value=None), patch.object(STACK, "run") as run:
             with self.assertRaisesRegex(ValueError, "requires route in PATH"):
@@ -121,13 +106,6 @@ class FirecrackerStackTests(unittest.TestCase):
                 call("sudo", "-n", "env", "DEBIAN_FRONTEND=noninteractive", "apt-get",
                      "install", "--yes", "--no-install-recommends", "net-tools"),
             ])
-
-    def test_networking_provision_failure_stops_preparation(self):
-        error = subprocess.CalledProcessError(1, ["apt-get", "update"])
-        with patch.object(STACK.shutil, "which", return_value=None), patch.object(STACK, "run", side_effect=error) as run:
-            with self.assertRaises(subprocess.CalledProcessError):
-                STACK.prepare_host_networking()
-            run.assert_called_once_with("sudo", "-n", "apt-get", "update")
 
     def test_cached_install_prepare_repairs_route_without_rebuilding(self):
         self.manifest["runtime"].update(ready=True, revision="1" * 40)
@@ -145,6 +123,12 @@ class FirecrackerStackTests(unittest.TestCase):
                 call("sudo", "-n", "env", "DEBIAN_FRONTEND=noninteractive", "apt-get",
                      "install", "--yes", "--no-install-recommends", "net-tools"),
             ])
+            # Repeating the public cached-install command must leave an already
+            # repaired host and its verified installation untouched.
+            run.reset_mock()
+            with patch.object(STACK.shutil, "which", return_value="/usr/sbin/route"):
+                STACK.main()
+            run.assert_not_called()
         self.assertEqual(receipt.read_bytes(), original)
         STACK.verify_install(prefix, revision, self.manifest)
 

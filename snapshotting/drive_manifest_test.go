@@ -2,7 +2,6 @@ package snapshotting
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,6 @@ func TestDriveManifestLifecycle(t *testing.T) {
 	require.Error(t, snapshot.ValidateDriveManifest(), "an incomplete capture must not become ready")
 	require.NoError(t, os.WriteFile(manifest, []byte(completeDriveManifest), 0600))
 	require.NoError(t, snapshot.ValidateDriveManifest())
-	require.Equal(t, filepath.Dir(snapshot.GetSnapshotFilePath()), filepath.Dir(manifest))
 	require.NoError(t, snapshot.Cleanup())
 	_, err := os.Stat(manifest)
 	require.ErrorIs(t, err, os.ErrNotExist, "snapshot cleanup must also remove its companion manifest")

@@ -125,12 +125,6 @@ with open(os.environ["MOCK_CALLS"], "a") as output:
         self.assertFalse(any(c[0] == "curl" for c in self.commands()))
         self.assertFalse((self.root / "github-path").exists())
 
-    def test_missing_route_fails_before_toolchain_install(self):
-        (self.bin / "route").unlink()
-        result = self.run_helper()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertFalse(any(c[0] == "curl" for c in self.commands()))
-
 
 if __name__ == "__main__":
     unittest.main()

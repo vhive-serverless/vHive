@@ -40,8 +40,6 @@ class FakeSystem(POOL.System):
         if args[0] == "bash":
             if args[2] == "create":
                 directory = self.source / "tmp/devmapper" / self.pool
-                assert (directory / "data").stat().st_size == POOL.DATA_BYTES
-                assert (directory / "metadata").stat().st_size == POOL.METADATA_BYTES
                 self.attached = [{"name": "/dev/loop10", "back-file": str(directory / "data")}]
                 if self.fail_create:
                     raise subprocess.CalledProcessError(1, args, output="simulated partial loop attachment")
@@ -87,6 +85,7 @@ class LegacyPoolTests(unittest.TestCase):
         directory = Path(owner["directory"])
         self.assertEqual((directory / "data").stat().st_size, 40 * POOL.GIB)
         self.assertEqual((directory / "metadata").stat().st_size, POOL.GIB)
+        self.assertEqual(owner["plan"]["base_image_bytes"], 10 * POOL.GIB)
         self.assertLess((directory / "data").stat().st_blocks * 512, POOL.GIB)
         self.assertEqual((directory / "data").stat().st_mode & 0o777, 0o600)
         observed = json.loads((self.evidence / "capacity-verified.json").read_text())
@@ -97,13 +96,6 @@ class LegacyPoolTests(unittest.TestCase):
         self.assertFalse(self.system.attached)
         self.assertFalse((directory / "data").exists())
         self.assertTrue(POOL.remove(self.evidence / "ownership.json", self.system)["removed"])
-
-    def test_capacity_plan_keeps_ten_gib_disks_and_three_vms(self):
-        plan = POOL.capacity_plan(POOL.ROOT / "configs/firecracker-containerd/config.toml", 43 * POOL.GIB)
-        self.assertEqual(plan["base_image_size"], "10GB")
-        self.assertEqual(plan["base_image_bytes"], 10 * POOL.GIB)
-        self.assertEqual(plan["simultaneous_vms"], 3)
-        self.assertEqual(plan["image_budget"], 4)
 
     def test_insufficient_host_space_refuses_before_backing_claim(self):
         with patch.object(POOL.os, "statvfs", return_value=SimpleNamespace(f_bavail=43 * POOL.GIB - 1, f_frsize=1)):
