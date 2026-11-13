@@ -25,8 +25,8 @@ package image
 import (
 	"context"
 	"fmt"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
 	"os"
 	"sync"
 	"testing"

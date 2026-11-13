@@ -46,7 +46,7 @@ jobs:
           sudo apt update
           sudo apt install rsync -y
       - name: Build setup scripts
-        run: pushd scripts && go build -o setup_tool && popd
+        run: pushd scripts && go build -mod=readonly -o setup_tool && popd
 
       - name: Setup system
         run: ./scripts/setup_tool setup_node ${{ inputs.sandbox }}

@@ -55,13 +55,13 @@ jobs:
         sudo apt install rsync -y
     
     - name: Build setup scripts
-      run: pushd scripts && go build -o setup_tool && popd
+      run: pushd scripts && go build -mod=readonly -o setup_tool && popd
     
     - name: Pull binaries
       run: ./scripts/setup_tool setup_firecracker_containerd
 
     - name: Build
-      run: go build -race -v -a ./...
+      run: go build -mod=readonly -race -v -a ./...
 
     - name: Run vHive end-to-end tests
       run: make ${{ matrix.test-name }}

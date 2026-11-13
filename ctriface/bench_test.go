@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
 	ctrdlog "github.com/containerd/log"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"

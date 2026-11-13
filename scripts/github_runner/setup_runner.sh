@@ -36,9 +36,15 @@ fi
 
 # Docker container ID is 64 characters long.
 if [ 64 -eq ${#CONTAINERID} ]; then
-  # set thinpool device name dynamically
-  sudo sed -i "s/fc-dev-thinpool/${CONTAINERID}_thinpool/" /etc/firecracker-containerd/config.toml
+  # Receipt-backed stack activation renders the configuration during each job.
+  # Match the pool selected by create_devmapper.sh without preinstalling config.
+  export FICD_DM_POOL="${CONTAINERID}_thinpool"
 fi
+
+# Kernel settings require the privileged runner container, not docker build.
+sudo sysctl -w net.ipv4.conf.all.forwarding=1
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo sysctl --system
 
 /create_devmapper.sh
 

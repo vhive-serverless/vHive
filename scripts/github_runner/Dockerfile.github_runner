@@ -20,12 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-FROM ubuntu:focal
+FROM ubuntu:24.04
 
 RUN apt-get update && \
     DEBIAN_FRONTEND="noninteractive" apt-get install --yes \
     git \
     sudo \
+    python3 \
     apt-utils \
     wget \
     curl \
@@ -47,18 +48,11 @@ RUN apt-get update && \
     dmsetup \
     gnupg-agent \
     numactl \
-    software-properties-common && \
-    sudo sysctl -w net.ipv4.conf.all.forwarding=1 && \
-    sudo sysctl net.ipv4.ip_forward=1 && \
-    sudo sysctl --system && \
-    sudo mkdir -p /etc/firecracker-containerd && \
-    sudo mkdir -p /var/lib/firecracker-containerd/runtime && \
-    sudo mkdir -p /etc/containerd/ && \
-    sudo curl -fsSL -o /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.5/x86_64/vmlinux-5.10.186
+    software-properties-common
 
 COPY scripts/github_runner/setup_runner.sh /setup_runner.sh
 COPY scripts/create_devmapper.sh /create_devmapper.sh
 COPY scripts/install_pmutools.sh /install_pmutools.sh
-COPY configs/firecracker-containerd/config.toml /etc/firecracker-containerd/
-COPY configs/firecracker-containerd/firecracker-runtime.json /etc/containerd/
+# Jobs install/verify the manifest-pinned stack and render its configuration.
+# Do not bake an old kernel or an unrendered STACK_PREFIX template into runners.
 ENTRYPOINT /setup_runner.sh

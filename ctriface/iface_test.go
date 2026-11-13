@@ -22,17 +22,22 @@
 package ctriface
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/containerd/containerd/namespaces"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/cio"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
 	ctrdlog "github.com/containerd/log"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/vhive-serverless/vhive/snapshotting"
@@ -269,6 +274,38 @@ func TestPauseSnapResume(t *testing.T) {
 
 	_, err = orch.ResumeVM(ctx, vmID)
 	require.NoError(t, err, "Failed to resume VM")
+
+	vm, err := orch.vmPool.GetVM(vmID)
+	require.NoError(t, err)
+	require.NotNil(t, vm.Task)
+	task := *vm.Task
+	state, err := task.Status(ctx)
+	require.NoError(t, err, "source task control must reconnect after snapshot")
+	require.Equal(t, containerd.Running, state.Status)
+	_, err = task.Metrics(ctx)
+	require.NoError(t, err, "source task metrics must reconnect after snapshot")
+
+	var output bytes.Buffer
+	process, err := task.Exec(ctx, "post-snapshot-exec", &specs.Process{
+		Args: []string{"/bin/sh", "-ec", "echo post-snapshot-exec"},
+		Cwd:  "/",
+	}, cio.NewCreator(cio.WithStreams(nil, &output, io.Discard)))
+	require.NoError(t, err, "source exec must work after snapshot")
+	exited, err := process.Wait(ctx)
+	require.NoError(t, err)
+	require.NoError(t, process.Start(ctx))
+	select {
+	case result := <-exited:
+		code, _, err := result.Result()
+		require.NoError(t, err)
+		require.Zero(t, code)
+	case <-ctx.Done():
+		t.Fatal("source exec did not exit after snapshot: ", ctx.Err())
+	}
+	process.IO().Wait()
+	_, err = process.Delete(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "post-snapshot-exec\n", output.String(), "source stdout must reconnect after snapshot")
 
 	err = orch.StopSingleVM(ctx, vmID)
 	require.NoError(t, err, "Failed to stop VM")

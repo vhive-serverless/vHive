@@ -32,7 +32,7 @@ jobs:
           **/go.mod
 
     - name: Build setup scripts
-      run: pushd scripts && go build -o setup_tool && popd
+      run: pushd scripts && go build -mod=readonly -o setup_tool && popd
 
     - name: Start Containerd
       run: sudo containerd &
