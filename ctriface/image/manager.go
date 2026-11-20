@@ -180,9 +180,17 @@ func isLocalDomain(s string) (bool, error) {
 
 // Checks whether a container image uses the eStargz format
 func isEstargzImage(ctx context.Context, client *containerd.Client, imageName string) (bool, error) {
-	resolver := docker.NewResolver(docker.ResolverOptions{
-		Client: http.DefaultClient,
-	})
+	options := docker.ResolverOptions{Client: http.DefaultClient}
+	local, err := isLocalDomain(imageName)
+	if err != nil {
+		return false, err
+	}
+	if local {
+		options.Hosts = docker.ConfigureDefaultRegistries(
+			docker.WithPlainHTTP(docker.MatchAllHosts),
+		)
+	}
+	resolver := docker.NewResolver(options)
 
 	// Pull only the manifest
 	_, desc, err := resolver.Resolve(ctx, imageName)

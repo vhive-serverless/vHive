@@ -1,0 +1,7 @@
+metrics_address = "localhost:8234"
+no_prometheus = false
+no_background_fetch = true
+
+[[resolver.host."docker-registry.registry.svc.cluster.local:5000".mirrors]]
+host = "docker-registry.registry.svc.cluster.local:5000"
+insecure = true

@@ -144,11 +144,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	} else if *baseSnap { // start from base snapshot case
 		log.Debugf("No snapshot for rev %s, starting from base snapshot", rev)
 		resp, err = orch.StartWithBaseSnapshot(ctx, image, envArr, argsArr)
-		time.Sleep(2 * time.Second)
 	} else { // boot case
 		log.Debugf("No snapshot for rev %s, starting from image", rev)
 		resp, _, err = orch.StartVMWithEnvironment(ctx, image, envArr, argsArr)
-		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Server Error: %v", err), http.StatusInternalServerError)
@@ -162,6 +160,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("created VM with ID %s and IP %s for revision %s", resp.VMID, resp.GuestIP, r.Header.Get("revision"))
 
 	endpoint := resp.GuestIP + fmt.Sprintf(":%d", port)
+	readyCtx, cancelReady := context.WithTimeout(r.Context(), 60*time.Second)
+	err = waitForEndpoint(readyCtx, endpoint)
+	cancelReady()
+	if err != nil {
+		log.Errorf("VM %s did not become ready: %v", vmId, err)
+		go orch.StopSingleVM(ctx, vmId)
+		http.Error(w, fmt.Sprintf("Function startup failed: %v", err), http.StatusServiceUnavailable)
+		return
+	}
 	w.Header().Set("node-overhead", fmt.Sprintf("%d", time.Since(startTime).Microseconds()))
 	log.Debugf("Sending invocation to %s", vmId)
 
